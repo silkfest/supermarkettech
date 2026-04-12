@@ -1,0 +1,179 @@
+import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+import { getSupabaseServer } from '@/lib/supabase/client'
+import { buildSystemPrompt } from '@/lib/ai/prompts'
+import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
+import type { SensorSnapshot, Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
+import { z } from 'zod'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const Schema = z.object({
+  sessionId:   z.string().optional(),
+  equipmentId: z.string().optional(),
+  mode:        z.enum(['ASK','DIAGNOSE','ALARM','MAINTENANCE','COMPLIANCE']),
+  message:     z.string().min(1).max(4000),
+  history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
+})
+
+async function loadEquipmentContext(equipmentId: string) {
+  const supabase = getSupabaseServer()
+
+  const { data: eq } = await supabase
+    .from('equipment')
+    .select('*')
+    .eq('id', equipmentId)
+    .single()
+
+  if (!eq) return null
+
+  const { data: readings } = await supabase
+    .from('sensor_readings')
+    .select('*')
+    .eq('equipment_id', equipmentId)
+    .order('recorded_at', { ascending: false })
+    .limit(20)
+
+  const { data: alarms } = await supabase
+    .from('alarm_events')
+    .select('*')
+    .eq('equipment_id', equipmentId)
+    .is('resolved_at', null)
+    .order('triggered_at', { ascending: false })
+
+  const { data: logs } = await supabase
+    .from('maintenance_logs')
+    .select('*')
+    .eq('equipment_id', equipmentId)
+    .order('logged_at', { ascending: false })
+    .limit(5)
+
+  // Build snapshot from latest reading of each type
+  const snapshot: SensorSnapshot = {}
+  const seen = new Set<string>()
+  for (const r of (readings ?? [])) {
+    if (seen.has(r.reading_type)) continue
+    seen.add(r.reading_type)
+    if (r.reading_type === 'case_temp')        snapshot.case_temp        = { value: r.value, unit: r.unit }
+    if (r.reading_type === 'setpoint')          snapshot.setpoint          = { value: r.value, unit: r.unit }
+    if (r.reading_type === 'suction_pressure')  snapshot.suction_pressure  = { value: r.value, unit: r.unit }
+    if (r.reading_type === 'superheat')         snapshot.superheat         = { value: r.value, unit: r.unit }
+    if (r.reading_type === 'discharge_temp')    snapshot.discharge_temp    = { value: r.value, unit: r.unit }
+  }
+  if (readings?.[0]) snapshot.recorded_at = readings[0].recorded_at
+
+  return {
+    equipment:    eq as Equipment,
+    snapshot,
+    alarms:       (alarms ?? []) as AlarmEvent[],
+    logs:         (logs ?? []) as MaintenanceLog[],
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null)
+  const parsed = Schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+
+  const { sessionId, equipmentId, mode, message, history } = parsed.data
+  const supabase = getSupabaseServer()
+
+  // 1. Load equipment context
+  const ctx = equipmentId ? await loadEquipmentContext(equipmentId) : null
+
+  // 2. RAG retrieval (gracefully skip if OpenAI key not set)
+  let retrievedContext = ''
+  let sources: ReturnType<typeof chunksToCitations> = []
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const query = [...history.slice(-2).map(m => m.content), message].join(' ').slice(0, 500)
+      const chunks = await retrieveChunks(query, equipmentId, 5, 0.65)
+      retrievedContext = formatContext(chunks)
+      sources = chunksToCitations(chunks)
+    } catch (e) {
+      console.error('[RAG error]', e)
+    }
+  }
+
+  // 3. Build system prompt
+  const systemPrompt = buildSystemPrompt({
+    mode:             mode as ChatMode,
+    equipment:        ctx?.equipment,
+    readings:         ctx?.snapshot,
+    recentLogs:       ctx?.logs,
+    activeAlarms:     ctx?.alarms,
+    retrievedContext: retrievedContext || undefined,
+  })
+
+  // 4. Stream from Claude
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      let fullContent = ''
+      try {
+        const claudeStream = anthropic.messages.stream({
+          model:      'claude-sonnet-4-5-20251001',
+          max_tokens: 2048,
+          system:     systemPrompt,
+          messages: [
+            ...history.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
+            { role: 'user', content: message },
+          ],
+        })
+
+        for await (const chunk of claudeStream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            fullContent += chunk.delta.text
+            controller.enqueue(encoder.encode(
+              `data: ${JSON.stringify({ type: 'delta', text: chunk.delta.text })}\n\n`
+            ))
+          }
+        }
+
+        // Send sources
+        if (sources.length > 0) {
+          controller.enqueue(encoder.encode(
+            `data: ${JSON.stringify({ type: 'sources', sources })}\n\n`
+          ))
+        }
+
+        // Persist to DB
+        let activeSessionId = sessionId
+        if (!activeSessionId) {
+          const { data: sess } = await supabase.from('chat_sessions').insert({
+            equipment_id: equipmentId ?? null,
+            mode,
+            title: message.slice(0, 80),
+          }).select('id').single()
+          activeSessionId = sess?.id
+        }
+        if (activeSessionId) {
+          await supabase.from('chat_messages').insert([
+            { session_id: activeSessionId, role: 'USER',      content: message },
+            { session_id: activeSessionId, role: 'ASSISTANT', content: fullContent,
+              sources: sources.length > 0 ? sources : null },
+          ])
+        }
+
+        controller.enqueue(encoder.encode(
+          `data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`
+        ))
+      } catch (err) {
+        console.error('[Chat stream error]', err)
+        controller.enqueue(encoder.encode(
+          `data: ${JSON.stringify({ type: 'error', message: 'Stream error' })}\n\n`
+        ))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type':  'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection':    'keep-alive',
+    },
+  })
+}
