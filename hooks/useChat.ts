@@ -34,7 +34,7 @@ export function useChat(opts: { equipmentId?: string; mode: ChatMode }) {
     setMessages(prev => [...prev, userMsg, asstMsg])
     setLoading(true)
 
-    const history = messages.map(m => ({ role: m.role, content: m.content }))
+    const history = messages.filter(m => !m.isStreaming).map(m => ({ role: m.role, content: m.content }))
 
     try {
       const res = await fetch('/api/chat', {
