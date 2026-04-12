@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+himport { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
 import type { SensorSnapshot, Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
 import { z } from 'zod'
-
+export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const Schema = z.object({
