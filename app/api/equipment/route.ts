@@ -25,7 +25,7 @@ export async function GET() {
       active_alarms:alarm_events(id, code, severity, triggered_at, description),
       latest_readings:sensor_readings(reading_type, value, unit, recorded_at)
     `)
-    .eq('alarm_events.resolved_at', null)
+    .is('alarm_events.resolved_at', null)
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
