@@ -1,4 +1,4 @@
-himport { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
