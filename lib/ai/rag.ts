@@ -1,23 +1,40 @@
-import OpenAI from 'openai'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import type { CitationSource } from '@/types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY ?? ''
+const VOYAGE_EMBED_URL = 'https://api.voyageai.com/v1/embeddings'
+const VOYAGE_MODEL = 'voyage-3'
+
+async function voyageEmbed(texts: string[], inputType: 'query' | 'document'): Promise<number[][]> {
+  const res = await fetch(VOYAGE_EMBED_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${VOYAGE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      input: texts.map(t => t.slice(0, 32000)),
+      model: VOYAGE_MODEL,
+      input_type: inputType,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Voyage AI embed error ${res.status}: ${err}`)
+  }
+
+  const json = await res.json()
+  return (json.data as Array<{ embedding: number[] }>).map(d => d.embedding)
+}
 
 export async function embedQuery(text: string): Promise<number[]> {
-  const res = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text.slice(0, 8000),
-  })
-  return res.data[0].embedding
+  const [embedding] = await voyageEmbed([text], 'query')
+  return embedding
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  const res = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: texts.map(t => t.slice(0, 8000)),
-  })
-  return res.data.map(d => d.embedding)
+  return voyageEmbed(texts, 'document')
 }
 
 export interface RetrievedChunk {
@@ -74,7 +91,7 @@ export function chunksToCitations(chunks: RetrievedChunk[]): CitationSource[] {
   }))
 }
 
-// ─── PDF ingestion pipeline ───────────────────────────────
+// ─── Text chunking for ingestion pipeline ────────────────────────────────────
 
 export function chunkText(text: string): Array<{ content: string; chunkIndex: number }> {
   const TARGET_WORDS = 375
@@ -121,7 +138,6 @@ export async function ingestDocument(documentId: string, text: string, pageCount
       embedding: embeddings[i],
     }))
 
-    // Insert in batches of 50
     for (let i = 0; i < rows.length; i += 50) {
       const { error } = await supabase.from('doc_chunks').insert(rows.slice(i, i + 50))
       if (error) throw error
