@@ -1,10 +1,13 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 import Sidebar from '@/components/layout/Sidebar'
 import ChatPanel from '@/components/chat/ChatPanel'
 import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
-import type { Equipment, Document, SensorSnapshot, ChatMode } from '@/types'
+import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
+import type { Equipment, Document, SensorSnapshot, ChatMode, User } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
   ASK:         'Ask the expert',
@@ -36,7 +39,24 @@ export default function Dashboard() {
   const [mode,       setMode]       = useState<ChatMode>('ASK')
   const [documents,  setDocuments]  = useState<Document[]>([])
   const [showAdd,    setShowAdd]    = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  // Auth gate
+  useEffect(() => {
+    async function checkAuth() {
+      const sb = getSupabaseBrowser()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      const { data: profile } = await sb.from('users').select('*').eq('id', user.id).single()
+      if (!profile) { router.push('/login'); return }
+      if (profile.status === 'pending') { router.push('/pending'); return }
+      if (profile.status === 'suspended') { router.push('/login'); return }
+      setCurrentUser(profile as User)
+    }
+    checkAuth()
+  }, [router])
 
   const loadEquipment = useCallback(async () => {
     const res = await fetch('/api/equipment').catch(() => null)
@@ -49,7 +69,7 @@ export default function Dashboard() {
     if (res?.ok) setDocuments(await res.json())
   }, [])
 
-  useEffect(() => { loadEquipment() }, [loadEquipment])
+  useEffect(() => { if (currentUser) loadEquipment() }, [currentUser, loadEquipment])
   useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
 
   async function handleUpload(file: File) {
@@ -67,12 +87,21 @@ export default function Dashboard() {
 
   const snapshot = selected ? buildSnapshot(selected.latest_readings ?? []) : undefined
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-sm text-slate-400">Loading…</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         equipment={equipment}
         selected={selected}
         mode={mode}
+        currentUser={currentUser}
         onSelect={setSelected}
         onMode={setMode}
         onAdd={() => setShowAdd(true)}
@@ -131,10 +160,18 @@ export default function Dashboard() {
 
         {/* Main content */}
         <div className="flex-1 flex min-h-0">
-          <div className="flex-1 min-w-0">
-            <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
-          </div>
-          <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker}/>
+          {mode === 'MAINTENANCE' ? (
+            <div className="flex-1 min-w-0 bg-slate-50">
+              <MaintenancePanel equipmentId={selected?.id} />
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 min-w-0">
+                <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
+              </div>
+              <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker}/>
+            </>
+          )}
         </div>
       </div>
 
