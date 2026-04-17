@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react'
-import { Plus, Thermometer, Zap, WrenchIcon, ShieldCheck, MessageSquare, AlertTriangle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Thermometer, WrenchIcon, ShieldCheck, MessageSquare, AlertTriangle, Users, LogOut } from 'lucide-react'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
-import type { Equipment, ChatMode } from '@/types'
+import type { Equipment, ChatMode, User } from '@/types'
 
 const MODES: { id: ChatMode; label: string; icon: React.ReactNode }[] = [
   { id: 'ASK',         label: 'Ask the expert',  icon: <MessageSquare size={13}/> },
@@ -16,14 +18,30 @@ interface Props {
   equipment: Equipment[]
   selected: Equipment | null
   mode: ChatMode
+  currentUser: User | null
   onSelect: (e: Equipment | null) => void
   onMode:   (m: ChatMode) => void
   onAdd:    () => void
 }
 
-export default function Sidebar({ equipment, selected, mode, onSelect, onMode, onAdd }: Props) {
+export default function Sidebar({ equipment, selected, mode, currentUser, onSelect, onMode, onAdd }: Props) {
+  const router = useRouter()
+  const [loggingOut, setLoggingOut] = useState(false)
   const alarmCount   = equipment.filter(e => e.status === 'ALARM').length
   const warningCount = equipment.filter(e => e.status === 'WARNING').length
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    await getSupabaseBrowser().auth.signOut()
+    window.location.href = '/login'
+  }
+
+  const roleLabel: Record<string, string> = {
+    admin: 'Admin',
+    manager: 'Manager',
+    journeyman: 'Journeyman',
+    apprentice: 'Apprentice',
+  }
 
   return (
     <aside className="w-52 flex-shrink-0 flex flex-col bg-slate-50 border-r border-slate-200 overflow-hidden">
@@ -107,13 +125,46 @@ export default function Sidebar({ equipment, selected, mode, onSelect, onMode, o
       </div>
 
       {/* Add equipment */}
-      <div className="p-2 border-t border-slate-200">
+      <div className="px-2 pt-1 pb-1 border-t border-slate-200">
         <button
           onClick={onAdd}
           className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-slate-300 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
         >
           <Plus size={12}/> Add equipment
         </button>
+      </div>
+
+      {/* Admin link */}
+      {currentUser?.role === 'admin' && (
+        <div className="px-2 pb-1">
+          <button
+            onClick={() => router.push('/admin/users')}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
+          >
+            <Users size={13} className="opacity-60"/>
+            Manage users
+          </button>
+        </div>
+      )}
+
+      {/* User footer */}
+      <div className="px-3 py-3 border-t border-slate-200">
+        {currentUser && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-700 truncate">{currentUser.name || currentUser.email}</p>
+              <p className="text-[10px] text-slate-400">{roleLabel[currentUser.role] ?? currentUser.role}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              title="Sign out"
+              className="flex-shrink-0 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+            >
+              <LogOut size={13}/>
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )
