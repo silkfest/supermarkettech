@@ -3,6 +3,18 @@ export type ChatMode = 'ASK' | 'DIAGNOSE' | 'ALARM' | 'MAINTENANCE' | 'COMPLIANC
 export type SourceType = 'UPLOAD' | 'WEB' | 'SYSTEM'
 export type DocStatus = 'PROCESSING' | 'READY' | 'FAILED'
 export type AlarmLevel = 'INFO' | 'WARNING' | 'CRITICAL'
+export type UserRole = 'admin' | 'manager' | 'journeyman' | 'apprentice'
+export type UserStatus = 'pending' | 'active' | 'suspended'
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  status: UserStatus
+  mentor_id: string | null
+  created_at: string
+}
 
 export interface Equipment {
   id: string
@@ -67,13 +79,13 @@ export interface Document {
 export interface MaintenanceLog {
   id: string
   equipment_id: string
-  technician: string
+  technician_id: string
   title: string
-  notes: string
+  notes: string | null
   work_done?: string | null
-  parts_used?: unknown
   next_action?: string | null
-  logged_at: string
+  performed_at: string
+  created_at: string
 }
 
 export interface CitationSource {
