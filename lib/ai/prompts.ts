@@ -59,7 +59,7 @@ function buildEquipmentContext(
   if (recentLogs && recentLogs.length > 0) {
     lines.push('', '--- RECENT MAINTENANCE HISTORY ---')
     recentLogs.slice(0, 5).forEach(log => {
-      lines.push(`${new Date(log.logged_at).toLocaleDateString()} | ${log.title} (${log.technician})`)
+      lines.push(`${new Date(log.performed_at).toLocaleDateString()} | ${log.title}`)
       lines.push(`  Notes: ${log.notes}`)
       if (log.work_done)   lines.push(`  Work done: ${log.work_done}`)
       if (log.next_action) lines.push(`  Next action: ${log.next_action}`)
