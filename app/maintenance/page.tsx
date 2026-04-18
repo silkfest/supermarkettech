@@ -1,7 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
 interface RecentReport {
   id: string
@@ -12,7 +12,7 @@ interface RecentReport {
   technician?: { name: string }
 }
 
-export default function MaintenanceHubPage() {
+function MaintenanceHubContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const equipmentId = searchParams.get('equipmentId')
@@ -118,5 +118,13 @@ export default function MaintenanceHubPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function MaintenanceHubPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Loading…</div>}>
+      <MaintenanceHubContent />
+    </Suspense>
   )
 }
