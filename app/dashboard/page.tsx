@@ -49,11 +49,12 @@ export default function Dashboard() {
       const sb = getSupabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await sb.from('users').select('*').eq('id', user.id).single()
+      const { data: profileData } = await sb.from('users').select('*').eq('id', user.id).single()
+      const profile = profileData as User | null
       if (!profile) { router.push('/login'); return }
       if (profile.status === 'pending') { router.push('/pending'); return }
       if (profile.status === 'suspended') { router.push('/login'); return }
-      setCurrentUser(profile as User)
+      setCurrentUser(profile)
     }
     checkAuth()
   }, [router])
