@@ -19,7 +19,8 @@ export default function LoginPage() {
     if (authErr) { setError(authErr.message); setLoading(false); return }
     const { data: { user } } = await sb.auth.getUser()
     if (user) {
-      const { data: profile } = await sb.from('users').select('status').eq('id', user.id).single()
+      const { data: profileData } = await sb.from('users').select('status').eq('id', user.id).single()
+      const profile = profileData as unknown as { status: string } | null
       router.push(profile?.status === 'pending' ? '/pending' : '/dashboard')
     }
   }
