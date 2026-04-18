@@ -3,8 +3,9 @@ import { getSupabaseServer } from '@/lib/supabase/client'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabase = getSupabaseServer()
 
   // Auth check
@@ -36,7 +37,7 @@ export async function PATCH(
   const { data, error } = await supabase
     .from('users')
     .update(patch)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single()
 
