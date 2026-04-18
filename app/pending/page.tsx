@@ -12,7 +12,8 @@ export default function PendingPage() {
     const interval = setInterval(async () => {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await sb.from('users').select('status').eq('id', user.id).single()
+      const { data: profileData } = await sb.from('users').select('status').eq('id', user.id).single()
+      const profile = profileData as unknown as { status: string } | null
       if (profile?.status === 'active') router.push('/dashboard')
     }, 10000)
     return () => clearInterval(interval)
