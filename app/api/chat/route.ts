@@ -22,7 +22,7 @@ async function loadEquipmentContext(equipmentId: string) {
   if (!eq) return null
   const { data: readings } = await supabase.from('sensor_readings').select('*').eq('equipment_id', equipmentId).order('recorded_at', { ascending: false }).limit(20)
   const { data: alarms } = await supabase.from('alarm_events').select('*').eq('equipment_id', equipmentId).is('resolved_at', null).order('triggered_at', { ascending: false })
-  const { data: logs } = await supabase.from('maintenance_logs').select('*').eq('equipment_id', equipmentId).order('logged_at', { ascending: false }).limit(5)
+  const { data: logs } = await supabase.from('maintenance_logs').select('*').eq('equipment_id', equipmentId).order('performed_at', { ascending: false }).limit(5)
   const snapshot: SensorSnapshot = {}
   const seen = new Set<string>()
   for (const r of (readings ?? [])) {
