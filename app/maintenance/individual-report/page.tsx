@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, X, Camera, Loader2 } from 'lucide-react'
 
 interface Photo { url: string; label: string }
 
-export default function IndividualReportPage() {
+function IndividualReportContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const equipmentId = searchParams.get('equipmentId')
@@ -203,5 +203,13 @@ export default function IndividualReportPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function IndividualReportPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Loading…</div>}>
+      <IndividualReportContent />
+    </Suspense>
   )
 }
