@@ -30,7 +30,7 @@ export default function AdminUsersPage() {
       if (!user) { router.push('/login'); return }
 
       const { data: profileData } = await sb.from('users').select('*').eq('id', user.id).single()
-      const profile = profileData as UserRow | null
+      const profile = profileData as unknown as UserRow | null
       if (!profile || profile.role !== 'admin') { router.push('/dashboard'); return }
       setCurrentUser(profile)
 
@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
-      setUsers((allUsersData ?? []) as UserRow[])
+      setUsers((allUsersData as unknown as UserRow[]) ?? [])
       setLoading(false)
     }
     load()
