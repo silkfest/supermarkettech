@@ -29,15 +29,16 @@ export default function AdminUsersPage() {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const { data: profile } = await sb.from('users').select('*').eq('id', user.id).single()
+      const { data: profileData } = await sb.from('users').select('*').eq('id', user.id).single()
+      const profile = profileData as UserRow | null
       if (!profile || profile.role !== 'admin') { router.push('/dashboard'); return }
       setCurrentUser(profile)
 
-      const { data: allUsers } = await sb
+      const { data: allUsersData } = await sb
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
-      setUsers(allUsers ?? [])
+      setUsers((allUsersData ?? []) as UserRow[])
       setLoading(false)
     }
     load()
