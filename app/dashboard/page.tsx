@@ -8,7 +8,7 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, Thermometer, AlertTriangle, WrenchIcon, ShieldCheck,
+  Menu, MessageSquare, Thermometer, AlertTriangle, WrenchIcon, Database,
 } from 'lucide-react'
 import type { Equipment, Document, SensorSnapshot, ChatMode, User } from '@/types'
 
@@ -17,15 +17,18 @@ const MODE_LABELS: Record<ChatMode, string> = {
   DIAGNOSE:    'Diagnose',
   ALARM:       'Alarms',
   MAINTENANCE: 'Maintenance',
-  COMPLIANCE:  'Compliance',
 }
 
-const BOTTOM_NAV_MODES: { id: ChatMode; icon: React.ReactNode; label: string }[] = [
+type NavItem =
+  | { id: ChatMode; icon: React.ReactNode; label: string; href?: never }
+  | { id: 'REGISTRY'; icon: React.ReactNode; label: string; href: string }
+
+const BOTTOM_NAV_ITEMS: NavItem[] = [
   { id: 'ASK',         icon: <MessageSquare size={20}/>, label: 'Ask' },
   { id: 'DIAGNOSE',    icon: <Thermometer   size={20}/>, label: 'Diagnose' },
   { id: 'ALARM',       icon: <AlertTriangle size={20}/>, label: 'Alarms' },
   { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
-  { id: 'COMPLIANCE',  icon: <ShieldCheck   size={20}/>, label: 'Compliance' },
+  { id: 'REGISTRY',    icon: <Database      size={20}/>, label: 'Registry', href: '/maintenance/components' },
 ]
 
 function buildSnapshot(readings: any[]): SensorSnapshot {
@@ -160,20 +163,24 @@ export default function Dashboard() {
               </button>
             ))}
             <span className="w-px h-5 self-center bg-slate-200 mx-0.5"/>
-            {(['MAINTENANCE','COMPLIANCE'] as ChatMode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={[
-                  'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                  mode === m
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                    : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                {MODE_LABELS[m]}
-              </button>
-            ))}
+            <button
+              onClick={() => setMode('MAINTENANCE')}
+              className={[
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                mode === 'MAINTENANCE'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-700',
+              ].join(' ')}
+            >
+              {MODE_LABELS['MAINTENANCE']}
+            </button>
+            <button
+              onClick={() => router.push('/maintenance/components')}
+              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 flex items-center gap-1.5"
+            >
+              <Database size={12}/>
+              Registry
+            </button>
           </div>
 
           {/* Current mode label — mobile only */}
@@ -226,19 +233,19 @@ export default function Dashboard() {
 
       {/* ── Mobile bottom navigation ── */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 flex items-stretch">
-        {BOTTOM_NAV_MODES.map(m => {
-          const isActive = mode === m.id
+        {BOTTOM_NAV_ITEMS.map(item => {
+          const isActive = !item.href && mode === (item.id as ChatMode)
           return (
             <button
-              key={m.id}
-              onClick={() => setMode(m.id)}
+              key={item.id}
+              onClick={() => item.href ? router.push(item.href) : setMode(item.id as ChatMode)}
               className={[
                 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
                 isActive ? 'text-blue-600' : 'text-slate-400',
               ].join(' ')}
             >
-              <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{m.icon}</span>
-              {m.label}
+              <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{item.icon}</span>
+              {item.label}
             </button>
           )
         })}
