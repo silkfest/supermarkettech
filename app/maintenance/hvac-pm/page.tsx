@@ -1,97 +1,82 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Plus, X, Camera, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2 } from 'lucide-react'
 
-interface Photo { url: string; label: string }
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface HvacUnit {
+type Season = 'FALL' | 'WINTER' | 'SPRING' | 'SUMMER' | ''
+type EquipmentType = 'AIR_HANDLER' | 'MAIN_AC' | 'RTU' | 'EXHAUST_FAN' | 'UNIT_HEATER' | ''
+type RefrigerantType = 'R-22' | 'R-410A' | 'R-407C' | 'R-134a' | ''
+type VoltageType = '120/1/60' | '208/1/60' | '208/3/60' | '575/3/60' | ''
+type Importance = 'CRITICAL' | 'IMPORTANT' | 'ROUTINE'
+
+interface Equipment {
   id: string
-  name: string
-  make: string
-  model: string
+  type: EquipmentType
+  serviceArea: string
+  brand: string
+  modelNumber: string
   serialNumber: string
-  supplyTemp: string
-  returnTemp: string
-  supplyStaticPressure: string
-  returnStaticPressure: string
-  refrigerant: string
-  suctionPressure: string
-  dischargePressure: string
-  superheat: string
-  subcooling: string
-  ambientTemp: string
-  gasType: string
-  gasPressure: string
-  heatExchangerDeltaT: string
-  notes: string
+  refrigerantType: RefrigerantType
+  voltage: VoltageType
 }
 
-const COOLING_CHECKLIST = [
-  { id: 'air_filter', label: 'Air filter(s) inspected / replaced' },
-  { id: 'condenser_coil_cleaned', label: 'Condenser coil cleaned' },
-  { id: 'evaporator_coil_checked', label: 'Evaporator coil inspected / cleaned' },
-  { id: 'condenser_fan', label: 'Condenser fan motor & blades inspected' },
-  { id: 'blower_motor', label: 'Blower motor & wheel inspected' },
-  { id: 'belts_checked', label: 'Belts & pulleys checked / adjusted' },
-  { id: 'electrical_connections', label: 'Electrical connections tightened' },
-  { id: 'capacitors_checked', label: 'Capacitors tested / inspected' },
-  { id: 'contactors_checked', label: 'Contactors & relays inspected' },
-  { id: 'refrigerant_checked', label: 'Refrigerant charge verified' },
-  { id: 'refrigerant_leak', label: 'Refrigerant leak check performed' },
-  { id: 'drain_pan_cleared', label: 'Condensate drain pan & line cleared' },
-  { id: 'economizer_checked', label: 'Economizer / dampers checked' },
-  { id: 'thermostat_calibrated', label: 'Thermostat / controls calibrated' },
-  { id: 'supply_return_temps', label: 'Supply & return temperatures verified' },
-  { id: 'static_pressures', label: 'Static pressures measured' },
+interface Deficiency {
+  id: string
+  note: string
+  equipmentIndex: number | null
+  assetId: string
+  importance: Importance
+}
+
+interface CheckItems {
+  item1: boolean; item2: boolean; item3: boolean; item4: boolean
+  item5: boolean; item6: boolean; item7: boolean; item8: boolean
+  item9: boolean; item10: boolean; item11: boolean
+}
+
+const CHECKLIST_LABELS = [
+  'Check all heating and A/C systems.',
+  'Check all heat exchangers and chimney.',
+  'Oil motors and grease fittings on all HVAC.',
+  'Grease all fittings on air handler.',
+  'Replace all filters.',
+  'Check returns. (Visual)',
+  'Check all controls for accuracy and proper operation.',
+  'Check all sensors and thermostats for proper operation.',
+  'Check condition of belts on air handler, HVAC and exhaust and change as needed.',
+  'Check access door seals on all HVAC.',
+  'Check drainpipes and condensation pans.',
 ]
 
-const HEATING_CHECKLIST = [
-  { id: 'heat_exchanger', label: 'Heat exchanger inspected for cracks' },
-  { id: 'burners_inspected', label: 'Burners cleaned & inspected' },
-  { id: 'igniter_checked', label: 'Igniter / pilot assembly checked' },
-  { id: 'flame_sensor', label: 'Flame sensor cleaned & tested' },
-  { id: 'flue_venting', label: 'Flue / venting inspected' },
-  { id: 'gas_pressure', label: 'Gas pressure verified' },
-  { id: 'gas_valve', label: 'Gas valve operation checked' },
-  { id: 'limit_switches', label: 'Limit switches tested' },
-  { id: 'heat_rise', label: 'Temperature rise measured & verified' },
-  { id: 'co_checked', label: 'CO levels checked' },
-]
+const defaultCheckItems = (): CheckItems => ({
+  item1: false, item2: false, item3: false, item4: false,
+  item5: false, item6: false, item7: false, item8: false,
+  item9: false, item10: false, item11: false,
+})
 
-const GENERAL_CHECKLIST = [
-  { id: 'unit_mounts', label: 'Unit mounting / curb inspected' },
-  { id: 'ductwork_inspected', label: 'Visible ductwork & connections inspected' },
-  { id: 'controls_tested', label: 'Controls & safeties tested' },
-  { id: 'general_cleaning', label: 'General cleaning completed' },
-  { id: 'smoke_detectors', label: 'Smoke / CO detectors tested' },
-]
-
-type CheckState = 'pass' | 'fail' | 'na' | ''
-
-function newUnit(): HvacUnit {
-  return {
-    id: crypto.randomUUID(),
-    name: 'RTU 1',
-    make: '',
-    model: '',
-    serialNumber: '',
-    supplyTemp: '',
-    returnTemp: '',
-    supplyStaticPressure: '',
-    returnStaticPressure: '',
-    refrigerant: 'R-410A',
-    suctionPressure: '',
-    dischargePressure: '',
-    superheat: '',
-    subcooling: '',
-    ambientTemp: '',
-    gasType: 'Natural Gas',
-    gasPressure: '',
-    heatExchangerDeltaT: '',
-    notes: '',
+const equipmentLabel = (type: EquipmentType, serviceArea?: string) => {
+  switch (type) {
+    case 'AIR_HANDLER': return 'Air Handler'
+    case 'MAIN_AC': return 'Main AC'
+    case 'RTU': return serviceArea ? `RTU ${serviceArea}` : 'RTU'
+    case 'EXHAUST_FAN': return serviceArea ? `EF ${serviceArea}` : 'Exhaust Fan'
+    case 'UNIT_HEATER': return serviceArea ? `UH ${serviceArea}` : 'Unit Heater'
+    default: return ''
   }
 }
+
+const needsServiceArea = (t: EquipmentType) =>
+  ['RTU', 'EXHAUST_FAN', 'UNIT_HEATER'].includes(t)
+
+const importanceBadge = (imp: Importance) => {
+  if (imp === 'CRITICAL') return 'text-red-600 bg-red-50 border-red-200'
+  if (imp === 'IMPORTANT') return 'text-amber-600 bg-amber-50 border-amber-200'
+  return 'text-emerald-600 bg-emerald-50 border-emerald-200'
+}
+
+// ─── Main Content ─────────────────────────────────────────────────────────────
 
 function HvacPMContent() {
   const router = useRouter()
@@ -99,96 +84,148 @@ function HvacPMContent() {
   const equipmentId = searchParams.get('equipmentId')
   const equipmentName = searchParams.get('equipmentName') ?? ''
   const editId = searchParams.get('id')
-  const fileRef = useRef<HTMLInputElement>(null)
 
+  // Store info
   const [storeName, setStoreName] = useState('')
-  const [performedAt, setPerformedAt] = useState(new Date().toISOString().slice(0, 16))
-  const [pmSeason, setPmSeason] = useState<'spring' | 'fall' | ''>('')
+  const [storeAddress, setStoreAddress] = useState('')
+  const [technician, setTechnician] = useState('')
+  const [performedAt, setPerformedAt] = useState(new Date().toISOString().slice(0, 10))
+  const [season, setSeason] = useState<Season>('')
   const [simproNumber, setSimproNumber] = useState('')
-  const [units, setUnits] = useState<HvacUnit[]>([newUnit()])
-  const [activeUnit, setActiveUnit] = useState(0)
-  const [checklist, setChecklist] = useState<Record<string, CheckState>>({})
-  const [notes, setNotes] = useState('')
-  const [photos, setPhotos] = useState<Photo[]>([])
-  const [uploading, setUploading] = useState(false)
+
+  // Equipment
+  const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [collapsedEquipment, setCollapsedEquipment] = useState<Record<string, boolean>>({})
+  const [showTypeModal, setShowTypeModal] = useState(false)
+  const [pendingType, setPendingType] = useState<EquipmentType>('')
+  const [serviceAreaInput, setServiceAreaInput] = useState('')
+  const [showServiceAreaModal, setShowServiceAreaModal] = useState(false)
+
+  // Deficiencies
+  const [deficiencies, setDeficiencies] = useState<Deficiency[]>([])
+  const [showDefModal, setShowDefModal] = useState(false)
+  const [defNote, setDefNote] = useState('')
+  const [defEquipIdx, setDefEquipIdx] = useState<number | null>(null)
+  const [defAssetId, setDefAssetId] = useState('')
+  const [defImportance, setDefImportance] = useState<Importance>('ROUTINE')
+  const [editingDefId, setEditingDefId] = useState<string | null>(null)
+  const [editDefNote, setEditDefNote] = useState('')
+  const [editDefEquipIdx, setEditDefEquipIdx] = useState<number | null>(null)
+  const [editDefAssetId, setEditDefAssetId] = useState('')
+  const [editDefImportance, setEditDefImportance] = useState<Importance>('ROUTINE')
+
+  // Checklist
+  const [checkItems, setCheckItems] = useState<CheckItems>(defaultCheckItems())
+  const [checklistOpen, setChecklistOpen] = useState(true)
+
+  // Save state
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
-  const [coolingOpen, setCoolingOpen] = useState(true)
-  const [heatingOpen, setHeatingOpen] = useState(true)
-  const [generalOpen, setGeneralOpen] = useState(true)
 
+  // Load existing report
   useEffect(() => {
-    if (editId) {
-      fetch(`/api/pm-reports/${editId}`).then(r => r.json()).then(d => {
-        setStoreName(d.store_name ?? '')
-        setPerformedAt(d.performed_at ? d.performed_at.slice(0, 16) : new Date().toISOString().slice(0, 16))
-        setPmSeason(d.pm_season ?? '')
-        setSimproNumber(d.simpro_number ?? '')
-        setUnits(d.units?.length ? d.units : [newUnit()])
-        setChecklist(d.checklist ?? {})
-        setNotes(d.notes ?? '')
-        setPhotos(d.photos ?? [])
-      })
-    }
+    if (!editId) return
+    fetch(`/api/pm-reports/${editId}`).then(r => r.json()).then(d => {
+      setStoreName(d.store_name ?? '')
+      setSeason(d.pm_season ?? '')
+      setSimproNumber(d.simpro_number ?? '')
+      setPerformedAt(d.performed_at ? d.performed_at.slice(0, 10) : new Date().toISOString().slice(0, 10))
+      if (d.checklist && typeof d.checklist === 'object') {
+        setCheckItems({ ...defaultCheckItems(), ...d.checklist })
+      }
+      if (d.units && typeof d.units === 'object' && !Array.isArray(d.units)) {
+        setStoreAddress(d.units.storeAddress ?? '')
+        setTechnician(d.units.technician ?? '')
+        if (Array.isArray(d.units.equipment)) setEquipment(d.units.equipment)
+      }
+      if (Array.isArray(d.notes)) setDeficiencies(d.notes)
+    })
   }, [editId])
 
-  function updateUnit(id: string, field: keyof HvacUnit, value: string) {
-    setUnits(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
+  // Equipment helpers
+  const addEquipment = (type: EquipmentType, serviceArea = '') => {
+    setEquipment(prev => [...prev, {
+      id: crypto.randomUUID(), type, serviceArea,
+      brand: '', modelNumber: '', serialNumber: '',
+      refrigerantType: '', voltage: ''
+    }])
   }
 
-  function addUnit() {
-    const count = units.length + 1
-    const unit = newUnit()
-    unit.name = `RTU ${count}`
-    setUnits(prev => [...prev, unit])
-    setActiveUnit(units.length)
+  const updateEquipment = (id: string, field: keyof Equipment, value: string) => {
+    setEquipment(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e))
   }
 
-  function removeUnit(id: string) {
-    if (units.length === 1) return
-    const idx = units.findIndex(u => u.id === id)
-    setUnits(prev => prev.filter(u => u.id !== id))
-    setActiveUnit(Math.max(0, idx - 1))
+  const removeEquipment = (id: string) => {
+    const idx = equipment.findIndex(e => e.id === id)
+    setDeficiencies(defs => defs.map(d => {
+      if (d.equipmentIndex === null) return d
+      if (d.equipmentIndex === idx) return { ...d, equipmentIndex: null }
+      if (d.equipmentIndex > idx) return { ...d, equipmentIndex: d.equipmentIndex - 1 }
+      return d
+    }))
+    setEquipment(prev => prev.filter(e => e.id !== id))
   }
 
-  function setCheck(id: string, val: CheckState) {
-    setChecklist(prev => ({ ...prev, [id]: val }))
+  // Checklist helpers
+  const toggleCheck = (key: keyof CheckItems) =>
+    setCheckItems(prev => ({ ...prev, [key]: !prev[key] }))
+
+  const selectAll = (val: boolean) => {
+    const updates: Partial<CheckItems> = {}
+    visibleItems.filter(i => !i.hidden).forEach(i => { updates[i.key] = val })
+    setCheckItems(prev => ({ ...prev, ...updates }))
   }
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (!files.length) return
-    setUploading(true)
-    for (const file of files) {
-      const label = prompt(`Label for ${file.name}?`) ?? ''
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('label', label)
-      const res = await fetch('/api/upload-report-photo', { method: 'POST', body: fd })
-      if (res.ok) {
-        const data = await res.json()
-        setPhotos(prev => [...prev, { url: data.url, label: data.label }])
-      }
-    }
-    setUploading(false)
-    e.target.value = ''
+  const visibleItems = CHECKLIST_LABELS.map((label, i) => ({
+    label,
+    key: `item${i + 1}` as keyof CheckItems,
+    hidden: (season === 'WINTER' || season === 'SUMMER') && [1, 3, 5].includes(i),
+  }))
+
+  // Deficiency helpers
+  const handleAddDeficiency = () => {
+    if (!defNote.trim()) return
+    setDeficiencies(prev => [...prev, {
+      id: crypto.randomUUID(),
+      note: defNote.trim(),
+      equipmentIndex: defEquipIdx,
+      assetId: defAssetId,
+      importance: defImportance,
+    }])
+    setDefNote(''); setDefEquipIdx(null); setDefAssetId(''); setDefImportance('ROUTINE')
+    setShowDefModal(false)
   }
 
-  async function handleSave() {
+  const openEditDef = (d: Deficiency) => {
+    setEditingDefId(d.id); setEditDefNote(d.note)
+    setEditDefEquipIdx(d.equipmentIndex); setEditDefAssetId(d.assetId)
+    setEditDefImportance(d.importance)
+  }
+
+  const saveDefEdit = () => {
+    setDeficiencies(prev => prev.map(d =>
+      d.id === editingDefId
+        ? { ...d, note: editDefNote, equipmentIndex: editDefEquipIdx, assetId: editDefAssetId, importance: editDefImportance }
+        : d
+    ))
+    setEditingDefId(null)
+  }
+
+  // Save report
+  const handleSave = async () => {
     if (!storeName.trim()) { setError('Store name is required'); return }
     setSaving(true); setError('')
     const payload = {
       equipment_id: equipmentId ?? null,
       report_type: 'hvac',
       store_name: storeName,
-      pm_season: pmSeason || null,
+      pm_season: season || null,
       performed_at: new Date(performedAt).toISOString(),
-      simpro_number: simproNumber,
-      checklist,
-      units,
-      notes,
-      photos,
+      simpro_number: simproNumber || null,
+      checklist: checkItems,
+      units: { technician, storeAddress, equipment },
+      notes: deficiencies,
     }
     const url = editId ? `/api/pm-reports/${editId}` : '/api/pm-reports'
     const method = editId ? 'PATCH' : 'POST'
@@ -205,62 +242,13 @@ function HvacPMContent() {
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
   const labelCls = 'block text-xs font-medium text-slate-700 mb-1'
-  const activeU = units[activeUnit]
-
-  function ChecklistSection({ title, items, open, onToggle }: { title: string; items: typeof COOLING_CHECKLIST; open: boolean; onToggle: () => void }) {
-    const passCount = items.filter(i => checklist[i.id] === 'pass').length
-    const failCount = items.filter(i => checklist[i.id] === 'fail').length
-    return (
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <button onClick={onToggle} className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-            <div className="flex gap-1.5">
-              {passCount > 0 && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">{passCount} Pass</span>}
-              {failCount > 0 && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">{failCount} Fail</span>}
-            </div>
-          </div>
-          {open ? <ChevronUp size={16} className="text-slate-400"/> : <ChevronDown size={16} className="text-slate-400"/>}
-        </button>
-        {open && (
-          <div className="border-t border-slate-100 divide-y divide-slate-50">
-            {items.map(item => {
-              const val = checklist[item.id] ?? ''
-              return (
-                <div key={item.id} className="flex items-center justify-between px-6 py-3 hover:bg-slate-50">
-                  <span className="text-sm text-slate-700">{item.label}</span>
-                  <div className="flex gap-1.5 flex-shrink-0 ml-4">
-                    {(['pass', 'fail', 'na'] as const).map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => setCheck(item.id, val === opt ? '' : opt)}
-                        className={`w-9 h-7 rounded text-[11px] font-semibold border transition-colors ${
-                          val === opt
-                            ? opt === 'pass' ? 'bg-green-500 border-green-500 text-white'
-                              : opt === 'fail' ? 'bg-red-500 border-red-500 text-white'
-                              : 'bg-slate-500 border-slate-500 text-white'
-                            : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                        }`}
-                      >
-                        {opt === 'pass' ? 'P' : opt === 'fail' ? 'F' : 'N/A'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600"><ArrowLeft size={18}/></button>
+          <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600"><ArrowLeft size={18} /></button>
           <div className="flex items-baseline gap-0.5">
             <span className="text-lg font-bold text-blue-600">Cold</span>
             <span className="text-lg font-bold text-slate-800">IQ</span>
@@ -274,7 +262,7 @@ function HvacPMContent() {
           disabled={saving || saved}
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
         >
-          {saving && <Loader2 size={14} className="animate-spin"/>}
+          {saving && <Loader2 size={14} className="animate-spin" />}
           {saved ? 'Saved ✓' : saving ? 'Saving…' : editId ? 'Update Report' : 'Save Report'}
         </button>
       </div>
@@ -282,200 +270,364 @@ function HvacPMContent() {
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
         {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
 
-        {/* Job Details */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-slate-800 mb-4">Job Details</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 md:col-span-1">
+        {/* ── Store Information ── */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <h2 className="text-sm font-semibold text-slate-800">Store Information</h2>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <label className={labelCls}>Store / Site Name *</label>
               <input value={storeName} onChange={e => setStoreName(e.target.value)} className={inputCls} placeholder="e.g. Sobeys Bayers Lake" />
             </div>
-            <div className="col-span-2 md:col-span-1">
-              <label className={labelCls}>Date & Time</label>
-              <input type="datetime-local" value={performedAt} onChange={e => setPerformedAt(e.target.value)} className={inputCls} />
+            <div>
+              <label className={labelCls}>Store Address</label>
+              <input value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className={inputCls} placeholder="Street address" />
             </div>
-            <div className="col-span-2 md:col-span-1">
-              <label className={labelCls}>PM Season</label>
-              <select value={pmSeason} onChange={e => setPmSeason(e.target.value as 'spring' | 'fall' | '')} className={inputCls}>
-                <option value="">— Select —</option>
-                <option value="spring">Spring</option>
-                <option value="fall">Fall</option>
+            <div>
+              <label className={labelCls}>Technician</label>
+              <input value={technician} onChange={e => setTechnician(e.target.value)} className={inputCls} placeholder="Technician name" />
+            </div>
+            <div>
+              <label className={labelCls}>Date</label>
+              <input type="date" value={performedAt} onChange={e => setPerformedAt(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Season</label>
+              <select value={season} onChange={e => setSeason(e.target.value as Season)} className={inputCls}>
+                <option value="">Select Season</option>
+                <option value="SPRING">Spring</option>
+                <option value="SUMMER">Summer</option>
+                <option value="FALL">Fall</option>
+                <option value="WINTER">Winter</option>
               </select>
             </div>
-            <div className="col-span-2 md:col-span-1">
+            <div>
               <label className={labelCls}>Simpro # (optional)</label>
               <input value={simproNumber} onChange={e => setSimproNumber(e.target.value)} className={inputCls} placeholder="Job number" />
             </div>
           </div>
         </div>
 
-        {/* Units */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-800">Unit Readings</h2>
-            <button onClick={addUnit} className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 font-medium">
-              <Plus size={12}/> Add Unit
-            </button>
-          </div>
-
-          {/* Unit tabs */}
-          <div className="flex gap-1.5 mb-5 flex-wrap">
-            {units.map((u, i) => (
-              <button
-                key={u.id}
-                onClick={() => setActiveUnit(i)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeUnit === i ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              >
-                {u.name}
-                {units.length > 1 && (
-                  <span onClick={ev => { ev.stopPropagation(); removeUnit(u.id) }} className="ml-0.5 opacity-60 hover:opacity-100">
-                    <X size={10}/>
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {activeU && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className={labelCls}>Unit Name</label>
-                  <input value={activeU.name} onChange={e => updateUnit(activeU.id, 'name', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Make</label>
-                  <input value={activeU.make} onChange={e => updateUnit(activeU.id, 'make', e.target.value)} className={inputCls} placeholder="Carrier, Lennox…" />
-                </div>
-                <div>
-                  <label className={labelCls}>Model</label>
-                  <input value={activeU.model} onChange={e => updateUnit(activeU.id, 'model', e.target.value)} className={inputCls} placeholder="Model #" />
-                </div>
-                <div>
-                  <label className={labelCls}>Serial #</label>
-                  <input value={activeU.serialNumber} onChange={e => updateUnit(activeU.id, 'serialNumber', e.target.value)} className={inputCls} placeholder="Serial #" />
-                </div>
-              </div>
-
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pt-1">Airflow</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { field: 'supplyTemp', label: 'Supply Temp (°F)' },
-                  { field: 'returnTemp', label: 'Return Temp (°F)' },
-                  { field: 'supplyStaticPressure', label: 'Supply Static ("wc)' },
-                  { field: 'returnStaticPressure', label: 'Return Static ("wc)' },
-                ].map(({ field, label }) => (
-                  <div key={field}>
-                    <label className={labelCls}>{label}</label>
-                    <input
-                      value={(activeU as unknown as Record<string, string>)[field]}
-                      onChange={e => updateUnit(activeU.id, field as keyof HvacUnit, e.target.value)}
-                      className={inputCls}
-                      placeholder="—"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pt-1">Cooling</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { field: 'refrigerant', label: 'Refrigerant', isSelect: true },
-                  { field: 'suctionPressure', label: 'Suction Pressure (PSI)', isSelect: false },
-                  { field: 'dischargePressure', label: 'Discharge Pressure (PSI)', isSelect: false },
-                  { field: 'superheat', label: 'Superheat (°F)', isSelect: false },
-                  { field: 'subcooling', label: 'Subcooling (°F)', isSelect: false },
-                  { field: 'ambientTemp', label: 'Ambient Temp (°F)', isSelect: false },
-                ].map(({ field, label, isSelect }) => (
-                  <div key={field}>
-                    <label className={labelCls}>{label}</label>
-                    {isSelect ? (
-                      <select value={(activeU as unknown as Record<string, string>)[field]} onChange={e => updateUnit(activeU.id, field as keyof HvacUnit, e.target.value)} className={inputCls}>
-                        {['R-410A','R-22','R-407C','R-32','R-454B','Other'].map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    ) : (
+        {/* ── Service Checklist ── */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setChecklistOpen(o => !o)}
+            className="w-full px-6 py-4 flex items-center justify-between bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors"
+          >
+            <h2 className="text-sm font-semibold text-slate-800">Service Checklist</h2>
+            <ChevronDown size={16} className={`text-slate-400 transition-transform ${checklistOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {checklistOpen && (
+            <div className="p-6 space-y-3">
+              <label className="flex items-center gap-2 pb-3 border-b border-slate-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  onChange={e => selectAll(e.target.checked)}
+                  checked={visibleItems.filter(i => !i.hidden).every(i => checkItems[i.key])}
+                  readOnly={false}
+                />
+                <span className="text-sm font-medium text-slate-700">Select All</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {visibleItems.map(({ label, key, hidden }, i) => {
+                  if (hidden) return null
+                  return (
+                    <label key={key} className="flex items-start gap-2 cursor-pointer">
                       <input
-                        value={(activeU as unknown as Record<string, string>)[field]}
-                        onChange={e => updateUnit(activeU.id, field as keyof HvacUnit, e.target.value)}
-                        className={inputCls}
-                        placeholder="—"
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                        checked={checkItems[key]}
+                        onChange={() => toggleCheck(key)}
                       />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pt-1">Heating</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { field: 'gasType', label: 'Fuel Type', isSelect: true },
-                  { field: 'gasPressure', label: 'Gas Pressure (in. w.c.)', isSelect: false },
-                  { field: 'heatExchangerDeltaT', label: 'Heat Exchanger ΔT (°F)', isSelect: false },
-                ].map(({ field, label, isSelect }) => (
-                  <div key={field}>
-                    <label className={labelCls}>{label}</label>
-                    {isSelect ? (
-                      <select value={(activeU as unknown as Record<string, string>)[field]} onChange={e => updateUnit(activeU.id, field as keyof HvacUnit, e.target.value)} className={inputCls}>
-                        {['Natural Gas','Propane','Electric','Oil','Other'].map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        value={(activeU as unknown as Record<string, string>)[field]}
-                        onChange={e => updateUnit(activeU.id, field as keyof HvacUnit, e.target.value)}
-                        className={inputCls}
-                        placeholder="—"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className={labelCls}>Unit Notes</label>
-                <textarea value={activeU.notes} onChange={e => updateUnit(activeU.id, 'notes', e.target.value)} rows={2} className={inputCls} placeholder="Issues, observations for this unit…" />
+                      <span className="text-sm text-slate-700">{i + 1}. {label}</span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
           )}
         </div>
 
-        {/* Checklists */}
-        <ChecklistSection title="Cooling Checklist" items={COOLING_CHECKLIST} open={coolingOpen} onToggle={() => setCoolingOpen(o => !o)} />
-        <ChecklistSection title="Heating Checklist" items={HEATING_CHECKLIST} open={heatingOpen} onToggle={() => setHeatingOpen(o => !o)} />
-        <ChecklistSection title="General Checklist" items={GENERAL_CHECKLIST} open={generalOpen} onToggle={() => setGeneralOpen(o => !o)} />
-
-        {/* Notes */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-slate-800 mb-3">General Notes</h2>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} className={inputCls} placeholder="Overall observations, recommendations, parts to order…" />
+        {/* ── Equipment Data ── */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-800">Equipment Data</h2>
+            <button
+              onClick={() => setShowTypeModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+            >
+              <Plus size={13} /> Add Equipment
+            </button>
+          </div>
+          {equipment.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-8">No equipment added yet</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {equipment.map((eq, idx) => {
+                const label = equipmentLabel(eq.type, eq.serviceArea) || `Equipment ${idx + 1}`
+                const isOpen = !collapsedEquipment[eq.id]
+                return (
+                  <div key={eq.id}>
+                    <button
+                      onClick={() => setCollapsedEquipment(prev => ({ ...prev, [eq.id]: !prev[eq.id] }))}
+                      className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={e => { e.stopPropagation(); removeEquipment(eq.id) }}
+                          className="text-slate-300 hover:text-red-500"
+                        ><X size={14} /></button>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-5 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-50">
+                        <div>
+                          <label className={labelCls}>Brand</label>
+                          <input value={eq.brand} onChange={e => updateEquipment(eq.id, 'brand', e.target.value)} className={inputCls} placeholder="e.g. Trane" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Model Number</label>
+                          <input value={eq.modelNumber} onChange={e => updateEquipment(eq.id, 'modelNumber', e.target.value)} className={inputCls} placeholder="Model #" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Serial Number</label>
+                          <input value={eq.serialNumber} onChange={e => updateEquipment(eq.id, 'serialNumber', e.target.value)} className={inputCls} placeholder="Serial #" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Refrigerant Type</label>
+                          <select value={eq.refrigerantType} onChange={e => updateEquipment(eq.id, 'refrigerantType', e.target.value)} className={inputCls}>
+                            <option value="">Select</option>
+                            <option>R-22</option>
+                            <option>R-410A</option>
+                            <option>R-407C</option>
+                            <option>R-134a</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Voltage</label>
+                          <select value={eq.voltage} onChange={e => updateEquipment(eq.id, 'voltage', e.target.value)} className={inputCls}>
+                            <option value="">Select</option>
+                            <option>120/1/60</option>
+                            <option>208/1/60</option>
+                            <option>208/3/60</option>
+                            <option>575/3/60</option>
+                          </select>
+                        </div>
+                        {needsServiceArea(eq.type) && (
+                          <div>
+                            <label className={labelCls}>Service Area</label>
+                            <input value={eq.serviceArea} onChange={e => updateEquipment(eq.id, 'serviceArea', e.target.value)} className={inputCls} placeholder="e.g. Bakery" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Photos */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-800">Photos</h2>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50">
-              {uploading ? <Loader2 size={13} className="animate-spin"/> : <Camera size={13}/>}
-              {uploading ? 'Uploading…' : 'Add Photos'}
+        {/* ── Deficiencies ── */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-800">Deficiencies / Notes</h2>
+            <button
+              onClick={() => setShowDefModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+            >
+              <Plus size={13} /> Add Deficiency
             </button>
-            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
           </div>
-          {photos.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">No photos yet — tap "Add Photos" to attach images</p>
+          {deficiencies.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-8">No deficiencies recorded</p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {photos.map((p, i) => (
-                <div key={i} className="relative group">
-                  <img src={p.url} alt={p.label} className="w-full h-28 object-cover rounded-lg border border-slate-200" />
-                  {p.label && <p className="text-[10px] text-slate-500 mt-1 truncate">{p.label}</p>}
-                  <button onClick={() => setPhotos(ph => ph.filter((_, j) => j !== i))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X size={10}/>
-                  </button>
-                </div>
+            <ul className="divide-y divide-slate-100">
+              {deficiencies.map(d => (
+                <li key={d.id} className="px-5 py-4">
+                  {editingDefId === d.id ? (
+                    <div className="space-y-3">
+                      <textarea value={editDefNote} onChange={e => setEditDefNote(e.target.value)} rows={2} className={inputCls} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelCls}>Asset ID</label>
+                          <input value={editDefAssetId} onChange={e => setEditDefAssetId(e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Importance</label>
+                          <select value={editDefImportance} onChange={e => setEditDefImportance(e.target.value as Importance)} className={inputCls}>
+                            <option value="ROUTINE">Routine</option>
+                            <option value="IMPORTANT">Important</option>
+                            <option value="CRITICAL">Critical</option>
+                          </select>
+                        </div>
+                        {equipment.length > 0 && (
+                          <div className="col-span-2">
+                            <label className={labelCls}>Related Equipment</label>
+                            <select value={editDefEquipIdx ?? ''} onChange={e => setEditDefEquipIdx(e.target.value === '' ? null : Number(e.target.value))} className={inputCls}>
+                              <option value="">None</option>
+                              {equipment.map((eq, i) => (
+                                <option key={eq.id} value={i}>{equipmentLabel(eq.type, eq.serviceArea)}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={saveDefEdit} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+                        <button onClick={() => setEditingDefId(null)} className="px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <span className={`inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded border mr-2 ${importanceBadge(d.importance)}`}>
+                          {d.importance}
+                        </span>
+                        <span className="text-sm text-slate-800">{d.note}</span>
+                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
+                          {d.assetId && <span>Asset: {d.assetId}</span>}
+                          {d.equipmentIndex !== null && equipment[d.equipmentIndex] && (
+                            <span>Equipment: {equipmentLabel(equipment[d.equipmentIndex].type, equipment[d.equipmentIndex].serviceArea)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button onClick={() => openEditDef(d)} className="text-slate-300 hover:text-blue-500"><Pencil size={13} /></button>
+                        <button onClick={() => setDeficiencies(prev => prev.filter(x => x.id !== d.id))} className="text-slate-300 hover:text-red-500"><X size={13} /></button>
+                      </div>
+                    </div>
+                  )}
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>
+
+      {/* ── Equipment Type Modal ── */}
+      {showTypeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">Select Equipment Type</h3>
+            <div className="space-y-2">
+              {(['AIR_HANDLER', 'MAIN_AC', 'RTU', 'EXHAUST_FAN', 'UNIT_HEATER'] as EquipmentType[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setPendingType(t)
+                    setShowTypeModal(false)
+                    if (needsServiceArea(t)) {
+                      setServiceAreaInput('')
+                      setShowServiceAreaModal(true)
+                    } else {
+                      addEquipment(t)
+                    }
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                >
+                  {equipmentLabel(t)}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowTypeModal(false)} className="mt-4 w-full px-4 py-2 text-sm text-slate-500 hover:text-slate-700">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Service Area Modal ── */}
+      {showServiceAreaModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-sm font-semibold text-slate-800 mb-1">Service Area</h3>
+            <p className="text-xs text-slate-500 mb-4">Enter the area served by this {equipmentLabel(pendingType)}</p>
+            <input
+              autoFocus
+              value={serviceAreaInput}
+              onChange={e => setServiceAreaInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && serviceAreaInput.trim()) {
+                  addEquipment(pendingType, serviceAreaInput.trim())
+                  setShowServiceAreaModal(false)
+                }
+              }}
+              className={inputCls}
+              placeholder="e.g. Bakery, Produce, Office…"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (serviceAreaInput.trim()) {
+                    addEquipment(pendingType, serviceAreaInput.trim())
+                    setShowServiceAreaModal(false)
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              >Add</button>
+              <button
+                onClick={() => setShowServiceAreaModal(false)}
+                className="flex-1 px-4 py-2 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+              >Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Deficiency Modal ── */}
+      {showDefModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-slate-800">Add Deficiency</h3>
+            <div>
+              <label className={labelCls}>Note *</label>
+              <textarea
+                autoFocus
+                value={defNote}
+                onChange={e => setDefNote(e.target.value)}
+                rows={3}
+                className={inputCls}
+                placeholder="Describe the deficiency…"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Importance</label>
+              <select value={defImportance} onChange={e => setDefImportance(e.target.value as Importance)} className={inputCls}>
+                <option value="ROUTINE">Routine</option>
+                <option value="IMPORTANT">Important</option>
+                <option value="CRITICAL">Critical</option>
+              </select>
+            </div>
+            {equipment.length > 0 && (
+              <div>
+                <label className={labelCls}>Related Equipment</label>
+                <select value={defEquipIdx ?? ''} onChange={e => setDefEquipIdx(e.target.value === '' ? null : Number(e.target.value))} className={inputCls}>
+                  <option value="">None</option>
+                  {equipment.map((eq, i) => (
+                    <option key={eq.id} value={i}>{equipmentLabel(eq.type, eq.serviceArea)}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className={labelCls}>Asset ID (optional)</label>
+              <input value={defAssetId} onChange={e => setDefAssetId(e.target.value)} className={inputCls} placeholder="Asset tag #" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleAddDeficiency} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Add</button>
+              <button
+                onClick={() => { setShowDefModal(false); setDefNote(''); setDefEquipIdx(null); setDefAssetId(''); setDefImportance('ROUTINE') }}
+                className="flex-1 px-4 py-2 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+              >Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
