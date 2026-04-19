@@ -27,6 +27,7 @@ interface UnitData {
   id: string
   unitType: UnitType
   tabDisplayName: string
+  compressorCount: number
   // Shared
   compressorManufacturer: string
   refrigerant: RefrigerantType
@@ -86,6 +87,7 @@ const createRack = (): UnitData => ({
   id: crypto.randomUUID(),
   unitType: 'rack',
   tabDisplayName: '',
+  compressorCount: 2,
   compressorManufacturer: '',
   refrigerant: '',
   oilConditionAcidTest: '',
@@ -339,51 +341,79 @@ function RackForm({ unit, onChange }: {
       {/* Measurements / Oil */}
       <Section title="Measurements / Oil" open={oilOpen} toggle={() => setOilOpen(o => !o)}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }, (_, i) => (
+          {Array.from({ length: unit.compressorCount }, (_, i) => (
             <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
-              <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-700">Comp {i + 1}</p>
+                {i === unit.compressorCount - 1 && unit.compressorCount > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => onChange('compressorCount', unit.compressorCount - 1)}
+                    className="w-4 h-4 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 text-xs font-bold leading-none"
+                    title="Remove last compressor"
+                  >−</button>
+                )}
+              </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">Oil Pots %</label>
-                <input value={unit.oilPotsPercent[i]} onChange={e => updateArr('oilPotsPercent', i, e.target.value)} className={narrowInput} />
+                <input value={unit.oilPotsPercent[i] ?? ''} onChange={e => updateArr('oilPotsPercent', i, e.target.value)} className={narrowInput} />
               </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">Oil Press</label>
-                <input value={unit.oilPress[i]} onChange={e => updateArr('oilPress', i, e.target.value)} className={narrowInput} />
+                <input value={unit.oilPress[i] ?? ''} onChange={e => updateArr('oilPress', i, e.target.value)} className={narrowInput} />
               </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">Comp Amps</label>
-                <input value={unit.compAmps[i]} onChange={e => updateArr('compAmps', i, e.target.value)} className={narrowInput} />
+                <input value={unit.compAmps[i] ?? ''} onChange={e => updateArr('compAmps', i, e.target.value)} className={narrowInput} />
               </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">Comp Volts</label>
-                <input value={unit.compVolts[i]} onChange={e => updateArr('compVolts', i, e.target.value)} className={narrowInput} />
+                <input value={unit.compVolts[i] ?? ''} onChange={e => updateArr('compVolts', i, e.target.value)} className={narrowInput} />
               </div>
             </div>
           ))}
         </div>
+        {unit.compressorCount < 8 && (
+          <button
+            type="button"
+            onClick={() => onChange('compressorCount', unit.compressorCount + 1)}
+            className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <Plus size={12} /> Add Compressor
+          </button>
+        )}
       </Section>
 
       {/* Safety Controls */}
       <Section title="Safety Controls" open={safetyOpen} toggle={() => setSafetyOpen(o => !o)}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }, (_, i) => (
+          {Array.from({ length: unit.compressorCount }, (_, i) => (
             <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
               <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">HP Setpoint</label>
-                <input value={unit.hpSetPoints[i]} onChange={e => updateArr('hpSetPoints', i, e.target.value)} className={narrowInput} />
+                <input value={unit.hpSetPoints[i] ?? ''} onChange={e => updateArr('hpSetPoints', i, e.target.value)} className={narrowInput} />
               </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">LP Setpoint</label>
-                <input value={unit.lpSetPoints[i]} onChange={e => updateArr('lpSetPoints', i, e.target.value)} className={narrowInput} />
+                <input value={unit.lpSetPoints[i] ?? ''} onChange={e => updateArr('lpSetPoints', i, e.target.value)} className={narrowInput} />
               </div>
               <div>
                 <label className="block text-[10px] text-slate-500 mb-0.5">OFC Trip Time</label>
-                <input value={unit.ofcTripTime[i]} onChange={e => updateArr('ofcTripTime', i, e.target.value)} className={narrowInput} />
+                <input value={unit.ofcTripTime[i] ?? ''} onChange={e => updateArr('ofcTripTime', i, e.target.value)} className={narrowInput} />
               </div>
             </div>
           ))}
         </div>
+        {unit.compressorCount < 8 && (
+          <button
+            type="button"
+            onClick={() => onChange('compressorCount', unit.compressorCount + 1)}
+            className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <Plus size={12} /> Add Compressor
+          </button>
+        )}
       </Section>
 
       {/* Pressures */}
@@ -629,8 +659,13 @@ function RefrigerationPMContent() {
         setStoreAddress(d.units.storeAddress ?? '')
         setTechnician(d.units.technician ?? '')
         if (Array.isArray(d.units.racks) && d.units.racks.length > 0) {
-          setUnits(d.units.racks)
-          setActiveUnitId(d.units.racks[0].id)
+          // Back-compat: old reports stored full 8-slot arrays without compressorCount
+          const normalised = d.units.racks.map((r: UnitData) => ({
+            ...r,
+            compressorCount: r.compressorCount ?? 8,
+          }))
+          setUnits(normalised)
+          setActiveUnitId(normalised[0].id)
         }
       }
       if (Array.isArray(d.notes)) setNotes(d.notes)
