@@ -17,6 +17,11 @@ type Importance = 'CRITICAL' | 'IMPORTANT' | 'ROUTINE'
 type UnitType = 'rack' | 'conventional'
 
 const createArr8 = (): string[] => Array(8).fill('')
+const RACK_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const rackLabel = (unitsList: UnitData[], idx: number): string => {
+  const n = unitsList.filter((x, xi) => x.unitType === 'rack' && xi <= idx).length
+  return `Rack ${RACK_LETTERS[n - 1] ?? n}`
+}
 
 interface UnitData {
   id: string
@@ -211,26 +216,6 @@ const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg fo
 const labelCls = 'block text-xs font-medium text-slate-700 mb-1'
 const narrowInput = 'w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-center'
 
-function CompressorRow({ label, values, onChange }: {
-  label: string
-  values: string[]
-  onChange: (i: number, v: string) => void
-}) {
-  return (
-    <tr className="border-b border-slate-100">
-      <td className="py-1.5 pr-3 text-xs font-medium text-slate-600 whitespace-nowrap w-36">{label}</td>
-      {values.map((v, i) => (
-        <td key={i} className="px-1 py-1">
-          <input
-            value={v}
-            onChange={e => onChange(i, e.target.value)}
-            className={narrowInput}
-          />
-        </td>
-      ))}
-    </tr>
-  )
-}
 
 function RackForm({ unit, onChange }: {
   unit: UnitData
@@ -352,45 +337,52 @@ function RackForm({ unit, onChange }: {
       </Section>
 
       {/* Measurements / Oil */}
-      <Section title="Measurements / Oil (Compressors 1–8)" open={oilOpen} toggle={() => setOilOpen(o => !o)}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b-2 border-slate-200">
-                <th className="text-left text-xs font-semibold text-slate-600 py-2 pr-3 w-36">Reading</th>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <th key={n} className="text-center text-xs font-semibold text-slate-600 py-2 px-1 w-16">Comp {n}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <CompressorRow label="Oil Pots %" values={unit.oilPotsPercent} onChange={(i, v) => updateArr('oilPotsPercent', i, v)} />
-              <CompressorRow label="Oil Press" values={unit.oilPress} onChange={(i, v) => updateArr('oilPress', i, v)} />
-              <CompressorRow label="Comp Amps" values={unit.compAmps} onChange={(i, v) => updateArr('compAmps', i, v)} />
-              <CompressorRow label="Comp Volts" values={unit.compVolts} onChange={(i, v) => updateArr('compVolts', i, v)} />
-            </tbody>
-          </table>
+      <Section title="Measurements / Oil" open={oilOpen} toggle={() => setOilOpen(o => !o)}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
+              <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">Oil Pots %</label>
+                <input value={unit.oilPotsPercent[i]} onChange={e => updateArr('oilPotsPercent', i, e.target.value)} className={narrowInput} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">Oil Press</label>
+                <input value={unit.oilPress[i]} onChange={e => updateArr('oilPress', i, e.target.value)} className={narrowInput} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">Comp Amps</label>
+                <input value={unit.compAmps[i]} onChange={e => updateArr('compAmps', i, e.target.value)} className={narrowInput} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">Comp Volts</label>
+                <input value={unit.compVolts[i]} onChange={e => updateArr('compVolts', i, e.target.value)} className={narrowInput} />
+              </div>
+            </div>
+          ))}
         </div>
       </Section>
 
       {/* Safety Controls */}
-      <Section title="Safety Controls (Compressors 1–8)" open={safetyOpen} toggle={() => setSafetyOpen(o => !o)}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b-2 border-slate-200">
-                <th className="text-left text-xs font-semibold text-slate-600 py-2 pr-3 w-36">Reading</th>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <th key={n} className="text-center text-xs font-semibold text-slate-600 py-2 px-1 w-16">Comp {n}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <CompressorRow label="HP Setpoints" values={unit.hpSetPoints} onChange={(i, v) => updateArr('hpSetPoints', i, v)} />
-              <CompressorRow label="LP Setpoints" values={unit.lpSetPoints} onChange={(i, v) => updateArr('lpSetPoints', i, v)} />
-              <CompressorRow label="OFC Trip Time" values={unit.ofcTripTime} onChange={(i, v) => updateArr('ofcTripTime', i, v)} />
-            </tbody>
-          </table>
+      <Section title="Safety Controls" open={safetyOpen} toggle={() => setSafetyOpen(o => !o)}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
+              <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">HP Setpoint</label>
+                <input value={unit.hpSetPoints[i]} onChange={e => updateArr('hpSetPoints', i, e.target.value)} className={narrowInput} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">LP Setpoint</label>
+                <input value={unit.lpSetPoints[i]} onChange={e => updateArr('lpSetPoints', i, e.target.value)} className={narrowInput} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-0.5">OFC Trip Time</label>
+                <input value={unit.ofcTripTime[i]} onChange={e => updateArr('ofcTripTime', i, e.target.value)} className={narrowInput} />
+              </div>
+            </div>
+          ))}
         </div>
       </Section>
 
@@ -879,7 +871,7 @@ function RefrigerationPMContent() {
           <div className="flex overflow-x-auto border-b border-slate-200 bg-white">
             {units.map((u, idx) => {
               const label = u.unitType === 'rack'
-                ? `Rack ${units.filter((x, xi) => x.unitType === 'rack' && xi <= idx).length}`
+                ? rackLabel(units, idx)
                 : u.systemIdentifier || `Conv ${idx + 1}`
               return (
                 <button
@@ -969,7 +961,7 @@ function RefrigerationPMContent() {
                         <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
                           {n.assetId && <span>Asset: {n.assetId}</span>}
                           {n.rackIndex !== null && units[n.rackIndex] && (
-                            <span>Rack: {n.rackIndex + 1}</span>
+                            <span>{rackLabel(units, n.rackIndex)}</span>
                           )}
                           {n.systemNumber && <span>System: {n.systemNumber}</span>}
                         </div>
@@ -1053,7 +1045,7 @@ function RefrigerationPMContent() {
                 >
                   <option value="">None</option>
                   {units.map((u, i) => u.unitType === 'rack' && (
-                    <option key={u.id} value={i}>Rack {units.filter((x, xi) => x.unitType === 'rack' && xi <= i).length}</option>
+                    <option key={u.id} value={i}>{rackLabel(units, i)}</option>
                   ))}
                 </select>
               </div>
