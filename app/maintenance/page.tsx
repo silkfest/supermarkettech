@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 
 interface RecentReport {
@@ -32,6 +32,14 @@ function MaintenanceHubContent() {
     if (equipmentId) params.set('equipmentId', equipmentId)
     if (equipmentName) params.set('equipmentName', equipmentName)
     router.push(`${path}?${params}`)
+  }
+
+  const registryCard = {
+    path: '/maintenance/components',
+    icon: <Database size={30} className="text-slate-500" />,
+    title: 'Component Registry',
+    desc: 'All logged compressors and components across every site',
+    color: 'hover:border-slate-300',
   }
 
   const reportTypes = [
@@ -93,10 +101,10 @@ function MaintenanceHubContent() {
           </h2>
           {/* Mobile: vertical list. Desktop: 3-column grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {reportTypes.map(rt => (
+            {[...reportTypes, registryCard].map(rt => (
               <button
                 key={rt.path}
-                onClick={() => nav(rt.path)}
+                onClick={() => router.push(rt.path)}
                 className={`bg-white border border-slate-200 rounded-xl p-5 text-left transition-all active:scale-[0.98] hover:shadow-md ${rt.color} flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0`}
               >
                 {/* Icon */}
