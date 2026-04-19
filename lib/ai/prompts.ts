@@ -106,16 +106,6 @@ Help the technician with maintenance documentation and planning:
 
 Reference ASHRAE guidelines and manufacturer recommendations for maintenance intervals.`,
 
-  COMPLIANCE: `MODE: Compliance Check
-Evaluate the described situation against:
-- ASHRAE Standard 15 (Safety Standard for Refrigeration Systems)
-- ASHRAE Standard 34 (Refrigerant Designation and Classification)
-- EPA Section 608 (Refrigerant management, venting prohibition, certification)
-- AIM Act (HFC phase-down schedule)
-- Local codes (remind user to verify locally)
-
-For each issue: state the specific regulation, explain the requirement, state compliant/non-compliant/unclear, provide corrective action.
-Always recommend professional verification for official compliance determinations.`,
 }
 
 const FORMAT_INSTRUCTIONS = `
