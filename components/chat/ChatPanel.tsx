@@ -32,12 +32,6 @@ const STARTERS: Record<ChatMode, string[]> = {
     'Generate a service report summary',
     'What parts should I stock for this unit?',
   ],
-  COMPLIANCE: [
-    'Is R-404A compliant for new equipment?',
-    'What are the EPA 608 requirements for service?',
-    'What are the AIM Act refrigerant deadlines?',
-    'Check our refrigerant management practices',
-  ],
 }
 
 function SourcePill({ s }: { s: CitationSource }) {
