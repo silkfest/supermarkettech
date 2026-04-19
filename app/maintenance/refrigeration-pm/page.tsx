@@ -15,6 +15,17 @@ type HowControlled = 'Thermostat - under case' | 'Thermostat - on top of case' |
 type CondenserSetUp = 'Individual' | 'Rack Condenser' | ''
 type Importance = 'CRITICAL' | 'IMPORTANT' | 'ROUTINE'
 type UnitType = 'rack' | 'conventional'
+type OtherComponentType =
+  | 'Condenser Unit' | 'Rack Controller' | 'EEV Board' | 'Oil Separator'
+  | 'Receiver' | 'Head Pressure Controller' | 'Defrost Board' | 'Other'
+
+interface OtherComponent {
+  id: string
+  componentType: OtherComponentType | ''
+  manufacturer: string
+  model: string
+  serial: string
+}
 
 const createArr8 = (): string[] => Array(8).fill('')
 const RACK_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -28,6 +39,9 @@ interface UnitData {
   unitType: UnitType
   tabDisplayName: string
   compressorCount: number
+  compressorModels: string[]
+  compressorSerials: string[]
+  otherComponents: OtherComponent[]
   // Shared
   compressorManufacturer: string
   refrigerant: RefrigerantType
@@ -88,6 +102,9 @@ const createRack = (): UnitData => ({
   unitType: 'rack',
   tabDisplayName: '',
   compressorCount: 2,
+  compressorModels: createArr8(),
+  compressorSerials: createArr8(),
+  otherComponents: [],
   compressorManufacturer: '',
   refrigerant: '',
   oilConditionAcidTest: '',
@@ -227,8 +244,20 @@ function RackForm({ unit, onChange }: {
   const [oilOpen, setOilOpen] = useState(true)
   const [safetyOpen, setSafetyOpen] = useState(true)
   const [pressureOpen, setPressureOpen] = useState(true)
+  const [componentsOpen, setComponentsOpen] = useState(true)
 
-  const updateArr = (field: 'oilPotsPercent' | 'oilPress' | 'compAmps' | 'compVolts' | 'hpSetPoints' | 'lpSetPoints' | 'ofcTripTime', i: number, v: string) => {
+  const addOtherComponent = () => {
+    const newComp: OtherComponent = { id: crypto.randomUUID(), componentType: '', manufacturer: '', model: '', serial: '' }
+    onChange('otherComponents', [...(unit.otherComponents ?? []), newComp])
+  }
+  const updateOtherComponent = (id: string, field: keyof OtherComponent, value: string) => {
+    onChange('otherComponents', (unit.otherComponents ?? []).map(c => c.id === id ? { ...c, [field]: value } : c))
+  }
+  const removeOtherComponent = (id: string) => {
+    onChange('otherComponents', (unit.otherComponents ?? []).filter(c => c.id !== id))
+  }
+
+  const updateArr = (field: 'oilPotsPercent' | 'oilPress' | 'compAmps' | 'compVolts' | 'hpSetPoints' | 'lpSetPoints' | 'ofcTripTime' | 'compressorModels' | 'compressorSerials', i: number, v: string) => {
     const arr = [...(unit[field] as string[])]
     arr[i] = v
     onChange(field, arr)
@@ -354,21 +383,42 @@ function RackForm({ unit, onChange }: {
                   >−</button>
                 )}
               </div>
+              {/* Model / Serial */}
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">Oil Pots %</label>
-                <input value={unit.oilPotsPercent[i] ?? ''} onChange={e => updateArr('oilPotsPercent', i, e.target.value)} className={narrowInput} />
+                <label className="block text-[10px] text-slate-500 mb-0.5">Model</label>
+                <input
+                  value={(unit.compressorModels ?? [])[i] ?? ''}
+                  onChange={e => updateArr('compressorModels', i, e.target.value)}
+                  className={narrowInput}
+                  placeholder="e.g. ZB45KCE"
+                />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">Oil Press</label>
-                <input value={unit.oilPress[i] ?? ''} onChange={e => updateArr('oilPress', i, e.target.value)} className={narrowInput} />
+                <label className="block text-[10px] text-slate-500 mb-0.5">Serial #</label>
+                <input
+                  value={(unit.compressorSerials ?? [])[i] ?? ''}
+                  onChange={e => updateArr('compressorSerials', i, e.target.value)}
+                  className={narrowInput}
+                  placeholder="S/N"
+                />
               </div>
-              <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">Comp Amps</label>
-                <input value={unit.compAmps[i] ?? ''} onChange={e => updateArr('compAmps', i, e.target.value)} className={narrowInput} />
-              </div>
-              <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">Comp Volts</label>
-                <input value={unit.compVolts[i] ?? ''} onChange={e => updateArr('compVolts', i, e.target.value)} className={narrowInput} />
+              <div className="border-t border-slate-200 pt-2 space-y-2">
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Oil Pots %</label>
+                  <input value={unit.oilPotsPercent[i] ?? ''} onChange={e => updateArr('oilPotsPercent', i, e.target.value)} className={narrowInput} />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Oil Press</label>
+                  <input value={unit.oilPress[i] ?? ''} onChange={e => updateArr('oilPress', i, e.target.value)} className={narrowInput} />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Comp Amps</label>
+                  <input value={unit.compAmps[i] ?? ''} onChange={e => updateArr('compAmps', i, e.target.value)} className={narrowInput} />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Comp Volts</label>
+                  <input value={unit.compVolts[i] ?? ''} onChange={e => updateArr('compVolts', i, e.target.value)} className={narrowInput} />
+                </div>
               </div>
             </div>
           ))}
@@ -444,6 +494,63 @@ function RackForm({ unit, onChange }: {
             <input value={unit.receiverPressure} onChange={e => onChange('receiverPressure', e.target.value)} className={inputCls} placeholder="psig" />
           </div>
         </div>
+      </Section>
+
+      {/* Other Components */}
+      <Section title="Other Components" open={componentsOpen} toggle={() => setComponentsOpen(o => !o)}>
+        <p className="text-xs text-slate-500 mb-3">
+          Record model &amp; serial for condensers, controllers, EEV boards, etc.
+          Upload their manuals via the <span className="font-medium text-blue-600">Documents</span> panel on the dashboard — the AI will automatically use them when diagnosing this equipment.
+        </p>
+        {(unit.otherComponents ?? []).length > 0 && (
+          <div className="space-y-3 mb-3">
+            {(unit.otherComponents ?? []).map(comp => (
+              <div key={comp.id} className="bg-slate-50 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Component Type</label>
+                      <select
+                        value={comp.componentType}
+                        onChange={e => updateOtherComponent(comp.id, 'componentType', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="">Select…</option>
+                        {(['Condenser Unit', 'Rack Controller', 'EEV Board', 'Oil Separator', 'Receiver', 'Head Pressure Controller', 'Defrost Board', 'Other'] as OtherComponentType[]).map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Manufacturer</label>
+                      <input value={comp.manufacturer} onChange={e => updateOtherComponent(comp.id, 'manufacturer', e.target.value)} placeholder="e.g. Emerson" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Model</label>
+                      <input value={comp.model} onChange={e => updateOtherComponent(comp.id, 'model', e.target.value)} placeholder="Model #" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Serial #</label>
+                      <input value={comp.serial} onChange={e => updateOtherComponent(comp.id, 'serial', e.target.value)} placeholder="S/N" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeOtherComponent(comp.id)}
+                    className="mt-4 flex-shrink-0 text-slate-300 hover:text-red-500 transition-colors"
+                  ><X size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={addOtherComponent}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 border border-dashed border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Plus size={12} /> Add Component
+        </button>
       </Section>
     </div>
   )
