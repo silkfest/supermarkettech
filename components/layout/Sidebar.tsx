@@ -1,17 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Thermometer, WrenchIcon, ShieldCheck, MessageSquare, AlertTriangle, Users, LogOut, X } from 'lucide-react'
+import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
 
 const MODES: { id: ChatMode; label: string; icon: React.ReactNode }[] = [
-  { id: 'ASK',         label: 'Ask the expert',  icon: <MessageSquare size={13}/> },
-  { id: 'DIAGNOSE',    label: 'Fault diagnosis',  icon: <Thermometer size={13}/> },
-  { id: 'ALARM',       label: 'Alarm lookup',     icon: <AlertTriangle size={13}/> },
-  { id: 'MAINTENANCE', label: 'Maintenance log',  icon: <WrenchIcon size={13}/> },
-  { id: 'COMPLIANCE',  label: 'Compliance check', icon: <ShieldCheck size={13}/> },
+  { id: 'ASK',         label: 'Ask the expert', icon: <MessageSquare size={13}/> },
+  { id: 'DIAGNOSE',    label: 'Fault diagnosis', icon: <Thermometer size={13}/> },
+  { id: 'ALARM',       label: 'Alarm lookup',    icon: <AlertTriangle size={13}/> },
+  { id: 'MAINTENANCE', label: 'Maintenance log', icon: <WrenchIcon size={13}/> },
 ]
 
 interface Props {
@@ -99,6 +98,17 @@ function SidebarContent({
             {m.label}
           </button>
         ))}
+      </div>
+
+      {/* Registry link */}
+      <div className="px-2 pb-2">
+        <button
+          onClick={() => { router.push('/maintenance/components'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        >
+          <span className="opacity-60"><Database size={13}/></span>
+          Component registry
+        </button>
       </div>
 
       {/* Equipment list */}
