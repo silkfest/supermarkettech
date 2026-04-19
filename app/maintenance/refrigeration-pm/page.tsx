@@ -285,6 +285,7 @@ function RackForm({ unit, onChange, equipmentId }: {
   )
 
   return (
+    <>
     <div className="space-y-4">
       {/* Description */}
       <Section title="Description" open={descOpen} toggle={() => setDescOpen(o => !o)}>
@@ -633,6 +634,7 @@ function RackForm({ unit, onChange, equipmentId }: {
         }}
       />
     )}
+    </>
   )
 }
 
