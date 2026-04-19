@@ -1,5 +1,5 @@
 export type EquipmentStatus = 'OK' | 'WARNING' | 'ALARM' | 'OFFLINE' | 'UNKNOWN'
-export type ChatMode = 'ASK' | 'DIAGNOSE' | 'ALARM' | 'MAINTENANCE' | 'COMPLIANCE'
+export type ChatMode = 'ASK' | 'DIAGNOSE' | 'ALARM' | 'MAINTENANCE'
 export type SourceType = 'UPLOAD' | 'WEB' | 'SYSTEM'
 export type DocStatus = 'PROCESSING' | 'READY' | 'FAILED'
 export type AlarmLevel = 'INFO' | 'WARNING' | 'CRITICAL'
