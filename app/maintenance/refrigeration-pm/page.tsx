@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, BookOpen } from 'lucide-react'
+import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ interface OtherComponent {
   manufacturer: string
   model: string
   serial: string
+  manualId: string
+  manualTitle: string
 }
 
 const createArr8 = (): string[] => Array(8).fill('')
@@ -41,6 +44,8 @@ interface UnitData {
   compressorCount: number
   compressorModels: string[]
   compressorSerials: string[]
+  compressorManualIds: string[]
+  compressorManualTitles: string[]
   otherComponents: OtherComponent[]
   // Shared
   compressorManufacturer: string
@@ -104,6 +109,8 @@ const createRack = (): UnitData => ({
   compressorCount: 2,
   compressorModels: createArr8(),
   compressorSerials: createArr8(),
+  compressorManualIds: createArr8(),
+  compressorManualTitles: createArr8(),
   otherComponents: [],
   compressorManufacturer: '',
   refrigerant: '',
@@ -236,18 +243,22 @@ const labelCls = 'block text-xs font-medium text-slate-700 mb-1'
 const narrowInput = 'w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-center'
 
 
-function RackForm({ unit, onChange }: {
+function RackForm({ unit, onChange, equipmentId }: {
   unit: UnitData
   onChange: (field: keyof UnitData, value: unknown) => void
+  equipmentId?: string
 }) {
   const [descOpen, setDescOpen] = useState(true)
   const [oilOpen, setOilOpen] = useState(true)
   const [safetyOpen, setSafetyOpen] = useState(true)
   const [pressureOpen, setPressureOpen] = useState(true)
   const [componentsOpen, setComponentsOpen] = useState(true)
+  // Manual finder modal — stores which slot is being targeted
+  const [manualCompIdx, setManualCompIdx] = useState<number | null>(null)
+  const [manualCompId, setManualCompId] = useState<string | null>(null)
 
   const addOtherComponent = () => {
-    const newComp: OtherComponent = { id: crypto.randomUUID(), componentType: '', manufacturer: '', model: '', serial: '' }
+    const newComp: OtherComponent = { id: crypto.randomUUID(), componentType: '', manufacturer: '', model: '', serial: '', manualId: '', manualTitle: '' }
     onChange('otherComponents', [...(unit.otherComponents ?? []), newComp])
   }
   const updateOtherComponent = (id: string, field: keyof OtherComponent, value: string) => {
@@ -257,7 +268,7 @@ function RackForm({ unit, onChange }: {
     onChange('otherComponents', (unit.otherComponents ?? []).filter(c => c.id !== id))
   }
 
-  const updateArr = (field: 'oilPotsPercent' | 'oilPress' | 'compAmps' | 'compVolts' | 'hpSetPoints' | 'lpSetPoints' | 'ofcTripTime' | 'compressorModels' | 'compressorSerials', i: number, v: string) => {
+  const updateArr = (field: 'oilPotsPercent' | 'oilPress' | 'compAmps' | 'compVolts' | 'hpSetPoints' | 'lpSetPoints' | 'ofcTripTime' | 'compressorModels' | 'compressorSerials' | 'compressorManualIds' | 'compressorManualTitles', i: number, v: string) => {
     const arr = [...(unit[field] as string[])]
     arr[i] = v
     onChange(field, arr)
@@ -402,6 +413,27 @@ function RackForm({ unit, onChange }: {
                   placeholder="S/N"
                 />
               </div>
+              {/* Manual link */}
+              {(unit.compressorManualIds ?? [])[i] ? (
+                <div className="flex items-center gap-1 px-1.5 py-1 bg-emerald-50 border border-emerald-200 rounded text-[10px] text-emerald-700">
+                  <BookOpen size={9} />
+                  <span className="truncate flex-1">{(unit.compressorManualTitles ?? [])[i] || 'Manual linked'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setManualCompIdx(i)}
+                    className="text-emerald-500 hover:text-emerald-700 flex-shrink-0"
+                    title="Change manual"
+                  >✎</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setManualCompIdx(i)}
+                  className="w-full flex items-center justify-center gap-1 py-1 text-[10px] text-slate-400 border border-dashed border-slate-200 rounded hover:border-blue-300 hover:text-blue-500 transition-colors"
+                >
+                  <BookOpen size={9} /> Manual
+                </button>
+              )}
               <div className="border-t border-slate-200 pt-2 space-y-2">
                 <div>
                   <label className="block text-[10px] text-slate-500 mb-0.5">Oil Pots %</label>
@@ -534,10 +566,28 @@ function RackForm({ unit, onChange }: {
                       <input value={comp.serial} onChange={e => updateOtherComponent(comp.id, 'serial', e.target.value)} placeholder="S/N" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" />
                     </div>
                   </div>
+                  {/* Manual button */}
+                  <div className="mt-2 flex items-center gap-2">
+                    {comp.manualId ? (
+                      <div className="flex items-center gap-1.5 flex-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded text-[10px] text-emerald-700">
+                        <BookOpen size={10} />
+                        <span className="truncate">{comp.manualTitle || 'Manual linked'}</span>
+                        <button type="button" onClick={() => setManualCompId(comp.id)} className="ml-auto text-emerald-500 hover:text-emerald-700">✎</button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setManualCompId(comp.id)}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-colors"
+                      >
+                        <BookOpen size={11} /> Find Manual
+                      </button>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeOtherComponent(comp.id)}
-                    className="mt-4 flex-shrink-0 text-slate-300 hover:text-red-500 transition-colors"
+                    className="mt-1 flex-shrink-0 self-start text-slate-300 hover:text-red-500 transition-colors"
                   ><X size={14} /></button>
                 </div>
               </div>
@@ -553,6 +603,36 @@ function RackForm({ unit, onChange }: {
         </button>
       </Section>
     </div>
+
+    {/* Manual finder for a compressor slot */}
+    {manualCompIdx !== null && (
+      <ManualFinderModal
+        manufacturer={unit.compressorManufacturer}
+        model={(unit.compressorModels ?? [])[manualCompIdx] ?? ''}
+        equipmentId={equipmentId}
+        onClose={() => setManualCompIdx(null)}
+        onLinked={doc => {
+          updateArr('compressorManualIds', manualCompIdx, doc.id)
+          updateArr('compressorManualTitles', manualCompIdx, doc.title)
+          setManualCompIdx(null)
+        }}
+      />
+    )}
+
+    {/* Manual finder for an other component */}
+    {manualCompId !== null && (unit.otherComponents ?? []).find(c => c.id === manualCompId) && (
+      <ManualFinderModal
+        manufacturer={(unit.otherComponents ?? []).find(c => c.id === manualCompId)!.manufacturer}
+        model={(unit.otherComponents ?? []).find(c => c.id === manualCompId)!.model}
+        equipmentId={equipmentId}
+        onClose={() => setManualCompId(null)}
+        onLinked={doc => {
+          updateOtherComponent(manualCompId, 'manualId', doc.id)
+          updateOtherComponent(manualCompId, 'manualTitle', doc.title)
+          setManualCompId(null)
+        }}
+      />
+    )}
   )
 }
 
@@ -1043,6 +1123,7 @@ function RefrigerationPMContent() {
                 <RackForm
                   unit={activeUnit}
                   onChange={(field, value) => updateUnit(activeUnit.id, field, value)}
+                  equipmentId={equipmentId ?? undefined}
                 />
               ) : (
                 <ConventionalForm
