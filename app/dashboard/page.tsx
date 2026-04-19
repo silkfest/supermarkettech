@@ -7,15 +7,26 @@ import ChatPanel from '@/components/chat/ChatPanel'
 import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
+import {
+  Menu, MessageSquare, Thermometer, AlertTriangle, WrenchIcon, ShieldCheck,
+} from 'lucide-react'
 import type { Equipment, Document, SensorSnapshot, ChatMode, User } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
-  ASK:         'Ask the expert',
+  ASK:         'Ask',
   DIAGNOSE:    'Diagnose',
   ALARM:       'Alarms',
   MAINTENANCE: 'Maintenance',
   COMPLIANCE:  'Compliance',
 }
+
+const BOTTOM_NAV_MODES: { id: ChatMode; icon: React.ReactNode; label: string }[] = [
+  { id: 'ASK',         icon: <MessageSquare size={20}/>, label: 'Ask' },
+  { id: 'DIAGNOSE',    icon: <Thermometer   size={20}/>, label: 'Diagnose' },
+  { id: 'ALARM',       icon: <AlertTriangle size={20}/>, label: 'Alarms' },
+  { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
+  { id: 'COMPLIANCE',  icon: <ShieldCheck   size={20}/>, label: 'Compliance' },
+]
 
 function buildSnapshot(readings: any[]): SensorSnapshot {
   const s: SensorSnapshot = {}
@@ -34,12 +45,13 @@ function buildSnapshot(readings: any[]): SensorSnapshot {
 }
 
 export default function Dashboard() {
-  const [equipment,  setEquipment]  = useState<Equipment[]>([])
-  const [selected,   setSelected]   = useState<Equipment | null>(null)
-  const [mode,       setMode]       = useState<ChatMode>('ASK')
-  const [documents,  setDocuments]  = useState<Document[]>([])
-  const [showAdd,    setShowAdd]    = useState(false)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [equipment,    setEquipment]    = useState<Equipment[]>([])
+  const [selected,     setSelected]     = useState<Equipment | null>(null)
+  const [mode,         setMode]         = useState<ChatMode>('ASK')
+  const [documents,    setDocuments]    = useState<Document[]>([])
+  const [showAdd,      setShowAdd]      = useState(false)
+  const [currentUser,  setCurrentUser]  = useState<User | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -82,9 +94,7 @@ export default function Dashboard() {
     loadDocuments(selected?.id)
   }
 
-  function openFilePicker() {
-    fileInputRef.current?.click()
-  }
+  function openFilePicker() { fileInputRef.current?.click() }
 
   const snapshot = selected ? buildSnapshot(selected.latest_readings ?? []) : undefined
 
@@ -97,7 +107,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    // On mobile: flex-col fills the viewport, bottom nav fixed at bottom
+    <div className="flex h-[100dvh] overflow-hidden">
+      {/* ── Sidebar (desktop: always visible; mobile: controlled drawer) ── */}
       <Sidebar
         equipment={equipment}
         selected={selected}
@@ -106,13 +118,33 @@ export default function Dashboard() {
         onSelect={setSelected}
         onMode={setMode}
         onAdd={() => setShowAdd(true)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-200 bg-white flex-shrink-0">
-          {/* Mode tabs */}
-          <div className="flex gap-0.5 bg-slate-100 rounded-lg p-0.5">
+      {/* ── Main area ── */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+
+        {/* ─── Top bar ─── */}
+        <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 border-b border-slate-200 bg-white flex-shrink-0">
+
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden flex-shrink-0 p-2 -ml-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+            aria-label="Open menu"
+          >
+            <Menu size={20}/>
+          </button>
+
+          {/* Logo — mobile only (desktop shows it in sidebar) */}
+          <div className="md:hidden flex items-baseline gap-0.5 flex-shrink-0">
+            <span className="text-base font-bold text-blue-600">Cold</span>
+            <span className="text-base font-bold text-slate-800">IQ</span>
+          </div>
+
+          {/* Mode tabs — desktop */}
+          <div className="hidden md:flex gap-0.5 bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
             {(['ASK','DIAGNOSE','ALARM'] as ChatMode[]).map(m => (
               <button
                 key={m}
@@ -144,23 +176,36 @@ export default function Dashboard() {
             ))}
           </div>
 
+          {/* Current mode label — mobile only */}
+          <span className="md:hidden flex-1 text-sm font-medium text-slate-700">
+            {MODE_LABELS[mode]}
+          </span>
+
           {/* Active unit badge */}
           {selected ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-full text-xs">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>
-              <span className="font-medium text-slate-700">{selected.name}</span>
-              <span className="text-slate-400">· {selected.manufacturer} {selected.model}</span>
-            </div>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs min-w-0 max-w-[140px] md:max-w-none"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"/>
+              <span className="font-medium text-slate-700 truncate">{selected.name}</span>
+              <span className="text-slate-400 hidden md:inline truncate">· {selected.manufacturer} {selected.model}</span>
+            </button>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400"
+            >
               <div className="w-1.5 h-1.5 rounded-full bg-slate-300"/>
-              No unit selected
-            </div>
+              <span className="hidden sm:inline">No unit selected</span>
+              <span className="sm:hidden">Select unit</span>
+            </button>
           )}
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 flex min-h-0">
+        {/* ─── Main content ─── */}
+        {/* On mobile: extra bottom padding so content doesn't hide behind the bottom nav */}
+        <div className="flex-1 flex min-h-0 pb-14 md:pb-0">
           {mode === 'MAINTENANCE' ? (
             <div className="flex-1 min-w-0 bg-slate-50">
               <MaintenancePanel equipmentId={selected?.id} />
@@ -170,11 +215,34 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
               </div>
-              <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker}/>
+              {/* Context panel — hidden on mobile to save space */}
+              <div className="hidden lg:block">
+                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker}/>
+              </div>
             </>
           )}
         </div>
       </div>
+
+      {/* ── Mobile bottom navigation ── */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 flex items-stretch">
+        {BOTTOM_NAV_MODES.map(m => {
+          const isActive = mode === m.id
+          return (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              className={[
+                'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
+                isActive ? 'text-blue-600' : 'text-slate-400',
+              ].join(' ')}
+            >
+              <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{m.icon}</span>
+              {m.label}
+            </button>
+          )
+        })}
+      </nav>
 
       {/* Hidden file input */}
       <input
