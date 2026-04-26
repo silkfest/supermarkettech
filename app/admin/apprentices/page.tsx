@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { ArrowLeft, Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap } from 'lucide-react'
 
 interface ApprenticeRow {
   id: string; name: string; email: string
@@ -189,14 +189,23 @@ export default function AdminApprenticesPage() {
                     </div>
                   </div>
 
-                  {/* View profile button */}
-                  <button
-                    onClick={() => router.push(`/admin/technicians/${a.id}`)}
-                    className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                    title="View technician profile"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+                  {/* Action buttons */}
+                  <div className="flex-shrink-0 flex flex-col gap-1">
+                    <button
+                      onClick={() => router.push(`/apprentice/training?userId=${a.id}`)}
+                      className="p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors"
+                      title="View training"
+                    >
+                      <GraduationCap size={16} />
+                    </button>
+                    <button
+                      onClick={() => router.push(`/admin/technicians/${a.id}`)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                      title="View technician profile"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Journeyman assignment */}
