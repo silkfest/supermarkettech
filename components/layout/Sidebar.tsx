@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X } from 'lucide-react'
+import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X, GraduationCap } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
@@ -163,6 +163,32 @@ function SidebarContent({
           <Plus size={12}/> Add equipment
         </button>
       </div>
+
+      {/* Training link — apprentices only */}
+      {currentUser?.role === 'apprentice' && (
+        <div className="px-2 pb-1">
+          <button
+            onClick={() => { router.push('/apprentice/training'); onMobileClose?.() }}
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
+          >
+            <GraduationCap size={13} className="opacity-60"/>
+            My training
+          </button>
+        </div>
+      )}
+
+      {/* Apprentices overview — managers, journeymen, admins */}
+      {currentUser?.role && ['admin', 'manager', 'journeyman'].includes(currentUser.role) && (
+        <div className="px-2 pb-1">
+          <button
+            onClick={() => { router.push('/admin/apprentices'); onMobileClose?.() }}
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
+          >
+            <GraduationCap size={13} className="opacity-60"/>
+            Apprentices
+          </button>
+        </div>
+      )}
 
       {/* Admin link */}
       {currentUser?.role === 'admin' && (
