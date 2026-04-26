@@ -70,7 +70,8 @@ export default function AdminApprenticesPage() {
   async function assignMentor(apprenticeId: string, mentorId: string | null) {
     setSaving(apprenticeId)
     const sb = getSupabaseBrowser()
-    await sb.from('users').update({ mentor_id: mentorId }).eq('id', apprenticeId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await sb.from('users').update({ mentor_id: mentorId } as any).eq('id', apprenticeId)
     setApprentices(prev => prev.map(a =>
       a.id === apprenticeId
         ? { ...a, mentorId, mentorName: journeymen.find(j => j.id === mentorId)?.name ?? null }
