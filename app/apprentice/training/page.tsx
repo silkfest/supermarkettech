@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { ArrowLeft, ChevronDown, CheckCircle2, Circle, Loader2, Lock } from 'lucide-react'
+import { ArrowLeft, ChevronDown, CheckCircle2, Circle, Loader2, ChevronDown as Down } from 'lucide-react'
 
 // ─── Badge definitions ──────────────────────────────────────────────────────
 const BADGES = [
@@ -55,17 +55,26 @@ interface Task {
   difficulty: string; points: number; sort_order: number
   progress: { status: string; completed_at: string | null; notes: string; verifier: { name: string } | null } | null
 }
-interface User { id: string; name: string; email: string; role: string; mentor_id: string | null }
+interface UserProfile { id: string; name: string; email: string; role: string; mentor_id: string | null }
+interface Apprentice  { id: string; name: string; email: string }
 
-export default function TrainingPage() {
-  const router = useRouter()
-  const [tasks, setTasks]         = useState<Task[]>([])
-  const [currentUser, setUser]    = useState<User | null>(null)
-  const [mentor, setMentor]       = useState<{ name: string } | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [toggling, setToggling]   = useState<string | null>(null)
-  const [openCats, setOpenCats]   = useState<Record<string, boolean>>({})
-  const [newBadge, setNewBadge]   = useState<string | null>(null)
+function TrainingInner() {
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+
+  const [tasks, setTasks]           = useState<Task[]>([])
+  const [currentUser, setUser]      = useState<UserProfile | null>(null)
+  const [viewingUser, setViewing]   = useState<UserProfile | null>(null)    // the apprentice being viewed
+  const [mentor, setMentor]         = useState<{ name: string } | null>(null)
+  const [apprentices, setApprentices] = useState<Apprentice[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [toggling, setToggling]     = useState<string | null>(null)
+  const [openCats, setOpenCats]     = useState<Record<string, boolean>>({})
+  const [newBadge, setNewBadge]     = useState<string | null>(null)
+  const [showSwitcher, setShowSwitcher] = useState(false)
+
+  const isAdmin = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
+  const isReadOnly = isAdmin && viewingUser !== null && viewingUser.id !== currentUser?.id
 
   const fetchTasks = useCallback(async (userId: string) => {
     const res  = await fetch(`/api/apprentice/progress?userId=${userId}`)
@@ -78,28 +87,48 @@ export default function TrainingPage() {
       const sb = getSupabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
+
       const { data: profile } = await sb.from('users').select('*').eq('id', user.id).single()
       if (!profile) { router.push('/login'); return }
-      const u = profile as unknown as User
-      setUser(u)
-      if (u.mentor_id) {
-        const { data: m } = await sb.from('users').select('name').eq('id', u.mentor_id).single()
+      const me = profile as unknown as UserProfile
+      setUser(me)
+
+      const canViewOthers = ['admin', 'manager', 'journeyman'].includes(me.role)
+
+      // Determine which user's training to show
+      const targetId = searchParams.get('userId')
+      let targetUser: UserProfile = me
+
+      if (targetId && canViewOthers && targetId !== me.id) {
+        const { data: other } = await sb.from('users').select('*').eq('id', targetId).single()
+        if (other) targetUser = other as unknown as UserProfile
+      }
+      setViewing(targetUser)
+
+      // Load mentor for target user
+      if (targetUser.mentor_id) {
+        const { data: m } = await sb.from('users').select('name').eq('id', targetUser.mentor_id).single()
         if (m) setMentor(m as { name: string })
       }
-      await fetchTasks(u.id)
-      // Open all categories by default
+
+      // Admins/managers/journeymen: load apprentice list for switcher
+      if (canViewOthers) {
+        const { data: apps } = await sb.from('users').select('id,name,email').eq('role', 'apprentice').order('name')
+        setApprentices((apps ?? []) as Apprentice[])
+      }
+
+      await fetchTasks(targetUser.id)
       setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, true])))
       setLoading(false)
     }
     load()
-  }, [router, fetchTasks])
+  }, [router, fetchTasks, searchParams])
 
   async function toggleTask(task: Task) {
-    if (!currentUser) return
+    if (!currentUser || isReadOnly) return
     const wasComplete = task.progress?.status === 'completed'
     setToggling(task.id)
 
-    // Optimistic update
     const prevBadgeCount = computeEarnedBadges(tasks).length
     const newTasks = tasks.map(t =>
       t.id === task.id
@@ -108,23 +137,23 @@ export default function TrainingPage() {
     )
     setTasks(newTasks)
 
+    const userId = viewingUser?.id ?? currentUser.id
     if (wasComplete) {
       await fetch('/api/apprentice/progress', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id, taskId: task.id }),
+        body: JSON.stringify({ userId, taskId: task.id }),
       })
     } else {
       await fetch('/api/apprentice/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id, taskId: task.id, status: 'completed' }),
+        body: JSON.stringify({ userId, taskId: task.id, status: 'completed' }),
       })
-      // Check for new badge
       const newBadgeCount = computeEarnedBadges(newTasks).length
       if (newBadgeCount > prevBadgeCount) {
-        const earned = computeEarnedBadges(newTasks)
-        const prev   = computeEarnedBadges(tasks)
+        const earned  = computeEarnedBadges(newTasks)
+        const prev    = computeEarnedBadges(tasks)
         const newOnes = earned.filter(b => !prev.find(p => p.id === b.id))
         if (newOnes[0]) { setNewBadge(newOnes[0].id); setTimeout(() => setNewBadge(null), 4000) }
       }
@@ -134,11 +163,16 @@ export default function TrainingPage() {
 
   function computeEarnedBadges(taskList: Task[]) {
     const completed   = taskList.filter(t => t.progress?.status === 'completed')
-    const byCat: Record<string, number>    = {}
-    const totCat: Record<string, number>   = {}
+    const byCat: Record<string, number>  = {}
+    const totCat: Record<string, number> = {}
     for (const t of taskList) totCat[t.category] = (totCat[t.category] ?? 0) + 1
     for (const t of completed) byCat[t.category]  = (byCat[t.category]  ?? 0) + 1
     return BADGES.filter(b => b.check(completed.length, taskList.length, byCat, totCat))
+  }
+
+  function switchTo(app: Apprentice) {
+    setShowSwitcher(false)
+    router.push(`/apprentice/training?userId=${app.id}`)
   }
 
   if (loading) return (
@@ -147,20 +181,21 @@ export default function TrainingPage() {
     </div>
   )
 
-  const completed  = tasks.filter(t => t.progress?.status === 'completed')
-  const totalXP    = tasks.reduce((s, t) => s + t.points, 0)
-  const earnedXP   = completed.reduce((s, t) => s + t.points, 0)
-  const pct        = totalXP > 0 ? Math.round((earnedXP / totalXP) * 100) : 0
-  const level      = getLevel(earnedXP)
-  const nextLevel  = LEVELS.find(l => l.min > earnedXP)
-  const earnedBadges = computeEarnedBadges(tasks)
-
-  const categories = Object.keys(CAT_COLORS)
+  const completed     = tasks.filter(t => t.progress?.status === 'completed')
+  const totalXP       = tasks.reduce((s, t) => s + t.points, 0)
+  const earnedXP      = completed.reduce((s, t) => s + t.points, 0)
+  const pct           = totalXP > 0 ? Math.round((earnedXP / totalXP) * 100) : 0
+  const level         = getLevel(earnedXP)
+  const nextLevel     = LEVELS.find(l => l.min > earnedXP)
+  const earnedBadges  = computeEarnedBadges(tasks)
+  const categories    = Object.keys(CAT_COLORS)
   const tasksByCat: Record<string, Task[]> = {}
   for (const t of tasks) {
     if (!tasksByCat[t.category]) tasksByCat[t.category] = []
     tasksByCat[t.category].push(t)
   }
+
+  const displayUser = viewingUser ?? currentUser
 
   return (
     <div className="min-h-[100dvh] bg-slate-900 text-white">
@@ -177,7 +212,10 @@ export default function TrainingPage() {
 
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-700">
+        <button
+          onClick={() => isAdmin ? router.push('/admin/apprentices') : router.push('/dashboard')}
+          className="p-1.5 -ml-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-700"
+        >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-baseline gap-0.5">
@@ -186,10 +224,59 @@ export default function TrainingPage() {
         </div>
         <span className="text-slate-600">/</span>
         <span className="text-sm font-medium text-slate-300">Training</span>
-        {mentor && (
+
+        {/* Admin apprentice switcher */}
+        {isAdmin && apprentices.length > 0 && (
+          <div className="ml-auto relative">
+            <button
+              onClick={() => setShowSwitcher(s => !s)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-xs text-slate-200 transition-colors"
+            >
+              <span className="font-medium truncate max-w-[120px]">
+                {isReadOnly ? displayUser?.name || displayUser?.email : 'View as apprentice'}
+              </span>
+              <Down size={12} className={`flex-shrink-0 transition-transform ${showSwitcher ? 'rotate-180' : ''}`} />
+            </button>
+            {showSwitcher && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="p-2 border-b border-slate-700">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest px-1">Switch apprentice</p>
+                </div>
+                <div className="max-h-60 overflow-y-auto py-1">
+                  {apprentices.map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => switchTo(a)}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors ${
+                        a.id === displayUser?.id ? 'text-blue-400 font-medium' : 'text-slate-300'
+                      }`}
+                    >
+                      <p className="font-medium truncate">{a.name || a.email}</p>
+                      {a.name && <p className="text-slate-500 truncate">{a.email}</p>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isAdmin && mentor && (
           <span className="ml-auto text-xs text-slate-400">Journeyman: <span className="text-slate-200 font-medium">{mentor.name}</span></span>
         )}
       </div>
+
+      {/* Read-only banner */}
+      {isReadOnly && (
+        <div className="bg-blue-900/60 border-b border-blue-700/50 px-4 py-2 flex items-center gap-2">
+          <span className="text-xs text-blue-300">
+            👁 Viewing <span className="font-semibold text-blue-200">{displayUser?.name || displayUser?.email}</span>'s training — read-only
+          </span>
+          {mentor && (
+            <span className="ml-auto text-xs text-blue-400">Journeyman: <span className="text-blue-200 font-medium">{mentor.name}</span></span>
+          )}
+        </div>
+      )}
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
@@ -199,7 +286,7 @@ export default function TrainingPage() {
             <div>
               <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-1">Level</p>
               <p className={`text-2xl font-bold ${level.color}`}>{level.label}</p>
-              <p className="text-sm text-slate-300 mt-0.5">{currentUser?.name}</p>
+              <p className="text-sm text-slate-300 mt-0.5">{displayUser?.name}</p>
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold text-white">{earnedXP}</p>
@@ -308,7 +395,6 @@ export default function TrainingPage() {
 
           return (
             <div key={cat} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-              {/* Category header */}
               <button
                 onClick={() => setOpenCats(o => ({ ...o, [cat]: !o[cat] }))}
                 className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-700/50 transition-colors"
@@ -327,17 +413,17 @@ export default function TrainingPage() {
                     const busy = toggling === task.id
                     return (
                       <div key={task.id} className={`px-4 py-3.5 flex items-start gap-3 transition-colors ${done ? 'opacity-70' : ''}`}>
-                        {/* Checkbox */}
+                        {/* Checkbox — disabled in read-only mode */}
                         <button
-                          onClick={() => toggleTask(task)}
-                          disabled={busy}
-                          className="flex-shrink-0 mt-0.5 transition-transform active:scale-90"
+                          onClick={() => !isReadOnly && toggleTask(task)}
+                          disabled={busy || isReadOnly}
+                          className={`flex-shrink-0 mt-0.5 transition-transform ${isReadOnly ? 'cursor-default' : 'active:scale-90'}`}
                         >
                           {busy
                             ? <Loader2 size={20} className="animate-spin text-blue-400" />
                             : done
                               ? <CheckCircle2 size={20} className="text-emerald-400" />
-                              : <Circle size={20} className="text-slate-600 hover:text-slate-400" />
+                              : <Circle size={20} className={isReadOnly ? 'text-slate-700' : 'text-slate-600 hover:text-slate-400'} />
                           }
                         </button>
 
@@ -378,5 +464,17 @@ export default function TrainingPage() {
         })}
       </div>
     </div>
+  )
+}
+
+export default function TrainingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-blue-400" />
+      </div>
+    }>
+      <TrainingInner />
+    </Suspense>
   )
 }
