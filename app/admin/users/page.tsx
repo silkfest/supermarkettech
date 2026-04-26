@@ -97,7 +97,15 @@ export default function AdminUsersPage() {
           <span className="text-slate-400">/</span>
           <span className="text-sm font-medium text-slate-700">User Management</span>
         </div>
-        <div className="text-xs text-slate-500">{users.length} users total</div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/admin/technicians')}
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            Technician Profiles →
+          </button>
+          <div className="text-xs text-slate-500">{users.length} users</div>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
