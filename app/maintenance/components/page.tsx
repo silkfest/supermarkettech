@@ -577,7 +577,8 @@ export default function ComponentRegistryPage() {
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
         const { data } = await sb.from('users').select('role').eq('id', user.id).single()
-        if (data?.role) setUserRole(data.role as UserRole)
+        const role = (data as { role?: string } | null)?.role
+        if (role) setUserRole(role as UserRole)
       } catch { /* silent */ }
     }
     checkRole()
