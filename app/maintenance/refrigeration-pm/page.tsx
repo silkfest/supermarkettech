@@ -285,7 +285,6 @@ function RackForm({ unit, onChange, equipmentId }: {
   )
 
   return (
-    <>
     <div className="space-y-4">
       {/* Description */}
       <Section title="Description" open={descOpen} toggle={() => setDescOpen(o => !o)}>
@@ -634,7 +633,6 @@ function RackForm({ unit, onChange, equipmentId }: {
         }}
       />
     )}
-    </>
   )
 }
 
@@ -792,6 +790,8 @@ function RefrigerationPMContent() {
 
   // Store info
   const [storeName, setStoreName] = useState('')
+  const [storeId, setStoreId] = useState<string | null>(null)
+  const [sitesList, setSitesList] = useState<{ id: string; name: string; address: string }[]>([])
   const [storeAddress, setStoreAddress] = useState('')
   const [technician, setTechnician] = useState('')
   const [performedAt, setPerformedAt] = useState(new Date().toISOString().slice(0, 10))
@@ -835,11 +835,19 @@ function RefrigerationPMContent() {
     }
   }, [units, activeUnitId])
 
+  // Fetch sites list for store picker
+  useEffect(() => {
+    fetch('/api/stores').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setSitesList(data)
+    }).catch(() => {})
+  }, [])
+
   // Load existing report
   useEffect(() => {
     if (!editId) return
     fetch(`/api/pm-reports/${editId}`).then(r => r.json()).then(d => {
       setStoreName(d.store_name ?? '')
+      setStoreId(d.store_id ?? null)
       setSeason(d.pm_season ?? '')
       setSimproNumber(d.simpro_number ?? '')
       setPerformedAt(d.performed_at ? d.performed_at.slice(0, 10) : new Date().toISOString().slice(0, 10))
@@ -937,6 +945,7 @@ function RefrigerationPMContent() {
       equipment_id: equipmentId ?? null,
       report_type: 'refrigeration',
       store_name: storeName,
+      store_id: storeId,
       pm_season: season || null,
       performed_at: new Date(performedAt).toISOString(),
       simpro_number: simproNumber || null,
@@ -995,7 +1004,34 @@ function RefrigerationPMContent() {
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Store / Site Name *</label>
-              <input value={storeName} onChange={e => setStoreName(e.target.value)} className={inputCls} placeholder="e.g. Sobeys Bayers Lake" />
+              {sitesList.length > 0 ? (
+                <>
+                  <select
+                    value={storeId ?? (storeName ? '__other__' : '')}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val === '__other__') {
+                        setStoreId(null)
+                      } else if (val) {
+                        const site = sitesList.find(s => s.id === val)
+                        if (site) { setStoreId(site.id); setStoreName(site.name); setStoreAddress(site.address ?? '') }
+                      } else {
+                        setStoreId(null); setStoreName('')
+                      }
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">Select site…</option>
+                    {sitesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    <option value="__other__">Other / custom</option>
+                  </select>
+                  {storeId === null && (
+                    <input value={storeName} onChange={e => setStoreName(e.target.value)} className={`${inputCls} mt-1.5`} placeholder="Type site name…" />
+                  )}
+                </>
+              ) : (
+                <input value={storeName} onChange={e => setStoreName(e.target.value)} className={inputCls} placeholder="e.g. Sobeys Bayers Lake" />
+              )}
             </div>
             <div>
               <label className={labelCls}>Store Address</label>
