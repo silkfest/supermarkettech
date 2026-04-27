@@ -1,58 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/client'
-import { z } from 'zod'
 
-const DEFAULT_STORE = '00000000-0000-0000-0000-000000000001'
-
-const CreateSchema = z.object({
-  name:          z.string().min(1),
-  manufacturer:  z.string().min(1),
-  model:         z.string().min(1),
-  serial_number: z.string().optional(),
-  refrigerant:   z.string().optional(),
-  installed_at:  z.string().optional(),
-  location:      z.string().optional(),
-  notes:         z.string().optional(),
-})
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = getSupabaseServer()
+  const storeId  = new URL(req.url).searchParams.get('storeId')
 
-  const { data: equipment, error } = await supabase
-    .from('equipment')
-    .select(`
-      *,
-      active_alarms:alarm_events(id, code, severity, triggered_at, description),
-      latest_readings:sensor_readings(reading_type, value, unit, recorded_at)
-    `)
-    .is('alarm_events.resolved_at', null)
-    .order('name')
+  let query = supabase.from('equipment').select('*').order('equipment_type').order('name')
+  if (storeId) query = query.eq('store_id', storeId)
 
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Sort readings by recorded_at desc
-  const enriched = (equipment ?? []).map((e: any) => ({
-    ...e,
-    latest_readings: (e.latest_readings ?? []).sort(
-      (a: any, b: any) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-    ),
-  }))
-
-  return NextResponse.json(enriched)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null)
-  const parsed = CreateSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 })
-
   const supabase = getSupabaseServer()
+  const body = await req.json()
+  const {
+    storeId, name, equipmentType, manufacturer, model,
+    serialNumber, refrigerant, installedAt, location, notes,
+  } = body
+
+  if (!storeId || !name?.trim()) {
+    return NextResponse.json({ error: 'storeId and name are required' }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from('equipment')
-    .insert({ ...parsed.data, store_id: DEFAULT_STORE, status: 'UNKNOWN' })
+    .insert({
+      store_id:       storeId,
+      name,
+      equipment_type: equipmentType  ?? 'other',
+      manufacturer:   manufacturer   ?? '',
+      model:          model          ?? '',
+      serial_number:  serialNumber   ?? '',
+      refrigerant:    refrigerant    ?? '',
+      installed_at:   installedAt    || null,
+      location:       location       ?? '',
+      notes:          notes          ?? '',
+      status:         'UNKNOWN',
+    })
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json(data)
 }
