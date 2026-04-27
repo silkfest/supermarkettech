@@ -51,8 +51,9 @@ export default function StoresPage() {
       const supabase = getSupabaseBrowser()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-      setIsAdmin(profile?.role === 'admin' || profile?.role === 'manager')
+      const { data: profileData } = await supabase.from('users').select('role').eq('id', user.id).single()
+      const profileRole = (profileData as { role?: string } | null)?.role
+      setIsAdmin(profileRole === 'admin' || profileRole === 'manager')
 
       const res = await fetch('/api/stores')
       if (res.ok) setStores(await res.json())
