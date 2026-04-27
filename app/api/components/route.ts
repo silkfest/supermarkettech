@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServer()
 
-  // Fetch PM-derived components and catalog entries in parallel
   const [reportsResult, catalogResult] = await Promise.all([
     supabase
       .from('pm_reports')
@@ -39,6 +38,8 @@ export async function GET(req: NextRequest) {
     supabase
       .from('manual_components')
       .select('*')
+      .order('type')
+      .order('manufacturer')
       .order('created_at', { ascending: true }),
   ])
 
@@ -59,7 +60,6 @@ export async function GET(req: NextRequest) {
       const rackLabel = `Rack ${LETTERS[rackIdx] ?? rackIdx + 1}`
       const count     = (rack.compressorCount as number | undefined) ?? 8
 
-      // Compressors
       for (let i = 0; i < count; i++) {
         const model  = ((rack.compressorModels  as string[]) ?? [])[i] ?? ''
         const serial = ((rack.compressorSerials as string[]) ?? [])[i] ?? ''
@@ -88,7 +88,6 @@ export async function GET(req: NextRequest) {
         })
       }
 
-      // Other components
       for (const comp of (rack.otherComponents as Record<string, string>[] | undefined) ?? []) {
         const { model = '', serial = '', manufacturer = '', componentType = '' } = comp
         if (!model && !serial && !manufacturer) continue
@@ -141,7 +140,6 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Apply filters
   let out = components
   if (q) {
     out = out.filter(c =>
@@ -155,4 +153,35 @@ export async function GET(req: NextRequest) {
   if (type) out = out.filter(c => c.type === type)
 
   return NextResponse.json(out)
+}
+
+export async function POST(req: NextRequest) {
+  const supabase = getSupabaseServer()
+  const body = await req.json()
+
+  const { type, manufacturer, model, serial, manualTitle, manualUrl, storeName } = body
+  if (!type || !manufacturer || !model) {
+    return NextResponse.json({ error: 'type, manufacturer and model are required' }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('manual_components')
+    .insert({
+      type,
+      manufacturer,
+      model,
+      serial:        serial       ?? '',
+      manual_title:  manualTitle  ?? '',
+      manual_url:    manualUrl    ?? '',
+      store_name:    storeName    ?? '',
+      rack_label:    '',
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[components POST] error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json(data)
 }
