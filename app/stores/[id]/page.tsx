@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, Building2, MapPin, Phone, User, Wrench, Plus,
   ChevronRight, Pencil, X, Check, AlertTriangle, Package,
-  Thermometer, Wind, RefrigeratorIcon,
+  Thermometer, Wind, RefrigeratorIcon, Home,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
@@ -195,8 +195,16 @@ export default function StoreDetailPage() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
+          onClick={() => router.push('/dashboard')}
+          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          title="Dashboard"
+        >
+          <Home size={18} />
+        </button>
+        <button
           onClick={() => router.push('/stores')}
           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          title="All sites"
         >
           <ArrowLeft size={18} />
         </button>
