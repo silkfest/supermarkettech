@@ -1,13 +1,12 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Search, BookOpen, X, ChevronRight, Loader2, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Search, BookOpen, ExternalLink, X, ChevronRight, Loader2 } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
-import AddComponentModal from '@/components/maintenance/AddComponentModal'
 import type { ComponentRecord } from '@/app/api/components/route'
 
 const TYPE_COLORS: Record<string, string> = {
-  Compressor:                'bg-blue-100 text-blue-700',
+  Compressor:               'bg-blue-100 text-blue-700',
   'Condenser Unit':          'bg-cyan-100 text-cyan-700',
   'Rack Controller':         'bg-violet-100 text-violet-700',
   'EEV Board':               'bg-indigo-100 text-indigo-700',
@@ -15,6 +14,9 @@ const TYPE_COLORS: Record<string, string> = {
   Receiver:                  'bg-orange-100 text-orange-700',
   'Head Pressure Controller':'bg-rose-100 text-rose-700',
   'Defrost Board':           'bg-teal-100 text-teal-700',
+  'Rack System':             'bg-sky-100 text-sky-700',
+  'Case Controller':         'bg-fuchsia-100 text-fuchsia-700',
+  'Filter Drier':            'bg-lime-100 text-lime-700',
   Other:                     'bg-slate-100 text-slate-600',
 }
 
@@ -25,14 +27,12 @@ function typeBadge(type: string) {
 export default function ComponentRegistryPage() {
   const router = useRouter()
 
-  const [components, setComponents]     = useState<ComponentRecord[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [query, setQuery]               = useState('')
-  const [activeType, setActiveType]     = useState('')
-  const [types, setTypes]               = useState<string[]>([])
+  const [components, setComponents]   = useState<ComponentRecord[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [query, setQuery]             = useState('')
+  const [activeType, setActiveType]   = useState('')
+  const [types, setTypes]             = useState<string[]>([])
   const [manualTarget, setManualTarget] = useState<ComponentRecord | null>(null)
-  const [showAdd, setShowAdd]           = useState(false)
-  const [deletingId, setDeletingId]     = useState<string | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -69,18 +69,7 @@ export default function ComponentRegistryPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, activeType, fetchComponents])
 
-  async function handleDelete(c: ComponentRecord) {
-    if (!c.manualComponentId) return
-    setDeletingId(c.manualComponentId)
-    try {
-      await fetch(`/api/components?id=${c.manualComponentId}`, { method: 'DELETE' })
-      fetchComponents(query, activeType)
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
-  const withManual    = components.filter(c => c.manualId).length
+  const withManual    = components.filter(c => c.manualId || c.manualUrl).length
   const withoutManual = components.length - withManual
 
   return (
@@ -98,13 +87,7 @@ export default function ComponentRegistryPage() {
           <span className="text-lg font-bold text-slate-800">IQ</span>
         </div>
         <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-700 flex-1">Component Registry</span>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={14} /> Add
-        </button>
+        <span className="text-sm font-medium text-slate-700">Component Registry</span>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-4">
@@ -181,7 +164,7 @@ export default function ComponentRegistryPage() {
               {query || activeType ? 'No components match your search.' : 'No components recorded yet.'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {!query && !activeType && 'Components are added via Refrigeration PMs or the Add button above.'}
+              {!query && !activeType && 'Components are added when you fill in model/serial numbers in a Refrigeration PM.'}
             </p>
           </div>
         ) : (
@@ -190,19 +173,21 @@ export default function ComponentRegistryPage() {
               <div key={c.key} className="bg-white border border-slate-200 rounded-xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    {/* Type + rack + source badge */}
+                    {/* Type + rack + catalog badge */}
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${typeBadge(c.type)}`}>
                         {c.type}
                       </span>
+                      {c.isCatalog && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                          Catalog
+                        </span>
+                      )}
                       {c.slot && (
                         <span className="text-[10px] text-slate-400">Comp {c.slot}</span>
                       )}
                       {c.rackLabel && (
                         <span className="text-[10px] text-slate-400">{c.rackLabel}</span>
-                      )}
-                      {c.source === 'manual' && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">Manual entry</span>
                       )}
                     </div>
 
@@ -218,14 +203,34 @@ export default function ComponentRegistryPage() {
 
                     {/* Site + date */}
                     <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-400">
-                      <span>{c.storeName || 'Unknown site'}</span>
-                      <span>·</span>
-                      <span>{new Date(c.pmDate).toLocaleDateString()}</span>
+                      {c.storeName ? (
+                        <span>{c.storeName}</span>
+                      ) : (
+                        <span className="italic">Catalog entry</span>
+                      )}
+                      {c.pmDate && (
+                        <>
+                          <span>·</span>
+                          <span>{new Date(c.pmDate).toLocaleDateString()}</span>
+                        </>
+                      )}
                     </div>
 
                     {/* Manual status */}
                     <div className="mt-2.5">
-                      {c.manualId ? (
+                      {c.manualUrl ? (
+                        <a
+                          href={c.manualUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        >
+                          <ExternalLink size={11} />
+                          <span className="font-medium truncate max-w-[220px]">
+                            {c.manualTitle || 'Open Manual'}
+                          </span>
+                        </a>
+                      ) : c.manualId ? (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
                           <BookOpen size={11} />
                           <span className="font-medium truncate max-w-[220px]">{c.manualTitle || 'Manual linked'}</span>
@@ -242,29 +247,16 @@ export default function ComponentRegistryPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                    {c.source === 'pm' && c.pmReportId ? (
-                      <button
-                        onClick={() => router.push(`/maintenance/refrigeration-pm?id=${c.pmReportId}`)}
-                        className="p-1.5 text-slate-300 hover:text-blue-500 rounded-lg hover:bg-slate-50 transition-colors"
-                        title="Open source PM report"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleDelete(c)}
-                        disabled={deletingId === c.manualComponentId}
-                        className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
-                        title="Delete component"
-                      >
-                        {deletingId === c.manualComponentId
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <Trash2 size={14} />}
-                      </button>
-                    )}
-                  </div>
+                  {/* Link to PM report — only for non-catalog entries */}
+                  {!c.isCatalog && (
+                    <button
+                      onClick={() => router.push(`/maintenance/refrigeration-pm?id=${c.pmReportId}`)}
+                      className="flex-shrink-0 p-1.5 text-slate-300 hover:text-blue-500 rounded-lg hover:bg-slate-50 transition-colors"
+                      title="Open source PM report"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -281,17 +273,6 @@ export default function ComponentRegistryPage() {
           onClose={() => setManualTarget(null)}
           onLinked={() => {
             setManualTarget(null)
-            fetchComponents(query, activeType)
-          }}
-        />
-      )}
-
-      {/* Add component modal */}
-      {showAdd && (
-        <AddComponentModal
-          onClose={() => setShowAdd(false)}
-          onAdded={() => {
-            setShowAdd(false)
             fetchComponents(query, activeType)
           }}
         />
