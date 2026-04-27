@@ -10,6 +10,15 @@ export interface ComponentRecord {
   manualId: string
   manualTitle: string
   manualUrl: string
+  photoUrl: string
+  refrigerant: string
+  installDate: string
+  oilType: string
+  status: string            // 'active' | 'spare' | 'decommissioned'
+  notes: string
+  lastServiceDate: string
+  assetTag: string
+  troubleshooting: string
   storeName: string
   equipmentId: string | null
   pmReportId: string
@@ -17,7 +26,7 @@ export interface ComponentRecord {
   rackLabel: string
   slot: number | null
   isCatalog: boolean
-  catalogId: string | null   // manual_components.id — present when isCatalog is true
+  catalogId: string | null
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -71,22 +80,31 @@ export async function GET(req: NextRequest) {
         seen.add(dedupeKey)
 
         components.push({
-          key:          `${report.id}-rack${rackIdx}-comp${i}`,
-          type:         'Compressor',
-          manufacturer: (rack.compressorManufacturer as string) ?? '',
+          key:             `${report.id}-rack${rackIdx}-comp${i}`,
+          type:            'Compressor',
+          manufacturer:    (rack.compressorManufacturer as string) ?? '',
           model,
           serial,
-          manualId:     ((rack.compressorManualIds    as string[]) ?? [])[i] ?? '',
-          manualTitle:  ((rack.compressorManualTitles as string[]) ?? [])[i] ?? '',
-          manualUrl:    '',
-          storeName:    report.store_name ?? '',
-          equipmentId:  report.equipment_id ?? null,
-          pmReportId:   report.id,
-          pmDate:       report.performed_at,
+          manualId:        ((rack.compressorManualIds    as string[]) ?? [])[i] ?? '',
+          manualTitle:     ((rack.compressorManualTitles as string[]) ?? [])[i] ?? '',
+          manualUrl:       '',
+          photoUrl:        '',
+          refrigerant:     '',
+          installDate:     '',
+          oilType:         '',
+          status:          'active',
+          notes:           '',
+          lastServiceDate: '',
+          assetTag:        '',
+          troubleshooting: '',
+          storeName:       report.store_name ?? '',
+          equipmentId:     report.equipment_id ?? null,
+          pmReportId:      report.id,
+          pmDate:          report.performed_at,
           rackLabel,
-          slot:         i + 1,
-          isCatalog:    false,
-          catalogId:    null,
+          slot:            i + 1,
+          isCatalog:       false,
+          catalogId:       null,
         })
       }
 
@@ -99,22 +117,31 @@ export async function GET(req: NextRequest) {
         seen.add(dedupeKey)
 
         components.push({
-          key:          `${report.id}-rack${rackIdx}-${comp.id ?? Math.random()}`,
-          type:         componentType || 'Other',
+          key:             `${report.id}-rack${rackIdx}-${comp.id ?? Math.random()}`,
+          type:            componentType || 'Other',
           manufacturer,
           model,
           serial,
-          manualId:     comp.manualId    ?? '',
-          manualTitle:  comp.manualTitle ?? '',
-          manualUrl:    '',
-          storeName:    report.store_name ?? '',
-          equipmentId:  report.equipment_id ?? null,
-          pmReportId:   report.id,
-          pmDate:       report.performed_at,
+          manualId:        comp.manualId    ?? '',
+          manualTitle:     comp.manualTitle ?? '',
+          manualUrl:       '',
+          photoUrl:        '',
+          refrigerant:     '',
+          installDate:     '',
+          oilType:         '',
+          status:          'active',
+          notes:           '',
+          lastServiceDate: '',
+          assetTag:        '',
+          troubleshooting: '',
+          storeName:       report.store_name ?? '',
+          equipmentId:     report.equipment_id ?? null,
+          pmReportId:      report.id,
+          pmDate:          report.performed_at,
           rackLabel,
-          slot:         null,
-          isCatalog:    false,
-          catalogId:    null,
+          slot:            null,
+          isCatalog:       false,
+          catalogId:       null,
         })
       }
 
@@ -125,22 +152,31 @@ export async function GET(req: NextRequest) {
   // ── Catalog entries from manual_components ──
   for (const c of catalogResult.data ?? []) {
     components.push({
-      key:          `catalog-${c.id}`,
-      type:         c.type || 'Other',
-      manufacturer: c.manufacturer ?? '',
-      model:        c.model ?? '',
-      serial:       c.serial ?? '',
-      manualId:     c.manual_id ?? '',
-      manualTitle:  c.manual_title ?? '',
-      manualUrl:    c.manual_url ?? '',
-      storeName:    c.store_name ?? '',
-      equipmentId:  c.equipment_id ?? null,
-      pmReportId:   '',
-      pmDate:       c.created_at ?? '',
-      rackLabel:    c.rack_label ?? '',
-      slot:         c.slot ?? null,
-      isCatalog:    true,
-      catalogId:    c.id,
+      key:             `catalog-${c.id}`,
+      type:            c.type            || 'Other',
+      manufacturer:    c.manufacturer    ?? '',
+      model:           c.model           ?? '',
+      serial:          c.serial          ?? '',
+      manualId:        c.manual_id       ?? '',
+      manualTitle:     c.manual_title    ?? '',
+      manualUrl:       c.manual_url      ?? '',
+      photoUrl:        c.photo_url       ?? '',
+      refrigerant:     c.refrigerant     ?? '',
+      installDate:     c.install_date    ?? '',
+      oilType:         c.oil_type        ?? '',
+      status:          c.status          ?? 'active',
+      notes:           c.notes           ?? '',
+      lastServiceDate: c.last_service_date ?? '',
+      assetTag:        c.asset_tag       ?? '',
+      troubleshooting: c.troubleshooting ?? '',
+      storeName:       c.store_name      ?? '',
+      equipmentId:     c.equipment_id    ?? null,
+      pmReportId:      '',
+      pmDate:          c.created_at      ?? '',
+      rackLabel:       c.rack_label      ?? '',
+      slot:            c.slot            ?? null,
+      isCatalog:       true,
+      catalogId:       c.id,
     })
   }
 
@@ -151,7 +187,9 @@ export async function GET(req: NextRequest) {
       c.manufacturer.toLowerCase().includes(q) ||
       c.serial.toLowerCase().includes(q)       ||
       c.storeName.toLowerCase().includes(q)    ||
-      c.type.toLowerCase().includes(q)
+      c.type.toLowerCase().includes(q)         ||
+      c.assetTag.toLowerCase().includes(q)     ||
+      c.refrigerant.toLowerCase().includes(q)
     )
   }
   if (type) out = out.filter(c => c.type === type)
@@ -163,7 +201,12 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseServer()
   const body = await req.json()
 
-  const { type, manufacturer, model, serial, manualTitle, manualUrl, storeName } = body
+  const {
+    type, manufacturer, model, serial, manualTitle, manualUrl,
+    storeName, refrigerant, installDate, oilType, status,
+    notes, lastServiceDate, assetTag, troubleshooting,
+  } = body
+
   if (!type || !manufacturer || !model) {
     return NextResponse.json({ error: 'type, manufacturer and model are required' }, { status: 400 })
   }
@@ -174,11 +217,19 @@ export async function POST(req: NextRequest) {
       type,
       manufacturer,
       model,
-      serial:        serial       ?? '',
-      manual_title:  manualTitle  ?? '',
-      manual_url:    manualUrl    ?? '',
-      store_name:    storeName    ?? '',
-      rack_label:    '',
+      serial:             serial          ?? '',
+      manual_title:       manualTitle     ?? '',
+      manual_url:         manualUrl       ?? '',
+      store_name:         storeName       ?? '',
+      rack_label:         '',
+      refrigerant:        refrigerant     ?? '',
+      install_date:       installDate     || null,
+      oil_type:           oilType         ?? '',
+      status:             status          ?? 'active',
+      notes:              notes           ?? '',
+      last_service_date:  lastServiceDate || null,
+      asset_tag:          assetTag        ?? '',
+      troubleshooting:    troubleshooting ?? '',
     })
     .select()
     .single()
@@ -192,16 +243,32 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const supabase = getSupabaseServer()
-  const { id, manualTitle, manualUrl } = await req.json()
+  const body = await req.json()
+  const { id, ...fields } = body
 
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
+  // Map camelCase → snake_case for DB
+  const update: Record<string, unknown> = {}
+  if ('manualTitle'     in fields) update.manual_title       = fields.manualTitle
+  if ('manualUrl'       in fields) update.manual_url         = fields.manualUrl
+  if ('refrigerant'     in fields) update.refrigerant        = fields.refrigerant
+  if ('installDate'     in fields) update.install_date       = fields.installDate || null
+  if ('oilType'         in fields) update.oil_type           = fields.oilType
+  if ('status'          in fields) update.status             = fields.status
+  if ('notes'           in fields) update.notes              = fields.notes
+  if ('lastServiceDate' in fields) update.last_service_date  = fields.lastServiceDate || null
+  if ('assetTag'        in fields) update.asset_tag          = fields.assetTag
+  if ('troubleshooting' in fields) update.troubleshooting    = fields.troubleshooting
+  if ('storeName'       in fields) update.store_name         = fields.storeName
+  if ('manufacturer'    in fields) update.manufacturer       = fields.manufacturer
+  if ('model'           in fields) update.model              = fields.model
+  if ('serial'          in fields) update.serial             = fields.serial
+  if ('type'            in fields) update.type               = fields.type
+
   const { data, error } = await supabase
     .from('manual_components')
-    .update({
-      manual_title: manualTitle ?? '',
-      manual_url:   manualUrl   ?? '',
-    })
+    .update(update)
     .eq('id', id)
     .select()
     .single()
