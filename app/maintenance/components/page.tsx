@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Search, BookOpen, ExternalLink, X, ChevronRight,
   Loader2, Plus, Zap, Wind, Cpu, Sliders, Droplets, Package,
-  Gauge, Snowflake, Server, Monitor, Filter, Box, LayoutGrid,
+  Gauge, Snowflake, Server, Monitor, Filter, Box, LayoutGrid, Pencil,
 } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 import type { ComponentRecord } from '@/app/api/components/route'
+import type { UserRole } from '@/types'
 
 // ── Type metadata ─────────────────────────────────────────────────────────────
 const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
@@ -116,6 +118,95 @@ function AddComponentModal({ onClose, onSaved }: { onClose: () => void; onSaved:
   )
 }
 
+// ── Edit manual modal (admin/manager only) ────────────────────────────────────
+function EditManualModal({
+  component,
+  onClose,
+  onSaved,
+}: {
+  component: ComponentRecord
+  onClose: () => void
+  onSaved: (manualTitle: string, manualUrl: string) => void
+}) {
+  const [title, setTitle]   = useState(component.manualTitle)
+  const [url,   setUrl]     = useState(component.manualUrl)
+  const [saving, setSaving] = useState(false)
+  const [err,    setErr]    = useState('')
+
+  async function save() {
+    setSaving(true); setErr('')
+    try {
+      const res = await fetch('/api/components', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: component.catalogId, manualTitle: title, manualUrl: url }),
+      })
+      if (!res.ok) { const d = await res.json(); setErr(d.error ?? 'Save failed.') }
+      else onSaved(title, url)
+    } catch { setErr('Network error.') }
+    setSaving(false)
+  }
+
+  const inp = 'w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const lbl = 'block text-xs font-medium text-slate-600 mb-1'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">Edit Manual Link</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{component.manufacturer} {component.model}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div>
+          <label className={lbl}>Manual Title</label>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="e.g. Installation & Operation Manual"
+            className={inp}
+          />
+        </div>
+        <div>
+          <label className={lbl}>Manual URL</label>
+          <input
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://…"
+            className={inp}
+          />
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-blue-500 hover:underline">
+              <ExternalLink size={10} /> Test link
+            </a>
+          )}
+        </div>
+
+        {err && <p className="text-xs text-red-500">{err}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ComponentRegistryPage() {
   const router = useRouter()
@@ -129,8 +220,26 @@ export default function ComponentRegistryPage() {
   const [query, setQuery]                 = useState('')
   const [activeType, setActiveType]       = useState('')
   const [manualTarget, setManualTarget]   = useState<ComponentRecord | null>(null)
+  const [editTarget, setEditTarget]       = useState<ComponentRecord | null>(null)
   const [showAdd, setShowAdd]             = useState(false)
+  const [userRole, setUserRole]           = useState<UserRole | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const isAdmin = userRole === 'admin' || userRole === 'manager'
+
+  // Auth: get current user role
+  useEffect(() => {
+    async function checkRole() {
+      try {
+        const sb = getSupabaseBrowser()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data } = await sb.from('users').select('role').eq('id', user.id).single()
+        if (data?.role) setUserRole(data.role as UserRole)
+      } catch { /* silent */ }
+    }
+    checkRole()
+  }, [])
 
   // Initial full fetch
   const fetchAll = useCallback(async () => {
@@ -319,7 +428,7 @@ export default function ComponentRegistryPage() {
                             </div>
 
                             {/* Manual */}
-                            <div className="mt-2">
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
                               {c.manualUrl ? (
                                 <a href={c.manualUrl} target="_blank" rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 hover:bg-emerald-100 transition-colors">
@@ -335,6 +444,16 @@ export default function ComponentRegistryPage() {
                                 <button onClick={() => setManualTarget(c)}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
                                   <BookOpen size={11} /> Find Manual
+                                </button>
+                              )}
+                              {/* Edit manual link — admin/manager only, catalog entries only */}
+                              {isAdmin && c.isCatalog && (
+                                <button
+                                  onClick={() => setEditTarget(c)}
+                                  className="p-1 text-slate-300 hover:text-blue-500 rounded transition-colors"
+                                  title="Edit manual link"
+                                >
+                                  <Pencil size={12} />
                                 </button>
                               )}
                             </div>
@@ -374,6 +493,21 @@ export default function ComponentRegistryPage() {
         <AddComponentModal
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); fetchAll() }}
+        />
+      )}
+
+      {editTarget && (
+        <EditManualModal
+          component={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(manualTitle, manualUrl) => {
+            // Update local state immediately — no reload needed
+            const patch = (list: ComponentRecord[]) =>
+              list.map(c => c.key === editTarget.key ? { ...c, manualTitle, manualUrl } : c)
+            setAllComponents(patch)
+            setComponents(patch)
+            setEditTarget(null)
+          }}
         />
       )}
     </div>
