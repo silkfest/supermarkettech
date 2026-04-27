@@ -7,6 +7,10 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServer()
 
+  // Debug: log which Supabase project we're connecting to
+  console.log('[apprentice/progress] SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('[apprentice/progress] HAS_SERVICE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+
   // Fetch tasks and progress separately to avoid PostgREST join issues
   const [tasksResult, progressResult] = await Promise.all([
     supabase.from('training_tasks').select('*').order('category').order('sort_order'),
