@@ -10,19 +10,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     supabase.from('equipment').select('*').eq('store_id', id).order('equipment_type').order('name'),
     supabase
       .from('pm_reports')
-      .select('id, store_name, performed_at, report_type')
+      .select('id, store_name, store_id, performed_at, report_type')
       .order('performed_at', { ascending: false })
-      .limit(10),
+      .limit(100),
   ])
 
   if (storeResult.error) return NextResponse.json({ error: storeResult.error.message }, { status: 404 })
 
   const store = storeResult.data as Record<string, unknown>
 
-  // Filter PMs by store name (until pm_reports has a store_id FK)
+  // Match PMs by store_id (preferred) OR store_name fallback for older records
   const storePms = (pmResult.data ?? []).filter(
-    (pm: { store_name: string }) => pm.store_name === store.name
-  )
+    (pm: { store_name: string; store_id: string | null }) =>
+      pm.store_id === id || pm.store_name === store.name
+  ).slice(0, 20)
 
   return NextResponse.json({
     ...store,
