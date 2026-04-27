@@ -4,28 +4,29 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { ArrowLeft, ChevronDown, CheckCircle2, Circle, Loader2, ChevronDown as Down } from 'lucide-react'
 
-// ─── Badge definitions ──────────────────────────────────────────────────────
+// ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
-  { id: 'first_step',    icon: '🏅', name: 'First Step',        desc: 'Complete your first task',           check: (c: number, _t: number, byCat: Record<string,number>) => Object.values(byCat).some(v => v > 0) },
-  { id: 'safety',        icon: '🛡️', name: 'Safety Certified',   desc: 'Complete all Safety First tasks',    check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Safety First'] ?? 0) >= (totCat['Safety First'] ?? 1) },
-  { id: 'fundamentals',  icon: '❄️', name: 'Cryo Rookie',        desc: 'Complete Refrigeration Fundamentals',check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Refrigeration Fundamentals'] ?? 0) >= (totCat['Refrigeration Fundamentals'] ?? 1) },
-  { id: 'compressors',   icon: '🔧', name: 'Rack Hand',          desc: 'Complete Compressors & Racks',       check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Compressors & Racks'] ?? 0) >= (totCat['Compressors & Racks'] ?? 1) },
-  { id: 'electrical',    icon: '⚡', name: 'Live Wire',           desc: 'Complete Electrical Skills',         check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Electrical Skills'] ?? 0) >= (totCat['Electrical Skills'] ?? 1) },
-  { id: 'pm',            icon: '📋', name: 'PM Pro',             desc: 'Complete Preventive Maintenance',    check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Preventive Maintenance'] ?? 0) >= (totCat['Preventive Maintenance'] ?? 1) },
-  { id: 'diagnostics',   icon: '🔍', name: 'Detective',          desc: 'Complete all Diagnostics tasks',     check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Diagnostics'] ?? 0) >= (totCat['Diagnostics'] ?? 1) },
-  { id: 'docs',          icon: '📝', name: 'Paper Trail',        desc: 'Complete all Documentation tasks',   check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Documentation'] ?? 0) >= (totCat['Documentation'] ?? 1) },
-  { id: 'halfway',       icon: '💯', name: 'Halfway There',      desc: 'Reach 50% overall completion',       check: (c: number, t: number) => t > 0 && c / t >= 0.5 },
-  { id: 'journeyman',    icon: '⭐', name: 'Journeyman Ready',   desc: 'Complete every single task',          check: (c: number, t: number) => t > 0 && c >= t },
+  { id: 'first_step',    icon: '🏅', name: 'First Step',         desc: 'Complete your first task',                    check: (c: number, _t: number, byCat: Record<string,number>) => Object.values(byCat).some(v => v > 0) },
+  { id: 'safety',        icon: '🛡️', name: 'Safety Certified',   desc: 'Complete all Protect Self & Environment tasks', check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Protect Self & Environment'] ?? 0) >= (totCat['Protect Self & Environment'] ?? 1) },
+  { id: 'business',      icon: '📋', name: 'Pro Communicator',   desc: 'Complete all Business Practices tasks',         check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Business Practices'] ?? 0) >= (totCat['Business Practices'] ?? 1) },
+  { id: 'tools',         icon: '🔧', name: 'Tool Master',        desc: 'Complete all Tools & Equipment tasks',          check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Tools & Equipment'] ?? 0) >= (totCat['Tools & Equipment'] ?? 1) },
+  { id: 'planning',      icon: '📐', name: 'System Designer',    desc: 'Complete all Planning & Preparation tasks',     check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Planning & Preparation'] ?? 0) >= (totCat['Planning & Preparation'] ?? 1) },
+  { id: 'installation',  icon: '⚙️', name: 'Installer',          desc: 'Complete all Installation tasks',               check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Installation'] ?? 0) >= (totCat['Installation'] ?? 1) },
+  { id: 'maintenance',   icon: '🔩', name: 'PM Pro',             desc: 'Complete all Planned Maintenance tasks',        check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Planned Maintenance'] ?? 0) >= (totCat['Planned Maintenance'] ?? 1) },
+  { id: 'service',       icon: '⚡', name: 'Diagnostic Expert',  desc: 'Complete all Service & Repair tasks',           check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Service & Repair'] ?? 0) >= (totCat['Service & Repair'] ?? 1) },
+  { id: 'commissioning', icon: '✅', name: 'Commissioning Pro',  desc: 'Complete all Commissioning tasks',              check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Commissioning'] ?? 0) >= (totCat['Commissioning'] ?? 1) },
+  { id: 'halfway',       icon: '💯', name: 'Halfway There',      desc: 'Reach 50% overall completion',                 check: (c: number, t: number) => t > 0 && c / t >= 0.5 },
+  { id: 'journeyman',    icon: '⭐', name: 'Journeyman Ready',   desc: 'Complete all 313A required tasks',              check: (c: number, t: number) => t > 0 && c >= t },
 ]
 
-// ─── Level system ───────────────────────────────────────────────────────────
+// ─── Level system (calibrated for 99 tasks / ~1,600 total XP) ───────────────
 const LEVELS = [
-  { min: 0,   label: 'Rookie',            color: 'text-slate-500' },
-  { min: 50,  label: 'Apprentice I',      color: 'text-amber-600' },
-  { min: 100, label: 'Apprentice II',     color: 'text-orange-600' },
-  { min: 200, label: 'Apprentice III',    color: 'text-blue-600' },
-  { min: 300, label: 'Senior Apprentice', color: 'text-violet-600' },
-  { min: 450, label: 'Journeyman Ready!', color: 'text-emerald-600' },
+  { min: 0,    label: 'Rookie',            color: 'text-slate-500' },
+  { min: 150,  label: 'Apprentice I',      color: 'text-amber-600' },
+  { min: 400,  label: 'Apprentice II',     color: 'text-orange-600' },
+  { min: 700,  label: 'Apprentice III',    color: 'text-blue-600' },
+  { min: 1100, label: 'Senior Apprentice', color: 'text-violet-600' },
+  { min: 1500, label: 'Journeyman Ready!', color: 'text-emerald-600' },
 ]
 
 function getLevel(xp: number) {
@@ -40,14 +41,18 @@ const DIFF_BADGE: Record<string, string> = {
   advanced:     'bg-red-100 text-red-700',
 }
 
+// ─── Ontario 313A Skill Set categories ──────────────────────────────────────
 const CAT_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
-  'Safety First':              { bg: 'bg-red-50',     border: 'border-red-200',    icon: '🛡️' },
-  'Refrigeration Fundamentals':{ bg: 'bg-blue-50',    border: 'border-blue-200',   icon: '❄️' },
-  'Compressors & Racks':       { bg: 'bg-slate-50',   border: 'border-slate-200',  icon: '🔧' },
-  'Electrical Skills':         { bg: 'bg-yellow-50',  border: 'border-yellow-200', icon: '⚡' },
-  'Preventive Maintenance':    { bg: 'bg-green-50',   border: 'border-green-200',  icon: '📋' },
-  'Diagnostics':               { bg: 'bg-purple-50',  border: 'border-purple-200', icon: '🔍' },
-  'Documentation':             { bg: 'bg-orange-50',  border: 'border-orange-200', icon: '📝' },
+  'Protect Self & Environment': { bg: 'bg-red-50',     border: 'border-red-200',    icon: '🛡️' },
+  'Business Practices':         { bg: 'bg-blue-50',    border: 'border-blue-200',   icon: '📋' },
+  'Tools & Equipment':          { bg: 'bg-slate-50',   border: 'border-slate-200',  icon: '🔧' },
+  'Planning & Preparation':     { bg: 'bg-orange-50',  border: 'border-orange-200', icon: '📐' },
+  'Installation':               { bg: 'bg-cyan-50',    border: 'border-cyan-200',   icon: '⚙️' },
+  'Planned Maintenance':        { bg: 'bg-green-50',   border: 'border-green-200',  icon: '🔍' },
+  'Cleaning & Lubrication':     { bg: 'bg-yellow-50',  border: 'border-yellow-200', icon: '🧹' },
+  'Maintenance':                { bg: 'bg-teal-50',    border: 'border-teal-200',   icon: '🔩' },
+  'Service & Repair':           { bg: 'bg-purple-50',  border: 'border-purple-200', icon: '⚡' },
+  'Commissioning':              { bg: 'bg-emerald-50', border: 'border-emerald-200',icon: '✅' },
 }
 
 interface Task {
