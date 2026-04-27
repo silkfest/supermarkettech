@@ -139,8 +139,9 @@ export default function StoreDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (res.ok && store) {
-      setStore({ ...store, [field]: value })
+    if (res.ok) {
+      const updated = await res.json()
+      setStore(prev => prev ? { ...prev, ...updated } : prev)
     }
     setEditField(null)
     setSaving(false)
@@ -228,6 +229,16 @@ export default function StoreDetailPage() {
           </div>
 
           <div className="divide-y divide-slate-100">
+            {/* Name */}
+            <EditableRow
+              label="Site name" icon={<Building2 size={13}/>} value={store.name}
+              isAdmin={isAdmin} fieldKey="name"
+              editField={editField} editVal={editVal} saving={saving}
+              onEdit={(k, v) => { setEditField(k); setEditVal(v) }}
+              onSave={saveField} onCancel={() => setEditField(null)}
+              onEditValChange={setEditVal}
+              placeholder="Site name"
+            />
             {/* Address */}
             <EditableRow
               label="Address" icon={<MapPin size={13}/>} value={store.address}
