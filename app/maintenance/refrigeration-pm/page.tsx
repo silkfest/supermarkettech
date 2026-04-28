@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, BookOpen } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, BookOpen, Home } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -976,6 +976,7 @@ function RefrigerationPMContent() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard"><Home size={18} /></button>
           <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600"><ArrowLeft size={18} /></button>
           <div className="flex items-baseline gap-0.5">
             <span className="text-lg font-bold text-blue-600">Cold</span>
