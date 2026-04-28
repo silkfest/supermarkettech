@@ -82,8 +82,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 }
 
 // ─── Refrigeration report view ────────────────────────────────────────────────
-function RefrigView({ data }: { data: Record<string, unknown> }) {
-  const units = data.units as Record<string, unknown> | null
+function RefrigView({ data }: { data: Record<string, any> }) {
+  const units = data.units as Record<string, any> | null
   const checklist = data.checklist as Record<string, boolean> | null
   const notes = data.notes as Array<{ id: string; text: string; importance: string }> | null
   const racks = (units?.racks as unknown[]) ?? []
@@ -135,7 +135,7 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
 
       {/* Racks */}
       {racks.length > 0 && racks.map((rack: unknown, idx: number) => {
-        const r = rack as Record<string, unknown>
+        const r = rack as Record<string, any>
         const label = (r.tabDisplayName as string) || `Rack ${rackLetter(idx)}`
         const compCount = (r.compressorCount as number) ?? 1
         const models = (r.compressorModels as string[]) ?? []
@@ -234,8 +234,8 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
 }
 
 // ─── HVAC report view ─────────────────────────────────────────────────────────
-function HvacView({ data }: { data: Record<string, unknown> }) {
-  const units = data.units as Record<string, unknown> | null
+function HvacView({ data }: { data: Record<string, any> }) {
+  const units = data.units as Record<string, any> | null
   const checklist = data.checklist as Record<string, boolean> | null
   const notes = data.notes as Array<{ id: string; note: string; equipmentIndex: number | null; assetId: string; importance: string }> | null
   const equipment = (units?.equipment as unknown[]) ?? []
@@ -353,7 +353,7 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
 }
 
 // ─── Individual report view ───────────────────────────────────────────────────
-function IndividualView({ data }: { data: Record<string, unknown> }) {
+function IndividualView({ data }: { data: Record<string, any> }) {
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const parts = (data.parts_needed as string[]) ?? []
   const issue = data.issue_explanation as string | null | undefined
@@ -414,7 +414,7 @@ function ReportViewContent() {
   const type = searchParams.get('type') ?? 'pm'            // 'pm' | 'individual'
   const reportType = searchParams.get('report_type') ?? '' // 'refrigeration' | 'hvac' | ''
 
-  const [data, setData] = useState<Record<string, unknown> | null>(null)
+  const [data, setData] = useState<Record<string, any> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
