@@ -129,7 +129,7 @@ function MaintenanceHubContent() {
               {mergedRecent.map(r => (
                 <button
                   key={r.id}
-                  onClick={() => router.push(`/maintenance/${r.kind === 'pm' ? (r.report_type === 'hvac' ? 'hvac-pm' : 'refrigeration-pm') : 'individual-report'}?id=${r.id}`)}
+                  onClick={() => router.push(`/maintenance/report/${r.id}?type=${r.kind}&report_type=${r.report_type ?? ''}`)}
                   className="w-full text-left px-4 py-4 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
