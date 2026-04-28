@@ -51,7 +51,8 @@ export default function SettingsPage() {
 
     const { error } = await supabase
       .from('users')
-      .update({ name: displayName.trim() })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ name: displayName.trim() } as any)
       .eq('id', user.id)
 
     setSavingName(false)
