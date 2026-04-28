@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X, GraduationCap, Building2, Home } from 'lucide-react'
+import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X, GraduationCap, Building2, Home, Settings } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
@@ -122,6 +122,13 @@ function SidebarContent({
         >
           <span className="opacity-60"><Building2 size={13}/></span>
           Sites
+        </button>
+        <button
+          onClick={() => { router.push('/settings'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        >
+          <span className="opacity-60"><Settings size={13}/></span>
+          Settings
         </button>
       </div>
 
