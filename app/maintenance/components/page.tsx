@@ -5,7 +5,7 @@ import {
   ArrowLeft, Search, BookOpen, ExternalLink, X, ChevronRight, ChevronDown,
   Loader2, Plus, Zap, Wind, Cpu, Sliders, Droplets, Package,
   Gauge, Snowflake, Server, Monitor, Filter, Box, LayoutGrid,
-  Pencil, Camera, Tag, Wrench, CalendarClock, Thermometer,
+  Pencil, Camera, Tag, Wrench, CalendarClock, Thermometer, Home,
 } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -629,7 +629,10 @@ export default function ComponentRegistryPage() {
     <div className="min-h-[100dvh] bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/maintenance')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" title="Dashboard">
+          <Home size={20}/>
+        </button>
+        <button onClick={() => router.push('/maintenance')} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" title="Maintenance">
           <ArrowLeft size={20}/>
         </button>
         <div className="flex items-baseline gap-0.5">
