@@ -356,22 +356,25 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
 function IndividualView({ data }: { data: Record<string, unknown> }) {
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const parts = (data.parts_needed as string[]) ?? []
+  const issue = data.issue_explanation as string | null | undefined
+  const steps = data.steps_taken as string | null | undefined
+  const next = data.whats_next as string | null | undefined
 
   return (
     <div className="space-y-5">
-      {data.issue_explanation && (
+      {issue && (
         <SectionCard title="Issue / Complaint">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{data.issue_explanation as string}</p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{issue}</p>
         </SectionCard>
       )}
-      {data.steps_taken && (
+      {steps && (
         <SectionCard title="Steps Taken">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{data.steps_taken as string}</p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{steps}</p>
         </SectionCard>
       )}
-      {data.whats_next && (
+      {next && (
         <SectionCard title="What's Next">
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{data.whats_next as string}</p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">{next}</p>
         </SectionCard>
       )}
       {parts.length > 0 && (
