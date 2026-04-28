@@ -457,6 +457,10 @@ function ReportViewContent() {
     )
   }
 
+  const storeName = data.store_name as string | null | undefined
+  const pmSeason = data.pm_season as string | null | undefined
+  const simproNumber = data.simpro_number as string | null | undefined
+
   return (
     <>
       {/* Print styles */}
@@ -484,8 +488,8 @@ function ReportViewContent() {
             </div>
             <span className="text-slate-400">/</span>
             <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
-            {data.store_name && (
-              <><span className="text-slate-400">/</span><span className="text-sm text-slate-500">{data.store_name as string}</span></>
+            {storeName && (
+              <><span className="text-slate-400">/</span><span className="text-sm text-slate-500">{storeName}</span></>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -512,12 +516,12 @@ function ReportViewContent() {
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-xl font-bold text-slate-900">{typeLabel}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">{data.store_name as string}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{storeName}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-slate-700">{dateStr}</p>
-                {data.pm_season && <p className="text-xs text-slate-400 mt-0.5">{data.pm_season as string} PM</p>}
-                {data.simpro_number && <p className="text-xs text-slate-400 mt-0.5">Simpro #{data.simpro_number as string}</p>}
+                {pmSeason && <p className="text-xs text-slate-400 mt-0.5">{pmSeason} PM</p>}
+                {simproNumber && <p className="text-xs text-slate-400 mt-0.5">Simpro #{simproNumber}</p>}
               </div>
             </div>
           </div>
