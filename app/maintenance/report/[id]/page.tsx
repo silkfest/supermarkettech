@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { ArrowLeft, Home, Printer, Pencil, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Home, Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
 
 // ─── Refrigeration checklist labels ───────────────────────────────────────────
 const REFRIG_CHECKLIST: { id: string; label: string }[] = [
@@ -417,6 +417,8 @@ function ReportViewContent() {
   const [data, setData] = useState<Record<string, any> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -426,6 +428,13 @@ function ReportViewContent() {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => { setError('Failed to load report'); setLoading(false) })
   }, [id, type])
+
+  async function handleDelete() {
+    setDeleting(true)
+    const url = type === 'individual' ? `/api/individual-reports/${id}` : `/api/pm-reports/${id}`
+    await fetch(url, { method: 'DELETE' })
+    router.push('/maintenance')
+  }
 
   const editUrl = type === 'individual'
     ? `/maintenance/individual-report?id=${id}`
@@ -507,6 +516,33 @@ function ReportViewContent() {
               <Pencil size={14} />
               Edit
             </button>
+            {showDeleteConfirm ? (
+              <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                <span className="text-xs text-red-700 font-medium">Delete report?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-2.5 py-1 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {deleting && <Loader2 size={11} className="animate-spin" />}
+                  {deleting ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-2.5 py-1 bg-white text-slate-600 text-xs font-medium rounded-md border border-slate-200 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            )}
           </div>
         </div>
 
