@@ -7,12 +7,28 @@ export async function GET(req: NextRequest) {
   const equipmentId = searchParams.get('equipmentId')
   const supabase = getSupabaseServer()
 
-  const query = supabase.from('documents').select('*').order('created_at', { ascending: false })
-  if (equipmentId) query.or(`equipment_id.eq.${equipmentId},equipment_id.is.null`)
+  let query = supabase.from('documents').select('*').order('created_at', { ascending: false })
+
+  // Only show documents linked to this specific piece of equipment
+  if (equipmentId) {
+    query = query.eq('equipment_id', equipmentId)
+  }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  // Generate 1-hour signed URLs for all documents stored in Supabase Storage
+  const docs = await Promise.all((data ?? []).map(async (doc) => {
+    if (doc.file_name) {
+      const { data: signed } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(doc.file_name, 3600)
+      return { ...doc, url: signed?.signedUrl ?? null }
+    }
+    return { ...doc, url: null }
+  }))
+
+  return NextResponse.json(docs)
 }
 
 export async function POST(req: NextRequest) {
