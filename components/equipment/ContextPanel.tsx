@@ -1,5 +1,5 @@
 'use client'
-import { Upload, FileText, Globe, Thermometer } from 'lucide-react'
+import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2 } from 'lucide-react'
 import { cn, formatBytes, timeAgo } from '@/lib/utils'
 import type { Equipment, Document, SensorSnapshot } from '@/types'
 
@@ -14,9 +14,13 @@ function Reading({ label, value, warn, alarm }: { label: string; value: string; 
   )
 }
 
+interface DocWithUrl extends Document {
+  url?: string | null
+}
+
 interface Props {
   equipment: Equipment | null
-  documents: Document[]
+  documents: DocWithUrl[]
   snapshot?: SensorSnapshot
   onUpload: () => void
 }
@@ -106,27 +110,53 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload 
           {documents.length === 0 && (
             <p className="text-[11px] text-slate-400 mb-2">No manuals uploaded yet</p>
           )}
-          <div className="space-y-1.5 mb-2">
-            {documents.map(doc => (
-              <div key={doc.id} className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-                  {doc.source_type === 'WEB'
-                    ? <Globe size={10} className="text-blue-500"/>
-                    : <FileText size={10} className="text-red-400"/>
-                  }
+          <div className="space-y-1 mb-2">
+            {documents.map(doc => {
+              const isProcessing = doc.status === 'PROCESSING'
+              const canOpen = !!doc.url && !isProcessing
+              const icon = doc.source_type === 'WEB'
+                ? <Globe size={10} className="text-blue-500"/>
+                : <FileText size={10} className="text-red-400"/>
+
+              const inner = (
+                <div className="flex items-center gap-2 w-full group">
+                  <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                    {isProcessing ? <Loader2 size={10} className="text-amber-400 animate-spin"/> : icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      'text-[11px] font-medium truncate leading-tight',
+                      canOpen ? 'text-blue-600 group-hover:underline' : 'text-slate-700'
+                    )}>
+                      {doc.title}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {isProcessing ? 'Processing…' : doc.page_count ? `${doc.page_count}p` : doc.source_type}
+                      {doc.file_size ? ` · ${formatBytes(doc.file_size)}` : ''}
+                    </p>
+                  </div>
+                  {canOpen && (
+                    <ExternalLink size={10} className="text-slate-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"/>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium text-slate-700 truncate">{doc.title}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {doc.status === 'PROCESSING' ? 'Processing…' : doc.page_count ? `${doc.page_count}p` : doc.source_type}
-                    {doc.file_size ? ` · ${formatBytes(doc.file_size)}` : ''}
-                  </p>
+              )
+
+              return canOpen ? (
+                <a
+                  key={doc.id}
+                  href={doc.url!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-md px-1 py-1 -mx-1 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div key={doc.id} className="flex items-center gap-2 px-1 py-1">
+                  {inner}
                 </div>
-                {doc.status === 'PROCESSING' && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"/>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
           <button
             onClick={onUpload}
