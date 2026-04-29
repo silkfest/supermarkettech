@@ -4,24 +4,14 @@ import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { ArrowLeft, Shield, AlertTriangle, CheckCircle, ChevronRight, UserCircle } from 'lucide-react'
 
-type Role   = 'admin' | 'manager' | 'journeyman' | 'apprentice'
-type Status = 'pending' | 'active' | 'suspended'
+import { ROLE_LABEL, ROLE_COLOR } from '@/lib/constants'
+import type { Role, Status } from '@/lib/constants'
 
 interface UserRow {
   id: string; email: string; name: string; role: Role; status: Status; created_at: string
 }
 interface Cert {
   id: string; user_id: string; cert_type: string; expiry_date: string | null
-}
-
-const ROLE_LABEL: Record<Role, string> = {
-  admin: 'Admin', manager: 'Manager', journeyman: 'Journeyman', apprentice: 'Apprentice',
-}
-const ROLE_COLOR: Record<Role, string> = {
-  admin: 'bg-purple-100 text-purple-700',
-  manager: 'bg-blue-100 text-blue-700',
-  journeyman: 'bg-emerald-100 text-emerald-700',
-  apprentice: 'bg-amber-100 text-amber-700',
 }
 
 function certStatus(certs: Cert[]): 'none' | 'expiring' | 'expired' | 'ok' {

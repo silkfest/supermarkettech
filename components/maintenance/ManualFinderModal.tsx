@@ -64,6 +64,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import failed')
+      if (!data.id || !data.title) throw new Error('Invalid response from server')
       setLinked({ id: data.id, title: data.title })
       setPhase('done')
     } catch (e) { setError(e instanceof Error ? e.message : 'Import failed') }
@@ -80,6 +81,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
       const res  = await fetch('/api/documents', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      if (!data.id || !data.title) throw new Error('Invalid response from server')
       setLinked({ id: data.id, title: data.title })
       setPhase('done')
     } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed') }

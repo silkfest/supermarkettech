@@ -74,6 +74,7 @@ function TrainingInner() {
   const [apprentices, setApprentices] = useState<Apprentice[]>([])
   const [loading, setLoading]       = useState(true)
   const [toggling, setToggling]     = useState<string | null>(null)
+  const [toggleError, setToggleError] = useState<string | null>(null)
   const [openCats, setOpenCats]     = useState<Record<string, boolean>>({})
   const [newBadge, setNewBadge]     = useState<string | null>(null)
   const [showSwitcher, setShowSwitcher] = useState(false)
@@ -133,7 +134,9 @@ function TrainingInner() {
     if (!currentUser || isReadOnly) return
     const wasComplete = task.progress?.status === 'completed'
     setToggling(task.id)
+    setToggleError(null)
 
+    const prevTasks = tasks
     const prevBadgeCount = computeEarnedBadges(tasks).length
     const newTasks = tasks.map(t =>
       t.id === task.id
@@ -144,23 +147,29 @@ function TrainingInner() {
 
     const userId = viewingUser?.id ?? currentUser.id
     if (wasComplete) {
-      await fetch('/api/apprentice/progress', {
+      const res = await fetch('/api/apprentice/progress', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, taskId: task.id }),
       })
+      if (!res.ok) { setTasks(prevTasks); setToggleError('Failed to save — please try again') }
     } else {
-      await fetch('/api/apprentice/progress', {
+      const res = await fetch('/api/apprentice/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, taskId: task.id, status: 'completed' }),
       })
-      const newBadgeCount = computeEarnedBadges(newTasks).length
-      if (newBadgeCount > prevBadgeCount) {
-        const earned  = computeEarnedBadges(newTasks)
-        const prev    = computeEarnedBadges(tasks)
-        const newOnes = earned.filter(b => !prev.find(p => p.id === b.id))
-        if (newOnes[0]) { setNewBadge(newOnes[0].id); setTimeout(() => setNewBadge(null), 4000) }
+      if (!res.ok) {
+        setTasks(prevTasks)
+        setToggleError('Failed to save — please try again')
+      } else {
+        const newBadgeCount = computeEarnedBadges(newTasks).length
+        if (newBadgeCount > prevBadgeCount) {
+          const earned  = computeEarnedBadges(newTasks)
+          const prev    = computeEarnedBadges(tasks)
+          const newOnes = earned.filter(b => !prev.find(p => p.id === b.id))
+          if (newOnes[0]) { setNewBadge(newOnes[0].id); setTimeout(() => setNewBadge(null), 4000) }
+        }
       }
     }
     setToggling(null)
@@ -270,6 +279,14 @@ function TrainingInner() {
           <span className="ml-auto text-xs text-slate-400">Journeyman: <span className="text-slate-200 font-medium">{mentor.name}</span></span>
         )}
       </div>
+
+      {/* Toggle error banner */}
+      {toggleError && (
+        <div className="bg-red-900/60 border-b border-red-700/50 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-red-300">{toggleError}</span>
+          <button onClick={() => setToggleError(null)} className="ml-3 text-red-400 hover:text-red-200 text-base leading-none">×</button>
+        </div>
+      )}
 
       {/* Read-only banner */}
       {isReadOnly && (

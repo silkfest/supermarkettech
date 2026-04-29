@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-type Role = 'admin' | 'manager' | 'journeyman' | 'apprentice'
-type Status = 'pending' | 'active' | 'suspended'
+import { ROLE_LABEL as _RL, STATUS_BADGE } from '@/lib/constants'
+import type { Role, Status } from '@/lib/constants'
 
 interface UserRow {
   id: string
@@ -20,6 +20,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null)
   const router = useRouter()
 
@@ -46,6 +47,7 @@ export default function AdminUsersPage() {
 
   async function updateUser(id: string, patch: Partial<UserRow>) {
     setSaving(id)
+    setError(null)
     const res = await fetch(`/api/users/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -53,6 +55,9 @@ export default function AdminUsersPage() {
     })
     if (res.ok) {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u))
+    } else {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Failed to update user — please try again')
     }
     setSaving(null)
   }
@@ -67,18 +72,11 @@ export default function AdminUsersPage() {
     )
   }
 
-  const statusBadge = (status: Status) => {
-    const map: Record<Status, string> = {
-      pending: 'bg-amber-50 text-amber-700 border-amber-200',
-      active: 'bg-green-50 text-green-700 border-green-200',
-      suspended: 'bg-red-50 text-red-700 border-red-200',
-    }
-    return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${map[status]}`}>
-        {status}
-      </span>
-    )
-  }
+  const statusBadge = (status: Status) => (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_BADGE[status]}`}>
+      {status}
+    </span>
+  )
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -109,6 +107,12 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
+        {error && (
+          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-3 text-red-400 hover:text-red-600 text-base leading-none">×</button>
+          </div>
+        )}
         {/* Pending approvals banner */}
         {users.some(u => u.status === 'pending') && (
           <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex items-center gap-2">

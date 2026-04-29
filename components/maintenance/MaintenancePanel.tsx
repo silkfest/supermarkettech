@@ -25,6 +25,7 @@ export default function MaintenancePanel({ equipmentId }: Props) {
   const [showModal, setShowModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [fetchError, setFetchError] = useState('')
 
   // Form state
   const [title, setTitle] = useState('')
@@ -37,6 +38,7 @@ export default function MaintenancePanel({ equipmentId }: Props) {
 
   async function fetchLogs() {
     setLoading(true)
+    setFetchError('')
     const url = equipmentId
       ? `/api/maintenance-logs?equipmentId=${equipmentId}`
       : '/api/maintenance-logs'
@@ -44,6 +46,8 @@ export default function MaintenancePanel({ equipmentId }: Props) {
     if (res.ok) {
       const data = await res.json()
       setLogs(data)
+    } else {
+      setFetchError('Failed to load maintenance logs')
     }
     setLoading(false)
   }
@@ -65,6 +69,7 @@ export default function MaintenancePanel({ equipmentId }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!equipmentId) { setError('No equipment selected'); return }
+    if (!title.trim()) { setError('Title is required'); return }
     setSubmitting(true)
     setError('')
 
@@ -130,6 +135,11 @@ export default function MaintenancePanel({ equipmentId }: Props) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
           <div className="text-center text-sm text-slate-400 py-8">Loading…</div>
+        ) : fetchError ? (
+          <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+            <span>{fetchError}</span>
+            <button onClick={fetchLogs} className="ml-3 font-medium underline hover:no-underline">Retry</button>
+          </div>
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-3xl mb-2">🔧</div>
