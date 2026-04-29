@@ -6,10 +6,8 @@ import type { Equipment, ChatMode, ChatMessage, CitationSource } from '@/types'
 // ── Mode display config ───────────────────────────────────────────────────────
 
 const MODE_CONFIG: Record<ChatMode, { label: string; placeholder: string }> = {
-  ASK:         { label: 'Ask',         placeholder: 'Ask anything about refrigeration or this unit…' },
-  DIAGNOSE:    { label: 'Diagnose',    placeholder: 'Describe the fault or symptom you\'re seeing…' },
-  ALARM:       { label: 'Alarm',       placeholder: 'Enter an alarm code or describe the alarm condition…' },
-  MAINTENANCE: { label: 'Maintenance', placeholder: 'Ask about service procedures, intervals, or spec…' },
+  EXPERT:      { label: 'Expert',      placeholder: 'Ask anything — describe a fault, paste an alarm code, or ask a general question…' },
+  MAINTENANCE: { label: 'Maintenance', placeholder: 'Ask about service procedures, PM intervals, or describe work done…' },
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -107,10 +105,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: ChatMode }) {
   const modeHints: Record<ChatMode, string> = {
-    ASK:         'Ask any refrigeration question — general theory, refrigerants, controls, or specifics about the selected unit.',
-    DIAGNOSE:    'Describe a symptom or fault condition. I\'ll help you work through a systematic diagnosis.',
-    ALARM:       'Paste an alarm code or describe the alarm. I\'ll look it up and suggest next steps.',
-    MAINTENANCE: 'Ask about PM intervals, service procedures, or spec values for this equipment.',
+    EXPERT:      'Ask anything — general refrigeration questions, fault symptoms, alarm codes, or specifics about the selected unit. No need to switch modes.',
+    MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done and I\'ll help document it.',
   }
 
   return (

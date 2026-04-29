@@ -70,31 +70,15 @@ function buildEquipmentContext(
 }
 
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
-  ASK: `MODE: Expert Q&A
-Answer the technician's question using your expert knowledge and the provided context. Structure complex answers clearly. Use numbered steps for procedures.
-Cite sources with: [Source: {document title}, p.{page}] or [Source: General knowledge].
-If you need more information to give a safe answer, ask one targeted question.`,
+  EXPERT: `MODE: Expert Assistant
+Handle everything in one conversation — general questions, fault diagnosis, alarm codes, and service procedures. Let the technician's message guide the response:
 
-  DIAGNOSE: `MODE: Fault Diagnosis
-Guide the technician through a systematic fault diagnosis:
-1. Gather symptoms (ask if not provided)
-2. Identify the most likely affected system (refrigerant circuit / electrical / controls / mechanical)
-3. Propose specific tests, easiest/safest first
-4. Work toward a confirmed root cause before suggesting a fix
-5. Once confident, provide step-by-step repair instructions
+• General question → answer directly, cite sources, use numbered steps for procedures.
+• Symptom or fault described → guide systematic diagnosis: gather symptoms, identify the affected system (refrigerant circuit / electrical / controls / mechanical), propose tests easiest-first, confirm root cause before suggesting repair. End with: "## Recommended next step:"
+• Alarm code provided → explain in plain English, rank likely causes by probability, describe how to confirm, give reset procedure, cite the manual section if available. If you don't recognise the code, ask for the controller type.
+• Conversation shifts mid-thread → follow naturally. Never ask the technician to switch modes.
 
-Ask one focused question at a time. Always start from the simplest explanation before suggesting major component failures.
-End every response with: "## Recommended next step:"`,
-
-  ALARM: `MODE: Alarm / Error Code Lookup
-For the alarm code provided, give:
-1. Plain English explanation of what the alarm means
-2. Most common causes (ranked by likelihood for this equipment type)
-3. How to confirm the root cause
-4. Reset procedure if applicable
-5. Any safety warnings specific to this fault
-
-If the code is from an uploaded manual, cite the exact section. If you don't recognise the code for this specific model, say so and ask for the controller type.`,
+Ask one focused clarifying question at a time when you need more information.`,
 
   MAINTENANCE: `MODE: Maintenance Assistant
 Help the technician with maintenance documentation and planning:

@@ -12,7 +12,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
   equipmentId: z.string().optional(),
-  mode:        z.enum(['ASK','DIAGNOSE','ALARM','MAINTENANCE']),
+  mode:        z.enum(['EXPERT','MAINTENANCE']),
   message:     z.string().min(1).max(4000),
   history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
 })

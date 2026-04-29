@@ -1,16 +1,14 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Thermometer, WrenchIcon, Database, MessageSquare, AlertTriangle, Users, LogOut, X, GraduationCap, Building2, Home, Settings } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, Home, Settings } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
 
 const MODES: { id: ChatMode; label: string; icon: React.ReactNode }[] = [
-  { id: 'ASK',         label: 'Ask the expert', icon: <MessageSquare size={13}/> },
-  { id: 'DIAGNOSE',    label: 'Fault diagnosis', icon: <Thermometer size={13}/> },
-  { id: 'ALARM',       label: 'Alarm lookup',    icon: <AlertTriangle size={13}/> },
-  { id: 'MAINTENANCE', label: 'Maintenance log', icon: <WrenchIcon size={13}/> },
+  { id: 'EXPERT',      label: 'ColdIQ Expert',  icon: <MessageSquare size={13}/> },
+  { id: 'MAINTENANCE', label: 'Maintenance',     icon: <WrenchIcon size={13}/> },
 ]
 
 interface Props {

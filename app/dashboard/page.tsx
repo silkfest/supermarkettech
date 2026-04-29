@@ -8,15 +8,13 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, Thermometer, AlertTriangle, WrenchIcon, Database,
+  Menu, MessageSquare, WrenchIcon, Database,
 } from 'lucide-react'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
-  ASK:         'Ask',
-  DIAGNOSE:    'Diagnose',
-  ALARM:       'Alarms',
+  EXPERT:      'Expert',
   MAINTENANCE: 'Maintenance',
 }
 
@@ -25,9 +23,7 @@ type NavItem =
   | { id: 'REGISTRY'; icon: React.ReactNode; label: string; href: string }
 
 const BOTTOM_NAV_ITEMS: NavItem[] = [
-  { id: 'ASK',         icon: <MessageSquare size={20}/>, label: 'Ask' },
-  { id: 'DIAGNOSE',    icon: <Thermometer   size={20}/>, label: 'Diagnose' },
-  { id: 'ALARM',       icon: <AlertTriangle size={20}/>, label: 'Alarms' },
+  { id: 'EXPERT',      icon: <MessageSquare size={20}/>, label: 'Expert' },
   { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
   { id: 'REGISTRY',    icon: <Database      size={20}/>, label: 'Registry', href: '/maintenance/components' },
 ]
@@ -36,7 +32,7 @@ const BOTTOM_NAV_ITEMS: NavItem[] = [
 export default function Dashboard() {
   const [equipment,    setEquipment]    = useState<Equipment[]>([])
   const [selected,     setSelected]     = useState<Equipment | null>(null)
-  const [mode,         setMode]         = useState<ChatMode>('ASK')
+  const [mode,         setMode]         = useState<ChatMode>('EXPERT')
   const [documents,    setDocuments]    = useState<Document[]>([])
   const [showAdd,      setShowAdd]      = useState(false)
   const [currentUser,  setCurrentUser]  = useState<User | null>(null)
@@ -134,7 +130,7 @@ export default function Dashboard() {
 
           {/* Mode tabs — desktop */}
           <div className="hidden md:flex gap-0.5 bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
-            {(['ASK','DIAGNOSE','ALARM'] as ChatMode[]).map(m => (
+            {(['EXPERT', 'MAINTENANCE'] as ChatMode[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -149,17 +145,6 @@ export default function Dashboard() {
               </button>
             ))}
             <span className="w-px h-5 self-center bg-slate-200 mx-0.5"/>
-            <button
-              onClick={() => setMode('MAINTENANCE')}
-              className={[
-                'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                mode === 'MAINTENANCE'
-                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                  : 'text-slate-500 hover:text-slate-700',
-              ].join(' ')}
-            >
-              {MODE_LABELS['MAINTENANCE']}
-            </button>
             <button
               onClick={() => router.push('/maintenance/components')}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 flex items-center gap-1.5"
