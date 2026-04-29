@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database, Filter } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 
 interface RecentReport {
@@ -12,35 +12,46 @@ interface RecentReport {
   technician?: { name: string }
 }
 
+interface Store {
+  id: string
+  name: string
+}
+
 function MaintenanceHubContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const equipmentId = searchParams.get('equipmentId')
   const equipmentName = searchParams.get('equipmentName') ?? ''
+
   const [recent, setRecent] = useState<{ pm: RecentReport[]; individual: RecentReport[] }>({ pm: [], individual: [] })
+  const [stores, setStores] = useState<Store[]>([])
+  const [filterStoreId, setFilterStoreId] = useState('')
+  const [filterType, setFilterType] = useState<'all' | 'pm' | 'individual'>('all')
 
+  // Fetch stores for the filter dropdown
   useEffect(() => {
-    const params = equipmentId ? `?equipmentId=${equipmentId}` : ''
-    Promise.all([
-      fetch(`/api/pm-reports${params}`).then(r => r.ok ? r.json() : []),
-      fetch(`/api/individual-reports${params}`).then(r => r.ok ? r.json() : []),
-    ]).then(([pm, individual]) => setRecent({ pm: pm.slice(0, 5), individual: individual.slice(0, 5) }))
-  }, [equipmentId])
+    fetch('/api/stores').then(r => r.ok ? r.json() : []).then(setStores)
+  }, [])
 
-  const nav = (path: string) => {
+  // Re-fetch reports whenever filters change
+  useEffect(() => {
     const params = new URLSearchParams()
     if (equipmentId) params.set('equipmentId', equipmentId)
-    if (equipmentName) params.set('equipmentName', equipmentName)
-    router.push(`${path}?${params}`)
-  }
+    if (filterStoreId) params.set('storeId', filterStoreId)
+    const qs = params.toString() ? `?${params}` : ''
 
-  const registryCard = {
-    path: '/maintenance/components',
-    icon: <Database size={30} className="text-slate-500" />,
-    title: 'Component Registry',
-    desc: 'All logged compressors and components across every site',
-    color: 'hover:border-slate-300',
-  }
+    const fetchPm = filterType !== 'individual'
+      ? fetch(`/api/pm-reports${qs}`).then(r => r.ok ? r.json() : [])
+      : Promise.resolve([])
+
+    const fetchInd = filterType !== 'pm'
+      ? fetch(`/api/individual-reports${qs}`).then(r => r.ok ? r.json() : [])
+      : Promise.resolve([])
+
+    Promise.all([fetchPm, fetchInd]).then(([pm, individual]) =>
+      setRecent({ pm: pm.slice(0, 10), individual: individual.slice(0, 10) })
+    )
+  }, [equipmentId, filterStoreId, filterType])
 
   const reportTypes = [
     {
@@ -66,12 +77,22 @@ function MaintenanceHubContent() {
     },
   ]
 
+  const registryCard = {
+    path: '/maintenance/components',
+    icon: <Database size={30} className="text-slate-500" />,
+    title: 'Component Registry',
+    desc: 'All logged compressors and components across every site',
+    color: 'hover:border-slate-300',
+  }
+
   const mergedRecent = [
     ...recent.pm.map(r => ({ ...r, kind: 'pm' as const })),
     ...recent.individual.map(r => ({ ...r, kind: 'individual' as const })),
   ]
     .sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime())
-    .slice(0, 8)
+    .slice(0, 12)
+
+  const hasFilters = filterStoreId || filterType !== 'all'
 
   return (
     <div className="min-h-[100dvh] bg-slate-50">
@@ -99,7 +120,6 @@ function MaintenanceHubContent() {
           <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
             Create New Report
           </h2>
-          {/* Mobile: vertical list. Desktop: 3-column grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[...reportTypes, registryCard].map(rt => (
               <button
@@ -107,7 +127,6 @@ function MaintenanceHubContent() {
                 onClick={() => router.push(rt.path)}
                 className={`bg-white border border-slate-200 rounded-xl p-5 text-left transition-all active:scale-[0.98] hover:shadow-md ${rt.color} flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0`}
               >
-                {/* Icon */}
                 <div className="flex-shrink-0 sm:mb-3">{rt.icon}</div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-slate-800 text-sm mb-0.5">{rt.title}</h3>
@@ -120,11 +139,56 @@ function MaintenanceHubContent() {
         </div>
 
         {/* Recent reports */}
-        {mergedRecent.length > 0 && (
-          <div>
-            <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Clock size={12} /> Recent Reports
-            </h2>
+        <div>
+          <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Clock size={12} /> Recent Reports
+          </h2>
+
+          {/* Filter bar */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {stores.length > 0 && (
+              <div className="relative">
+                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  value={filterStoreId}
+                  onChange={e => setFilterStoreId(e.target.value)}
+                  className="pl-7 pr-8 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                >
+                  <option value="">All stores</option>
+                  {stores.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-xs">
+              {(['all', 'pm', 'individual'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t)}
+                  className={`px-3 py-1.5 font-medium transition-colors ${
+                    filterType === t
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {t === 'all' ? 'All types' : t === 'pm' ? 'PM' : 'Service calls'}
+                </button>
+              ))}
+            </div>
+
+            {hasFilters && (
+              <button
+                onClick={() => { setFilterStoreId(''); setFilterType('all') }}
+                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {mergedRecent.length > 0 ? (
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
               {mergedRecent.map(r => (
                 <button
@@ -149,8 +213,12 @@ function MaintenanceHubContent() {
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-8 text-center text-sm text-slate-400">
+              {hasFilters ? 'No reports match the current filters.' : 'No reports yet.'}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
