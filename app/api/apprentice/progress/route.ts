@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/client'
 
+const ELEVATED_ROLES = ['admin', 'manager', 'journeyman']
+
+async function getCallerRole(supabase: ReturnType<typeof getSupabaseServer>, callerId: string): Promise<string | null> {
+  const { data } = await supabase.from('users').select('role').eq('id', callerId).single()
+  return (data as { role: string } | null)?.role ?? null
+}
+
 export async function GET(req: NextRequest) {
   const userId = new URL(req.url).searchParams.get('userId')
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
   const supabase = getSupabaseServer()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (user.id !== userId) {
+    const role = await getCallerRole(supabase, user.id)
+    if (!role || !ELEVATED_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
 
   // Fetch tasks and progress separately to avoid PostgREST join issues
   const [tasksResult, progressResult] = await Promise.all([
@@ -72,8 +89,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = getSupabaseServer()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
   // body: { userId, taskId, status: 'in_progress'|'completed', notes?, verifiedBy? }
+
+  if (user.id !== body.userId) {
+    const role = await getCallerRole(supabase, user.id)
+    if (!role || !ELEVATED_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
 
   const upsertData: Record<string, unknown> = {
     user_id:  body.userId,
@@ -102,8 +130,20 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { userId, taskId } = await req.json()
   const supabase = getSupabaseServer()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { userId, taskId } = await req.json()
+
+  if (user.id !== userId) {
+    const role = await getCallerRole(supabase, user.id)
+    if (!role || !ELEVATED_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   const { error } = await supabase
     .from('apprentice_progress')
     .delete()

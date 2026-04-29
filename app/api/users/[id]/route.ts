@@ -19,7 +19,7 @@ export async function PATCH(
     .eq('id', user.id)
     .single()
 
-  if (!caller || caller.role !== 'admin') {
+  if (!caller || !['admin', 'manager'].includes(caller.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

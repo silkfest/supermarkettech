@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   if (uploadError) {
     console.error('[Storage upload error]', uploadError)
-    // Continue even if storage fails — we can still extract text
+    return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 })
   }
 
   // Create document record

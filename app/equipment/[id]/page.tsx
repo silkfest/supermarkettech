@@ -7,6 +7,7 @@ import {
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import EditableRow from '@/components/EditableRow'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -182,19 +183,19 @@ export default function EquipmentDetailPage() {
 
           {/* Detail rows */}
           <div className="divide-y divide-slate-100">
-            <DetailRow label="Manufacturer" icon={<Tag size={13}/>} value={equip.manufacturer}
+            <EditableRowlabel="Manufacturer" icon={<Tag size={13}/>} value={equip.manufacturer}
               isAdmin={isAdmin} fieldKey="manufacturer" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. Copeland"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
               onSave={saveField} onCancel={() => setEditField(null)} onEditValChange={setEditVal}
             />
-            <DetailRow label="Model" icon={<Tag size={13}/>} value={equip.model}
+            <EditableRowlabel="Model" icon={<Tag size={13}/>} value={equip.model}
               isAdmin={isAdmin} fieldKey="model" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. ZF34K4E-TFD"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
               onSave={saveField} onCancel={() => setEditField(null)} onEditValChange={setEditVal}
             />
-            <DetailRow label="Serial #" icon={<Tag size={13}/>} value={equip.serial_number}
+            <EditableRowlabel="Serial #" icon={<Tag size={13}/>} value={equip.serial_number}
               isAdmin={isAdmin} fieldKey="serialNumber" editField={editField} editVal={editVal}
               saving={saving} placeholder="Serial number"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
@@ -274,7 +275,7 @@ export default function EquipmentDetailPage() {
               )}
             </div>
 
-            <DetailRow label="Location" icon={<MapPin size={13}/>} value={equip.location}
+            <EditableRowlabel="Location" icon={<MapPin size={13}/>} value={equip.location}
               isAdmin={isAdmin} fieldKey="location" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. Machine room"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
@@ -405,64 +406,3 @@ export default function EquipmentDetailPage() {
   )
 }
 
-// ── Inline editable text row ───────────────────────────────────────────────
-
-interface DetailRowProps {
-  label: string
-  icon: React.ReactNode
-  value: string
-  isAdmin: boolean
-  fieldKey: string
-  editField: string | null
-  editVal: string
-  saving: boolean
-  placeholder: string
-  onEdit: (key: string, val: string) => void
-  onSave: (key: string, val: string) => void
-  onCancel: () => void
-  onEditValChange: (v: string) => void
-}
-
-function DetailRow({
-  label, icon, value, isAdmin, fieldKey,
-  editField, editVal, saving, placeholder,
-  onEdit, onSave, onCancel, onEditValChange,
-}: DetailRowProps) {
-  const isEditing = editField === fieldKey
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
-      <span className="text-slate-400 flex-shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{label}</p>
-        {isEditing ? (
-          <div className="flex items-center gap-2 mt-0.5">
-            <input
-              value={editVal}
-              onChange={e => onEditValChange(e.target.value)}
-              placeholder={placeholder}
-              autoFocus
-              className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button onClick={() => onSave(fieldKey, editVal)} disabled={saving}
-              className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              <Check size={12}/>
-            </button>
-            <button onClick={onCancel} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg">
-              <X size={12}/>
-            </button>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-800 truncate">
-            {value || <span className="text-slate-400 italic">Not set</span>}
-          </p>
-        )}
-      </div>
-      {isAdmin && !isEditing && (
-        <button onClick={() => onEdit(fieldKey, value ?? '')}
-          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg flex-shrink-0">
-          <Pencil size={12}/>
-        </button>
-      )}
-    </div>
-  )
-}

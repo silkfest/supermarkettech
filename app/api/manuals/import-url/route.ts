@@ -2,9 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { ingestDocument } from '@/lib/ai/rag'
 
+function isPrivateUrl(urlStr: string): boolean {
+  try {
+    const { hostname } = new URL(urlStr)
+    if (hostname === 'localhost') return true
+    const parts = hostname.split('.').map(Number)
+    if (parts[0] === 10) return true
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true
+    if (parts[0] === 192 && parts[1] === 168) return true
+    if (parts[0] === 127) return true
+    if (hostname === '0.0.0.0') return true
+    return false
+  } catch { return true }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   if (!body?.url) return NextResponse.json({ error: 'url is required' }, { status: 400 })
+
+  if (isPrivateUrl(body.url)) {
+    return NextResponse.json({ error: 'URL not allowed' }, { status: 400 })
+  }
 
   const { url, title, equipment_id, model, manufacturer } = body as {
     url: string

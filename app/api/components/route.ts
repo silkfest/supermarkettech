@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
       .select('id, store_name, performed_at, equipment_id, units')
       .eq('report_type', 'refrigeration')
       .not('units', 'is', null)
-      .order('performed_at', { ascending: false }),
+      .order('performed_at', { ascending: false })
+      .limit(500),
     supabase
       .from('manual_components')
       .select('*')

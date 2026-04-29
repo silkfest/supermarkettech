@@ -43,6 +43,7 @@ export default function AdminApprenticesPage() {
   const [journeymen,  setJourneymen]  = useState<Journeyman[]>([])
   const [loading, setLoading]         = useState(true)
   const [saving,  setSaving]          = useState<string | null>(null)
+  const [saveError, setSaveError]     = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -69,14 +70,22 @@ export default function AdminApprenticesPage() {
 
   async function assignMentor(apprenticeId: string, mentorId: string | null) {
     setSaving(apprenticeId)
-    const sb = getSupabaseBrowser()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (sb as any).from('users').update({ mentor_id: mentorId }).eq('id', apprenticeId)
-    setApprentices(prev => prev.map(a =>
-      a.id === apprenticeId
-        ? { ...a, mentorId, mentorName: journeymen.find(j => j.id === mentorId)?.name ?? null }
-        : a
-    ))
+    setSaveError(null)
+    const res = await fetch(`/api/users/${apprenticeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mentor_id: mentorId }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Failed to assign mentor' }))
+      setSaveError(error ?? 'Failed to assign mentor')
+    } else {
+      setApprentices(prev => prev.map(a =>
+        a.id === apprenticeId
+          ? { ...a, mentorId, mentorName: journeymen.find(j => j.id === mentorId)?.name ?? null }
+          : a
+      ))
+    }
     setSaving(null)
   }
 
@@ -104,6 +113,13 @@ export default function AdminApprenticesPage() {
         <span className="text-slate-300">/</span>
         <span className="text-sm font-medium text-slate-700">Apprentices</span>
       </div>
+
+      {saveError && (
+        <div className="mx-4 md:mx-6 mt-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center justify-between">
+          <span>{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-3 text-red-400 hover:text-red-600">×</button>
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
 
