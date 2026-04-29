@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
         }
         if (activeSessionId) {
           await supabase.from('chat_messages').insert([
-            { session_id: activeSessionId, role: 'USER', content: message },
-            { session_id: activeSessionId, role: 'ASSISTANT', content: fullContent, sources: sources.length > 0 ? sources : null },
+            { session_id: activeSessionId, role: 'user', content: message },
+            { session_id: activeSessionId, role: 'assistant', content: fullContent, sources: sources.length > 0 ? sources : null },
           ])
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`))

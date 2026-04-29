@@ -183,19 +183,19 @@ export default function EquipmentDetailPage() {
 
           {/* Detail rows */}
           <div className="divide-y divide-slate-100">
-            <EditableRowlabel="Manufacturer" icon={<Tag size={13}/>} value={equip.manufacturer}
+            <EditableRow label="Manufacturer" icon={<Tag size={13}/>} value={equip.manufacturer}
               isAdmin={isAdmin} fieldKey="manufacturer" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. Copeland"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
               onSave={saveField} onCancel={() => setEditField(null)} onEditValChange={setEditVal}
             />
-            <EditableRowlabel="Model" icon={<Tag size={13}/>} value={equip.model}
+            <EditableRow label="Model" icon={<Tag size={13}/>} value={equip.model}
               isAdmin={isAdmin} fieldKey="model" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. ZF34K4E-TFD"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
               onSave={saveField} onCancel={() => setEditField(null)} onEditValChange={setEditVal}
             />
-            <EditableRowlabel="Serial #" icon={<Tag size={13}/>} value={equip.serial_number}
+            <EditableRow label="Serial #" icon={<Tag size={13}/>} value={equip.serial_number}
               isAdmin={isAdmin} fieldKey="serialNumber" editField={editField} editVal={editVal}
               saving={saving} placeholder="Serial number"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}
@@ -275,7 +275,7 @@ export default function EquipmentDetailPage() {
               )}
             </div>
 
-            <EditableRowlabel="Location" icon={<MapPin size={13}/>} value={equip.location}
+            <EditableRow label="Location" icon={<MapPin size={13}/>} value={equip.location}
               isAdmin={isAdmin} fieldKey="location" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. Machine room"
               onEdit={(k,v) => { setEditField(k); setEditVal(v) }}

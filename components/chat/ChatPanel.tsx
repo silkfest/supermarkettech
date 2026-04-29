@@ -1,49 +1,18 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { Send, Paperclip, Camera, AlertTriangle, RotateCcw, FileText, Globe, Loader2, ChevronRight } from 'lucide-react'
-import { useChat } from '@/hooks/useChat'
-import { cn } from '@/lib/utils'
-import type { ChatMode, Equipment, CitationSource } from '@/types'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle } from 'lucide-react'
+import type { Equipment, ChatMode, ChatMessage, CitationSource } from '@/types'
 
-const STARTERS: Record<ChatMode, string[]> = {
-  ASK: [
-    'What are the most common causes of high superheat?',
-    'How does hot gas defrost work?',
-    'Walk me through checking refrigerant charge',
-    'What should suction pressure be on R-448A?',
-  ],
-  DIAGNOSE: [
-    'Case temperature is above setpoint',
-    'Compressor is short cycling',
-    'Defrost cycle is not completing',
-    'Unit is making an unusual noise',
-  ],
-  ALARM: [
-    'What does alarm code E4 mean?',
-    'Explain fault code F12',
-    'I have a high discharge pressure alarm',
-    'Walk me through clearing a defrost alarm',
-  ],
-  MAINTENANCE: [
-    'Log a coil cleaning service visit',
-    'What quarterly maintenance is due?',
-    'Generate a service report summary',
-    'What parts should I stock for this unit?',
-  ],
+// ── Mode display config ───────────────────────────────────────────────────────
+
+const MODE_CONFIG: Record<ChatMode, { label: string; placeholder: string }> = {
+  ASK:         { label: 'Ask',         placeholder: 'Ask anything about refrigeration or this unit…' },
+  DIAGNOSE:    { label: 'Diagnose',    placeholder: 'Describe the fault or symptom you\'re seeing…' },
+  ALARM:       { label: 'Alarm',       placeholder: 'Enter an alarm code or describe the alarm condition…' },
+  MAINTENANCE: { label: 'Maintenance', placeholder: 'Ask about service procedures, intervals, or spec…' },
 }
 
-function SourcePill({ s }: { s: CitationSource }) {
-  const Icon = s.sourceType === 'WEB' ? Globe : FileText
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 bg-white text-[11px] text-slate-500 font-medium">
-      <Icon size={10}/>
-      <span className="max-w-[140px] truncate">{s.title}</span>
-      {s.pageNumber && <span className="text-slate-400">p.{s.pageNumber}</span>}
-    </span>
-  )
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   equipment: Equipment | null
@@ -51,180 +20,418 @@ interface Props {
   onUpload: () => void
 }
 
-export default function ChatPanel({ equipment, mode, onUpload }: Props) {
-  const { messages, loading, error, send, clear, setError } = useChat({ equipmentId: equipment?.id, mode })
-  const endRef    = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
-  const [draft, setDraft] = useState('')
+interface StreamEvent {
+  type: 'delta' | 'sources' | 'done' | 'error'
+  text?: string
+  sources?: CitationSource[]
+  sessionId?: string
+  message?: string
+}
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-  useEffect(() => { clear() }, [equipment?.id, mode])
+// ── Sub-components ────────────────────────────────────────────────────────────
 
-  function handleSend() {
-    const t = draft.trim()
-    if (!t || loading) return
-    send(t)
-    setDraft('')
-    if (inputRef.current) inputRef.current.style.height = 'auto'
-  }
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 px-1">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '160ms' }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '320ms' }} />
+    </span>
+  )
+}
 
-  function handleKey(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-  }
+function Citations({ sources }: { sources: CitationSource[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {sources.map((s) => (
+        <div
+          key={s.chunkId}
+          className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-500"
+          title={`Relevance: ${(s.relevanceScore * 100).toFixed(0)}%`}
+        >
+          <BookOpen size={9} className="flex-shrink-0 text-slate-400" />
+          <span className="font-medium truncate max-w-[140px]">{s.title}</span>
+          {s.pageNumber != null && (
+            <span className="text-slate-400 flex-shrink-0">p.{s.pageNumber}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
 
-  function resizeArea() {
-    const el = inputRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
-  }
-
-  const isEmpty = messages.length === 0
+function MessageBubble({ msg }: { msg: ChatMessage }) {
+  const isUser = msg.role === 'user'
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Error bar */}
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border-b border-red-200 text-xs text-red-700">
-          <AlertTriangle size={13} className="flex-shrink-0"/>
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-base leading-none">×</button>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[82%]`}>
+        {/* Avatar row for assistant */}
+        {!isUser && (
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-[8px] text-white font-bold tracking-tight">CQ</span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium">ColdIQ</span>
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div
+          className={[
+            'px-4 py-2.5 text-sm leading-relaxed',
+            isUser
+              ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
+              : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-sm shadow-sm',
+          ].join(' ')}
+        >
+          {/* Show typing dots while waiting for first token */}
+          {msg.isStreaming && !msg.content
+            ? <TypingDots />
+            : <span className="whitespace-pre-wrap break-words">{msg.content}</span>
+          }
+          {/* Blinking cursor while streaming content */}
+          {msg.isStreaming && msg.content && (
+            <span className="inline-block w-0.5 h-3.5 bg-slate-400 ml-0.5 align-middle animate-pulse" />
+          )}
+        </div>
+
+        {/* Citations — shown after streaming completes */}
+        {!isUser && !msg.isStreaming && msg.sources && msg.sources.length > 0 && (
+          <Citations sources={msg.sources} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: ChatMode }) {
+  const modeHints: Record<ChatMode, string> = {
+    ASK:         'Ask any refrigeration question — general theory, refrigerants, controls, or specifics about the selected unit.',
+    DIAGNOSE:    'Describe a symptom or fault condition. I\'ll help you work through a systematic diagnosis.',
+    ALARM:       'Paste an alarm code or describe the alarm. I\'ll look it up and suggest next steps.',
+    MAINTENANCE: 'Ask about PM intervals, service procedures, or spec values for this equipment.',
+  }
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center px-8 select-none">
+      <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center mb-3 shadow-sm">
+        <MessageSquare size={18} className="text-white" />
+      </div>
+      <p className="text-sm font-semibold text-slate-800 mb-1.5">
+        {equipment ? equipment.name : 'ColdIQ Expert'}
+      </p>
+      {equipment && (
+        <p className="text-[11px] text-slate-400 mb-3">
+          {equipment.manufacturer} {equipment.model}
+          {equipment.refrigerant ? ` · ${equipment.refrigerant}` : ''}
+        </p>
+      )}
+      <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+        {modeHints[mode]}
+      </p>
+      {!equipment && (
+        <p className="text-[11px] text-slate-300 mt-3 max-w-xs leading-relaxed">
+          Select a unit from the sidebar to include live sensor data and alarm context in your conversation.
+        </p>
+      )}
+      {equipment?.status === 'ALARM' && (
+        <div className="mt-4 flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+          <AlertTriangle size={12} />
+          Active alarms detected — switch to Alarm mode for targeted help
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        {isEmpty ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
-              <span className="text-xl">❄️</span>
-            </div>
-            {equipment ? (
-              <>
-                <h3 className="text-sm font-semibold text-slate-800 mb-1">{equipment.name}</h3>
-                <p className="text-xs text-slate-400 mb-6">{equipment.manufacturer} {equipment.model}{equipment.refrigerant ? ` · ${equipment.refrigerant}` : ''}</p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-sm font-semibold text-slate-800 mb-1">Ask your refrigeration expert</h3>
-                <p className="text-xs text-slate-400 mb-6 max-w-xs">Select a unit for context-aware answers, or ask a general question.</p>
-              </>
-            )}
-            <div className="w-full max-w-sm space-y-2">
-              {STARTERS[mode].map(s => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-left text-xs text-slate-600 hover:text-slate-800 transition-all group"
-                >
-                  <span>{s}</span>
-                  <ChevronRight size={12} className="flex-shrink-0 text-slate-300 group-hover:text-slate-500"/>
-                </button>
-              ))}
-            </div>
-          </div>
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function ChatPanel({ equipment, mode, onUpload }: Props) {
+  const [messages, setMessages]   = useState<ChatMessage[]>([])
+  const [input, setInput]         = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined)
+  const [error, setError]         = useState<string | null>(null)
+
+  const bottomRef   = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortRef    = useRef<AbortController | null>(null)
+
+  // Reset chat when the selected equipment changes
+  useEffect(() => {
+    // Cancel any in-flight request
+    abortRef.current?.abort()
+    setMessages([])
+    setSessionId(undefined)
+    setError(null)
+    setInput('')
+    setStreaming(false)
+  }, [equipment?.id])
+
+  // Scroll to bottom whenever messages update
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`
+  }, [input])
+
+  const handleSubmit = useCallback(async () => {
+    const text = input.trim()
+    if (!text || streaming) return
+
+    setInput('')
+    setError(null)
+
+    // Build history from finalised messages only (max 40 per schema)
+    const history = messages
+      .filter(m => !m.isStreaming)
+      .slice(-40)
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+    // Optimistically add user + placeholder assistant messages
+    const userId      = crypto.randomUUID()
+    const assistantId = crypto.randomUUID()
+
+    const userMsg: ChatMessage = { id: userId, role: 'user', content: text }
+    const assistantMsg: ChatMessage = { id: assistantId, role: 'assistant', content: '', isStreaming: true }
+
+    setMessages(prev => [...prev, userMsg, assistantMsg])
+    setStreaming(true)
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          sessionId: sessionId ?? null,
+          equipmentId: equipment?.id,
+          mode,
+          message: text,
+          history,
+        }),
+      })
+
+      // Auth error — show friendly message, don't spin forever
+      if (res.status === 401) {
+        setMessages(prev => prev.filter(m => m.id !== assistantId))
+        setError('Your session has expired. Please refresh the page and sign in again.')
+        setStreaming(false)
+        return
+      }
+
+      if (!res.ok) {
+        let detail = ''
+        try { const j = await res.json(); detail = j?.error ?? '' } catch {}
+        setMessages(prev => prev.filter(m => m.id !== assistantId))
+        setError(`Request failed (${res.status})${detail ? ': ' + detail : ''}. Please try again.`)
+        setStreaming(false)
+        return
+      }
+
+      // Read the SSE stream manually
+      const reader  = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let pendingSources: CitationSource[] | undefined
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Split on newlines; keep any incomplete tail for the next chunk
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data: ')) continue
+
+          const raw = trimmed.slice('data: '.length).trim()
+          if (!raw) continue
+
+          let event: StreamEvent
+          try { event = JSON.parse(raw) } catch { continue }
+
+          switch (event.type) {
+            case 'delta':
+              if (event.text) {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantId
+                    ? { ...m, content: m.content + event.text! }
+                    : m
+                ))
+              }
+              break
+
+            case 'sources':
+              if (event.sources?.length) {
+                pendingSources = event.sources
+              }
+              break
+
+            case 'done':
+              if (event.sessionId) setSessionId(event.sessionId)
+              setMessages(prev => prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, isStreaming: false, sources: pendingSources }
+                  : m
+              ))
+              setStreaming(false)
+              pendingSources = undefined
+              break
+
+            case 'error':
+              setMessages(prev => prev.map(m =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      isStreaming: false,
+                      content: m.content || (event.message ?? 'Something went wrong. Please try again.'),
+                    }
+                  : m
+              ))
+              setStreaming(false)
+              break
+          }
+        }
+      }
+
+      // Safety net: if stream ended without a 'done' event, clear the spinner
+      setStreaming(s => {
+        if (s) {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? { ...m, isStreaming: false } : m
+          ))
+        }
+        return false
+      })
+
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return
+
+      setMessages(prev => prev.map(m =>
+        m.id === assistantId
+          ? {
+              ...m,
+              isStreaming: false,
+              content: m.content || 'Connection lost. Please check your network and try again.',
+            }
+          : m
+      ))
+      setStreaming(false)
+    }
+  }, [input, streaming, messages, mode, equipment, sessionId])
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
+
+  const config    = MODE_CONFIG[mode]
+  const hasMessages = messages.length > 0
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50">
+
+      {/* ── Message list ── */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
+        {!hasMessages ? (
+          <EmptyState equipment={equipment} mode={mode} />
         ) : (
-          <div className="px-4 py-6 space-y-5 max-w-3xl mx-auto w-full">
+          <div className="max-w-2xl mx-auto w-full">
             {messages.map(msg => (
-              <div key={msg.id} className={cn('flex gap-3', msg.role === 'user' && 'flex-row-reverse')}>
-                {/* Avatar */}
-                <div className={cn(
-                  'w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5',
-                  msg.role === 'user' ? 'bg-slate-200 text-slate-600' : 'bg-blue-600 text-white'
-                )}>
-                  {msg.role === 'user' ? 'T' : 'AI'}
-                </div>
-
-                {/* Content */}
-                <div className={cn('max-w-[85%]', msg.role === 'user' && 'flex flex-col items-end')}>
-                  <div className={cn(
-                    'rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-sm'
-                      : 'bg-slate-100 text-slate-800 rounded-tl-sm'
-                  )}>
-                    {msg.role === 'user' ? (
-                      <p>{msg.content}</p>
-                    ) : msg.content === '' && msg.isStreaming ? (
-                      /* Typing indicator */
-                      <div className="flex items-center gap-1 py-1">
-                        {[0,1,2].map(i => (
-                          <div key={i} className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: `${i*0.15}s` }}/>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={cn('chat-prose', msg.isStreaming && msg.content && 'cursor-blink')}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Source citations */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2 px-1">
-                      {msg.sources.map(s => <SourcePill key={s.chunkId} s={s}/>)}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <MessageBubble key={msg.id} msg={msg} />
             ))}
-            <div ref={endRef}/>
+
+            {/* Error banner */}
+            {error && (
+              <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+                <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
           </div>
         )}
       </div>
 
-      {/* Clear button */}
-      {!isEmpty && (
-        <div className="flex justify-center pb-1">
-          <button onClick={clear} className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-slate-500 transition-colors">
-            <RotateCcw size={10}/> Clear conversation
-          </button>
+      {/* Error shown in empty state */}
+      {!hasMessages && error && (
+        <div className="mx-4 mb-2 max-w-2xl mx-auto">
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+            <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
         </div>
       )}
 
-      {/* Input area */}
-      <div className="border-t border-slate-200 px-4 pb-4 pt-3 bg-white">
-        {/* Quick actions */}
-        <div className="flex gap-2 mb-2">
-          <button onClick={onUpload} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
-            <Paperclip size={11}/> Attach manual
-          </button>
-          <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
-            <Camera size={11}/> Photo
-          </button>
-          <button
-            onClick={() => { setDraft('Alarm code: '); inputRef.current?.focus() }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-          >
-            <AlertTriangle size={11}/> Alarm code
-          </button>
-        </div>
+      {/* ── Input bar ── */}
+      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 py-3">
+        <div className="max-w-2xl mx-auto w-full">
+          <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition-all">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={config.placeholder}
+              rows={1}
+              disabled={streaming}
+              className="flex-1 min-w-0 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 resize-none outline-none leading-relaxed disabled:opacity-50 py-0.5"
+              style={{ maxHeight: 140 }}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={!input.trim() || streaming}
+              aria-label="Send message"
+              className={[
+                'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all mb-0.5',
+                input.trim() && !streaming
+                  ? 'bg-blue-600 hover:bg-blue-700 shadow-sm'
+                  : 'bg-slate-200 cursor-not-allowed',
+              ].join(' ')}
+            >
+              {streaming
+                ? <Loader2 size={14} className="text-white animate-spin" />
+                : <Send size={14} className={input.trim() ? 'text-white' : 'text-slate-400'} />
+              }
+            </button>
+          </div>
 
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={e => { setDraft(e.target.value); resizeArea() }}
-            onKeyDown={handleKey}
-            placeholder="Describe a symptom, ask a question, or enter an alarm code…"
-            rows={1}
-            disabled={loading}
-            className="flex-1 resize-none rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-all"
-            style={{ minHeight: 48 }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!draft.trim() || loading}
-            className="w-10 h-10 flex-shrink-0 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            {loading
-              ? <Loader2 size={15} className="text-white animate-spin"/>
-              : <Send size={15} className="text-white"/>
-            }
-          </button>
+          <div className="flex items-center justify-between mt-1.5 px-0.5">
+            <span className="text-[10px] text-slate-400 select-none">
+              {equipment
+                ? <><span className="font-medium text-slate-500">{equipment.name}</span> · </>
+                : null
+              }
+              {config.label} mode · Enter to send, Shift+Enter for new line
+            </span>
+            <button
+              onClick={onUpload}
+              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+              title="Upload a PDF manual for this unit"
+            >
+              <Upload size={9} />
+              Upload manual
+            </button>
+          </div>
         </div>
-        <p className="text-[10px] text-slate-300 mt-1.5 text-center">Shift+Enter for new line · Always verify safety-critical information with qualified personnel</p>
       </div>
     </div>
   )
