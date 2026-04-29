@@ -3,7 +3,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
-import type { SensorSnapshot, Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
+import { buildSnapshot } from '@/lib/sensor'
+import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -11,7 +12,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
   equipmentId: z.string().optional(),
-  mode:        z.enum(['ASK','DIAGNOSE','ALARM','MAINTENANCE','COMPLIANCE']),
+  mode:        z.enum(['ASK','DIAGNOSE','ALARM','MAINTENANCE']),
   message:     z.string().min(1).max(4000),
   history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
 })
@@ -23,18 +24,7 @@ async function loadEquipmentContext(equipmentId: string) {
   const { data: readings } = await supabase.from('sensor_readings').select('*').eq('equipment_id', equipmentId).order('recorded_at', { ascending: false }).limit(20)
   const { data: alarms } = await supabase.from('alarm_events').select('*').eq('equipment_id', equipmentId).is('resolved_at', null).order('triggered_at', { ascending: false })
   const { data: logs } = await supabase.from('maintenance_logs').select('*').eq('equipment_id', equipmentId).order('performed_at', { ascending: false }).limit(5)
-  const snapshot: SensorSnapshot = {}
-  const seen = new Set<string>()
-  for (const r of (readings ?? [])) {
-    if (seen.has(r.reading_type)) continue
-    seen.add(r.reading_type)
-    if (r.reading_type === 'case_temp')        snapshot.case_temp        = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'setpoint')          snapshot.setpoint          = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'suction_pressure')  snapshot.suction_pressure  = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'superheat')         snapshot.superheat         = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'discharge_temp')    snapshot.discharge_temp    = { value: r.value, unit: r.unit }
-  }
-  if (readings?.[0]) snapshot.recorded_at = readings[0].recorded_at
+  const snapshot = buildSnapshot(readings ?? [])
   return { equipment: eq as Equipment, snapshot, alarms: (alarms ?? []) as AlarmEvent[], logs: (logs ?? []) as MaintenanceLog[] }
 }
 

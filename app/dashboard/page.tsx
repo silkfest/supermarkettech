@@ -10,7 +10,8 @@ import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
   Menu, MessageSquare, Thermometer, AlertTriangle, WrenchIcon, Database,
 } from 'lucide-react'
-import type { Equipment, Document, SensorSnapshot, ChatMode, User } from '@/types'
+import { buildSnapshot } from '@/lib/sensor'
+import type { Equipment, Document, ChatMode, User } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
   ASK:         'Ask',
@@ -31,21 +32,6 @@ const BOTTOM_NAV_ITEMS: NavItem[] = [
   { id: 'REGISTRY',    icon: <Database      size={20}/>, label: 'Registry', href: '/maintenance/components' },
 ]
 
-function buildSnapshot(readings: any[]): SensorSnapshot {
-  const s: SensorSnapshot = {}
-  const seen = new Set<string>()
-  for (const r of readings ?? []) {
-    if (seen.has(r.reading_type)) continue
-    seen.add(r.reading_type)
-    if (r.reading_type === 'case_temp')        s.case_temp        = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'setpoint')          s.setpoint          = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'suction_pressure')  s.suction_pressure  = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'superheat')         s.superheat         = { value: r.value, unit: r.unit }
-    if (r.reading_type === 'discharge_temp')    s.discharge_temp    = { value: r.value, unit: r.unit }
-  }
-  if (readings?.[0]) s.recorded_at = readings[0].recorded_at
-  return s
-}
 
 export default function Dashboard() {
   const [equipment,    setEquipment]    = useState<Equipment[]>([])
