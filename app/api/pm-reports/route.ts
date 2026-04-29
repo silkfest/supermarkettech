@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const equipmentId = searchParams.get('equipmentId')
+  const storeId = searchParams.get('storeId')
   const reportType = searchParams.get('type')
 
   let query = supabase
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
     .limit(50)
 
   if (equipmentId) query = query.eq('equipment_id', equipmentId)
+  if (storeId) query = query.eq('store_id', storeId)
   if (reportType) query = query.eq('report_type', reportType)
 
   const { data, error } = await query
