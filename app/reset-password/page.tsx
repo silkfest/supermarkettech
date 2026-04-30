@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import type { AuthChangeEvent } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -14,7 +15,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     // Supabase puts the session tokens in the URL hash after redirect
     const sb = getSupabaseBrowser()
-    sb.auth.onAuthStateChange((event) => {
+    sb.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === 'PASSWORD_RECOVERY') setReady(true)
     })
   }, [])
