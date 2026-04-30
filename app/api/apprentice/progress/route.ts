@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 const ELEVATED_ROLES = ['admin', 'manager', 'journeyman']
 
@@ -12,10 +12,9 @@ export async function GET(req: NextRequest) {
   const userId = new URL(req.url).searchParams.get('userId')
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
-  const supabase = getSupabaseServer()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getSupabaseServer()
 
   if (user.id !== userId) {
     const role = await getCallerRole(supabase, user.id)
@@ -88,10 +87,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabaseServer()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getSupabaseServer()
 
   const body = await req.json()
   // body: { userId, taskId, status: 'in_progress'|'completed', notes?, verifiedBy? }
@@ -130,10 +128,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = getSupabaseServer()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getSupabaseServer()
 
   const { userId, taskId } = await req.json()
 

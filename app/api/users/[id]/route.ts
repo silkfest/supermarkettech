@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = getSupabaseServer()
-
-  // Auth check
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getSupabaseServer()
 
   // Role check — only admins can update users
   const { data: caller } = await supabase
