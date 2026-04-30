@@ -26,21 +26,16 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserEmail(user.email ?? '')
       // Fetch display name from users table
-      supabase
-        .from('users')
-        .select('name')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          const name = (data as { name?: string } | null)?.name ?? ''
-          setDisplayName(name)
-          setOriginalName(name)
-        })
-    })
+      const { data } = await supabase.from('users').select('name').eq('id', user.id).single()
+      const name = (data as { name?: string } | null)?.name ?? ''
+      setDisplayName(name)
+      setOriginalName(name)
+    })()
   }, [])
 
   async function handleSaveName() {
