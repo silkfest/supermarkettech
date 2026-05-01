@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (docError || !doc) return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
 
   // Kick off async ingestion (don't await — return immediately)
-  if (process.env.VOYAGE_API_KEY) {
+  if (process.env.JINA_API_KEY) {
     processDocument(doc.id, arrayBuf).catch(err =>
       console.error(`[Ingest failed] doc=${doc.id}`, err)
     )

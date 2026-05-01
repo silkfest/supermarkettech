@@ -106,8 +106,8 @@ async function fetchAndImport({
     return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
   }
 
-  // Kick off async ingestion (Voyage AI embeddings + chunking)
-  if (process.env.VOYAGE_API_KEY) {
+  // Kick off async ingestion (Jina AI embeddings + chunking)
+  if (process.env.JINA_API_KEY) {
     processDoc(doc.id, arrayBuf).catch(err =>
       console.error(`[import-url ingest failed] doc=${doc.id}`, err)
     )

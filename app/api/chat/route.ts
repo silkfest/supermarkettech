@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   let retrievedContext = ''
   let sources: ReturnType<typeof chunksToCitations> = []
-  if (process.env.VOYAGE_API_KEY) {
+  if (process.env.JINA_API_KEY) {
     try {
       const query = [...history.slice(-2).map(m => m.content), message].join(' ').slice(0, 500)
       const chunks = await retrieveChunks(query, equipmentId, 5, 0.65)

@@ -1,27 +1,27 @@
 import { getSupabaseServer } from '@/lib/supabase/client'
 import type { CitationSource } from '@/types'
 
-const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY ?? ''
-const VOYAGE_EMBED_URL = 'https://api.voyageai.com/v1/embeddings'
-const VOYAGE_MODEL = 'voyage-3'
+const JINA_API_KEY = process.env.JINA_API_KEY ?? ''
+const JINA_EMBED_URL = 'https://api.jina.ai/v1/embeddings'
+const JINA_MODEL = 'jina-embeddings-v3'
 
-async function voyageEmbed(texts: string[], inputType: 'query' | 'document'): Promise<number[][]> {
-  const res = await fetch(VOYAGE_EMBED_URL, {
+async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.passage'): Promise<number[][]> {
+  const res = await fetch(JINA_EMBED_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${VOYAGE_API_KEY}`,
+      'Authorization': `Bearer ${JINA_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       input: texts.map(t => t.slice(0, 32000)),
-      model: VOYAGE_MODEL,
-      input_type: inputType,
+      model: JINA_MODEL,
+      task,
     }),
   })
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Voyage AI embed error ${res.status}: ${err}`)
+    throw new Error(`Jina AI embed error ${res.status}: ${err}`)
   }
 
   const json = await res.json()
@@ -29,12 +29,12 @@ async function voyageEmbed(texts: string[], inputType: 'query' | 'document'): Pr
 }
 
 export async function embedQuery(text: string): Promise<number[]> {
-  const [embedding] = await voyageEmbed([text], 'query')
+  const [embedding] = await jinaEmbed([text], 'retrieval.query')
   return embedding
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  return voyageEmbed(texts, 'document')
+  return jinaEmbed(texts, 'retrieval.passage')
 }
 
 export interface RetrievedChunk {
