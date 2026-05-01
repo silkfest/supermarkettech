@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       let fullContent = ''
       try {
         const geminiStream = await gemini.chat.completions.create({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-1.5-flash',
           max_tokens: 2048,
           stream: true,
           messages: [
@@ -99,8 +99,11 @@ export async function POST(req: NextRequest) {
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`))
       } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err)
-        console.error('[Chat stream error]', detail, err)
+        const e = err as Record<string, unknown>
+        const status  = typeof e?.status  === 'number' ? e.status  : null
+        const detail  = err instanceof Error ? err.message : String(err)
+        const body    = typeof e?.error   === 'object'  ? JSON.stringify(e.error) : null
+        console.error('[Chat stream error]', status, detail, body, err)
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: detail })}\n\n`))
       } finally {
         controller.close()
