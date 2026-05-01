@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
@@ -7,7 +7,10 @@ import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const gemini = new OpenAI({
+  apiKey: process.env.GEMINI_API_KEY ?? '',
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+})
 
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
@@ -63,19 +66,21 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       let fullContent = ''
       try {
-        const claudeStream = anthropic.messages.stream({
-          model: 'claude-haiku-4-5-20251001',
+        const geminiStream = await gemini.chat.completions.create({
+          model: 'gemini-2.0-flash',
           max_tokens: 2048,
-          system: systemPrompt,
+          stream: true,
           messages: [
+            { role: 'system', content: systemPrompt },
             ...history.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
             { role: 'user', content: message },
           ],
         })
-        for await (const chunk of claudeStream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            fullContent += chunk.delta.text
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: chunk.delta.text })}\n\n`))
+        for await (const chunk of geminiStream) {
+          const text = chunk.choices[0]?.delta?.content ?? ''
+          if (text) {
+            fullContent += text
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
           }
         }
         if (sources.length > 0) {
