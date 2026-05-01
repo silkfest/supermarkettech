@@ -1,6 +1,8 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Equipment, ChatMode, ChatMessage, CitationSource } from '@/types'
 
 // ── Mode display config ───────────────────────────────────────────────────────
@@ -86,7 +88,29 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           {/* Show typing dots while waiting for first token */}
           {msg.isStreaming && !msg.content
             ? <TypingDots />
-            : <span className="whitespace-pre-wrap break-words">{msg.content}</span>
+            : isUser
+              ? <span className="whitespace-pre-wrap break-words">{msg.content}</span>
+              : (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => <p className="font-bold text-base mb-1">{children}</p>,
+                    h2: ({ children }) => <p className="font-semibold text-sm mb-1 mt-2">{children}</p>,
+                    h3: ({ children }) => <p className="font-semibold text-sm mb-0.5 mt-1.5">{children}</p>,
+                    p:  ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc list-outside pl-4 mb-2 space-y-0.5">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-outside pl-4 mb-2 space-y-0.5">{children}</ol>,
+                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 rounded text-xs font-mono">{children}</code>,
+                    pre: ({ children }) => <pre className="bg-slate-100 rounded-lg p-3 overflow-x-auto text-xs font-mono mb-2">{children}</pre>,
+                    hr:  () => <hr className="my-2 border-slate-200" />,
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              )
           }
           {/* Blinking cursor while streaming content */}
           {msg.isStreaming && msg.content && (
