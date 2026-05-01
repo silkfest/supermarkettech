@@ -94,8 +94,9 @@ export async function POST(req: NextRequest) {
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`))
       } catch (err) {
-        console.error('[Chat stream error]', err)
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Stream error' })}\n\n`))
+        const detail = err instanceof Error ? err.message : String(err)
+        console.error('[Chat stream error]', detail, err)
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: detail })}\n\n`))
       } finally {
         controller.close()
       }
