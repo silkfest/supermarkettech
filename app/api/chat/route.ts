@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
@@ -7,10 +7,8 @@ import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
-const gemini = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY ?? '',
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-})
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '')
 
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
@@ -66,23 +64,27 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       let fullContent = ''
       try {
-        const geminiStream = await gemini.chat.completions.create({
-          model: 'gemini-2.0-flash',
-          max_tokens: 2048,
-          stream: true,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...history.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
-            { role: 'user', content: message },
-          ],
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-2.0-flash-lite',
+          systemInstruction: systemPrompt,
         })
-        for await (const chunk of geminiStream) {
-          const text = chunk.choices[0]?.delta?.content ?? ''
+
+        const chatHistory = history.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        }))
+
+        const chat = model.startChat({ history: chatHistory })
+        const result = await chat.sendMessageStream(message)
+
+        for await (const chunk of result.stream) {
+          const text = chunk.text()
           if (text) {
             fullContent += text
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
           }
         }
+
         if (sources.length > 0) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`))
         }
@@ -99,11 +101,8 @@ export async function POST(req: NextRequest) {
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`))
       } catch (err) {
-        const e = err as Record<string, unknown>
-        const status  = typeof e?.status  === 'number' ? e.status  : null
-        const detail  = err instanceof Error ? err.message : String(err)
-        const body    = typeof e?.error   === 'object'  ? JSON.stringify(e.error) : null
-        console.error('[Chat stream error]', status, detail, body, err)
+        const detail = err instanceof Error ? err.message : String(err)
+        console.error('[Chat stream error]', detail, err)
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: detail })}\n\n`))
       } finally {
         controller.close()
