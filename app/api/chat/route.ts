@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
@@ -8,7 +8,10 @@ import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '')
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY ?? '',
+  baseURL: 'https://api.groq.com/openai/v1',
+})
 
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
@@ -64,21 +67,19 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       let fullContent = ''
       try {
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-2.0-flash-lite',
-          systemInstruction: systemPrompt,
+        const groqStream = await groq.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 2048,
+          stream: true,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+            { role: 'user', content: message },
+          ],
         })
 
-        const chatHistory = history.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        }))
-
-        const chat = model.startChat({ history: chatHistory })
-        const result = await chat.sendMessageStream(message)
-
-        for await (const chunk of result.stream) {
-          const text = chunk.text()
+        for await (const chunk of groqStream) {
+          const text = chunk.choices[0]?.delta?.content ?? ''
           if (text) {
             fullContent += text
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
