@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Lightbulb, Check, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Equipment, ChatMode, ChatMessage, CitationSource } from '@/types'
@@ -174,6 +174,13 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const [error, setError]         = useState<string | null>(null)
 
+  // Save-as-tip state
+  const [showTipInput, setShowTipInput] = useState(false)
+  const [tipTitle, setTipTitle]         = useState('')
+  const [savingTip, setSavingTip]       = useState(false)
+  const [tipSaved, setTipSaved]         = useState(false)
+  const [tipError, setTipError]         = useState('')
+
   const bottomRef   = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef    = useRef<AbortController | null>(null)
@@ -187,6 +194,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     setError(null)
     setInput('')
     setStreaming(false)
+    setShowTipInput(false)
+    setTipTitle('')
+    setTipSaved(false)
+    setTipError('')
   }, [equipment?.id])
 
   // Scroll to bottom whenever messages update
@@ -355,6 +366,27 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     }
   }, [input, streaming, messages, mode, equipment, sessionId])
 
+  async function handleSaveTip() {
+    if (!sessionId || !tipTitle.trim()) return
+    setSavingTip(true)
+    setTipError('')
+    try {
+      const res = await fetch('/api/tips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, title: tipTitle.trim() }),
+      })
+      if (res.status === 409) { setTipSaved(true); setShowTipInput(false); return }
+      if (!res.ok) { const j = await res.json(); setTipError(j?.error ?? 'Failed to save'); return }
+      setTipSaved(true)
+      setShowTipInput(false)
+    } catch {
+      setTipError('Network error — please try again')
+    } finally {
+      setSavingTip(false)
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -390,6 +422,51 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Save as tip bar ── shown when there's a completed session */}
+      {sessionId && !streaming && messages.length >= 2 && (
+        <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 py-2">
+          <div className="max-w-2xl mx-auto w-full">
+            {tipSaved ? (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 py-1">
+                <Check size={13} /> Saved as a troubleshooting tip
+              </div>
+            ) : showTipInput ? (
+              <div className="flex items-center gap-2">
+                <Lightbulb size={13} className="text-amber-500 flex-shrink-0" />
+                <input
+                  autoFocus
+                  value={tipTitle}
+                  onChange={e => setTipTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveTip(); if (e.key === 'Escape') setShowTipInput(false) }}
+                  placeholder="Give this tip a title…"
+                  className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button
+                  onClick={handleSaveTip}
+                  disabled={savingTip || !tipTitle.trim()}
+                  className="px-2.5 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {savingTip ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                  Save
+                </button>
+                <button onClick={() => setShowTipInput(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
+                </button>
+                {tipError && <span className="text-xs text-red-500">{tipError}</span>}
+              </div>
+            ) : (
+              <button
+                onClick={() => { setShowTipInput(true); setTipTitle(messages[0]?.content?.slice(0, 80) ?? '') }}
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-600 transition-colors py-1"
+              >
+                <Lightbulb size={13} />
+                Save as troubleshooting tip
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Error shown in empty state */}
       {!hasMessages && error && (

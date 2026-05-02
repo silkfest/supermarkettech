@@ -8,7 +8,7 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, WrenchIcon, Database,
+  Menu, MessageSquare, WrenchIcon, Database, Lightbulb,
 } from 'lucide-react'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User } from '@/types'
@@ -20,12 +20,13 @@ const MODE_LABELS: Record<ChatMode, string> = {
 
 type NavItem =
   | { id: ChatMode; icon: React.ReactNode; label: string; href?: never }
-  | { id: 'REGISTRY'; icon: React.ReactNode; label: string; href: string }
+  | { id: 'REGISTRY' | 'TIPS'; icon: React.ReactNode; label: string; href: string }
 
 const BOTTOM_NAV_ITEMS: NavItem[] = [
   { id: 'EXPERT',      icon: <MessageSquare size={20}/>, label: 'Expert' },
   { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
   { id: 'REGISTRY',    icon: <Database      size={20}/>, label: 'Registry', href: '/maintenance/components' },
+  { id: 'TIPS',        icon: <Lightbulb     size={20}/>, label: 'Tips', href: '/tips' },
 ]
 
 
