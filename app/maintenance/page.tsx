@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database, Filter } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database, Filter, AlertTriangle } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 
 interface RecentReport {
@@ -27,10 +27,17 @@ function MaintenanceHubContent() {
   const [stores, setStores] = useState<Store[]>([])
   const [filterStoreId, setFilterStoreId] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'pm' | 'individual'>('all')
+  const [storeError, setStoreError] = useState<string | null>(null)
 
   // Fetch stores for the filter dropdown
   useEffect(() => {
-    fetch('/api/stores').then(r => r.ok ? r.json() : []).then(setStores)
+    fetch('/api/stores')
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(data => { setStores(data); setStoreError(null) })
+      .catch(() => setStoreError('Could not load store list'))
   }, [])
 
   // Re-fetch reports whenever filters change
@@ -115,6 +122,13 @@ function MaintenanceHubContent() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 pb-10 space-y-6">
+        {storeError && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+            <AlertTriangle size={13} className="flex-shrink-0" />
+            <span className="flex-1">{storeError}</span>
+            <button onClick={() => setStoreError(null)} className="text-red-400 hover:text-red-600 ml-2 leading-none">×</button>
+          </div>
+        )}
         {/* Create new */}
         <div>
           <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">

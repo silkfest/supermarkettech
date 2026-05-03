@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 export async function GET(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
   const storeId  = new URL(req.url).searchParams.get('storeId')
 
@@ -14,6 +16,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
   const body = await req.json()
   const {

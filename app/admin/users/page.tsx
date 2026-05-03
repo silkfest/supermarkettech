@@ -185,7 +185,10 @@ export default function AdminUsersPage() {
                       )}
                       {user.status === 'active' && user.id !== currentUser?.id && (
                         <button
-                          onClick={() => updateUser(user.id, { status: 'suspended' })}
+                          onClick={() => {
+                            if (!confirm(`Suspend ${user.name || user.email}? They will not be able to sign in.`)) return
+                            updateUser(user.id, { status: 'suspended' })
+                          }}
                           disabled={saving === user.id}
                           className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                         >
@@ -194,7 +197,10 @@ export default function AdminUsersPage() {
                       )}
                       {user.status === 'suspended' && (
                         <button
-                          onClick={() => updateUser(user.id, { status: 'active' })}
+                          onClick={() => {
+                            if (!confirm(`Reactivate ${user.name || user.email}?`)) return
+                            updateUser(user.id, { status: 'active' })
+                          }}
                           disabled={saving === user.id}
                           className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
                         >

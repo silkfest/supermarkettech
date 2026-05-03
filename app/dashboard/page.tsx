@@ -8,7 +8,7 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, WrenchIcon, Database, Lightbulb,
+  Menu, MessageSquare, WrenchIcon, Database, Lightbulb, AlertTriangle,
 } from 'lucide-react'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User } from '@/types'
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [showAdd,      setShowAdd]      = useState(false)
   const [currentUser,  setCurrentUser]  = useState<User | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [fetchError,   setFetchError]   = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -59,7 +60,14 @@ export default function Dashboard() {
 
   const loadEquipment = useCallback(async () => {
     const res = await fetch('/api/equipment').catch(() => null)
-    if (res?.ok) setEquipment(await res.json())
+    if (res?.ok) {
+      setEquipment(await res.json())
+      setFetchError(null)
+    } else if (res) {
+      setFetchError('Failed to load equipment. Check your connection and try again.')
+    } else {
+      setFetchError('Network error — could not reach the server. Check your connection and try again.')
+    }
   }, [])
 
   const loadDocuments = useCallback(async (equipmentId?: string) => {
@@ -182,6 +190,16 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* ─── Fetch error banner ─── */}
+        {fetchError && (
+          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-xs text-red-700">
+            <AlertTriangle size={13} className="flex-shrink-0" />
+            <span className="flex-1">{fetchError}</span>
+            <button onClick={loadEquipment} className="font-medium underline hover:no-underline flex-shrink-0">Retry</button>
+            <button onClick={() => setFetchError(null)} className="ml-2 text-red-400 hover:text-red-600 leading-none flex-shrink-0">×</button>
+          </div>
+        )}
+
         {/* ─── Main content ─── */}
         {/* On mobile: extra bottom padding so content doesn't hide behind the bottom nav */}
         <div className="flex-1 flex min-h-0 pb-14 md:pb-0">
@@ -196,7 +214,7 @@ export default function Dashboard() {
               </div>
               {/* Context panel — hidden on mobile to save space */}
               <div className="hidden lg:block">
-                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker}/>
+                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker} onDocRetried={() => loadDocuments(selected?.id)}/>
               </div>
             </>
           )}

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 // PATCH /api/tech-certs/[id]
 // DELETE /api/tech-certs/[id]
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   const supabase = getSupabaseServer()
@@ -25,7 +27,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(data)
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   const supabase = getSupabaseServer()

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 export async function GET(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const model        = searchParams.get('model')?.trim() ?? ''
   const manufacturer = searchParams.get('manufacturer')?.trim() ?? ''
@@ -10,9 +13,10 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServer()
 
-  // Build OR filter — match any document whose title contains the model or manufacturer
+  // Sanitise inputs before interpolating into PostgREST .or() filter string
+  const safe = (s: string) => s.replace(/[,().%_]/g, '').slice(0, 100)
   const terms   = [model, manufacturer].filter(Boolean)
-  const orCond  = terms.map(t => `title.ilike.%${t}%`).join(',')
+  const orCond  = terms.map(t => `title.ilike.%${safe(t)}%`).join(',')
 
   const { data, error } = await supabase
     .from('documents')

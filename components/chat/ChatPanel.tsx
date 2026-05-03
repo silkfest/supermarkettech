@@ -167,6 +167,10 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+function sessionStorageKey(equipmentId?: string) {
+  return `chatSession_${equipmentId ?? 'global'}`
+}
+
 export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [messages, setMessages]   = useState<ChatMessage[]>([])
   const [input, setInput]         = useState('')
@@ -185,12 +189,19 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef    = useRef<AbortController | null>(null)
 
+  // Restore sessionId from localStorage when equipment selection changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(sessionStorageKey(equipment?.id))
+      setSessionId(stored ?? undefined)
+    } catch { /* ignore – SSR or private browsing */ }
+  }, [equipment?.id])
+
   // Reset chat when the selected equipment changes
   useEffect(() => {
     // Cancel any in-flight request
     abortRef.current?.abort()
     setMessages([])
-    setSessionId(undefined)
     setError(null)
     setInput('')
     setStreaming(false)
@@ -314,7 +325,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               break
 
             case 'done':
-              if (event.sessionId) setSessionId(event.sessionId)
+              if (event.sessionId) {
+                setSessionId(event.sessionId)
+                try { localStorage.setItem(sessionStorageKey(equipment?.id), event.sessionId) } catch { /* ignore */ }
+              }
               setMessages(prev => prev.map(m =>
                 m.id === assistantId
                   ? { ...m, isStreaming: false, sources: pendingSources }

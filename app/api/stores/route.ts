@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
 
   const { data: stores, error } = await supabase
@@ -49,6 +51,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
   const body = await req.json()
   const { name, address, contactName, phone, trendingIssues } = body

@@ -10,6 +10,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const supabase = getSupabaseServer()
 
+  // Only admin/manager roles may trigger re-ingestion
+  const { data: callerData } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const callerRole = callerData?.role
+  if (!['admin', 'manager'].includes(callerRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   // Fetch the document record
   const { data: doc, error: docErr } = await supabase
     .from('documents')

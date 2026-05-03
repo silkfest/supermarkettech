@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 export interface WebManualResult {
   title: string
@@ -47,6 +48,8 @@ async function searchManualsLib(query: string): Promise<WebManualResult[]> {
 }
 
 export async function GET(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { searchParams } = new URL(req.url)
   const manufacturer = searchParams.get('manufacturer')?.trim() ?? ''
   const model        = searchParams.get('model')?.trim() ?? ''

@@ -6,26 +6,38 @@ const JINA_EMBED_URL = 'https://api.jina.ai/v1/embeddings'
 const JINA_MODEL = 'jina-embeddings-v3'
 
 async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.passage'): Promise<number[][]> {
-  const res = await fetch(JINA_EMBED_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${JINA_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      input: texts.map(t => t.slice(0, 32000)),
-      model: JINA_MODEL,
-      task,
-    }),
-  })
+  const MAX_ATTEMPTS = 3
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const res = await fetch(JINA_EMBED_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${JINA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        input: texts.map(t => t.slice(0, 32000)),
+        model: JINA_MODEL,
+        task,
+      }),
+    })
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Jina AI embed error ${res.status}: ${err}`)
+    if (res.status === 429 && attempt < MAX_ATTEMPTS - 1) {
+      const backoffMs = 1000 * Math.pow(2, attempt)
+      console.warn(`[Jina] rate limited, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})`)
+      await new Promise(r => setTimeout(r, backoffMs))
+      continue
+    }
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Jina AI embed error ${res.status}: ${err}`)
+    }
+
+    const json = await res.json()
+    return (json.data as Array<{ embedding: number[] }>).map(d => d.embedding)
   }
 
-  const json = await res.json()
-  return (json.data as Array<{ embedding: number[] }>).map(d => d.embedding)
+  throw new Error('Jina AI embed failed after max retries')
 }
 
 export async function embedQuery(text: string): Promise<number[]> {
@@ -71,13 +83,18 @@ export async function retrieveChunks(
   return (data as RetrievedChunk[]) ?? []
 }
 
-export function formatContext(chunks: RetrievedChunk[]): string {
+export function formatContext(chunks: RetrievedChunk[], maxChars = 12000): string {
   if (!chunks.length) return ''
-  return chunks
-    .map((c, i) =>
-      `[Doc ${i + 1}: ${c.document_title}${c.page_number ? `, p.${c.page_number}` : ''}]\n${c.content}`
-    )
-    .join('\n\n---\n\n')
+  const parts: string[] = []
+  let total = 0
+  for (let i = 0; i < chunks.length; i++) {
+    const c = chunks[i]
+    const part = `[Doc ${i + 1}: ${c.document_title}${c.page_number ? `, p.${c.page_number}` : ''}]\n${c.content}`
+    if (total + part.length > maxChars) break
+    parts.push(part)
+    total += part.length
+  }
+  return parts.join('\n\n---\n\n')
 }
 
 export function chunksToCitations(chunks: RetrievedChunk[]): CitationSource[] {

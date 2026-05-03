@@ -1,5 +1,6 @@
 'use client'
-import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn, formatBytes, timeAgo } from '@/lib/utils'
 import type { Equipment, Document, SensorSnapshot } from '@/types'
 
@@ -25,7 +26,19 @@ interface Props {
   onUpload: () => void
 }
 
-export default function ContextPanel({ equipment, documents, snapshot, onUpload }: Props) {
+export default function ContextPanel({ equipment, documents, snapshot, onUpload, onDocRetried }: Props & { onDocRetried?: () => void }) {
+  const [retrying, setRetrying] = useState<Record<string, boolean>>({})
+
+  async function handleRetry(docId: string) {
+    setRetrying(r => ({ ...r, [docId]: true }))
+    try {
+      await fetch(`/api/documents/${docId}`, { method: 'POST' })
+      onDocRetried?.()
+    } catch { /* ignore — parent will refresh on next poll */ }
+    finally {
+      setRetrying(r => ({ ...r, [docId]: false }))
+    }
+  }
   if (!equipment) {
     return (
       <aside className="w-52 flex-shrink-0 border-l border-slate-200 bg-slate-50 flex items-center justify-center p-4">
@@ -113,7 +126,8 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload 
           <div className="space-y-1 mb-2">
             {documents.map(doc => {
               const isProcessing = doc.status === 'PROCESSING'
-              const canOpen = !!doc.url && !isProcessing
+              const isFailed     = doc.status === 'FAILED'
+              const canOpen = !!doc.url && !isProcessing && !isFailed
               const icon = doc.source_type === 'WEB'
                 ? <Globe size={10} className="text-blue-500"/>
                 : <FileText size={10} className="text-red-400"/>
@@ -121,22 +135,37 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload 
               const inner = (
                 <div className="flex items-center gap-2 w-full group">
                   <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-                    {isProcessing ? <Loader2 size={10} className="text-amber-400 animate-spin"/> : icon}
+                    {isProcessing
+                      ? <Loader2 size={10} className="text-amber-400 animate-spin"/>
+                      : isFailed
+                        ? <AlertTriangle size={10} className="text-red-400"/>
+                        : icon
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       'text-[11px] font-medium truncate leading-tight',
-                      canOpen ? 'text-blue-600 group-hover:underline' : 'text-slate-700'
+                      canOpen ? 'text-blue-600 group-hover:underline' : isFailed ? 'text-red-500' : 'text-slate-700'
                     )}>
                       {doc.title}
                     </p>
                     <p className="text-[10px] text-slate-400">
-                      {isProcessing ? 'Processing…' : doc.page_count ? `${doc.page_count}p` : doc.source_type}
+                      {isProcessing ? 'Processing…' : isFailed ? 'Failed' : doc.page_count ? `${doc.page_count}p` : doc.source_type}
                       {doc.file_size ? ` · ${formatBytes(doc.file_size)}` : ''}
                     </p>
                   </div>
                   {canOpen && (
                     <ExternalLink size={10} className="text-slate-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"/>
+                  )}
+                  {isFailed && (
+                    <button
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); handleRetry(doc.id) }}
+                      disabled={retrying[doc.id]}
+                      title="Retry ingestion"
+                      className="flex-shrink-0 p-0.5 text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw size={10} className={retrying[doc.id] ? 'animate-spin' : ''} />
+                    </button>
                   )}
                 </div>
               )
