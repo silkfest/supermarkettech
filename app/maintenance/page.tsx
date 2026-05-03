@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database, Filter, AlertTriangle } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'

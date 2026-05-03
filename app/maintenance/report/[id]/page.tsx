@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { ArrowLeft, Home, Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'

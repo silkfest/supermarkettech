@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -109,7 +111,7 @@ export default function Dashboard() {
     let channel: RealtimeChannel
     channel = sb
       .channel('coldiq-alarms')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarm_events' }, payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarm_events' }, (payload: { new: Record<string, unknown> }) => {
         const alarm = payload.new as { equipment_id: string; alarm_type?: string }
         const eq = equipmentRef.current.find(e => e.id === alarm.equipment_id)
         const name = eq?.name ?? 'Unknown unit'

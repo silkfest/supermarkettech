@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import type { AuthChangeEvent } from '@supabase/supabase-js'
 import { getSupabaseBrowser } from '@/lib/supabase/client'

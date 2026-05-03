@@ -2,6 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { ingestDocument } from '@/lib/ai/rag'
 
+// PATCH /api/documents/[id] — update document metadata (admin/manager only)
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = getSupabaseServer()
+
+  const { data: callerData } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const callerRole = callerData?.role
+  if (!['admin', 'manager'].includes(callerRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await req.json()
+  const update: Record<string, unknown> = {}
+
+  if ('equipment_id' in body) update.equipment_id = body.equipment_id ?? null
+  if ('category'     in body) update.category     = body.category ?? ''
+  if ('title'        in body) update.title        = body.title
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('documents')
+    .update(update)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 // POST /api/documents/[id] — re-ingest an existing document using the file already in storage
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

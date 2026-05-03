@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -24,15 +26,43 @@ const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon:
   'Defrost Board':           { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Snowflake size={22}/> },
   'Rack System':             { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Server   size={22}/> },
   'Case Controller':         { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600', badge: 'bg-fuchsia-100 text-fuchsia-700',icon: <Monitor  size={22}/> },
-  'Filter Drier':            { bg: 'bg-lime-100',    text: 'text-lime-600',    badge: 'bg-lime-100 text-lime-700',      icon: <Filter   size={22}/> },
+  'Filter Drier':            { bg: 'bg-lime-100',    text: 'text-lime-600',    badge: 'bg-lime-100 text-lime-700',      icon: <Filter    size={22}/> },
+  'Gas Cooler':              { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind      size={22}/> },
+  'Flash Tank':              { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Package   size={22}/> },
+  'Booster Compressor':      { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap       size={22}/> },
+  'Transcritical Compressor':{ bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Zap       size={22}/> },
+  'HPCO / MPCO':             { bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge     size={22}/> },
+  'Economizer':              { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Sliders   size={22}/> },
+  'Adiabatic System':        { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Droplets  size={22}/> },
+  'CO2 Pump':                { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Gauge     size={22}/> },
 }
 const DEFAULT_META = { bg: 'bg-slate-100', text: 'text-slate-500', badge: 'bg-slate-100 text-slate-600', icon: <Box size={22}/> }
 
 const COMPONENT_TYPES = [
   'Compressor','Condenser Unit','Rack Controller','EEV Board',
   'Oil Separator','Receiver','Head Pressure Controller','Defrost Board',
-  'Rack System','Case Controller','Filter Drier','Other',
+  'Rack System','Case Controller','Filter Drier',
+  // CO2 / transcritical types
+  'Gas Cooler','Flash Tank','Booster Compressor','Transcritical Compressor',
+  'HPCO / MPCO','Economizer','Adiabatic System','CO2 Pump',
+  'Other',
 ]
+
+const DEFROST_TYPES    = ['Electric', 'Hot Gas', 'CO2 Off-Cycle', 'Natural']
+const LOAD_CATEGORIES  = ['Low Temp', 'Medium Temp', 'High Temp', 'Process']
+
+const DEFROST_COLOURS: Record<string, string> = {
+  'Electric':      'bg-blue-50 text-blue-700 border-blue-200',
+  'Hot Gas':       'bg-orange-50 text-orange-700 border-orange-200',
+  'CO2 Off-Cycle': 'bg-sky-50 text-sky-700 border-sky-200',
+  'Natural':       'bg-green-50 text-green-700 border-green-200',
+}
+const LOAD_COLOURS: Record<string, string> = {
+  'Low Temp':    'bg-violet-50 text-violet-700 border-violet-200',
+  'Medium Temp': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'High Temp':   'bg-red-50 text-red-700 border-red-200',
+  'Process':     'bg-slate-100 text-slate-600 border-slate-200',
+}
 
 const REFRIGERANTS = ['R-404A','R-448A','R-449A','R-22','R-134a','R-410A','R-407A','R-407F','CO2 (R-744)','R-290','R-32','Other']
 const OIL_TYPES    = ['Emkarate RL32','Emkarate RL46','Mobil EAL Arctic 22 CC','Mobil EAL Arctic 32 CC','Mobil EAL Arctic 46 CC','Mobil SHC 625','Suniso 3GS','Other']
@@ -60,12 +90,14 @@ interface CompForm {
   installDate: string; lastServiceDate: string; status: string
   manualTitle: string; manualUrl: string
   notes: string; troubleshooting: string
+  defrostType: string; loadCategory: string; supplier: string; partNumber: string
 }
 const EMPTY_FORM: CompForm = {
   type: 'Compressor', manufacturer: '', model: '', serial: '',
   storeName: '', assetTag: '', refrigerant: '', oilType: '',
   installDate: '', lastServiceDate: '', status: 'active',
   manualTitle: '', manualUrl: '', notes: '', troubleshooting: '',
+  defrostType: '', loadCategory: '', supplier: '', partNumber: '',
 }
 
 // ── Component form fields (shared by Add + Edit modals) ───────────────────────
@@ -151,6 +183,37 @@ function ComponentFormFields({ form, set, isEdit = false }: {
         <div>
           <label className={LBL}>Last Service Date</label>
           <input type="date" value={form.lastServiceDate} onChange={set('lastServiceDate')} className={INP} />
+        </div>
+      </div>
+
+      {/* CO2 / Extended metadata */}
+      <div className="pt-1 border-t border-slate-100">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">CO2 / Extended Details</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LBL}>Defrost Type</label>
+            <select value={form.defrostType} onChange={set('defrostType')} className={SEL}>
+              <option value="">— N/A —</option>
+              {DEFROST_TYPES.map(d => <option key={d}>{d}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={LBL}>Load Category</label>
+            <select value={form.loadCategory} onChange={set('loadCategory')} className={SEL}>
+              <option value="">— N/A —</option>
+              {LOAD_CATEGORIES.map(l => <option key={l}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className={LBL}>Supplier</label>
+            <input value={form.supplier} onChange={set('supplier')} placeholder="e.g. Bitzer, Danfoss" className={INP} />
+          </div>
+          <div>
+            <label className={LBL}>Part Number</label>
+            <input value={form.partNumber} onChange={set('partNumber')} placeholder="Manufacturer P/N" className={INP} />
+          </div>
         </div>
       </div>
 
@@ -275,6 +338,10 @@ function EditComponentModal({
     manualUrl:       component.manualUrl,
     notes:           component.notes,
     troubleshooting: component.troubleshooting,
+    defrostType:     component.defrostType  ?? '',
+    loadCategory:    component.loadCategory ?? '',
+    supplier:        component.supplier     ?? '',
+    partNumber:      component.partNumber   ?? '',
   })
   const [saving,      setSaving]      = useState(false)
   const [err,         setErr]         = useState('')
@@ -469,6 +536,27 @@ function ComponentCard({
               )}
             </div>
 
+            {/* CO2 metadata badges */}
+            {(c.defrostType || c.loadCategory || c.supplier || c.partNumber) && (
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {c.defrostType && (
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${DEFROST_COLOURS[c.defrostType] ?? 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                    {c.defrostType} defrost
+                  </span>
+                )}
+                {c.loadCategory && (
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${LOAD_COLOURS[c.loadCategory] ?? 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                    {c.loadCategory}
+                  </span>
+                )}
+                {(c.supplier || c.partNumber) && (
+                  <span className="text-[10px] text-slate-400">
+                    {[c.supplier, c.partNumber].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Manual + Edit */}
             <div className="mt-2.5 flex items-center gap-2 flex-wrap">
               {c.manualUrl ? (
@@ -556,16 +644,18 @@ function ComponentCard({
 export default function ComponentRegistryPage() {
   const router = useRouter()
 
-  const [allComponents, setAllComponents] = useState<ComponentRecord[]>([])
-  const [components,    setComponents]    = useState<ComponentRecord[]>([])
-  const [types,         setTypes]         = useState<string[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [query,         setQuery]         = useState('')
-  const [activeType,    setActiveType]    = useState('')
-  const [manualTarget,  setManualTarget]  = useState<ComponentRecord | null>(null)
-  const [editTarget,    setEditTarget]    = useState<ComponentRecord | null>(null)
-  const [showAdd,       setShowAdd]       = useState(false)
-  const [userRole,      setUserRole]      = useState<UserRole | null>(null)
+  const [allComponents,    setAllComponents]    = useState<ComponentRecord[]>([])
+  const [components,       setComponents]       = useState<ComponentRecord[]>([])
+  const [types,            setTypes]            = useState<string[]>([])
+  const [loading,          setLoading]          = useState(true)
+  const [query,            setQuery]            = useState('')
+  const [activeType,       setActiveType]       = useState('')
+  const [activeDefrost,    setActiveDefrost]    = useState('')
+  const [activeLoad,       setActiveLoad]       = useState('')
+  const [manualTarget,     setManualTarget]     = useState<ComponentRecord | null>(null)
+  const [editTarget,       setEditTarget]       = useState<ComponentRecord | null>(null)
+  const [showAdd,          setShowAdd]          = useState(false)
+  const [userRole,         setUserRole]         = useState<UserRole | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isAdmin = userRole === 'admin' || userRole === 'manager'
@@ -599,10 +689,12 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const fetchFiltered = useCallback(async (q: string, t: string) => {
+  const fetchFiltered = useCallback(async (q: string, t: string, defrost: string, load: string) => {
     const params = new URLSearchParams()
-    if (q) params.set('q', q)
-    if (t) params.set('type', t)
+    if (q)      params.set('q', q)
+    if (t)      params.set('type', t)
+    if (defrost) params.set('defrostType', defrost)
+    if (load)   params.set('loadCategory', load)
     try {
       const data = await fetch(`/api/components?${params}`).then(r => r.json())
       if (Array.isArray(data)) setComponents(data)
@@ -611,11 +703,11 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType), 280)
+    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeDefrost, activeLoad), 280)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, activeType, fetchFiltered])
+  }, [query, activeType, activeDefrost, activeLoad, fetchFiltered])
 
-  const inFilterMode = !!(query || activeType)
+  const inFilterMode = !!(query || activeType || activeDefrost || activeLoad)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
@@ -649,16 +741,44 @@ export default function ComponentRegistryPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search by model, serial, manufacturer, refrigerant…"
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14}/></button>}
+        {/* Search + filters */}
+        <div className="space-y-2">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by model, serial, manufacturer, supplier…"
+              className="w-full pl-9 pr-9 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14}/></button>}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <select
+              value={activeDefrost}
+              onChange={e => setActiveDefrost(e.target.value)}
+              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+            >
+              <option value="">Defrost type…</option>
+              {DEFROST_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select
+              value={activeLoad}
+              onChange={e => setActiveLoad(e.target.value)}
+              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+            >
+              <option value="">Load category…</option>
+              {LOAD_CATEGORIES.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+            {(activeDefrost || activeLoad) && (
+              <button
+                onClick={() => { setActiveDefrost(''); setActiveLoad('') }}
+                className="px-3 py-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1"
+              >
+                <X size={11}/> Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -714,6 +834,16 @@ export default function ComponentRegistryPage() {
               {activeType && (
                 <button onClick={() => setActiveType('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-full">
                   {activeType} <X size={11}/>
+                </button>
+              )}
+              {activeDefrost && (
+                <button onClick={() => setActiveDefrost('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white text-xs font-medium rounded-full">
+                  {activeDefrost} <X size={11}/>
+                </button>
+              )}
+              {activeLoad && (
+                <button onClick={() => setActiveLoad('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-xs font-medium rounded-full">
+                  {activeLoad} <X size={11}/>
                 </button>
               )}
               <span className="text-xs text-slate-500">{components.length} result{components.length !== 1 ? 's' : ''}</span>

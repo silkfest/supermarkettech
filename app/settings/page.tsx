@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Home, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
@@ -6,7 +8,6 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const supabase = getSupabaseBrowser()
 
   // Display name
   const [displayName, setDisplayName] = useState('')
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
+    const supabase = getSupabaseBrowser()
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
@@ -36,11 +38,12 @@ export default function SettingsPage() {
       setDisplayName(name)
       setOriginalName(name)
     })()
-  }, [])
+  }, [router])
 
   async function handleSaveName() {
     if (!displayName.trim()) { setNameError('Display name cannot be empty'); return }
     setSavingName(true); setNameError(''); setNameSaved(false)
+    const supabase = getSupabaseBrowser()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setNameError('Not logged in'); setSavingName(false); return }
 
@@ -65,6 +68,7 @@ export default function SettingsPage() {
     if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
     if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
     setSavingPassword(true); setPasswordError(''); setPasswordSaved(false)
+    const supabase = getSupabaseBrowser()
 
     // Re-authenticate with current password first
     const { error: signInError } = await supabase.auth.signInWithPassword({

@@ -2,8 +2,9 @@ import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Lazy env-var accessors so missing vars during build-time static gen don't throw
+function getUrl()      { return process.env.NEXT_PUBLIC_SUPABASE_URL      ?? '' }
+function getAnonKey()  { return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' }
 
 // ── Browser client ─────────────────────────────────────────────────────────
 // Uses @supabase/ssr so the session is stored in cookies (not localStorage),
@@ -11,7 +12,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 let browserClient: ReturnType<typeof createBrowserClient> | null = null
 export function getSupabaseBrowser() {
   if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    browserClient = createBrowserClient(getUrl(), getAnonKey())
   }
   return browserClient
 }
@@ -19,8 +20,8 @@ export function getSupabaseBrowser() {
 // ── Server client for data operations (service role — bypasses RLS) ────────
 export function getSupabaseServer() {
   return createClient(
-    supabaseUrl,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? supabaseAnonKey,
+    getUrl(),
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? getAnonKey(),
     { auth: { persistSession: false } }
   )
 }
@@ -30,7 +31,7 @@ export function getSupabaseServer() {
 // supabase.auth.getUser() returns the real signed-in user.
 export function getSupabaseRouteAuth(req: NextRequest) {
   const reqCookies = req.cookies.getAll()
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(getUrl(), getAnonKey(), {
     cookies: {
       getAll: () => reqCookies,
       setAll: () => {}, // read-only — we don't need to set cookies in route handlers

@@ -27,6 +27,11 @@ export interface ComponentRecord {
   slot: number | null
   isCatalog: boolean
   catalogId: string | null
+  // CO2 / extended metadata
+  defrostType:  string
+  loadCategory: string
+  supplier:     string
+  partNumber:   string
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -109,6 +114,10 @@ export async function GET(req: NextRequest) {
           slot:            i + 1,
           isCatalog:       false,
           catalogId:       null,
+          defrostType:     '',
+          loadCategory:    '',
+          supplier:        '',
+          partNumber:      '',
         })
       }
 
@@ -146,6 +155,10 @@ export async function GET(req: NextRequest) {
           slot:            null,
           isCatalog:       false,
           catalogId:       null,
+          defrostType:     '',
+          loadCategory:    '',
+          supplier:        '',
+          partNumber:      '',
         })
       }
 
@@ -181,8 +194,15 @@ export async function GET(req: NextRequest) {
       slot:            c.slot            ?? null,
       isCatalog:       true,
       catalogId:       c.id,
+      defrostType:     c.defrost_type    ?? '',
+      loadCategory:    c.load_category   ?? '',
+      supplier:        c.supplier        ?? '',
+      partNumber:      c.part_number     ?? '',
     })
   }
+
+  const defrostType   = searchParams.get('defrostType')?.trim()  ?? ''
+  const loadCategory  = searchParams.get('loadCategory')?.trim() ?? ''
 
   let out = components
   if (q) {
@@ -193,10 +213,14 @@ export async function GET(req: NextRequest) {
       c.storeName.toLowerCase().includes(q)    ||
       c.type.toLowerCase().includes(q)         ||
       c.assetTag.toLowerCase().includes(q)     ||
-      c.refrigerant.toLowerCase().includes(q)
+      c.refrigerant.toLowerCase().includes(q)  ||
+      c.supplier.toLowerCase().includes(q)     ||
+      c.partNumber.toLowerCase().includes(q)
     )
   }
-  if (type) out = out.filter(c => c.type === type)
+  if (type)        out = out.filter(c => c.type === type)
+  if (defrostType) out = out.filter(c => c.defrostType === defrostType)
+  if (loadCategory) out = out.filter(c => c.loadCategory === loadCategory)
 
   return NextResponse.json(out)
 }
@@ -212,6 +236,7 @@ export async function POST(req: NextRequest) {
     type, manufacturer, model, serial, manualTitle, manualUrl,
     storeName, refrigerant, installDate, oilType, status,
     notes, lastServiceDate, assetTag, troubleshooting,
+    defrostType, loadCategory, supplier, partNumber,
   } = body
 
   if (!type || !manufacturer || !model) {
@@ -237,6 +262,10 @@ export async function POST(req: NextRequest) {
       last_service_date:  lastServiceDate || null,
       asset_tag:          assetTag        ?? '',
       troubleshooting:    troubleshooting ?? '',
+      defrost_type:       defrostType     ?? '',
+      load_category:      loadCategory    ?? '',
+      supplier:           supplier        ?? '',
+      part_number:        partNumber      ?? '',
     })
     .select()
     .single()
@@ -275,6 +304,10 @@ export async function PATCH(req: NextRequest) {
   if ('model'           in fields) update.model              = fields.model
   if ('serial'          in fields) update.serial             = fields.serial
   if ('type'            in fields) update.type               = fields.type
+  if ('defrostType'     in fields) update.defrost_type       = fields.defrostType
+  if ('loadCategory'    in fields) update.load_category      = fields.loadCategory
+  if ('supplier'        in fields) update.supplier           = fields.supplier
+  if ('partNumber'      in fields) update.part_number        = fields.partNumber
 
   const { data, error } = await supabase
     .from('manual_components')
