@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import Sidebar from '@/components/layout/Sidebar'
 import ChatPanel from '@/components/chat/ChatPanel'
 import ContextPanel from '@/components/equipment/ContextPanel'
@@ -39,6 +40,9 @@ export default function Dashboard() {
   const [currentUser,  setCurrentUser]  = useState<User | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [fetchError,   setFetchError]   = useState<string | null>(null)
+  const [alarmToast,   setAlarmToast]   = useState<string | null>(null)
+  const equipmentRef = useRef<Equipment[]>([])
+  const autoSelectedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -75,6 +79,54 @@ export default function Dashboard() {
     const res = await fetch(url).catch(() => null)
     if (res?.ok) setDocuments(await res.json())
   }, [])
+
+  // Keep a ref to equipment so realtime handler always has the latest list
+  useEffect(() => { equipmentRef.current = equipment }, [equipment])
+
+  // Auto-select equipment from URL param (e.g. from a QR code scan)
+  useEffect(() => {
+    if (autoSelectedRef.current || equipment.length === 0) return
+    const params = new URLSearchParams(window.location.search)
+    const equipId = params.get('equipment')
+    if (equipId) {
+      const eq = equipment.find(e => e.id === equipId)
+      if (eq) { setSelected(eq); autoSelectedRef.current = true }
+    }
+  }, [equipment])
+
+  // Auto-poll documents every 10s while any are still PROCESSING
+  useEffect(() => {
+    const hasProcessing = documents.some(d => d.status === 'PROCESSING')
+    if (!hasProcessing) return
+    const interval = setInterval(() => loadDocuments(selected?.id), 10000)
+    return () => clearInterval(interval)
+  }, [documents, selected?.id, loadDocuments])
+
+  // Realtime alarm notifications
+  useEffect(() => {
+    if (!currentUser) return
+    const sb = getSupabaseBrowser()
+    let channel: RealtimeChannel
+    channel = sb
+      .channel('coldiq-alarms')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarm_events' }, payload => {
+        const alarm = payload.new as { equipment_id: string; alarm_type?: string }
+        const eq = equipmentRef.current.find(e => e.id === alarm.equipment_id)
+        const name = eq?.name ?? 'Unknown unit'
+        const type = alarm.alarm_type ?? 'New alarm'
+        setAlarmToast(`🚨 ${name} — ${type}`)
+        loadEquipment()
+      })
+      .subscribe()
+    return () => { sb.removeChannel(channel) }
+  }, [currentUser, loadEquipment])
+
+  // Auto-dismiss alarm toast after 6s
+  useEffect(() => {
+    if (!alarmToast) return
+    const t = setTimeout(() => setAlarmToast(null), 6000)
+    return () => clearTimeout(t)
+  }, [alarmToast])
 
   useEffect(() => { if (currentUser) loadEquipment() }, [currentUser, loadEquipment])
   useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
@@ -189,6 +241,14 @@ export default function Dashboard() {
             </button>
           )}
         </div>
+
+        {/* ─── Realtime alarm toast ─── */}
+        {alarmToast && (
+          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white text-xs font-medium animate-in slide-in-from-top duration-300">
+            <span className="flex-1">{alarmToast}</span>
+            <button onClick={() => setAlarmToast(null)} className="text-red-200 hover:text-white leading-none ml-2 flex-shrink-0">×</button>
+          </div>
+        )}
 
         {/* ─── Fetch error banner ─── */}
         {fetchError && (

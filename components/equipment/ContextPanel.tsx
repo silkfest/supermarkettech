@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2, AlertTriangle, RefreshCw, QrCode, X } from 'lucide-react'
 import { cn, formatBytes, timeAgo } from '@/lib/utils'
 import type { Equipment, Document, SensorSnapshot } from '@/types'
 
@@ -28,6 +28,7 @@ interface Props {
 
 export default function ContextPanel({ equipment, documents, snapshot, onUpload, onDocRetried }: Props & { onDocRetried?: () => void }) {
   const [retrying, setRetrying] = useState<Record<string, boolean>>({})
+  const [showQr, setShowQr]     = useState(false)
 
   async function handleRetry(docId: string) {
     setRetrying(r => ({ ...r, [docId]: true }))
@@ -193,8 +194,55 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
           >
             <Upload size={10}/> Upload PDF
           </button>
+          <button
+            onClick={() => setShowQr(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-[11px] text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all mt-1"
+          >
+            <QrCode size={10}/> QR Code
+          </button>
         </div>
       </div>
+
+      {/* QR code modal */}
+      {showQr && equipment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowQr(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-64 flex flex-col items-center gap-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full">
+              <p className="text-xs font-semibold text-slate-700">Scan to open in ColdIQ</p>
+              <button onClick={() => setShowQr(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(
+                typeof window !== 'undefined'
+                  ? `${window.location.origin}/dashboard?equipment=${equipment.id}`
+                  : ''
+              )}`}
+              alt="QR code"
+              width={180}
+              height={180}
+              className="rounded-lg border border-slate-100"
+            />
+            <div className="text-center">
+              <p className="text-xs font-medium text-slate-800 truncate max-w-[200px]">{equipment.name}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{equipment.manufacturer} {equipment.model}</p>
+            </div>
+            <button
+              onClick={() => window.print()}
+              className="text-[11px] text-slate-500 hover:text-slate-700 underline"
+            >
+              Print QR code
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }

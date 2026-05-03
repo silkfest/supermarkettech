@@ -472,12 +472,38 @@ function ReportViewContent() {
 
   return (
     <>
-      {/* Print styles */}
+      {/* Print / PDF styles */}
       <style>{`
         @media print {
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print { display: none !important; }
-          body { background: white !important; }
-          .print-header { border-bottom: 1px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 20px; }
+          body { background: white !important; font-size: 11pt; }
+          .print-page { background: white !important; padding: 0 !important; }
+          .print-header { border-bottom: 2px solid #1e40af; padding-bottom: 10px; margin-bottom: 18px; }
+          .print-logo::before {
+            content: "ColdIQ";
+            font-size: 18pt;
+            font-weight: 700;
+            color: #2563eb;
+            display: block;
+            margin-bottom: 2px;
+          }
+          section, .bg-white { break-inside: avoid; page-break-inside: avoid; }
+          table { break-inside: avoid; page-break-inside: avoid; width: 100%; font-size: 9pt; }
+          th, td { padding: 4px 8px !important; border: 1px solid #cbd5e1 !important; }
+          th { background: #f8fafc !important; font-weight: 600; }
+          h2 { font-size: 9pt !important; letter-spacing: 0.08em !important; text-transform: uppercase; color: #475569 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
+          .space-y-5 > * + * { margin-top: 16px !important; }
+          .grid { display: grid !important; }
+          @page {
+            size: A4 portrait;
+            margin: 18mm 15mm 18mm 15mm;
+            @bottom-center {
+              content: "ColdIQ · Page " counter(page) " of " counter(pages);
+              font-size: 8pt;
+              color: #94a3b8;
+            }
+          }
         }
       `}</style>
 
@@ -505,9 +531,10 @@ function ReportViewContent() {
             <button
               onClick={() => window.print()}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              title="Opens print dialog — choose 'Save as PDF' to download"
             >
               <Printer size={14} />
-              Print / PDF
+              Export PDF
             </button>
             <button
               onClick={() => router.push(editUrl)}

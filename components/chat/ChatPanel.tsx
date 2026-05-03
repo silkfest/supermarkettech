@@ -181,9 +181,12 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   // Save-as-tip state
   const [showTipInput, setShowTipInput] = useState(false)
   const [tipTitle, setTipTitle]         = useState('')
+  const [tipTags, setTipTags]           = useState<string[]>([])
   const [savingTip, setSavingTip]       = useState(false)
   const [tipSaved, setTipSaved]         = useState(false)
   const [tipError, setTipError]         = useState('')
+
+  const TIP_TAG_OPTIONS = ['Superheat', 'Defrost', 'Leak', 'Compressor', 'Alarms', 'Electrical', 'Controls']
 
   const bottomRef   = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -207,6 +210,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     setStreaming(false)
     setShowTipInput(false)
     setTipTitle('')
+    setTipTags([])
     setTipSaved(false)
     setTipError('')
   }, [equipment?.id])
@@ -388,7 +392,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       const res = await fetch('/api/tips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, title: tipTitle.trim() }),
+        body: JSON.stringify({ sessionId, title: tipTitle.trim(), tags: tipTags }),
       })
       if (res.status === 409) { setTipSaved(true); setShowTipInput(false); return }
       if (!res.ok) { const j = await res.json(); setTipError(j?.error ?? 'Failed to save'); return }
@@ -446,28 +450,48 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                 <Check size={13} /> Saved as a troubleshooting tip
               </div>
             ) : showTipInput ? (
-              <div className="flex items-center gap-2">
-                <Lightbulb size={13} className="text-amber-500 flex-shrink-0" />
-                <input
-                  autoFocus
-                  value={tipTitle}
-                  onChange={e => setTipTitle(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSaveTip(); if (e.key === 'Escape') setShowTipInput(false) }}
-                  placeholder="Give this tip a title…"
-                  className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-                <button
-                  onClick={handleSaveTip}
-                  disabled={savingTip || !tipTitle.trim()}
-                  className="px-2.5 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1"
-                >
-                  {savingTip ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                  Save
-                </button>
-                <button onClick={() => setShowTipInput(false)} className="text-slate-400 hover:text-slate-600">
-                  <X size={14} />
-                </button>
-                {tipError && <span className="text-xs text-red-500">{tipError}</span>}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb size={13} className="text-amber-500 flex-shrink-0" />
+                  <input
+                    autoFocus
+                    value={tipTitle}
+                    onChange={e => setTipTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveTip(); if (e.key === 'Escape') setShowTipInput(false) }}
+                    placeholder="Give this tip a title…"
+                    className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <button
+                    onClick={handleSaveTip}
+                    disabled={savingTip || !tipTitle.trim()}
+                    className="px-2.5 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {savingTip ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                    Save
+                  </button>
+                  <button onClick={() => setShowTipInput(false)} className="text-slate-400 hover:text-slate-600">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1 pl-5">
+                  {TIP_TAG_OPTIONS.map(tag => {
+                    const active = tipTags.includes(tag)
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setTipTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                          active
+                            ? 'bg-amber-100 border-amber-300 text-amber-700 font-medium'
+                            : 'bg-white border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-600'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    )
+                  })}
+                </div>
+                {tipError && <span className="text-xs text-red-500 pl-5">{tipError}</span>}
               </div>
             ) : (
               <button

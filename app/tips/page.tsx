@@ -15,10 +15,23 @@ interface TipSession {
 interface Tip {
   id: string
   title: string
+  tags: string[]
   created_at: string
   saved_by: string | null
   saver: { name: string } | null
   session: TipSession | null
+}
+
+const ALL_TAGS = ['Superheat', 'Defrost', 'Leak', 'Compressor', 'Alarms', 'Electrical', 'Controls']
+
+const TAG_COLOURS: Record<string, string> = {
+  Superheat:   'bg-orange-50 border-orange-200 text-orange-700',
+  Defrost:     'bg-sky-50 border-sky-200 text-sky-700',
+  Leak:        'bg-red-50 border-red-200 text-red-700',
+  Compressor:  'bg-violet-50 border-violet-200 text-violet-700',
+  Alarms:      'bg-yellow-50 border-yellow-200 text-yellow-700',
+  Electrical:  'bg-blue-50 border-blue-200 text-blue-700',
+  Controls:    'bg-emerald-50 border-emerald-200 text-emerald-700',
 }
 
 function timeAgo(iso: string) {
@@ -37,6 +50,7 @@ function TipCard({ tip, currentUserId, isAdmin, onDelete }: {
   const [deleting, setDeleting] = useState(false)
   const canDelete = tip.saved_by === currentUserId || isAdmin
   const messages = tip.session?.messages ?? []
+  const tags = tip.tags ?? []
 
   async function handleDelete() {
     if (!confirm('Remove this troubleshooting tip?')) return
@@ -68,6 +82,16 @@ function TipCard({ tip, currentUserId, isAdmin, onDelete }: {
             </span>
             <span className="text-[11px] text-slate-400">{timeAgo(tip.created_at)}</span>
           </div>
+          {/* Tag chips */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {tags.map(tag => (
+                <span key={tag} className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${TAG_COLOURS[tag] ?? 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {canDelete && (
@@ -135,11 +159,12 @@ function TipCard({ tip, currentUserId, isAdmin, onDelete }: {
 
 export default function TipsPage() {
   const router = useRouter()
-  const [tips, setTips]               = useState<Tip[]>([])
-  const [loading, setLoading]         = useState(true)
+  const [tips, setTips]                   = useState<Tip[]>([])
+  const [loading, setLoading]             = useState(true)
   const [currentUserId, setCurrentUserId] = useState('')
-  const [isAdmin, setIsAdmin]         = useState(false)
-  const [search, setSearch]           = useState('')
+  const [isAdmin, setIsAdmin]             = useState(false)
+  const [search, setSearch]               = useState('')
+  const [activeTag, setActiveTag]         = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -157,10 +182,16 @@ export default function TipsPage() {
     })()
   }, [router])
 
-  const filtered = tips.filter(t =>
-    t.title.toLowerCase().includes(search.toLowerCase()) ||
-    (t.session?.equipment?.name ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = tips.filter(t => {
+    const matchSearch =
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      (t.session?.equipment?.name ?? '').toLowerCase().includes(search.toLowerCase())
+    const matchTag = !activeTag || (t.tags ?? []).includes(activeTag)
+    return matchSearch && matchTag
+  })
+
+  // Which tags are actually used in visible tips (before tag filter is applied)
+  const usedTags = ALL_TAGS.filter(tag => tips.some(t => (t.tags ?? []).includes(tag)))
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -182,7 +213,7 @@ export default function TipsPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Title + search */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <Lightbulb size={20} className="text-amber-500" />
@@ -198,6 +229,35 @@ export default function TipsPage() {
           />
         </div>
 
+        {/* Tag filter row */}
+        {usedTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-5">
+            <button
+              onClick={() => setActiveTag(null)}
+              className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
+                !activeTag
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+              }`}
+            >
+              All
+            </button>
+            {usedTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
+                  activeTag === tag
+                    ? (TAG_COLOURS[tag] ?? 'bg-slate-100 border-slate-300 text-slate-700') + ' !border-opacity-100'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading && (
           <div className="flex justify-center py-16 text-slate-400 text-sm">Loading tips…</div>
         )}
@@ -206,7 +266,9 @@ export default function TipsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Lightbulb size={32} className="text-slate-200 mb-3" />
             <p className="text-sm text-slate-400">
-              {search ? 'No tips match your search.' : 'No tips saved yet. After a useful chat, click "Save as troubleshooting tip".'}
+              {search || activeTag
+                ? 'No tips match your filters.'
+                : 'No tips saved yet. After a useful chat, click "Save as troubleshooting tip".'}
             </p>
           </div>
         )}

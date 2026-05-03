@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const { data: tips, error } = await supabase
     .from('troubleshooting_tips')
     .select(`
-      id, title, created_at,
+      id, title, tags, created_at,
       saved_by,
       saver:users!troubleshooting_tips_saved_by_fkey(name),
       session:chat_sessions(
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
   if (!body?.sessionId || !body?.title?.trim()) {
     return NextResponse.json({ error: 'sessionId and title are required' }, { status: 400 })
   }
+  const tags: string[] = Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === 'string') : []
 
   const supabase = getSupabaseServer()
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   const { data: tip, error } = await supabase
     .from('troubleshooting_tips')
-    .insert({ session_id: body.sessionId, title: body.title.trim(), saved_by: user.id })
+    .insert({ session_id: body.sessionId, title: body.title.trim(), saved_by: user.id, tags })
     .select()
     .single()
 
