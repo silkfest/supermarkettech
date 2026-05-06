@@ -46,6 +46,8 @@ const COMPONENT_TYPES = [
   'Gas Cooler','Flash Tank','Booster Compressor','Transcritical Compressor',
   'HPCO / MPCO','Economizer','Adiabatic System','CO2 Pump',
   'Evaporator',
+  // Valves
+  'Solenoid Valve','Motorized Valve','Bypass Valve','Pressure Relief Valve',
   'Other',
 ]
 
