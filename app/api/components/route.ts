@@ -64,6 +64,41 @@ export async function GET(req: NextRequest) {
 
   if (reportsResult.error) return NextResponse.json({ error: reportsResult.error.message }, { status: 500 })
 
+  // ── Generate signed URLs for catalog items linked to documents ──
+  const docIds = [...new Set(
+    (catalogResult.data ?? []).map(c => c.document_id as string | null).filter(Boolean),
+  )] as string[]
+
+  const docFileNames: Record<string, string> = {}
+  if (docIds.length > 0) {
+    const { data: docs } = await supabase
+      .from('documents')
+      .select('id, file_name')
+      .in('id', docIds)
+    for (const d of docs ?? []) {
+      if (d.file_name) docFileNames[d.id] = d.file_name
+    }
+  }
+
+  const signedUrlMap: Record<string, string> = {}
+  const filePaths = Object.values(docFileNames)
+  if (filePaths.length > 0) {
+    const { data: urlData } = await supabase.storage
+      .from('documents')
+      .createSignedUrls(filePaths, 3600)
+    for (const item of urlData ?? []) {
+      if (item.signedUrl) signedUrlMap[item.path] = item.signedUrl
+    }
+  }
+
+  function resolveManualUrl(c: { document_id?: string | null; manual_url?: string | null }): string {
+    if (c.document_id) {
+      const fileName = docFileNames[c.document_id]
+      if (fileName && signedUrlMap[fileName]) return signedUrlMap[fileName]
+    }
+    return c.manual_url ?? ''
+  }
+
   const components: ComponentRecord[] = []
   const seen = new Set<string>()
 
@@ -176,7 +211,7 @@ export async function GET(req: NextRequest) {
       serial:          c.serial          ?? '',
       manualId:        c.manual_id       ?? '',
       manualTitle:     c.manual_title    ?? '',
-      manualUrl:       c.manual_url      ?? '',
+      manualUrl:       resolveManualUrl(c),
       photoUrl:        c.photo_url       ?? '',
       refrigerant:     c.refrigerant     ?? '',
       installDate:     c.install_date    ?? '',

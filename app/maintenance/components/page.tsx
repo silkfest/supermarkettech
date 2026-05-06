@@ -45,6 +45,7 @@ const COMPONENT_TYPES = [
   // CO2 / transcritical types
   'Gas Cooler','Flash Tank','Booster Compressor','Transcritical Compressor',
   'HPCO / MPCO','Economizer','Adiabatic System','CO2 Pump',
+  'Evaporator',
   'Other',
 ]
 
