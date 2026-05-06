@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Home, ArrowLeft, BookOpen, Search, X, ExternalLink,
-  FileText, Globe, Loader2, AlertTriangle,
+  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
@@ -51,6 +51,10 @@ export default function LibraryPage() {
   const [activeCategory, setActiveCategory] = useState('')
   const [isAdmin,      setIsAdmin]      = useState(false)
   const [assigning,    setAssigning]    = useState<Record<string, boolean>>({})
+  const [editingId,    setEditingId]    = useState<string | null>(null)
+  const [editTitle,    setEditTitle]    = useState('')
+  const [savingTitle,  setSavingTitle]  = useState(false)
+  const [deletingId,   setDeletingId]   = useState<string | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -118,6 +122,31 @@ export default function LibraryPage() {
       ))
     } catch { /* silent */ }
     setAssigning(a => ({ ...a, [docId]: false }))
+  }
+
+  async function saveTitle(docId: string) {
+    if (!editTitle.trim()) return
+    setSavingTitle(true)
+    try {
+      await fetch(`/api/documents/${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editTitle.trim() }),
+      })
+      setDocs(prev => prev.map(d => d.id === docId ? { ...d, title: editTitle.trim() } : d))
+    } catch { /* silent */ }
+    setSavingTitle(false)
+    setEditingId(null)
+  }
+
+  async function deleteDoc(docId: string, title: string) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return
+    setDeletingId(docId)
+    try {
+      await fetch(`/api/documents/${docId}`, { method: 'DELETE' })
+      setDocs(prev => prev.filter(d => d.id !== docId))
+    } catch { /* silent */ }
+    setDeletingId(null)
   }
 
   return (
@@ -237,14 +266,44 @@ export default function LibraryPage() {
 
                 {/* Title + meta */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
-                    {doc.category && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 ${categoryColour(doc.category)}`}>
-                        {doc.category}
-                      </span>
-                    )}
-                  </div>
+                  {editingId === doc.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveTitle(doc.id)
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        className="flex-1 text-sm px-2 py-1 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0"
+                      />
+                      <button
+                        onClick={() => saveTitle(doc.id)}
+                        disabled={savingTitle}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex-shrink-0"
+                        title="Save"
+                      >
+                        {savingTitle ? <Loader2 size={13} className="animate-spin"/> : <Check size={13}/>}
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg flex-shrink-0"
+                        title="Cancel"
+                      >
+                        <X size={13}/>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
+                      {doc.category && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 ${categoryColour(doc.category)}`}>
+                          {doc.category}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {doc.page_count && <span className="text-xs text-slate-400">{doc.page_count}p</span>}
                     {doc.file_size  && <span className="text-xs text-slate-400">{formatBytes(doc.file_size)}</span>}
@@ -254,16 +313,16 @@ export default function LibraryPage() {
                   </div>
                 </div>
 
-                {/* Assign dropdown — admin/manager only */}
+                {/* Admin actions: assign + rename + delete */}
                 {isAdmin && (
-                  <div className="flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {assigning[doc.id] ? (
                       <Loader2 size={14} className="animate-spin text-slate-400"/>
                     ) : (
                       <select
                         value={doc.equipment_id ?? ''}
                         onChange={e => assignEquipment(doc.id, e.target.value || null)}
-                        className="text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[160px] truncate"
+                        className="text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[140px] truncate"
                         title="Assign to equipment"
                       >
                         <option value="">Unassigned</option>
@@ -272,6 +331,24 @@ export default function LibraryPage() {
                         ))}
                       </select>
                     )}
+                    <button
+                      onClick={() => { setEditingId(doc.id); setEditTitle(doc.title) }}
+                      className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Rename"
+                    >
+                      <Pencil size={14}/>
+                    </button>
+                    <button
+                      onClick={() => deleteDoc(doc.id, doc.title)}
+                      disabled={deletingId === doc.id}
+                      className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                      title="Delete"
+                    >
+                      {deletingId === doc.id
+                        ? <Loader2 size={14} className="animate-spin"/>
+                        : <Trash2 size={14}/>
+                      }
+                    </button>
                   </div>
                 )}
 

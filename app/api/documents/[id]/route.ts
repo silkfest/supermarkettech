@@ -38,6 +38,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(data)
 }
 
+// DELETE /api/documents/[id] — remove document, its chunks, and its storage file (admin/manager only)
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = getSupabaseServer()
+
+  const { data: callerData } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const callerRole = callerData?.role
+  if (!['admin', 'manager'].includes(callerRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Fetch file_name before deletion so we can remove from Storage
+  const { data: doc } = await supabase.from('documents').select('file_name').eq('id', id).single()
+
+  // Delete chunks first (foreign key)
+  await supabase.from('doc_chunks').delete().eq('document_id', id)
+
+  // Delete document row
+  const { error } = await supabase.from('documents').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Best-effort: remove file from storage (don't fail if missing)
+  if (doc?.file_name) {
+    await supabase.storage.from('documents').remove([doc.file_name])
+  }
+
+  return NextResponse.json({ success: true })
+}
+
 // POST /api/documents/[id] — re-ingest an existing document using the file already in storage
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
