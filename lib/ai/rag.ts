@@ -70,13 +70,12 @@ export async function retrieveChunks(
   const embedding = await embedQuery(query)
   const supabase = getSupabaseServer()
 
-  // Pass as pgvector string literal so PostgREST can cast to vector correctly.
-  // Passing a raw JS number[] can cause a silent type mismatch where the <>
-  // distance operator returns NaN, making the WHERE clause false for all rows.
-  const embeddingStr = `[${embedding.join(',')}]`
-
+  // Pass as float8[] — PostgREST serialises JS number[] to PostgreSQL float8[]
+  // natively with no ambiguity. The RPC now accepts float8[] and casts to vector
+  // internally, which is more reliable than relying on PostgREST's implicit
+  // vector cast (which silently returned 0 rows).
   const { data, error } = await supabase.rpc('match_doc_chunks', {
-    query_embedding: embeddingStr as unknown as number[],
+    query_embedding: embedding,
     match_threshold: minScore,
     match_count: topK,
     p_equipment_id: equipmentId ?? null,
