@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
   let retrievedContext = ''
   let sources: ReturnType<typeof chunksToCitations> = []
   let componentLinks: ComponentLink[] = []
-  if (process.env.JINA_API_KEY) {
+  const jinaKey = process.env.JINA_API_KEY
+  console.log(`[RAG] JINA_API_KEY present: ${!!jinaKey}, length: ${jinaKey?.length ?? 0}`)
+  if (jinaKey) {
     try {
       // Build RAG query from user messages only (excluding AI responses which dilute the search)
       const recentUserMessages = history
@@ -56,13 +58,16 @@ export async function POST(req: NextRequest) {
         .slice(-2)
         .map(m => m.content)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
-      // Threshold 0.55 — more permissive than 0.65 to catch technical terms & part numbers
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.55)
+      console.log(`[RAG] query (${query.length} chars): ${query.slice(0, 120)}`)
+
+      // Threshold 0.45 — low enough to diagnose retrieval; raise once confirmed working
+      const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
+      console.log(`[RAG] retrieved ${chunks.length} chunks${chunks.length > 0 ? `, top score ${chunks[0].score.toFixed(3)}` : ''}`)
+
       retrievedContext = formatContext(chunks)
       sources = chunksToCitations(chunks)
-      if (chunks.length > 0) {
-        console.log(`[RAG] retrieved ${chunks.length} chunks, top score ${chunks[0].score.toFixed(3)}`)
 
+      if (chunks.length > 0) {
         // Look up any manual_components entries linked to the retrieved documents
         const docIds = [...new Set(chunks.map(c => c.document_id))]
         const { data: comps } = await supabase
@@ -77,7 +82,9 @@ export async function POST(req: NextRequest) {
           manualTitle: c.manual_title  as string ?? '',
         }))
       }
-    } catch (e) { console.error('[RAG error]', e) }
+    } catch (e) {
+      console.error('[RAG error]', e instanceof Error ? e.message : String(e))
+    }
   }
 
   const systemPrompt = buildSystemPrompt({
