@@ -58,9 +58,12 @@ export async function POST(req: NextRequest) {
         .map(m => m.content)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
 
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
+      const [chunks, best] = await Promise.all([
+        retrieveChunks(query, equipmentId, 5, 0.45),
+        retrieveChunks(query, undefined, 3, -1),
+      ])
 
-      console.log(JSON.stringify({ n: chunks.length, top: chunks[0]?.score?.toFixed(3) ?? null }))
+      console.log(JSON.stringify({ n: chunks.length, best: best[0]?.score?.toFixed(3) ?? null }))
 
       retrievedContext = formatContext(chunks)
       sources = chunksToCitations(chunks)
