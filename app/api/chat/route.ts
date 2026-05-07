@@ -49,10 +49,19 @@ export async function POST(req: NextRequest) {
   let sources: ReturnType<typeof chunksToCitations> = []
   if (process.env.JINA_API_KEY) {
     try {
-      const query = [...history.slice(-2).map(m => m.content), message].join(' ').slice(0, 500)
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.65)
+      // Build RAG query from user messages only (excluding AI responses which dilute the search)
+      const recentUserMessages = history
+        .filter(m => m.role === 'user')
+        .slice(-2)
+        .map(m => m.content)
+      const query = [...recentUserMessages, message].join(' ').slice(0, 600)
+      // Threshold 0.55 — more permissive than 0.65 to catch technical terms & part numbers
+      const chunks = await retrieveChunks(query, equipmentId, 5, 0.55)
       retrievedContext = formatContext(chunks)
       sources = chunksToCitations(chunks)
+      if (chunks.length > 0) {
+        console.log(`[RAG] retrieved ${chunks.length} chunks, top score ${chunks[0].score.toFixed(3)}`)
+      }
     } catch (e) { console.error('[RAG error]', e) }
   }
 
