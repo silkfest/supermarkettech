@@ -70,15 +70,20 @@ export async function retrieveChunks(
   const embedding = await embedQuery(query)
   const supabase = getSupabaseServer()
 
+  // Pass as pgvector string literal so PostgREST can cast to vector correctly.
+  // Passing a raw JS number[] can cause a silent type mismatch where the <>
+  // distance operator returns NaN, making the WHERE clause false for all rows.
+  const embeddingStr = `[${embedding.join(',')}]`
+
   const { data, error } = await supabase.rpc('match_doc_chunks', {
-    query_embedding: embedding,
+    query_embedding: embeddingStr as unknown as number[],
     match_threshold: minScore,
     match_count: topK,
     p_equipment_id: equipmentId ?? null,
   })
 
   if (error) {
-    console.error('[RAG retrieval error]', error)
+    console.error(JSON.stringify({ ragRpcError: true, msg: error.message, code: error.code }))
     return []
   }
 

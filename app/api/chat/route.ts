@@ -58,19 +58,9 @@ export async function POST(req: NextRequest) {
         .map(m => m.content)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
 
-      // Retrieve at threshold 0.0 and also -1 to distinguish "low similarity" from "RPC broken"
-      const [chunks, chunksAll] = await Promise.all([
-        retrieveChunks(query, equipmentId, 5, 0.0),
-        retrieveChunks(query, undefined, 5, -1),
-      ])
+      const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
 
-      console.log(JSON.stringify({
-        chunks: chunks.length,
-        topScore: chunks[0]?.score?.toFixed(3) ?? null,
-        totalAtNeg1: chunksAll.length,
-        topAtNeg1: chunksAll[0]?.score?.toFixed(3) ?? null,
-        keyLen: jinaKey.length,
-      }))
+      console.log(JSON.stringify({ n: chunks.length, top: chunks[0]?.score?.toFixed(3) ?? null }))
 
       retrievedContext = formatContext(chunks)
       sources = chunksToCitations(chunks)
