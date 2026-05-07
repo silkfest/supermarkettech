@@ -1,11 +1,13 @@
 import { getSupabaseServer } from '@/lib/supabase/client'
 import type { CitationSource } from '@/types'
 
-const JINA_API_KEY = process.env.JINA_API_KEY ?? ''
 const JINA_EMBED_URL = 'https://api.jina.ai/v1/embeddings'
 const JINA_MODEL = 'jina-embeddings-v3'
 
 async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.passage'): Promise<number[][]> {
+  // Read at call time — module-level process.env is evaluated at build time in Next.js
+  // and would be empty string if JINA_API_KEY is only a runtime env var in Vercel
+  const JINA_API_KEY = process.env.JINA_API_KEY ?? ''
   const MAX_ATTEMPTS = 3
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const res = await fetch(JINA_EMBED_URL, {
