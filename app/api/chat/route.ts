@@ -4,7 +4,7 @@ import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
 import { buildSnapshot } from '@/lib/sensor'
-import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode } from '@/types'
+import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ComponentLink } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
 
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
   let retrievedContext = ''
   let sources: ReturnType<typeof chunksToCitations> = []
+  let componentLinks: ComponentLink[] = []
   if (process.env.JINA_API_KEY) {
     try {
       // Build RAG query from user messages only (excluding AI responses which dilute the search)
@@ -61,6 +62,20 @@ export async function POST(req: NextRequest) {
       sources = chunksToCitations(chunks)
       if (chunks.length > 0) {
         console.log(`[RAG] retrieved ${chunks.length} chunks, top score ${chunks[0].score.toFixed(3)}`)
+
+        // Look up any manual_components entries linked to the retrieved documents
+        const docIds = [...new Set(chunks.map(c => c.document_id))]
+        const { data: comps } = await supabase
+          .from('manual_components')
+          .select('id, type, manufacturer, model, manual_title')
+          .in('document_id', docIds)
+        componentLinks = (comps ?? []).map(c => ({
+          catalogId:   c.id            as string,
+          type:        c.type          as string ?? 'Component',
+          manufacturer: c.manufacturer as string ?? '',
+          model:       c.model         as string ?? '',
+          manualTitle: c.manual_title  as string ?? '',
+        }))
       }
     } catch (e) { console.error('[RAG error]', e) }
   }
@@ -100,6 +115,9 @@ export async function POST(req: NextRequest) {
 
         if (sources.length > 0) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`))
+        }
+        if (componentLinks.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks })}\n\n`))
         }
         let activeSessionId = sessionId ?? undefined
         if (!activeSessionId) {

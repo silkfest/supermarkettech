@@ -742,7 +742,13 @@ export default function ComponentRegistryPage() {
   const [components,       setComponents]       = useState<ComponentRecord[]>([])
   const [types,            setTypes]            = useState<string[]>([])
   const [loading,          setLoading]          = useState(true)
-  const [query,            setQuery]            = useState('')
+  const [query,            setQuery]            = useState(() => {
+    // Pre-populate search from ?q= URL param (e.g. navigating here from the chat)
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('q') ?? ''
+    }
+    return ''
+  })
   const [activeType,       setActiveType]       = useState('')
   const [activeSystem,     setActiveSystem]     = useState('')
   const [activeArea,       setActiveArea]       = useState('')

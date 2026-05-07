@@ -1,9 +1,10 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Lightbulb, Check, X } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Lightbulb, Check, X, Wrench, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { Equipment, ChatMode, ChatMessage, CitationSource } from '@/types'
+import { useRouter } from 'next/navigation'
+import type { Equipment, ChatMode, ChatMessage, CitationSource, ComponentLink } from '@/types'
 
 // ── Mode display config ───────────────────────────────────────────────────────
 
@@ -21,9 +22,10 @@ interface Props {
 }
 
 interface StreamEvent {
-  type: 'delta' | 'sources' | 'done' | 'error'
+  type: 'delta' | 'sources' | 'component_links' | 'done' | 'error'
   text?: string
   sources?: CitationSource[]
+  componentLinks?: ComponentLink[]
   sessionId?: string
   message?: string
 }
@@ -56,6 +58,35 @@ function Citations({ sources }: { sources: CitationSource[] }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+function ComponentLinks({ links }: { links: ComponentLink[] }) {
+  const router = useRouter()
+  if (!links.length) return null
+  return (
+    <div className="mt-2">
+      <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+        <Wrench size={9} />
+        View in components registry
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {links.map(link => (
+          <button
+            key={link.catalogId}
+            onClick={() => router.push(`/maintenance/components?q=${encodeURIComponent(link.model)}`)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors group"
+            title={link.manualTitle}
+          >
+            <Wrench size={10} className="text-blue-400 flex-shrink-0" />
+            <span className="font-medium">{link.manufacturer}</span>
+            <span className="text-blue-500">·</span>
+            <span>{link.model}</span>
+            <ExternalLink size={9} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -121,6 +152,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {/* Citations — shown after streaming completes */}
         {!isUser && !msg.isStreaming && msg.sources && msg.sources.length > 0 && (
           <Citations sources={msg.sources} />
+        )}
+
+        {/* Component registry links — shown after streaming completes */}
+        {!isUser && !msg.isStreaming && msg.componentLinks && msg.componentLinks.length > 0 && (
+          <ComponentLinks links={msg.componentLinks} />
         )}
       </div>
     </div>
@@ -290,6 +326,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       const decoder = new TextDecoder()
       let buffer = ''
       let pendingSources: CitationSource[] | undefined
+      let pendingComponentLinks: ComponentLink[] | undefined
 
       while (true) {
         const { done, value } = await reader.read()
@@ -328,6 +365,12 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               }
               break
 
+            case 'component_links':
+              if (event.componentLinks?.length) {
+                pendingComponentLinks = event.componentLinks
+              }
+              break
+
             case 'done':
               if (event.sessionId) {
                 setSessionId(event.sessionId)
@@ -335,11 +378,12 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               }
               setMessages(prev => prev.map(m =>
                 m.id === assistantId
-                  ? { ...m, isStreaming: false, sources: pendingSources }
+                  ? { ...m, isStreaming: false, sources: pendingSources, componentLinks: pendingComponentLinks }
                   : m
               ))
               setStreaming(false)
               pendingSources = undefined
+              pendingComponentLinks = undefined
               break
 
             case 'error':

@@ -97,10 +97,19 @@ export interface CitationSource {
   relevanceScore: number
 }
 
+export interface ComponentLink {
+  catalogId: string
+  type: string
+  manufacturer: string
+  model: string
+  manualTitle: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   sources?: CitationSource[]
+  componentLinks?: ComponentLink[]
   isStreaming?: boolean
 }
