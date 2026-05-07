@@ -99,6 +99,14 @@ const SYSTEM_LABELS: { value: string; label: string; dot: string }[] = [
   { value: 'HFC', label: 'HFC',  dot: 'bg-green-500' },
 ]
 
+const AREA_OPTIONS: { value: string; label: string; color: string; dot: string; badge: string }[] = [
+  { value: 'Rack',          label: 'Rack',           color: 'bg-slate-600',   dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { value: 'Condenser',     label: 'Condenser',      color: 'bg-cyan-600',    dot: 'bg-cyan-400',   badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  { value: 'Walk-In',       label: 'Walk-In',        color: 'bg-blue-600',    dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { value: 'Display Doors', label: 'Display Doors',  color: 'bg-purple-600',  dot: 'bg-purple-400', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { value: 'Bunker',        label: 'Bunker',         color: 'bg-violet-600',  dot: 'bg-violet-400', badge: 'bg-violet-50 text-violet-700 border-violet-200' },
+]
+
 const DEFROST_TYPES    = ['Electric', 'Hot Gas', 'CO2 Off-Cycle', 'Natural']
 const LOAD_CATEGORIES  = ['Low Temp', 'Medium Temp', 'High Temp', 'Process']
 
@@ -142,7 +150,7 @@ interface CompForm {
   manualTitle: string; manualUrl: string
   notes: string; troubleshooting: string
   defrostType: string; loadCategory: string; supplier: string; partNumber: string
-  systemType: string
+  systemType: string; systemArea: string
 }
 const EMPTY_FORM: CompForm = {
   type: 'Compressor', manufacturer: '', model: '', serial: '',
@@ -150,7 +158,7 @@ const EMPTY_FORM: CompForm = {
   installDate: '', lastServiceDate: '', status: 'active',
   manualTitle: '', manualUrl: '', notes: '', troubleshooting: '',
   defrostType: '', loadCategory: '', supplier: '', partNumber: '',
-  systemType: 'Both',
+  systemType: 'Both', systemArea: '',
 }
 
 // ── Component form fields (shared by Add + Edit modals) ───────────────────────
@@ -268,13 +276,22 @@ function ComponentFormFields({ form, set, isEdit = false }: {
             <input value={form.partNumber} onChange={set('partNumber')} placeholder="Manufacturer P/N" className={INP} />
           </div>
         </div>
-        <div className="mt-3">
-          <label className={LBL}>System Type</label>
-          <select value={form.systemType} onChange={set('systemType')} className={SEL}>
-            <option value="Both">Both / Universal</option>
-            <option value="CO2">CO₂ only</option>
-            <option value="HFC">HFC only</option>
-          </select>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className={LBL}>System Type</label>
+            <select value={form.systemType} onChange={set('systemType')} className={SEL}>
+              <option value="Both">Both / Universal</option>
+              <option value="CO2">CO₂ only</option>
+              <option value="HFC">HFC only</option>
+            </select>
+          </div>
+          <div>
+            <label className={LBL}>System Area</label>
+            <select value={form.systemArea} onChange={set('systemArea')} className={SEL}>
+              <option value="">— Any area —</option>
+              {AREA_OPTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -404,6 +421,7 @@ function EditComponentModal({
     supplier:        component.supplier     ?? '',
     partNumber:      component.partNumber   ?? '',
     systemType:      component.systemType   ?? 'Both',
+    systemArea:      component.systemArea   ?? '',
   })
   const [saving,      setSaving]      = useState(false)
   const [err,         setErr]         = useState('')
@@ -550,6 +568,12 @@ function ComponentCard({
             {/* Badges row */}
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${meta.badge}`}>{c.type}</span>
+              {c.systemArea && (() => {
+                const a = AREA_OPTIONS.find(o => o.value === c.systemArea)
+                return a ? (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${a.badge}`}>{a.label}</span>
+                ) : null
+              })()}
               {c.systemType === 'CO2' && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">CO₂</span>
               )}
@@ -721,6 +745,7 @@ export default function ComponentRegistryPage() {
   const [query,            setQuery]            = useState('')
   const [activeType,       setActiveType]       = useState('')
   const [activeSystem,     setActiveSystem]     = useState('')
+  const [activeArea,       setActiveArea]       = useState('')
   const [manualTarget,     setManualTarget]     = useState<ComponentRecord | null>(null)
   const [editTarget,       setEditTarget]       = useState<ComponentRecord | null>(null)
   const [showAdd,          setShowAdd]          = useState(false)
@@ -758,11 +783,12 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const fetchFiltered = useCallback(async (q: string, t: string, system: string) => {
+  const fetchFiltered = useCallback(async (q: string, t: string, system: string, area: string) => {
     const params = new URLSearchParams()
     if (q)      params.set('q', q)
     if (t)      params.set('type', t)
     if (system) params.set('systemType', system)
+    if (area)   params.set('systemArea', area)
     try {
       const data = await fetch(`/api/components?${params}`).then(r => r.json())
       if (Array.isArray(data)) setComponents(data)
@@ -771,11 +797,11 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeSystem), 280)
+    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeSystem, activeArea), 280)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, activeType, activeSystem, fetchFiltered])
+  }, [query, activeType, activeSystem, activeArea, fetchFiltered])
 
-  const inFilterMode = !!(query || activeType || activeSystem)
+  const inFilterMode = !!(query || activeType || activeSystem || activeArea)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
@@ -821,8 +847,26 @@ export default function ComponentRegistryPage() {
             />
             {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14}/></button>}
           </div>
+          {/* Area filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+            {AREA_OPTIONS.map(a => (
+              <button
+                key={a.value}
+                onClick={() => setActiveArea(prev => prev === a.value ? '' : a.value)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  activeArea === a.value
+                    ? `${a.color} text-white border-transparent`
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${activeArea === a.value ? 'bg-white/70' : a.dot}`}/>
+                {a.label}
+              </button>
+            ))}
+          </div>
+
+          {/* System type + clear row */}
           <div className="flex gap-2 flex-wrap">
-            {/* System type toggle chips */}
             {SYSTEM_LABELS.map(s => (
               <button
                 key={s.value}
@@ -839,9 +883,9 @@ export default function ComponentRegistryPage() {
                 {s.label}
               </button>
             ))}
-            {activeSystem && (
+            {(activeSystem || activeArea) && (
               <button
-                onClick={() => setActiveSystem('')}
+                onClick={() => { setActiveSystem(''); setActiveArea('') }}
                 className="px-3 py-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1"
               >
                 <X size={11}/> Clear
@@ -900,6 +944,14 @@ export default function ComponentRegistryPage() {
           /* ── Filtered results ── */
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
+              {activeArea && (() => {
+                const a = AREA_OPTIONS.find(o => o.value === activeArea)
+                return a ? (
+                  <button onClick={() => setActiveArea('')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-full ${a.color}`}>
+                    {a.label} <X size={11}/>
+                  </button>
+                ) : null
+              })()}
               {activeSystem && (
                 <button onClick={() => setActiveSystem('')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-full ${activeSystem === 'CO2' ? 'bg-blue-600' : 'bg-green-600'}`}>
                   {activeSystem === 'CO2' ? 'CO₂' : 'HFC'} <X size={11}/>

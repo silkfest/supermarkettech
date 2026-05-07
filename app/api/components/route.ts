@@ -34,6 +34,8 @@ export interface ComponentRecord {
   partNumber:   string
   // System classification
   systemType:   string   // 'CO2' | 'HFC' | 'Both'
+  // Physical location
+  systemArea:   string   // 'Rack' | 'Condenser' | 'Walk-In' | 'Display Doors' | 'Bunker' | ''
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -156,6 +158,7 @@ export async function GET(req: NextRequest) {
           supplier:        '',
           partNumber:      '',
           systemType:      'Both',
+          systemArea:      'Rack',
         })
       }
 
@@ -198,6 +201,7 @@ export async function GET(req: NextRequest) {
           supplier:        '',
           partNumber:      '',
           systemType:      'Both',
+          systemArea:      'Rack',
         })
       }
 
@@ -238,12 +242,14 @@ export async function GET(req: NextRequest) {
       supplier:        c.supplier        ?? '',
       partNumber:      c.part_number     ?? '',
       systemType:      c.system_type     ?? 'Both',
+      systemArea:      c.system_area     ?? '',
     })
   }
 
   const defrostType   = searchParams.get('defrostType')?.trim()  ?? ''
   const loadCategory  = searchParams.get('loadCategory')?.trim() ?? ''
   const systemType    = searchParams.get('systemType')?.trim()   ?? ''
+  const systemArea    = searchParams.get('systemArea')?.trim()   ?? ''
 
   let out = components
   if (q) {
@@ -265,6 +271,7 @@ export async function GET(req: NextRequest) {
   // CO2 filter shows CO2-specific + universal; HFC shows HFC-specific + universal
   if (systemType === 'CO2') out = out.filter(c => c.systemType === 'CO2' || c.systemType === 'Both')
   if (systemType === 'HFC') out = out.filter(c => c.systemType === 'HFC' || c.systemType === 'Both')
+  if (systemArea)  out = out.filter(c => c.systemArea === systemArea)
 
   return NextResponse.json(out)
 }
@@ -280,7 +287,7 @@ export async function POST(req: NextRequest) {
     type, manufacturer, model, serial, manualTitle, manualUrl,
     storeName, refrigerant, installDate, oilType, status,
     notes, lastServiceDate, assetTag, troubleshooting,
-    defrostType, loadCategory, supplier, partNumber, systemType,
+    defrostType, loadCategory, supplier, partNumber, systemType, systemArea,
   } = body
 
   if (!type || !manufacturer || !model) {
@@ -311,6 +318,7 @@ export async function POST(req: NextRequest) {
       supplier:           supplier        ?? '',
       part_number:        partNumber      ?? '',
       system_type:        systemType      ?? 'Both',
+      system_area:        systemArea      ?? '',
     })
     .select()
     .single()
@@ -354,6 +362,7 @@ export async function PATCH(req: NextRequest) {
   if ('supplier'        in fields) update.supplier           = fields.supplier
   if ('partNumber'      in fields) update.part_number        = fields.partNumber
   if ('systemType'      in fields) update.system_type        = fields.systemType
+  if ('systemArea'      in fields) update.system_area        = fields.systemArea
 
   const { data, error } = await supabase
     .from('manual_components')
