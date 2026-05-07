@@ -32,6 +32,8 @@ export interface ComponentRecord {
   loadCategory: string
   supplier:     string
   partNumber:   string
+  // System classification
+  systemType:   string   // 'CO2' | 'HFC' | 'Both'
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -153,6 +155,7 @@ export async function GET(req: NextRequest) {
           loadCategory:    '',
           supplier:        '',
           partNumber:      '',
+          systemType:      'Both',
         })
       }
 
@@ -194,6 +197,7 @@ export async function GET(req: NextRequest) {
           loadCategory:    '',
           supplier:        '',
           partNumber:      '',
+          systemType:      'Both',
         })
       }
 
@@ -233,11 +237,13 @@ export async function GET(req: NextRequest) {
       loadCategory:    c.load_category   ?? '',
       supplier:        c.supplier        ?? '',
       partNumber:      c.part_number     ?? '',
+      systemType:      c.system_type     ?? 'Both',
     })
   }
 
   const defrostType   = searchParams.get('defrostType')?.trim()  ?? ''
   const loadCategory  = searchParams.get('loadCategory')?.trim() ?? ''
+  const systemType    = searchParams.get('systemType')?.trim()   ?? ''
 
   let out = components
   if (q) {
@@ -256,6 +262,9 @@ export async function GET(req: NextRequest) {
   if (type)        out = out.filter(c => c.type === type)
   if (defrostType) out = out.filter(c => c.defrostType === defrostType)
   if (loadCategory) out = out.filter(c => c.loadCategory === loadCategory)
+  // CO2 filter shows CO2-specific + universal; HFC shows HFC-specific + universal
+  if (systemType === 'CO2') out = out.filter(c => c.systemType === 'CO2' || c.systemType === 'Both')
+  if (systemType === 'HFC') out = out.filter(c => c.systemType === 'HFC' || c.systemType === 'Both')
 
   return NextResponse.json(out)
 }
@@ -271,7 +280,7 @@ export async function POST(req: NextRequest) {
     type, manufacturer, model, serial, manualTitle, manualUrl,
     storeName, refrigerant, installDate, oilType, status,
     notes, lastServiceDate, assetTag, troubleshooting,
-    defrostType, loadCategory, supplier, partNumber,
+    defrostType, loadCategory, supplier, partNumber, systemType,
   } = body
 
   if (!type || !manufacturer || !model) {
@@ -301,6 +310,7 @@ export async function POST(req: NextRequest) {
       load_category:      loadCategory    ?? '',
       supplier:           supplier        ?? '',
       part_number:        partNumber      ?? '',
+      system_type:        systemType      ?? 'Both',
     })
     .select()
     .single()
@@ -343,6 +353,7 @@ export async function PATCH(req: NextRequest) {
   if ('loadCategory'    in fields) update.load_category      = fields.loadCategory
   if ('supplier'        in fields) update.supplier           = fields.supplier
   if ('partNumber'      in fields) update.part_number        = fields.partNumber
+  if ('systemType'      in fields) update.system_type        = fields.systemType
 
   const { data, error } = await supabase
     .from('manual_components')

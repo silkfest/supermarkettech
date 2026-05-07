@@ -16,39 +16,89 @@ import type { UserRole } from '@/types'
 
 // ── Type metadata ──────────────────────────────────────────────────────────────
 const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
-  Compressor:               { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap      size={22}/> },
-  'Condenser Unit':          { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind     size={22}/> },
-  'Rack Controller':         { bg: 'bg-violet-100',  text: 'text-violet-600',  badge: 'bg-violet-100 text-violet-700',  icon: <Cpu      size={22}/> },
-  'EEV Board':               { bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Sliders  size={22}/> },
-  'Oil Separator':           { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Droplets size={22}/> },
-  Receiver:                  { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Package  size={22}/> },
-  'Head Pressure Controller':{ bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge    size={22}/> },
-  'Defrost Board':           { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Snowflake size={22}/> },
-  'Rack System':             { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Server   size={22}/> },
-  'Case Controller':         { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600', badge: 'bg-fuchsia-100 text-fuchsia-700',icon: <Monitor  size={22}/> },
-  'Filter Drier':            { bg: 'bg-lime-100',    text: 'text-lime-600',    badge: 'bg-lime-100 text-lime-700',      icon: <Filter    size={22}/> },
-  'Gas Cooler':              { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind      size={22}/> },
-  'Flash Tank':              { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Package   size={22}/> },
-  'Booster Compressor':      { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap       size={22}/> },
-  'Transcritical Compressor':{ bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Zap       size={22}/> },
-  'HPCO / MPCO':             { bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge     size={22}/> },
-  'Economizer':              { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Sliders   size={22}/> },
-  'Adiabatic System':        { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Droplets  size={22}/> },
-  'CO2 Pump':                { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Gauge     size={22}/> },
+  // Compressors
+  Compressor:                           { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap        size={22}/> },
+  'Booster Compressor':                 { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap        size={22}/> },
+  'Transcritical Compressor':           { bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Zap        size={22}/> },
+  'Condenser Unit':                     { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind       size={22}/> },
+  // Heat transfer
+  'Gas Cooler':                         { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind       size={22}/> },
+  'Adiabatic System':                   { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Droplets   size={22}/> },
+  Economizer:                           { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Sliders    size={22}/> },
+  Evaporator:                           { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Snowflake  size={22}/> },
+  'Fan Motor':                          { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind       size={22}/> },
+  // Vessels
+  'Flash Tank':                         { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Package    size={22}/> },
+  Receiver:                             { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Package    size={22}/> },
+  Accumulator:                          { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Package    size={22}/> },
+  'CO2 Pump':                           { bg: 'bg-orange-100',  text: 'text-orange-600',  badge: 'bg-orange-100 text-orange-700',  icon: <Gauge      size={22}/> },
+  // Expansion / Valves
+  'Electronic Expansion Valve':         { bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Sliders    size={22}/> },
+  'TXV / Thermostatic Expansion Valve': { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Thermometer size={22}/> },
+  'EEV Board':                          { bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Sliders    size={22}/> },
+  'Solenoid Valve':                     { bg: 'bg-violet-100',  text: 'text-violet-600',  badge: 'bg-violet-100 text-violet-700',  icon: <Sliders    size={22}/> },
+  'Motorized Valve':                    { bg: 'bg-purple-100',  text: 'text-purple-600',  badge: 'bg-purple-100 text-purple-700',  icon: <Sliders    size={22}/> },
+  'Bypass Valve':                       { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600', badge: 'bg-fuchsia-100 text-fuchsia-700',icon: <Sliders    size={22}/> },
+  'Check Valve':                        { bg: 'bg-green-100',   text: 'text-green-600',   badge: 'bg-green-100 text-green-700',    icon: <Sliders    size={22}/> },
+  'Head Pressure Controller':           { bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge      size={22}/> },
+  // Safety
+  'Pressure Relief Valve':              { bg: 'bg-red-100',     text: 'text-red-600',     badge: 'bg-red-100 text-red-700',        icon: <Gauge      size={22}/> },
+  'HPCO / MPCO':                        { bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge      size={22}/> },
+  'Pressure Transducer':                { bg: 'bg-rose-100',    text: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',      icon: <Gauge      size={22}/> },
+  'Gas Detector':                       { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Monitor    size={22}/> },
+  // Oil system
+  'Oil Separator':                      { bg: 'bg-amber-100',   text: 'text-amber-600',   badge: 'bg-amber-100 text-amber-700',    icon: <Droplets   size={22}/> },
+  'Oil Level Controller':               { bg: 'bg-yellow-100',  text: 'text-yellow-600',  badge: 'bg-yellow-100 text-yellow-700',  icon: <Droplets   size={22}/> },
+  // Filtration / inspection
+  'Filter Drier':                       { bg: 'bg-lime-100',    text: 'text-lime-600',    badge: 'bg-lime-100 text-lime-700',      icon: <Filter     size={22}/> },
+  'Sight Glass':                        { bg: 'bg-lime-100',    text: 'text-lime-600',    badge: 'bg-lime-100 text-lime-700',      icon: <Droplets   size={22}/> },
+  // Defrost
+  'Defrost Board':                      { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <Cpu        size={22}/> },
+  'Defrost Heater':                     { bg: 'bg-red-100',     text: 'text-red-600',     badge: 'bg-red-100 text-red-700',        icon: <Thermometer size={22}/> },
+  // Controls & electrical
+  'Rack Controller':                    { bg: 'bg-violet-100',  text: 'text-violet-600',  badge: 'bg-violet-100 text-violet-700',  icon: <Cpu        size={22}/> },
+  'Case Controller':                    { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600', badge: 'bg-fuchsia-100 text-fuchsia-700',icon: <Monitor    size={22}/> },
+  'Rack System':                        { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Server     size={22}/> },
+  'Variable Frequency Drive':           { bg: 'bg-emerald-100', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700',icon: <Zap        size={22}/> },
 }
 const DEFAULT_META = { bg: 'bg-slate-100', text: 'text-slate-500', badge: 'bg-slate-100 text-slate-600', icon: <Box size={22}/> }
 
+// Maps which component types are CO2-specific or HFC-specific (everything else = Both)
+const TYPE_SYSTEM: Record<string, 'CO2' | 'HFC'> = {
+  'Transcritical Compressor':           'CO2',
+  'Booster Compressor':                 'CO2',
+  'Gas Cooler':                         'CO2',
+  'Flash Tank':                         'CO2',
+  'Economizer':                         'CO2',
+  'Adiabatic System':                   'CO2',
+  'CO2 Pump':                           'CO2',
+  'TXV / Thermostatic Expansion Valve': 'HFC',
+}
+
 const COMPONENT_TYPES = [
-  'Compressor','Condenser Unit','Rack Controller','EEV Board',
-  'Oil Separator','Receiver','Head Pressure Controller','Defrost Board',
-  'Rack System','Case Controller','Filter Drier',
-  // CO2 / transcritical types
-  'Gas Cooler','Flash Tank','Booster Compressor','Transcritical Compressor',
-  'HPCO / MPCO','Economizer','Adiabatic System','CO2 Pump',
-  'Evaporator',
-  // Valves
-  'Solenoid Valve','Motorized Valve','Bypass Valve','Pressure Relief Valve',
+  // ── General / applies to most systems ──────────────────────────────────
+  'Compressor', 'Condenser Unit', 'Evaporator', 'Accumulator', 'Receiver',
+  'Fan Motor', 'Defrost Heater',
+  // ── CO2 / transcritical specific ───────────────────────────────────────
+  'Transcritical Compressor', 'Booster Compressor',
+  'Gas Cooler', 'Flash Tank', 'Economizer', 'Adiabatic System', 'CO2 Pump',
+  // ── Expansion & valves ─────────────────────────────────────────────────
+  'Electronic Expansion Valve', 'TXV / Thermostatic Expansion Valve', 'EEV Board',
+  'Solenoid Valve', 'Motorized Valve', 'Bypass Valve', 'Check Valve',
+  'Head Pressure Controller',
+  // ── Safety ─────────────────────────────────────────────────────────────
+  'Pressure Relief Valve', 'HPCO / MPCO', 'Pressure Transducer', 'Gas Detector',
+  // ── Oil & filtration ───────────────────────────────────────────────────
+  'Oil Separator', 'Oil Level Controller', 'Filter Drier', 'Sight Glass',
+  // ── Controls & electrical ──────────────────────────────────────────────
+  'Rack Controller', 'Case Controller', 'Defrost Board', 'Rack System',
+  'Variable Frequency Drive',
   'Other',
+]
+
+const SYSTEM_LABELS: { value: string; label: string; dot: string }[] = [
+  { value: 'CO2', label: 'CO₂',  dot: 'bg-blue-500' },
+  { value: 'HFC', label: 'HFC',  dot: 'bg-green-500' },
 ]
 
 const DEFROST_TYPES    = ['Electric', 'Hot Gas', 'CO2 Off-Cycle', 'Natural']
@@ -94,6 +144,7 @@ interface CompForm {
   manualTitle: string; manualUrl: string
   notes: string; troubleshooting: string
   defrostType: string; loadCategory: string; supplier: string; partNumber: string
+  systemType: string
 }
 const EMPTY_FORM: CompForm = {
   type: 'Compressor', manufacturer: '', model: '', serial: '',
@@ -101,6 +152,7 @@ const EMPTY_FORM: CompForm = {
   installDate: '', lastServiceDate: '', status: 'active',
   manualTitle: '', manualUrl: '', notes: '', troubleshooting: '',
   defrostType: '', loadCategory: '', supplier: '', partNumber: '',
+  systemType: 'Both',
 }
 
 // ── Component form fields (shared by Add + Edit modals) ───────────────────────
@@ -217,6 +269,14 @@ function ComponentFormFields({ form, set, isEdit = false }: {
             <label className={LBL}>Part Number</label>
             <input value={form.partNumber} onChange={set('partNumber')} placeholder="Manufacturer P/N" className={INP} />
           </div>
+        </div>
+        <div className="mt-3">
+          <label className={LBL}>System Type</label>
+          <select value={form.systemType} onChange={set('systemType')} className={SEL}>
+            <option value="Both">Both / Universal</option>
+            <option value="CO2">CO₂ only</option>
+            <option value="HFC">HFC only</option>
+          </select>
         </div>
       </div>
 
@@ -345,6 +405,7 @@ function EditComponentModal({
     loadCategory:    component.loadCategory ?? '',
     supplier:        component.supplier     ?? '',
     partNumber:      component.partNumber   ?? '',
+    systemType:      component.systemType   ?? 'Both',
   })
   const [saving,      setSaving]      = useState(false)
   const [err,         setErr]         = useState('')
@@ -491,6 +552,12 @@ function ComponentCard({
             {/* Badges row */}
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${meta.badge}`}>{c.type}</span>
+              {c.systemType === 'CO2' && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">CO₂</span>
+              )}
+              {c.systemType === 'HFC' && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">HFC</span>
+              )}
               {c.status && c.status !== 'active' && (
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-slate-100 text-slate-500'}`}>
                   {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
@@ -655,6 +722,7 @@ export default function ComponentRegistryPage() {
   const [activeType,       setActiveType]       = useState('')
   const [activeDefrost,    setActiveDefrost]    = useState('')
   const [activeLoad,       setActiveLoad]       = useState('')
+  const [activeSystem,     setActiveSystem]     = useState('')
   const [manualTarget,     setManualTarget]     = useState<ComponentRecord | null>(null)
   const [editTarget,       setEditTarget]       = useState<ComponentRecord | null>(null)
   const [showAdd,          setShowAdd]          = useState(false)
@@ -692,12 +760,13 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const fetchFiltered = useCallback(async (q: string, t: string, defrost: string, load: string) => {
+  const fetchFiltered = useCallback(async (q: string, t: string, defrost: string, load: string, system: string) => {
     const params = new URLSearchParams()
     if (q)      params.set('q', q)
     if (t)      params.set('type', t)
     if (defrost) params.set('defrostType', defrost)
     if (load)   params.set('loadCategory', load)
+    if (system) params.set('systemType', system)
     try {
       const data = await fetch(`/api/components?${params}`).then(r => r.json())
       if (Array.isArray(data)) setComponents(data)
@@ -706,11 +775,11 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeDefrost, activeLoad), 280)
+    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeDefrost, activeLoad, activeSystem), 280)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, activeType, activeDefrost, activeLoad, fetchFiltered])
+  }, [query, activeType, activeDefrost, activeLoad, activeSystem, fetchFiltered])
 
-  const inFilterMode = !!(query || activeType || activeDefrost || activeLoad)
+  const inFilterMode = !!(query || activeType || activeDefrost || activeLoad || activeSystem)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
@@ -757,6 +826,24 @@ export default function ComponentRegistryPage() {
             {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14}/></button>}
           </div>
           <div className="flex gap-2 flex-wrap">
+            {/* System type toggle chips */}
+            {SYSTEM_LABELS.map(s => (
+              <button
+                key={s.value}
+                onClick={() => setActiveSystem(prev => prev === s.value ? '' : s.value)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  activeSystem === s.value
+                    ? s.value === 'CO2'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-green-600 text-white border-green-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${activeSystem === s.value ? 'bg-white' : s.dot}`}/>
+                {s.label}
+              </button>
+            ))}
+
             <select
               value={activeDefrost}
               onChange={e => setActiveDefrost(e.target.value)}
@@ -773,9 +860,9 @@ export default function ComponentRegistryPage() {
               <option value="">Load category…</option>
               {LOAD_CATEGORIES.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
-            {(activeDefrost || activeLoad) && (
+            {(activeSystem || activeDefrost || activeLoad) && (
               <button
-                onClick={() => { setActiveDefrost(''); setActiveLoad('') }}
+                onClick={() => { setActiveSystem(''); setActiveDefrost(''); setActiveLoad('') }}
                 className="px-3 py-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1"
               >
                 <X size={11}/> Clear filters
@@ -834,6 +921,11 @@ export default function ComponentRegistryPage() {
           /* ── Filtered results ── */
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
+              {activeSystem && (
+                <button onClick={() => setActiveSystem('')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-full ${activeSystem === 'CO2' ? 'bg-blue-600' : 'bg-green-600'}`}>
+                  {activeSystem === 'CO2' ? 'CO₂' : 'HFC'} <X size={11}/>
+                </button>
+              )}
               {activeType && (
                 <button onClick={() => setActiveType('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-full">
                   {activeType} <X size={11}/>
