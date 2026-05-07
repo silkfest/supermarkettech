@@ -58,16 +58,18 @@ export async function POST(req: NextRequest) {
         .map(m => m.content)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
 
-      // Threshold 0.45 — permissive while diagnosing; raise once confirmed working
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
+      // Retrieve at threshold 0.0 and also -1 to distinguish "low similarity" from "RPC broken"
+      const [chunks, chunksAll] = await Promise.all([
+        retrieveChunks(query, equipmentId, 5, 0.0),
+        retrieveChunks(query, undefined, 5, -1),
+      ])
 
-      // Put chunks first so it's visible even if log is truncated
       console.log(JSON.stringify({
         chunks: chunks.length,
-        topScore: chunks[0]?.score ?? null,
-        rag: true,
+        topScore: chunks[0]?.score?.toFixed(3) ?? null,
+        totalAtNeg1: chunksAll.length,
+        topAtNeg1: chunksAll[0]?.score?.toFixed(3) ?? null,
         keyLen: jinaKey.length,
-        querySample: query.slice(0, 60),
       }))
 
       retrievedContext = formatContext(chunks)
