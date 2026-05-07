@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
   let sources: ReturnType<typeof chunksToCitations> = []
   let componentLinks: ComponentLink[] = []
   const jinaKey = process.env.JINA_API_KEY
-  console.log(`[RAG] JINA_API_KEY present: ${!!jinaKey}, length: ${jinaKey?.length ?? 0}`)
   if (jinaKey) {
     try {
       // Build RAG query from user messages only (excluding AI responses which dilute the search)
@@ -58,11 +57,20 @@ export async function POST(req: NextRequest) {
         .slice(-2)
         .map(m => m.content)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
-      console.log(`[RAG] query (${query.length} chars): ${query.slice(0, 120)}`)
 
-      // Threshold 0.45 — low enough to diagnose retrieval; raise once confirmed working
+      // Threshold 0.45 — permissive while diagnosing; raise once confirmed working
       const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
-      console.log(`[RAG] retrieved ${chunks.length} chunks${chunks.length > 0 ? `, top score ${chunks[0].score.toFixed(3)}` : ''}`)
+
+      // Single JSON log so Vercel shows it all in one line
+      console.log(JSON.stringify({
+        rag: true,
+        keyLen: jinaKey.length,
+        queryLen: query.length,
+        querySample: query.slice(0, 80),
+        chunks: chunks.length,
+        topScore: chunks[0]?.score ?? null,
+        equipmentId: equipmentId ?? null,
+      }))
 
       retrievedContext = formatContext(chunks)
       sources = chunksToCitations(chunks)
@@ -83,8 +91,10 @@ export async function POST(req: NextRequest) {
         }))
       }
     } catch (e) {
-      console.error('[RAG error]', e instanceof Error ? e.message : String(e))
+      console.error(JSON.stringify({ ragError: true, msg: e instanceof Error ? e.message : String(e) }))
     }
+  } else {
+    console.log(JSON.stringify({ rag: false, reason: 'JINA_API_KEY not set' }))
   }
 
   const systemPrompt = buildSystemPrompt({
