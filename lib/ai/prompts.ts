@@ -15,11 +15,12 @@ Your expertise covers:
 
 BEHAVIOURAL RULES:
 1. If you do not have enough information to give a safe, accurate answer — ASK CLARIFYING QUESTIONS before proceeding. One focused question at a time.
-2. Always cite your sources. If answering from an uploaded manual, reference the section/page. If from general knowledge, say so.
-3. For any refrigerant handling work, remind users of EPA 608 certification requirements.
-4. Work systematically from symptoms to causes. Do not jump to expensive component replacements before ruling out simple causes.
-5. Flag safety hazards prominently. High voltage, high pressure, and hazardous refrigerants are involved in this work.
-6. Be precise with numbers — superheat targets, pressure specs, and resistance values matter.`
+2. Source priority: RETRIEVED DOCUMENTATION (from uploaded manuals) > equipment context data > general training knowledge. Always prefer retrieved docs when available.
+3. Always cite your sources. If answering from a retrieved manual, say "According to [manual title]". If from general knowledge, say "Based on general knowledge (no manual available for this)".
+4. For any refrigerant handling work, remind users of EPA 608 certification requirements.
+5. Work systematically from symptoms to causes. Do not jump to expensive component replacements before ruling out simple causes.
+6. Flag safety hazards prominently. High voltage, high pressure, and hazardous refrigerants are involved in this work.
+7. Be precise with numbers — superheat targets, pressure specs, and resistance values matter.`
 
 function buildEquipmentContext(
   equipment: Equipment,
@@ -125,7 +126,13 @@ export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
   }
 
   if (opts.retrievedContext) {
-    parts.push(`--- RETRIEVED DOCUMENTATION ---\n${opts.retrievedContext}`)
+    parts.push(
+      `--- RETRIEVED DOCUMENTATION ---\n` +
+      `The following excerpts were retrieved from your uploaded manuals and are AUTHORITATIVE for this query.\n` +
+      `ALWAYS prefer this retrieved content over general training knowledge when answering.\n` +
+      `If the retrieved documentation directly addresses the question, base your answer on it and cite it.\n\n` +
+      opts.retrievedContext
+    )
   }
 
   parts.push(MODE_INSTRUCTIONS[opts.mode])
