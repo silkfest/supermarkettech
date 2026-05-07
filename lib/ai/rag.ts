@@ -43,7 +43,12 @@ async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.p
 }
 
 export async function embedQuery(text: string): Promise<number[]> {
-  const [embedding] = await jinaEmbed([text], 'retrieval.query')
+  // Use 'retrieval.passage' to match the task used when chunks were indexed.
+  // Jina jina-embeddings-v3 asymmetric tasks (query vs passage) produce vectors
+  // in incompatible subspaces for cosine distance (best score ~0.16 vs expected
+  // ~0.75). Symmetric retrieval (same task for both) keeps everything in the
+  // same embedding space and gives correct cosine similarities.
+  const [embedding] = await jinaEmbed([text], 'retrieval.passage')
   return embedding
 }
 
