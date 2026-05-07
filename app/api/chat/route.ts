@@ -61,15 +61,13 @@ export async function POST(req: NextRequest) {
       // Threshold 0.45 — permissive while diagnosing; raise once confirmed working
       const chunks = await retrieveChunks(query, equipmentId, 5, 0.45)
 
-      // Single JSON log so Vercel shows it all in one line
+      // Put chunks first so it's visible even if log is truncated
       console.log(JSON.stringify({
-        rag: true,
-        keyLen: jinaKey.length,
-        queryLen: query.length,
-        querySample: query.slice(0, 80),
         chunks: chunks.length,
         topScore: chunks[0]?.score ?? null,
-        equipmentId: equipmentId ?? null,
+        rag: true,
+        keyLen: jinaKey.length,
+        querySample: query.slice(0, 60),
       }))
 
       retrievedContext = formatContext(chunks)
