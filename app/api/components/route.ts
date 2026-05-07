@@ -71,33 +71,33 @@ export async function GET(req: NextRequest) {
     (catalogResult.data ?? []).map(c => c.document_id as string | null).filter(Boolean),
   )] as string[]
 
-  const docFileNames: Record<string, string> = {}
+  // docEntries: [[docId, filePath], ...] — preserves order for index-matched signed URL response
+  const docEntries: [string, string][] = []
   if (docIds.length > 0) {
     const { data: docs } = await supabase
       .from('documents')
       .select('id, file_name')
       .in('id', docIds)
     for (const d of docs ?? []) {
-      if (d.file_name) docFileNames[d.id] = d.file_name
+      if (d.file_name) docEntries.push([d.id, d.file_name])
     }
   }
 
-  const signedUrlMap: Record<string, string> = {}
-  const filePaths = Object.values(docFileNames)
-  if (filePaths.length > 0) {
+  // Key signed URLs by document UUID (not file path) to avoid any path-encoding mismatches
+  const signedUrlByDocId: Record<string, string> = {}
+  if (docEntries.length > 0) {
     const { data: urlData } = await supabase.storage
       .from('documents')
-      .createSignedUrls(filePaths, 3600)
-    for (const item of urlData ?? []) {
-      if (item.signedUrl) signedUrlMap[item.path] = item.signedUrl
-    }
+      .createSignedUrls(docEntries.map(([, p]) => p), 3600)
+    ;(urlData ?? []).forEach((item, i) => {
+      if (item.signedUrl && docEntries[i]) {
+        signedUrlByDocId[docEntries[i][0]] = item.signedUrl
+      }
+    })
   }
 
   function resolveManualUrl(c: { document_id?: string | null; manual_url?: string | null }): string {
-    if (c.document_id) {
-      const fileName = docFileNames[c.document_id]
-      if (fileName && signedUrlMap[fileName]) return signedUrlMap[fileName]
-    }
+    if (c.document_id && signedUrlByDocId[c.document_id]) return signedUrlByDocId[c.document_id]
     return c.manual_url ?? ''
   }
 

@@ -18,7 +18,6 @@ import type { UserRole } from '@/types'
 const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
   // Compressors
   Compressor:                           { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap        size={22}/> },
-  'Booster Compressor':                 { bg: 'bg-blue-100',    text: 'text-blue-600',    badge: 'bg-blue-100 text-blue-700',      icon: <Zap        size={22}/> },
   'Transcritical Compressor':           { bg: 'bg-indigo-100',  text: 'text-indigo-600',  badge: 'bg-indigo-100 text-indigo-700',  icon: <Zap        size={22}/> },
   'Condenser Unit':                     { bg: 'bg-cyan-100',    text: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',      icon: <Wind       size={22}/> },
   // Heat transfer
@@ -66,7 +65,6 @@ const DEFAULT_META = { bg: 'bg-slate-100', text: 'text-slate-500', badge: 'bg-sl
 // Maps which component types are CO2-specific or HFC-specific (everything else = Both)
 const TYPE_SYSTEM: Record<string, 'CO2' | 'HFC'> = {
   'Transcritical Compressor':           'CO2',
-  'Booster Compressor':                 'CO2',
   'Gas Cooler':                         'CO2',
   'Flash Tank':                         'CO2',
   'Economizer':                         'CO2',
@@ -80,7 +78,7 @@ const COMPONENT_TYPES = [
   'Compressor', 'Condenser Unit', 'Evaporator', 'Accumulator', 'Receiver',
   'Fan Motor', 'Defrost Heater',
   // ── CO2 / transcritical specific ───────────────────────────────────────
-  'Transcritical Compressor', 'Booster Compressor',
+  'Transcritical Compressor',
   'Gas Cooler', 'Flash Tank', 'Economizer', 'Adiabatic System', 'CO2 Pump',
   // ── Expansion & valves ─────────────────────────────────────────────────
   'Electronic Expansion Valve', 'TXV / Thermostatic Expansion Valve', 'EEV Board',
@@ -526,7 +524,7 @@ function ComponentCard({
   const router   = useRouter()
   const [expanded, setExpanded] = useState(false)
   const meta     = TYPE_META[c.type] ?? DEFAULT_META
-  const hasExtra = !!(c.notes || c.troubleshooting)
+  const hasExtra = c.isCatalog || !!(c.notes || c.troubleshooting)
   const steps    = c.troubleshooting ? c.troubleshooting.split('\n').filter(s => s.trim()) : []
   const isDecom  = c.status === 'decommissioned'
 
@@ -667,11 +665,13 @@ function ComponentCard({
             {/* Expanded details */}
             {expanded && (
               <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-                {c.notes && (
+                {c.notes ? (
                   <div>
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
                     <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">{c.notes}</p>
                   </div>
+                ) : c.isCatalog && steps.length === 0 && (
+                  <p className="text-xs text-slate-400 italic">No notes yet — click the pencil icon to add notes or troubleshooting steps.</p>
                 )}
                 {steps.length > 0 && (
                   <div>
@@ -720,8 +720,6 @@ export default function ComponentRegistryPage() {
   const [loading,          setLoading]          = useState(true)
   const [query,            setQuery]            = useState('')
   const [activeType,       setActiveType]       = useState('')
-  const [activeDefrost,    setActiveDefrost]    = useState('')
-  const [activeLoad,       setActiveLoad]       = useState('')
   const [activeSystem,     setActiveSystem]     = useState('')
   const [manualTarget,     setManualTarget]     = useState<ComponentRecord | null>(null)
   const [editTarget,       setEditTarget]       = useState<ComponentRecord | null>(null)
@@ -760,12 +758,10 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const fetchFiltered = useCallback(async (q: string, t: string, defrost: string, load: string, system: string) => {
+  const fetchFiltered = useCallback(async (q: string, t: string, system: string) => {
     const params = new URLSearchParams()
     if (q)      params.set('q', q)
     if (t)      params.set('type', t)
-    if (defrost) params.set('defrostType', defrost)
-    if (load)   params.set('loadCategory', load)
     if (system) params.set('systemType', system)
     try {
       const data = await fetch(`/api/components?${params}`).then(r => r.json())
@@ -775,11 +771,11 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeDefrost, activeLoad, activeSystem), 280)
+    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeSystem), 280)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, activeType, activeDefrost, activeLoad, activeSystem, fetchFiltered])
+  }, [query, activeType, activeSystem, fetchFiltered])
 
-  const inFilterMode = !!(query || activeType || activeDefrost || activeLoad || activeSystem)
+  const inFilterMode = !!(query || activeType || activeSystem)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
@@ -843,29 +839,12 @@ export default function ComponentRegistryPage() {
                 {s.label}
               </button>
             ))}
-
-            <select
-              value={activeDefrost}
-              onChange={e => setActiveDefrost(e.target.value)}
-              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            >
-              <option value="">Defrost type…</option>
-              {DEFROST_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select
-              value={activeLoad}
-              onChange={e => setActiveLoad(e.target.value)}
-              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            >
-              <option value="">Load category…</option>
-              {LOAD_CATEGORIES.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-            {(activeSystem || activeDefrost || activeLoad) && (
+            {activeSystem && (
               <button
-                onClick={() => { setActiveSystem(''); setActiveDefrost(''); setActiveLoad('') }}
+                onClick={() => setActiveSystem('')}
                 className="px-3 py-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1"
               >
-                <X size={11}/> Clear filters
+                <X size={11}/> Clear
               </button>
             )}
           </div>
@@ -929,16 +908,6 @@ export default function ComponentRegistryPage() {
               {activeType && (
                 <button onClick={() => setActiveType('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-full">
                   {activeType} <X size={11}/>
-                </button>
-              )}
-              {activeDefrost && (
-                <button onClick={() => setActiveDefrost('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white text-xs font-medium rounded-full">
-                  {activeDefrost} <X size={11}/>
-                </button>
-              )}
-              {activeLoad && (
-                <button onClick={() => setActiveLoad('')} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-xs font-medium rounded-full">
-                  {activeLoad} <X size={11}/>
                 </button>
               )}
               <span className="text-xs text-slate-500">{components.length} result{components.length !== 1 ? 's' : ''}</span>
