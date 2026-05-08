@@ -11,9 +11,10 @@ export async function GET(req: NextRequest) {
 
   let query = supabase.from('documents').select('*').order('created_at', { ascending: false })
 
-  // Only show documents linked to this specific piece of equipment
+  // When filtering by equipment, also include global docs (equipment_id IS NULL)
+  // — mirrors how match_doc_chunks RAG already works.
   if (equipmentId) {
-    query = query.eq('equipment_id', equipmentId)
+    query = query.or(`equipment_id.eq.${equipmentId},equipment_id.is.null`)
   }
 
   const { data, error } = await query
