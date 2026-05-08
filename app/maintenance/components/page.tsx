@@ -781,6 +781,9 @@ export default function ComponentRegistryPage() {
         setComponents(data)
         // Scroll to + flash the highlighted component once data is available
         if (initialHighlightId) {
+          // Wait for React to commit the list view before scrolling.
+          // inFilterMode is now true (highlightId is set), so ComponentCards are
+          // rendered — but we need a frame or two after setComponents resolves.
           setTimeout(() => {
             const el = document.getElementById(`comp-${initialHighlightId}`)
             if (el) {
@@ -788,7 +791,7 @@ export default function ComponentRegistryPage() {
               el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2')
               setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2500)
             }
-          }, 100)
+          }, 300)
         }
       }
     } catch { /* silent */ }
@@ -821,7 +824,8 @@ export default function ComponentRegistryPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, activeType, activeSystem, activeArea, fetchFiltered])
 
-  const inFilterMode = !!(query || activeType || activeSystem || activeArea)
+  // highlightId (from ?highlight= deep-link) also forces the flat list view so the card is in the DOM
+  const inFilterMode = !!(query || activeType || activeSystem || activeArea || highlightId)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
