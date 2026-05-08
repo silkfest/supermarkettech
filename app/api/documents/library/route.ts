@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
+export const maxDuration = 60
+
 // GET /api/documents/library — all documents (global + equipment-assigned) with signed URLs
 // Optional query params: ?category=Compressor&search=bitzer
 export async function GET(req: NextRequest) {
@@ -34,33 +36,35 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // Generate signed URLs for PDFs stored in Supabase Storage
-  const withUrls = await Promise.all(
-    results.map(async (doc) => {
-      let signed_url: string | null = null
-      if (doc.file_name) {
-        const { data } = await supabase.storage
-          .from('documents')
-          .createSignedUrl(doc.file_name, 3600)
-        signed_url = data?.signedUrl ?? null
-      }
-      const rawEq = doc.equipment
-      const eq = (Array.isArray(rawEq) ? rawEq[0] : rawEq) as { name: string } | null
-      return {
-        id:             doc.id,
-        title:          doc.title,
-        category:       doc.category ?? '',
-        status:         doc.status,
-        page_count:     doc.page_count,
-        file_size:      doc.file_size,
-        source_type:    doc.source_type,
-        created_at:     doc.created_at,
-        equipment_id:   doc.equipment_id,
-        equipment_name: eq?.name ?? null,
-        signed_url,
-      }
+  // Batch-generate all signed URLs in a single Storage API call (avoids N×round-trips timing out)
+  const filePaths = results.map(d => d.file_name).filter((p): p is string => !!p)
+  const signedUrlMap: Record<string, string> = {}
+  if (filePaths.length > 0) {
+    const { data: signedData } = await supabase.storage
+      .from('documents')
+      .createSignedUrls(filePaths, 3600)
+    ;(signedData ?? []).forEach(item => {
+      if (item.signedUrl) signedUrlMap[item.path] = item.signedUrl
     })
-  )
+  }
+
+  const withUrls = results.map(doc => {
+    const rawEq = doc.equipment
+    const eq = (Array.isArray(rawEq) ? rawEq[0] : rawEq) as { name: string } | null
+    return {
+      id:             doc.id,
+      title:          doc.title,
+      category:       doc.category ?? '',
+      status:         doc.status,
+      page_count:     doc.page_count,
+      file_size:      doc.file_size,
+      source_type:    doc.source_type,
+      created_at:     doc.created_at,
+      equipment_id:   doc.equipment_id,
+      equipment_name: eq?.name ?? null,
+      signed_url:     doc.file_name ? (signedUrlMap[doc.file_name] ?? null) : null,
+    }
+  })
 
   return NextResponse.json(withUrls)
 }

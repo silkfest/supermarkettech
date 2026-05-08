@@ -59,6 +59,7 @@ const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon:
   'Case Controller':                    { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600', badge: 'bg-fuchsia-100 text-fuchsia-700',icon: <Monitor    size={22}/> },
   'Rack System':                        { bg: 'bg-sky-100',     text: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700',        icon: <Server     size={22}/> },
   'Variable Frequency Drive':           { bg: 'bg-emerald-100', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700',icon: <Zap        size={22}/> },
+  'Display Doors':                      { bg: 'bg-teal-100',    text: 'text-teal-600',    badge: 'bg-teal-100 text-teal-700',      icon: <LayoutGrid size={22}/> },
 }
 const DEFAULT_META = { bg: 'bg-slate-100', text: 'text-slate-500', badge: 'bg-slate-100 text-slate-600', icon: <Box size={22}/> }
 
@@ -91,6 +92,8 @@ const COMPONENT_TYPES = [
   // ── Controls & electrical ──────────────────────────────────────────────
   'Rack Controller', 'Case Controller', 'Defrost Board', 'Rack System',
   'Variable Frequency Drive',
+  // ── Display & cases ────────────────────────────────────────────────────
+  'Display Doors',
   'Other',
 ]
 
