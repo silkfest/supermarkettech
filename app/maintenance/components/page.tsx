@@ -547,7 +547,7 @@ function ComponentCard({
   const isDecom  = c.status === 'decommissioned'
 
   return (
-    <div className={`bg-white border rounded-xl overflow-hidden transition-all ${isDecom ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
+    <div id={`comp-${c.catalogId}`} className={`bg-white border rounded-xl overflow-hidden transition-all ${isDecom ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
       {/* Photo banner if present */}
       {c.photoUrl && (
         <img
@@ -742,13 +742,7 @@ export default function ComponentRegistryPage() {
   const [components,       setComponents]       = useState<ComponentRecord[]>([])
   const [types,            setTypes]            = useState<string[]>([])
   const [loading,          setLoading]          = useState(true)
-  const [query,            setQuery]            = useState(() => {
-    // Pre-populate search from ?q= URL param (e.g. navigating here from the chat)
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('q') ?? ''
-    }
-    return ''
-  })
+  const [query,            setQuery]            = useState('')
   const [activeType,       setActiveType]       = useState('')
   const [activeSystem,     setActiveSystem]     = useState('')
   const [activeArea,       setActiveArea]       = useState('')
@@ -756,6 +750,7 @@ export default function ComponentRegistryPage() {
   const [editTarget,       setEditTarget]       = useState<ComponentRecord | null>(null)
   const [showAdd,          setShowAdd]          = useState(false)
   const [userRole,         setUserRole]         = useState<UserRole | null>(null)
+  const [highlightId,      setHighlightId]      = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isAdmin = userRole === 'admin' || userRole === 'manager'
@@ -774,20 +769,39 @@ export default function ComponentRegistryPage() {
     checkRole()
   }, [])
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (initialHighlightId?: string | null) => {
     setLoading(true)
     try {
       const data = await fetch('/api/components').then(r => r.json())
       if (Array.isArray(data)) {
         setAllComponents(data)
-        setComponents(data)
         setTypes(Array.from(new Set(data.map((c: ComponentRecord) => c.type))).sort() as string[])
+        // Only set the visible list if no highlight deep-link — the highlight path
+        // keeps all components and scrolls to the target instead of filtering.
+        setComponents(data)
+        // Scroll to + flash the highlighted component once data is available
+        if (initialHighlightId) {
+          setTimeout(() => {
+            const el = document.getElementById(`comp-${initialHighlightId}`)
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2')
+              setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2500)
+            }
+          }, 100)
+        }
       }
     } catch { /* silent */ }
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // On mount: read ?highlight= deep-link from URL (set by chat component-link chips)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('highlight')
+    if (id) setHighlightId(id)
+    fetchAll(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchFiltered = useCallback(async (q: string, t: string, system: string, area: string) => {
     const params = new URLSearchParams()

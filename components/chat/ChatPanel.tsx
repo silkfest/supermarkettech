@@ -75,7 +75,7 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
         {links.map(link => (
           <button
             key={link.catalogId}
-            onClick={() => router.push(`/maintenance/components?q=${encodeURIComponent(link.model)}`)}
+            onClick={() => router.push(`/maintenance/components?highlight=${encodeURIComponent(link.catalogId)}`)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors group"
             title={link.manualTitle}
           >
