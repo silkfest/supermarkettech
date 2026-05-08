@@ -51,14 +51,17 @@ export async function POST(req: NextRequest) {
   const jinaKey = process.env.JINA_API_KEY
   if (jinaKey) {
     try {
-      // Build RAG query from user messages only (excluding AI responses which dilute the search)
+      // Build RAG query: current message + recent unique user messages for multi-turn context.
+      // Deduplicate to avoid score drift when the user re-asks the same question.
+      const msgNorm = message.toLowerCase().trim()
       const recentUserMessages = history
         .filter(m => m.role === 'user')
         .slice(-2)
         .map(m => m.content)
+        .filter(c => c.toLowerCase().trim() !== msgNorm)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
 
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.55)
+      const chunks = await retrieveChunks(query, equipmentId, 5, 0.50)
 
       console.log(JSON.stringify({ n: chunks.length, top: chunks[0]?.score?.toFixed(3) ?? null }))
 

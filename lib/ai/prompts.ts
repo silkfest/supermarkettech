@@ -74,11 +74,11 @@ const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
 Handle everything in one conversation — general questions, fault diagnosis, alarm codes, and service procedures. Let the technician's message guide the response:
 
 • General question → answer directly, cite sources, use numbered steps for procedures.
-• Symptom or fault described → guide systematic diagnosis: gather symptoms, identify the affected system (refrigerant circuit / electrical / controls / mechanical), propose tests easiest-first, confirm root cause before suggesting repair. End with: "## Recommended next step:"
+• Symptom or fault described → guide systematic diagnosis: identify the affected system, propose tests easiest-first, confirm root cause before suggesting repair.
 • Alarm code provided → explain in plain English, rank likely causes by probability, describe how to confirm, give reset procedure, cite the manual section if available. If you don't recognise the code, ask for the controller type.
 • Conversation shifts mid-thread → follow naturally. Never ask the technician to switch modes.
 
-Ask one focused clarifying question at a time when you need more information.`,
+Ask one focused clarifying question at a time only when you genuinely cannot answer without it.`,
 
   MAINTENANCE: `MODE: Maintenance Assistant
 Help the technician with maintenance documentation and planning:

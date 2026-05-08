@@ -75,23 +75,6 @@ export async function retrieveChunks(
   const embedding = await embedQuery(query)
   const supabase = getSupabaseServer()
 
-  // Diagnostic: log embedding dimensions and a sample value to verify Jina output
-  console.log(JSON.stringify({ dims: embedding.length, v0: embedding[0]?.toFixed(6) ?? null }))
-
-  // Run at threshold -1 to get best possible score regardless of cutoff
-  const { data: bestData, error: bestError } = await supabase.rpc('match_doc_chunks', {
-    query_embedding: embedding,
-    match_threshold: -1,
-    match_count: 3,
-    p_equipment_id: null,
-  })
-  if (!bestError) {
-    const best = (bestData as RetrievedChunk[])?.[0]
-    console.log(JSON.stringify({ best: best?.score?.toFixed(4) ?? null, doc: best?.document_title?.slice(0, 30) ?? null }))
-  } else {
-    console.error(JSON.stringify({ ragRpcError: true, msg: bestError.message }))
-  }
-
   const { data, error } = await supabase.rpc('match_doc_chunks', {
     query_embedding: embedding,
     match_threshold: minScore,
