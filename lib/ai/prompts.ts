@@ -96,7 +96,7 @@ const FORMAT_INSTRUCTIONS = `
 RESPONSE FORMAT:
 - Use clear markdown: headers (##), numbered steps for procedures, bullets for options
 - Safety warnings: ⚠️ **Safety:** {warning text}
-- Citations: [Source: {title}, p.{number}] or [Source: General knowledge]
+- Do NOT include inline source citations in the response text — sources are displayed automatically in the UI
 - Keep responses focused and actionable — technicians are on the floor
 `
 

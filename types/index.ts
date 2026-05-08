@@ -95,6 +95,7 @@ export interface CitationSource {
   title: string
   sourceType: string
   relevanceScore: number
+  signedUrl?: string | null
 }
 
 export interface ComponentLink {

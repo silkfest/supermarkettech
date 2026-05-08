@@ -43,21 +43,36 @@ function TypingDots() {
 }
 
 function Citations({ sources }: { sources: CitationSource[] }) {
+  // Deduplicate by documentId — one chip per source document
+  const unique = sources.filter((s, i, arr) => arr.findIndex(x => x.documentId === s.documentId) === i)
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      {sources.map((s) => (
-        <div
-          key={s.chunkId}
-          className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-500"
-          title={`Relevance: ${(s.relevanceScore * 100).toFixed(0)}%`}
-        >
-          <BookOpen size={9} className="flex-shrink-0 text-slate-400" />
-          <span className="font-medium truncate max-w-[140px]">{s.title}</span>
-          {s.pageNumber != null && (
-            <span className="text-slate-400 flex-shrink-0">p.{s.pageNumber}</span>
-          )}
-        </div>
-      ))}
+      {unique.map((s) => {
+        const inner = (
+          <>
+            <BookOpen size={9} className="flex-shrink-0 text-slate-400" />
+            <span className="font-medium truncate max-w-[160px]">{s.title}</span>
+            {s.signedUrl && <ExternalLink size={9} className="flex-shrink-0 text-slate-400" />}
+          </>
+        )
+        const baseClass = 'flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-500'
+        return s.signedUrl ? (
+          <a
+            key={s.documentId}
+            href={s.signedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open manual PDF"
+            className={`${baseClass} hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer`}
+          >
+            {inner}
+          </a>
+        ) : (
+          <div key={s.documentId} className={baseClass} title="Source document">
+            {inner}
+          </div>
+        )
+      })}
     </div>
   )
 }
