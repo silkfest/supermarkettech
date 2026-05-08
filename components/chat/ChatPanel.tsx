@@ -376,11 +376,18 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                 setSessionId(event.sessionId)
                 try { localStorage.setItem(sessionStorageKey(equipment?.id), event.sessionId) } catch { /* ignore */ }
               }
-              setMessages(prev => prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, isStreaming: false, sources: pendingSources, componentLinks: pendingComponentLinks }
-                  : m
-              ))
+              {
+                // Snapshot before reset — React batches state updaters and executes
+                // them after the current synchronous block. Without snapshots the
+                // closure would read the already-reset `undefined` values.
+                const snapshotSources = pendingSources
+                const snapshotLinks   = pendingComponentLinks
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantId
+                    ? { ...m, isStreaming: false, sources: snapshotSources, componentLinks: snapshotLinks }
+                    : m
+                ))
+              }
               setStreaming(false)
               pendingSources = undefined
               pendingComponentLinks = undefined
