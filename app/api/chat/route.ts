@@ -68,10 +68,11 @@ export async function POST(req: NextRequest) {
       if (chunks.length > 0) {
         // Look up any manual_components entries linked to the retrieved documents
         const docIds = [...new Set(chunks.map(c => c.document_id))]
-        const { data: comps } = await supabase
+        const { data: comps, error: compsError } = await supabase
           .from('manual_components')
           .select('id, type, manufacturer, model, manual_title')
           .in('document_id', docIds)
+        console.log(JSON.stringify({ compsCount: comps?.length ?? 0, docIds, compsErr: compsError?.message ?? null }))
         componentLinks = (comps ?? []).map(c => ({
           catalogId:   c.id            as string,
           type:        c.type          as string ?? 'Component',
