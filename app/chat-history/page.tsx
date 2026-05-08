@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, User, Clock, Star, Loader2 } from 'lucide-react'
+import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -34,13 +34,13 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 
-function SessionCard({ session, currentUserId }: { session: Session; currentUserId: string }) {
-  const [expanded, setExpanded]     = useState(false)
-  const [savingTip, setSavingTip]   = useState(false)
-  const [tipSaved, setTipSaved]     = useState(!!session.tip)
-  const [tipTitle, setTipTitle]     = useState(session.title)
-  const [showInput, setShowInput]   = useState(false)
-  const router = useRouter()
+function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: string) => void }) {
+  const [expanded, setExpanded]   = useState(false)
+  const [savingTip, setSavingTip] = useState(false)
+  const [tipSaved, setTipSaved]   = useState(!!session.tip)
+  const [tipTitle, setTipTitle]   = useState(session.title)
+  const [showInput, setShowInput] = useState(false)
+  const [deleting, setDeleting]   = useState(false)
 
   const messages = session.messages ?? []
   const userMsgCount = messages.filter(m => m.role === 'user').length
@@ -58,6 +58,17 @@ function SessionCard({ session, currentUserId }: { session: Session; currentUser
     } finally {
       setSavingTip(false)
       setShowInput(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this conversation? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/chat/sessions/${session.id}`, { method: 'DELETE' })
+      if (res.ok) onDelete(session.id)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -92,7 +103,7 @@ function SessionCard({ session, currentUserId }: { session: Session; currentUser
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {!tipSaved && !showInput && messages.length >= 2 && (
             <button
               onClick={() => setShowInput(true)}
@@ -101,6 +112,14 @@ function SessionCard({ session, currentUserId }: { session: Session; currentUser
               Save as tip
             </button>
           )}
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete conversation"
+            className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+          >
+            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          </button>
           <button
             onClick={() => setExpanded(e => !e)}
             className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50"
@@ -178,24 +197,38 @@ function SessionCard({ session, currentUserId }: { session: Session; currentUser
 
 export default function ChatHistoryPage() {
   const router = useRouter()
-  const [sessions, setSessions]       = useState<Session[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [currentUserId, setCurrentUserId] = useState('')
-  const [search, setSearch]           = useState('')
-  const [filterMode, setFilterMode]   = useState<'all' | 'EXPERT' | 'MAINTENANCE'>('all')
+  const [sessions, setSessions]         = useState<Session[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [clearingAll, setClearingAll]   = useState(false)
+  const [search, setSearch]             = useState('')
+  const [filterMode, setFilterMode]     = useState<'all' | 'EXPERT' | 'MAINTENANCE'>('all')
 
   useEffect(() => {
     void (async () => {
       const sb = getSupabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
-      setCurrentUserId(user.id)
 
       const res = await fetch('/api/chat/sessions')
       if (res.ok) setSessions(await res.json())
       setLoading(false)
     })()
   }, [router])
+
+  function handleDeleted(id: string) {
+    setSessions(prev => prev.filter(s => s.id !== id))
+  }
+
+  async function handleClearAll() {
+    if (!confirm(`Delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    setClearingAll(true)
+    try {
+      const res = await fetch('/api/chat/sessions', { method: 'DELETE' })
+      if (res.ok) setSessions([])
+    } finally {
+      setClearingAll(false)
+    }
+  }
 
   const filtered = sessions.filter(s => {
     const matchesSearch =
@@ -231,9 +264,9 @@ export default function ChatHistoryPage() {
               <MessageSquare size={20} className="text-blue-500" />
               Chat History
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">All team conversations — expand to view, or save as a tip</p>
+            <p className="text-xs text-slate-400 mt-0.5">All team conversations — expand to view, save as a tip, or delete</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -251,6 +284,16 @@ export default function ChatHistoryPage() {
                 </button>
               ))}
             </div>
+            {sessions.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                disabled={clearingAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+              >
+                {clearingAll ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                Clear all
+              </button>
+            )}
           </div>
         </div>
 
@@ -269,7 +312,7 @@ export default function ChatHistoryPage() {
 
         <div className="space-y-3">
           {filtered.map(session => (
-            <SessionCard key={session.id} session={session} currentUserId={currentUserId} />
+            <SessionCard key={session.id} session={session} onDelete={handleDeleted} />
           ))}
         </div>
       </div>
