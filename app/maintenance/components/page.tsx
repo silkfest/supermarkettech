@@ -776,14 +776,20 @@ export default function ComponentRegistryPage() {
       if (Array.isArray(data)) {
         setAllComponents(data)
         setTypes(Array.from(new Set(data.map((c: ComponentRecord) => c.type))).sort() as string[])
-        // Only set the visible list if no highlight deep-link — the highlight path
-        // keeps all components and scrolls to the target instead of filtering.
-        setComponents(data)
-        // Scroll to + flash the highlighted component once data is available
+
         if (initialHighlightId) {
-          // Wait for React to commit the list view before scrolling.
-          // inFilterMode is now true (highlightId is set), so ComponentCards are
-          // rendered — but we need a frame or two after setComponents resolves.
+          // Find the target component and filter to its category so the user
+          // lands in the right type view rather than seeing everything.
+          const target = (data as ComponentRecord[]).find(c => c.catalogId === initialHighlightId)
+          if (target) {
+            const typeFiltered = (data as ComponentRecord[]).filter(c => c.type === target.type)
+            setComponents(typeFiltered)
+            setActiveType(target.type)   // keeps inFilterMode true via activeType
+          } else {
+            setComponents(data)
+          }
+          // Scroll after React commits the filtered list.
+          // Use 400ms to comfortably clear the 280ms fetchFiltered debounce.
           setTimeout(() => {
             const el = document.getElementById(`comp-${initialHighlightId}`)
             if (el) {
@@ -791,7 +797,9 @@ export default function ComponentRegistryPage() {
               el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2')
               setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2500)
             }
-          }, 300)
+          }, 400)
+        } else {
+          setComponents(data)
         }
       }
     } catch { /* silent */ }
