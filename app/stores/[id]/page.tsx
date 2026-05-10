@@ -112,6 +112,7 @@ export default function StoreDetailPage() {
   const [editField, setEditField] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savedField, setSavedField] = useState<string | null>(null)
 
   // Add equipment modal
   const [showAddEquip, setShowAddEquip] = useState(false)
@@ -145,6 +146,8 @@ export default function StoreDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setStore(prev => prev ? { ...prev, ...updated } : prev)
+      setSavedField(field)
+      setTimeout(() => setSavedField(null), 2000)
     }
     setEditField(null)
     setSaving(false)
@@ -226,6 +229,13 @@ export default function StoreDetailPage() {
       </div>
 
       <div className="px-4 py-4 max-w-2xl mx-auto flex flex-col gap-4">
+
+        {/* Save confirmation flash */}
+        {savedField && (
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700">
+            <Check size={12}/> Saved
+          </div>
+        )}
 
         {/* Site info card */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

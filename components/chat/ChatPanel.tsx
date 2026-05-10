@@ -240,9 +240,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
 
   const TIP_TAG_OPTIONS = ['Superheat', 'Defrost', 'Leak', 'Compressor', 'Alarms', 'Electrical', 'Controls']
 
-  const bottomRef   = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const abortRef    = useRef<AbortController | null>(null)
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const textareaRef      = useRef<HTMLTextAreaElement>(null)
+  const abortRef         = useRef<AbortController | null>(null)
+  const lastSentMsgRef   = useRef('')
 
   // Restore sessionId from localStorage when equipment selection changes
   useEffect(() => {
@@ -280,15 +281,19 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`
   }, [input])
 
-  const handleSubmit = useCallback(async () => {
-    const text = input.trim()
+  const handleSubmit = useCallback(async (opts?: {
+    overrideText?: string
+    overrideHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+  }) => {
+    const text = (opts?.overrideText ?? input).trim()
     if (!text || streaming) return
 
+    lastSentMsgRef.current = text
     setInput('')
     setError(null)
 
     // Build history from finalised messages only (max 40 per schema)
-    const history = messages
+    const history = opts?.overrideHistory ?? messages
       .filter(m => !m.isStreaming)
       .slice(-40)
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
@@ -451,6 +456,25 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     }
   }, [input, streaming, messages, mode, equipment, sessionId])
 
+  function handleRetry() {
+    const text = lastSentMsgRef.current
+    if (!text || streaming) return
+
+    // In the HTTP-error path the assistant placeholder was already removed from `messages`,
+    // so the last entry is the user message that failed. Remove it before re-submitting so
+    // handleSubmit can re-add it cleanly.
+    const lastMsg = messages[messages.length - 1]
+    const cleanMessages = lastMsg?.role === 'user' ? messages.slice(0, -1) : messages
+
+    const overrideHistory = cleanMessages
+      .filter(m => !m.isStreaming)
+      .slice(-40)
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+    setMessages(cleanMessages)
+    handleSubmit({ overrideText: text, overrideHistory })
+  }
+
   async function handleSaveTip() {
     if (!sessionId || !tipTitle.trim()) return
     setSavingTip(true)
@@ -475,7 +499,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      handleSubmit()  // no override — reads from input state
     }
   }
 
@@ -499,7 +523,15 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
             {error && (
               <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
                 <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+                <span className="flex-1">{error}</span>
+                {lastSentMsgRef.current && (
+                  <button
+                    onClick={handleRetry}
+                    className="flex-shrink-0 font-semibold underline hover:no-underline whitespace-nowrap"
+                  >
+                    Try again
+                  </button>
+                )}
               </div>
             )}
 
@@ -582,7 +614,15 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         <div className="mx-4 mb-2 max-w-2xl mx-auto">
           <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
             <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <span className="flex-1">{error}</span>
+            {lastSentMsgRef.current && (
+              <button
+                onClick={handleRetry}
+                className="flex-shrink-0 font-semibold underline hover:no-underline whitespace-nowrap"
+              >
+                Try again
+              </button>
+            )}
           </div>
         </div>
       )}

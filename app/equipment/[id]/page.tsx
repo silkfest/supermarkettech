@@ -95,6 +95,7 @@ export default function EquipmentDetailPage() {
   const [editField, setEditField] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savedField, setSavedField] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -123,6 +124,8 @@ export default function EquipmentDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setEquip(prev => prev ? { ...prev, ...updated } : prev)
+      setSavedField(field)
+      setTimeout(() => setSavedField(null), 2000)
     }
     setEditField(null)
     setSaving(false)
@@ -171,6 +174,13 @@ export default function EquipmentDetailPage() {
       </div>
 
       <div className="px-4 py-4 max-w-2xl mx-auto flex flex-col gap-4">
+
+        {/* Save confirmation flash */}
+        {savedField && (
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700 animate-pulse-once">
+            <Check size={12}/> Saved
+          </div>
+        )}
 
         {/* Equipment card */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
