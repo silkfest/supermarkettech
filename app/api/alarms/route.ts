@@ -36,5 +36,25 @@ export async function PATCH(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Auto-update equipment status based on remaining unresolved alarms
+  if (data?.equipment_id) {
+    const { data: remaining } = await supabase
+      .from('alarm_events')
+      .select('severity')
+      .eq('equipment_id', data.equipment_id)
+      .is('resolved_at', null)
+
+    const alarms = remaining ?? []
+    let newStatus = 'OK'
+    if (alarms.some(a => a.severity === 'CRITICAL')) newStatus = 'ALARM'
+    else if (alarms.some(a => a.severity === 'WARNING')) newStatus = 'WARNING'
+
+    await supabase
+      .from('equipment')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', data.equipment_id)
+  }
+
   return NextResponse.json(data)
 }

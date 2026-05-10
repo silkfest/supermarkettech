@@ -230,12 +230,13 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [error, setError]         = useState<string | null>(null)
 
   // Save-as-tip state
-  const [showTipInput, setShowTipInput] = useState(false)
-  const [tipTitle, setTipTitle]         = useState('')
-  const [tipTags, setTipTags]           = useState<string[]>([])
-  const [savingTip, setSavingTip]       = useState(false)
-  const [tipSaved, setTipSaved]         = useState(false)
-  const [tipError, setTipError]         = useState('')
+  const [showTipInput,   setShowTipInput]   = useState(false)
+  const [tipTitle,       setTipTitle]       = useState('')
+  const [tipTags,        setTipTags]        = useState<string[]>([])
+  const [savingTip,      setSavingTip]      = useState(false)
+  const [tipSaved,       setTipSaved]       = useState(false)
+  const [tipAlreadySaved,setTipAlreadySaved]= useState(false)
+  const [tipError,       setTipError]       = useState('')
 
   const TIP_TAG_OPTIONS = ['Superheat', 'Defrost', 'Leak', 'Compressor', 'Alarms', 'Electrical', 'Controls']
 
@@ -460,7 +461,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, title: tipTitle.trim(), tags: tipTags }),
       })
-      if (res.status === 409) { setTipSaved(true); setShowTipInput(false); return }
+      if (res.status === 409) { setTipAlreadySaved(true); setShowTipInput(false); return }
       if (!res.ok) { const j = await res.json(); setTipError(j?.error ?? 'Failed to save'); return }
       setTipSaved(true)
       setShowTipInput(false)
@@ -514,6 +515,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
             {tipSaved ? (
               <div className="flex items-center gap-1.5 text-xs text-emerald-600 py-1">
                 <Check size={13} /> Saved as a troubleshooting tip
+              </div>
+            ) : tipAlreadySaved ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 py-1">
+                <Check size={13} /> Already saved as a tip
               </div>
             ) : showTipInput ? (
               <div className="space-y-2">

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { ingestDocument } from '@/lib/ai/rag'
 
+// Allow up to 60 s so the async ingest (pdf-parse + Jina embed) has time to finish
+export const maxDuration = 60
+
 export async function GET(req: NextRequest) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,15 +23,22 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Generate 1-hour signed URLs for all documents stored in Supabase Storage
-  const docs = await Promise.all((data ?? []).map(async (doc) => {
-    if (doc.file_name) {
-      const { data: signed } = await supabase.storage
-        .from('documents')
-        .createSignedUrl(doc.file_name, 3600)
-      return { ...doc, url: signed?.signedUrl ?? null }
-    }
-    return { ...doc, url: null }
+  // Batch-generate signed URLs in a single Storage API call
+  const rows = data ?? []
+  const filePaths = rows.map(d => d.file_name).filter((p): p is string => !!p)
+  const signedUrlMap: Record<string, string> = {}
+  if (filePaths.length > 0) {
+    const { data: signedData } = await supabase.storage
+      .from('documents')
+      .createSignedUrls(filePaths, 3600)
+    ;(signedData ?? []).forEach(item => {
+      if (item.signedUrl) signedUrlMap[item.path] = item.signedUrl
+    })
+  }
+
+  const docs = rows.map(doc => ({
+    ...doc,
+    url: doc.file_name ? (signedUrlMap[doc.file_name] ?? null) : null,
   }))
 
   return NextResponse.json(docs)
@@ -90,7 +100,14 @@ export async function POST(req: NextRequest) {
 }
 
 async function processDocument(documentId: string, arrayBuf: ArrayBuffer) {
-  const pdfParse = (await import('pdf-parse')).default
-  const pdfData  = await pdfParse(Buffer.from(arrayBuf))
-  await ingestDocument(documentId, pdfData.text, pdfData.numpages)
+  const supabase = getSupabaseServer()
+  try {
+    const pdfParse = (await import('pdf-parse')).default
+    const pdfData  = await pdfParse(Buffer.from(arrayBuf))
+    await ingestDocument(documentId, pdfData.text, pdfData.numpages)
+  } catch (err) {
+    console.error(`[Ingest failed] doc=${documentId}`, err)
+    // Ensure the document is marked FAILED so the UI shows a retry button
+    await supabase.from('documents').update({ status: 'FAILED' }).eq('id', documentId)
+  }
 }
