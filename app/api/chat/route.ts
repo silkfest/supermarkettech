@@ -61,11 +61,11 @@ export async function POST(req: NextRequest) {
         .filter(c => c.toLowerCase().trim() !== msgNorm)
       const query = [...recentUserMessages, message].join(' ').slice(0, 600)
 
-      const chunks = await retrieveChunks(query, equipmentId, 5, 0.50)
+      const chunks = await retrieveChunks(query, equipmentId, 8, 0.50)
 
       console.log(JSON.stringify({ n: chunks.length, top: chunks[0]?.score?.toFixed(3) ?? null }))
 
-      retrievedContext = formatContext(chunks)
+      retrievedContext = formatContext(chunks, 15000)
       sources = chunksToCitations(chunks)
 
       // Attach signed PDF URLs so the frontend can open the manual directly
