@@ -5,6 +5,12 @@ import { ArrowLeft, Plus, X, Camera, Loader2, Home } from 'lucide-react'
 
 interface Photo { url: string; label: string }
 
+/** Returns the current local time in the format datetime-local inputs expect (YYYY-MM-DDTHH:mm) */
+function toLocalISO(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function IndividualReportContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -14,7 +20,8 @@ function IndividualReportContent() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [storeName, setStoreName] = useState('')
-  const [performedAt, setPerformedAt] = useState(new Date().toISOString().slice(0, 16))
+  // Initialise with LOCAL time so the datetime-local input shows the correct current time
+  const [performedAt, setPerformedAt] = useState(() => toLocalISO())
   const [issueExplanation, setIssueExplanation] = useState('')
   const [stepsTaken, setStepsTaken] = useState('')
   const [whatsNext, setWhatsNext] = useState('')
@@ -31,7 +38,8 @@ function IndividualReportContent() {
     if (editId) {
       fetch(`/api/individual-reports/${editId}`).then(r => r.json()).then(d => {
         setStoreName(d.store_name ?? '')
-        setPerformedAt(d.performed_at ? d.performed_at.slice(0, 16) : new Date().toISOString().slice(0, 16))
+        // Convert the stored UTC timestamp to local time for the input
+        setPerformedAt(d.performed_at ? toLocalISO(new Date(d.performed_at)) : toLocalISO())
         setIssueExplanation(d.issue_explanation ?? '')
         setStepsTaken(d.steps_taken ?? '')
         setWhatsNext(d.whats_next ?? '')
@@ -46,33 +54,45 @@ function IndividualReportContent() {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
-    for (const file of files) {
-      const label = prompt(`Label for ${file.name}?`) ?? ''
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('label', label)
-      const res = await fetch('/api/upload-report-photo', { method: 'POST', body: fd })
-      if (res.ok) {
+
+    // Upload all selected files in parallel — no prompt() blocking
+    const results = await Promise.all(
+      files.map(async (file) => {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('label', '')   // label can be edited inline after upload
+        const res = await fetch('/api/upload-report-photo', { method: 'POST', body: fd })
+        if (!res.ok) return null
         const data = await res.json()
-        setPhotos(prev => [...prev, { url: data.url, label: data.label }])
-      }
-    }
+        return { url: data.url, label: data.label } as Photo
+      })
+    )
+    setPhotos(prev => [...prev, ...results.filter((p): p is Photo => p !== null)])
     setUploading(false)
     e.target.value = ''
   }
 
+  function updatePhotoLabel(index: number, label: string) {
+    setPhotos(ph => ph.map((p, i) => i === index ? { ...p, label } : p))
+  }
+
   async function handleSave() {
     if (!storeName.trim()) { setError('Store name is required'); return }
+
+    // Auto-commit any part that was typed but not yet pressed Enter / +
+    const finalParts = newPart.trim() ? [...parts, newPart.trim()] : parts
+
     setSaving(true); setError('')
     const payload = {
       equipment_id: equipmentId ?? null,
       store_name: storeName,
+      // The datetime-local value is local time — new Date() parses it as local → .toISOString() gives correct UTC
       performed_at: new Date(performedAt).toISOString(),
       issue_explanation: issueExplanation,
       steps_taken: stepsTaken,
       whats_next: whatsNext,
       simpro_number: simproNumber,
-      parts_needed: parts,
+      parts_needed: finalParts,
       photos,
     }
     const url = editId ? `/api/individual-reports/${editId}` : '/api/individual-reports'
@@ -128,7 +148,7 @@ function IndividualReportContent() {
               <input value={storeName} onChange={e => setStoreName(e.target.value)} className={inputCls} placeholder="e.g. Sobeys Bayers Lake" />
             </div>
             <div className="col-span-2 md:col-span-1">
-              <label className={labelCls}>Date & Time</label>
+              <label className={labelCls}>Date &amp; Time</label>
               <input type="datetime-local" value={performedAt} onChange={e => setPerformedAt(e.target.value)} className={inputCls} />
             </div>
             <div className="col-span-2 md:col-span-1">
@@ -150,7 +170,7 @@ function IndividualReportContent() {
             <textarea value={stepsTaken} onChange={e => setStepsTaken(e.target.value)} rows={4} className={inputCls} placeholder="What was done on site…" />
           </div>
           <div>
-            <label className={labelCls}>What's Next</label>
+            <label className={labelCls}>What&apos;s Next</label>
             <textarea value={whatsNext} onChange={e => setWhatsNext(e.target.value)} rows={2} className={inputCls} placeholder="Follow-up actions, parts to order, next visit…" />
           </div>
         </div>
@@ -159,8 +179,22 @@ function IndividualReportContent() {
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <h2 className="text-sm font-semibold text-slate-800 mb-4">Parts Needed</h2>
           <div className="flex gap-2 mb-3">
-            <input value={newPart} onChange={e => setNewPart(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newPart.trim()) { setParts(p => [...p, newPart.trim()]); setNewPart('') }}} className={`${inputCls} flex-1`} placeholder="Part name or number — press Enter to add" />
-            <button onClick={() => { if (newPart.trim()) { setParts(p => [...p, newPart.trim()]); setNewPart('') }}} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600">
+            <input
+              value={newPart}
+              onChange={e => setNewPart(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newPart.trim()) {
+                  setParts(p => [...p, newPart.trim()])
+                  setNewPart('')
+                }
+              }}
+              className={`${inputCls} flex-1`}
+              placeholder="Part name or number — press Enter or + to add"
+            />
+            <button
+              onClick={() => { if (newPart.trim()) { setParts(p => [...p, newPart.trim()]); setNewPart('') }}}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600"
+            >
               <Plus size={16}/>
             </button>
           </div>
@@ -174,28 +208,50 @@ function IndividualReportContent() {
               ))}
             </ul>
           )}
+          {parts.length === 0 && !newPart && (
+            <p className="text-xs text-slate-400">No parts added yet</p>
+          )}
         </div>
 
         {/* Photos */}
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-800">Photos</h2>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Photos</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Tap the caption below each photo to add a label</p>
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
+            >
               {uploading ? <Loader2 size={13} className="animate-spin"/> : <Camera size={13}/>}
               {uploading ? 'Uploading…' : 'Add Photos'}
             </button>
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
           </div>
           {photos.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">No photos yet — tap "Add Photos" to attach images</p>
+            <p className="text-xs text-slate-400 text-center py-6">No photos yet — tap &ldquo;Add Photos&rdquo; to attach images</p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {photos.map((p, i) => (
                 <div key={i} className="relative group">
-                  <img src={p.url} alt={p.label} className="w-full h-28 object-cover rounded-lg border border-slate-200" />
-                  {p.label && <p className="text-[10px] text-slate-500 mt-1 truncate">{p.label}</p>}
-                  <button onClick={() => setPhotos(ph => ph.filter((_, j) => j !== i))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X size={10}/>
+                  <img
+                    src={p.url}
+                    alt={p.label || `Photo ${i + 1}`}
+                    className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"
+                  />
+                  <input
+                    value={p.label}
+                    onChange={e => updatePhotoLabel(i, e.target.value)}
+                    placeholder="Add label…"
+                    className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
+                  />
+                  <button
+                    onClick={() => setPhotos(ph => ph.filter((_, j) => j !== i))}
+                    className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                  >
+                    <X size={11}/>
                   </button>
                 </div>
               ))}

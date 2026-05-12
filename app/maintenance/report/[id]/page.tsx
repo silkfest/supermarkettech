@@ -64,11 +64,11 @@ function importanceBadge(imp: string) {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden print:border-slate-300 print:rounded-none print:shadow-none print:mb-4">
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden print:border-slate-300 print:rounded-none print:shadow-none print:mb-4 print:overflow-visible">
       <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 print:bg-white print:border-slate-200">
         <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-widest">{title}</h2>
       </div>
-      <div className="px-6 py-5">{children}</div>
+      <div className="px-6 py-5 print:overflow-visible">{children}</div>
     </div>
   )
 }
@@ -393,11 +393,15 @@ function IndividualView({ data }: { data: Record<string, any> }) {
       )}
       {photos.length > 0 && (
         <SectionCard title="Photos">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 print:grid-cols-2">
             {photos.map((p, i) => (
               <div key={i} className="space-y-1">
-                <img src={p.url} alt={p.label} className="w-full h-36 object-cover rounded-lg border border-slate-200" />
-                {p.label && <p className="text-xs text-slate-500 truncate">{p.label}</p>}
+                <img
+                  src={p.url}
+                  alt={p.label || `Photo ${i + 1}`}
+                  className="w-full h-44 object-cover rounded-lg border border-slate-200 print:h-auto print:max-h-64 print:object-contain print:rounded-none"
+                />
+                {p.label && <p className="text-xs text-slate-500">{p.label}</p>}
               </div>
             ))}
           </div>
@@ -497,6 +501,8 @@ function ReportViewContent() {
           h2 { font-size: 9pt !important; letter-spacing: 0.08em !important; text-transform: uppercase; color: #475569 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
           .space-y-5 > * + * { margin-top: 16px !important; }
           .grid { display: grid !important; }
+          /* Photos — let them breathe and show in full */
+          img { max-width: 100% !important; height: auto !important; object-fit: contain !important; break-inside: avoid; page-break-inside: avoid; }
           @page {
             size: A4 portrait;
             margin: 18mm 15mm 18mm 15mm;
