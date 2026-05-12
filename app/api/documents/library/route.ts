@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       .from('documents')
       .createSignedUrls(filePaths, 3600)
     ;(signedData ?? []).forEach(item => {
-      if (item.signedUrl) signedUrlMap[item.path] = item.signedUrl
+      if (item.signedUrl && item.path) signedUrlMap[item.path] = item.signedUrl
     })
   }
 

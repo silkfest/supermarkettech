@@ -643,7 +643,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               style={{ maxHeight: 140 }}
             />
             <button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               disabled={!input.trim() || streaming}
               aria-label="Send message"
               className={[
