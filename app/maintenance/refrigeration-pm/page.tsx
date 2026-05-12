@@ -796,7 +796,7 @@ function RefrigerationPMContent() {
   const [sitesList, setSitesList] = useState<{ id: string; name: string; address: string }[]>([])
   const [storeAddress, setStoreAddress] = useState('')
   const [technician, setTechnician] = useState('')
-  const [performedAt, setPerformedAt] = useState(new Date().toISOString().slice(0, 10))
+  const [performedAt, setPerformedAt] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [season, setSeason] = useState<PMSeason>('')
   const [simproNumber, setSimproNumber] = useState('')
 
@@ -852,7 +852,7 @@ function RefrigerationPMContent() {
       setStoreId(d.store_id ?? null)
       setSeason(d.pm_season ?? '')
       setSimproNumber(d.simpro_number ?? '')
-      setPerformedAt(d.performed_at ? d.performed_at.slice(0, 10) : new Date().toISOString().slice(0, 10))
+      setPerformedAt(d.performed_at ? new Date(d.performed_at).toLocaleDateString('en-CA') : new Date().toLocaleDateString('en-CA'))
       if (d.checklist && typeof d.checklist === 'object') setChecklist({ ...defaultChecklist(), ...d.checklist })
       if (d.units && typeof d.units === 'object' && !Array.isArray(d.units)) {
         setStoreAddress(d.units.storeAddress ?? '')
@@ -949,7 +949,7 @@ function RefrigerationPMContent() {
       store_name: storeName,
       store_id: storeId,
       pm_season: season || null,
-      performed_at: new Date(performedAt).toISOString(),
+      performed_at: new Date(performedAt + 'T12:00:00').toISOString(),
       simpro_number: simproNumber || null,
       checklist,
       units: { technician, storeAddress, racks: units },
