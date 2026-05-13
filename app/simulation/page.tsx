@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation'
 import {
   Home, RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Thermometer, Gauge, Wind, Zap, Activity, Info,
-  ChevronDown, ChevronUp, MessageSquare, Trophy, Target,
+  ChevronUp, MessageSquare, Trophy, Target, Package,
 } from 'lucide-react'
 
-// ── R-404A Saturation P-T table (psia) ───────────────────────────────────────
+// ── R-404A Saturation P-T table (psia) — extended to 150 °F ─────────────────
 const R404A_PT: [number, number][] = [
   [-40, 10.5], [-35, 12.0], [-30, 13.8], [-25, 15.8], [-20, 17.9],
   [-15, 20.4], [-10, 23.1], [-5,  26.1], [0,   29.4], [5,   33.1],
@@ -18,6 +18,7 @@ const R404A_PT: [number, number][] = [
   [60, 103.4], [65, 113.3], [70, 123.9], [75, 135.3], [80, 147.5],
   [85, 160.5], [90, 174.4], [95, 189.1], [100,204.8], [105,221.4],
   [110,239.0], [115,257.7], [120,277.4], [125,298.2], [130,320.2],
+  [135,342.0], [140,365.0], [145,390.0], [150,416.0],
 ]
 
 function ptLookup(tempF: number): number {
@@ -37,23 +38,22 @@ function ptLookup(tempF: number): number {
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
 
 // ── Fault types ───────────────────────────────────────────────────────────────
-
+// NOTE: 'highAmbient' removed — OAT is now a continuous slider, not a fault toggle.
 type FaultKey =
-  | 'highAmbient' | 'poorVentilation'
+  | 'poorVentilation'
   | 'dirtyCondenser' | 'fan1Failed' | 'fan2Failed'
   | 'underchargeModerate' | 'underchargeSevere' | 'overcharge'
   | 'filterDrierRestricted'
   | 'comp1Failed' | 'comp2Failed' | 'comp3Failed' | 'comp4Failed'
   | 'txvNotFeeding' | 'defrostStuckOn'
   | 'oilLow' | 'nonCondensables'
-  // LT booster circuit
   | 'ltComp1Failed' | 'ltComp2Failed'
   | 'ltTxvNotFeeding' | 'ltDefrostStuckOn'
 
 type FaultState = Record<FaultKey, boolean>
 
 const INITIAL_FAULTS: FaultState = {
-  highAmbient: false, poorVentilation: false,
+  poorVentilation: false,
   dirtyCondenser: false, fan1Failed: false, fan2Failed: false,
   underchargeModerate: false, underchargeSevere: false, overcharge: false,
   filterDrierRestricted: false,
@@ -70,76 +70,94 @@ interface FaultDef {
 }
 
 const FAULT_DEFS: FaultDef[] = [
-  { key: 'highAmbient',         label: 'High ambient (+20 °F)',        hint: '80 → 100 °F outdoor — hot summer day',                    group: 'Environment' },
-  { key: 'poorVentilation',     label: 'Poor machine room vent',        hint: 'Warm room heats compressors — discharge temp rises',       group: 'Environment' },
-  { key: 'dirtyCondenser',      label: 'Dirty condenser coil',          hint: 'Fouled fins increase approach ΔT by ~15 °F',               group: 'Condenser' },
-  { key: 'fan1Failed',          label: 'Condenser fan #1 failed',       hint: 'Loses ~50 % airflow — head pressure rises',                group: 'Condenser' },
-  { key: 'fan2Failed',          label: 'Condenser fan #2 failed',       hint: 'Both fans out: severe head pressure rise',                 group: 'Condenser' },
-  { key: 'underchargeModerate', label: 'Undercharge (moderate ~15 %)', hint: 'Low suction, high SH, subcooling drops',                   group: 'Charge',    mutuallyExcludes: ['underchargeSevere', 'overcharge'] },
-  { key: 'underchargeSevere',   label: 'Undercharge (severe ~30 %)',   hint: 'Very high SH, near-zero SC, flash gas in sight glass',     group: 'Charge',    mutuallyExcludes: ['underchargeModerate', 'overcharge'] },
-  { key: 'overcharge',          label: 'Overcharge (~15 %)',            hint: 'High head, very high SC, low SH, flood-back risk',         group: 'Charge',    mutuallyExcludes: ['underchargeModerate', 'underchargeSevere'] },
-  { key: 'filterDrierRestricted', label: 'Filter drier restricted',    hint: 'Temp drop across drier, starved TXVs, high SH',            group: 'Liquid line' },
-  { key: 'comp1Failed',         label: 'Compressor 1 failed',           hint: 'Off on safety — remaining 3 carry the load',               group: 'Compressors' },
-  { key: 'comp2Failed',         label: 'Compressor 2 failed',           hint: 'Off on safety — remaining carry the load',                 group: 'Compressors' },
-  { key: 'comp3Failed',         label: 'Compressor 3 failed',           hint: 'Off on safety — remaining carry the load',                 group: 'Compressors' },
-  { key: 'comp4Failed',         label: 'Compressor 4 failed',           hint: 'Off on safety — remaining carry the load',                 group: 'Compressors' },
-  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps', group: 'MT Load' },
-  { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',     group: 'MT Load' },
-  { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',           group: 'LT Booster' },
-  { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',            group: 'LT Booster' },
-  { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',             group: 'LT Booster' },
-  { key: 'ltDefrostStuckOn',    label: 'LT defrost stuck on',           hint: 'LT circuit won\'t terminate — frozen food warming fast',   group: 'LT Booster' },
-  { key: 'oilLow',              label: 'Low oil (Y825 fault)',           hint: 'Oil differential below 10 psi — OFC will trip compressor', group: 'Oil / Misc' },
-  { key: 'nonCondensables',     label: 'Non-condensables',               hint: 'Air in system — head elevated beyond PT relationship',     group: 'Oil / Misc' },
+  { key: 'poorVentilation',     label: 'Poor machine room vent',        hint: 'Hot machine room heats compressors — discharge temp rises',  group: 'Machine Room' },
+  { key: 'dirtyCondenser',      label: 'Dirty condenser coil',          hint: 'Fouled fins raise approach ΔT by ~14 °F',                    group: 'Condenser' },
+  { key: 'fan1Failed',          label: 'Condenser fan #1 failed',       hint: 'Loses ~50 % airflow — head pressure rises',                  group: 'Condenser' },
+  { key: 'fan2Failed',          label: 'Condenser fan #2 failed',       hint: 'Both fans out: severe head pressure rise',                   group: 'Condenser' },
+  { key: 'underchargeModerate', label: 'Undercharge (moderate ~15 %)',  hint: 'Low suction, high SH, subcooling drops',                     group: 'Charge', mutuallyExcludes: ['underchargeSevere', 'overcharge'] },
+  { key: 'underchargeSevere',   label: 'Undercharge (severe ~30 %)',    hint: 'Very high SH, near-zero SC, flash gas in sight glass',       group: 'Charge', mutuallyExcludes: ['underchargeModerate', 'overcharge'] },
+  { key: 'overcharge',          label: 'Overcharge (~15 %)',             hint: 'High head, very high SC, low SH, flood-back risk',           group: 'Charge', mutuallyExcludes: ['underchargeModerate', 'underchargeSevere'] },
+  { key: 'filterDrierRestricted', label: 'Filter drier restricted',     hint: 'Temp drop across drier, starved TXVs, high SH',              group: 'Liquid line' },
+  { key: 'comp1Failed',         label: 'Compressor 1 failed',           hint: 'Off on safety — remaining 3 carry the load',                 group: 'Compressors' },
+  { key: 'comp2Failed',         label: 'Compressor 2 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
+  { key: 'comp3Failed',         label: 'Compressor 3 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
+  { key: 'comp4Failed',         label: 'Compressor 4 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
+  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load' },
+  { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
+  { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',             group: 'LT Booster' },
+  { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',              group: 'LT Booster' },
+  { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',               group: 'LT Booster' },
+  { key: 'ltDefrostStuckOn',    label: 'LT defrost stuck on',           hint: 'LT circuit won\'t terminate — frozen food warming fast',     group: 'LT Booster' },
+  { key: 'oilLow',              label: 'Low oil (Y825 fault)',           hint: 'Oil differential below 10 psi — OFC will trip compressor',   group: 'Oil / Misc' },
+  { key: 'nonCondensables',     label: 'Non-condensables',               hint: 'Air in system — head elevated beyond PT relationship',       group: 'Oil / Misc' },
 ]
 
-const FAULT_GROUPS = ['Environment', 'Condenser', 'Charge', 'Liquid line', 'Compressors', 'MT Load', 'LT Booster', 'Oil / Misc']
+const FAULT_GROUPS = ['Machine Room', 'Condenser', 'Charge', 'Liquid line', 'Compressors', 'MT Load', 'LT Booster', 'Oil / Misc']
 
-// ── MT Physics baseline (20 °F SST per user confirmation) ────────────────────
+// ── Baselines & safety limits ─────────────────────────────────────────────────
 const BASELINE = {
-  ambient:            80,   // °F
-  suctionSatTemp:     20,   // °F SST — MT setpoint = 20 °F (≈ 31.7 psig R-404A)
-  condensingSatTemp:  95,   // °F sat (15 °F approach above 80 °F ambient)
+  suctionSatTemp:     20,   // °F SST — MT setpoint
   superheat:          20,   // °F total rack suction superheat
   subcooling:         15,   // °F
-  dischargeSuperheat: 75,   // °F above condensing sat temp (normal 60–100 °F)
+  dischargeSuperheat: 75,   // °F above condensing sat temp
   oilDiff:            22,   // psi — Y825 valve normal 20–25 psi
   caseTemp:           36,   // °F average MT case temperature
   baseAmps:           21,   // A per compressor (460 V / 3 Ph)
 }
+// Head pressure control: minimum condensing sat temp (models HP control valve/fan cycling)
+const HP_CTRL_MIN_COND_SAT = 65  // °F sat ≈ 103 psig — typical minimum setpoint
 
-// MT safety thresholds (aligned to 20 °F SST setpoint)
 const SAFETY = {
-  hpcoPsig:        400,   // psig HP cutout
-  hpcoWarnPsig:    355,   // psig HP warning
-  lpcoPsig:         14,   // psig LP cutout (≈ −8 °F SST for R-404A) — 28 °F below setpoint
-  lpcoWarnPsig:     22,   // psig LP warning (≈ 0 °F SST) — 20 °F below setpoint
-  highDischargeF:  225,   // °F high discharge temp
-  warnDischargeF:  210,   // °F discharge temp warning
-  oilTripDiff:      10,   // psi OFC trip (Y825 spec)
-  oilWarnDiff:      18,   // psi warning
+  hpcoPsig:        400,
+  hpcoWarnPsig:    355,
+  lpcoPsig:         14,
+  lpcoWarnPsig:     22,
+  highDischargeF:  225,
+  warnDischargeF:  210,
+  oilTripDiff:      10,
+  oilWarnDiff:      18,
 }
 
-// ── LT Booster baseline ───────────────────────────────────────────────────────
 const LT_BASELINE = {
-  suctionSatTemp: -20,  // °F SST — typical LT (frozen food) application
-  superheat:       15,  // °F
-  caseTemp:        -5,  // °F target for frozen food cases
-  baseAmps:        15,  // A per booster compressor (smaller than MT comps)
+  suctionSatTemp: -20,  // °F SST — typical LT frozen food
+  superheat:       15,
+  caseTemp:        -5,  // °F target
+  baseAmps:        15,
 }
 
 const LT_SAFETY = {
-  lpcoPsig:     1.0,   // psig LP cutout (≈ −36 °F SST) — avoid negative pressure
-  lpcoWarnPsig: 2.5,   // psig LP warning
-  highCaseTemp: 10,    // °F CRITICAL — frozen food at risk
-  warnCaseTemp:  5,    // °F WARNING
-  highSH:       30,    // °F high superheat warning
+  lpcoPsig:     1.0,
+  lpcoWarnPsig: 2.5,
+  highCaseTemp: 10,
+  warnCaseTemp:  5,
+  highSH:       30,
 }
 
-// ── Alarm interface ───────────────────────────────────────────────────────────
+// ── Store load profile ────────────────────────────────────────────────────────
+interface CaseSection {
+  name: string; equipment: string; count: number
+  setpoint: number        // °F target
+  sensitivity: number     // how quickly it tracks aggregate rack deviation
+  warnTemp: number        // °F — customer concern
+  criticalTemp: number    // °F — food safety threshold
+  circuit: 'MT' | 'LT'
+}
+
+const STORE_LINEUP: CaseSection[] = [
+  // ── MT Circuit ────────────────────────────────────────────────────────────
+  { name: 'Produce',          equipment: 'Multideck Cases',        count: 1,  setpoint: 38, sensitivity: 1.3, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
+  { name: 'Dairy',            equipment: 'Reach-In Cases',         count: 1,  setpoint: 36, sensitivity: 1.0, warnTemp: 40, criticalTemp: 44, circuit: 'MT' },
+  { name: 'Cheese',           equipment: 'Island / Multideck',     count: 1,  setpoint: 38, sensitivity: 0.9, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
+  { name: 'Walk-in Coolers',  equipment: 'WIC',                    count: 3,  setpoint: 38, sensitivity: 0.4, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
+  // ── LT Circuit ────────────────────────────────────────────────────────────
+  { name: 'Frozen Food',      equipment: 'Hussmann RL-5 Doors',    count: 10, setpoint:  0, sensitivity: 1.1, warnTemp:  5, criticalTemp: 10, circuit: 'LT' },
+  { name: 'Walk-in Freezers', equipment: 'WIF',                    count: 3,  setpoint: -5, sensitivity: 0.5, warnTemp:  3, criticalTemp: 10, circuit: 'LT' },
+  { name: 'Bunker Cases',     equipment: 'DT Display Tables',      count: 3,  setpoint:  0, sensitivity: 1.4, warnTemp:  5, criticalTemp: 10, circuit: 'LT' },
+]
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
 interface Alarm { code: string; severity: 'WARNING' | 'CRITICAL'; message: string }
 
-// ── MT system state ───────────────────────────────────────────────────────────
 interface SystemState {
   ambient: number
   suctionSatTemp: number; suctionPsig: number; suctionGasTemp: number; suctionSuperheat: number
@@ -148,12 +166,11 @@ interface SystemState {
   liquidTemp: number; subcooling: number; filterDrierDeltaT: number
   oilDiff: number; oilPressurePsig: number
   compRunning: boolean[]; compAmps: number[]
-  caseTemp: number
-  nonCondensables: boolean
+  caseTemp: number; nonCondensables: boolean
+  hpCtrlActive: boolean
   alarms: Alarm[]
 }
 
-// ── LT system state ───────────────────────────────────────────────────────────
 interface LTState {
   suctionSatTemp: number; suctionPsig: number; suctionGasTemp: number; superheat: number
   dischargeSatTemp: number; dischargePsig: number; dischargeTemp: number; compressionRatio: number
@@ -162,27 +179,48 @@ interface LTState {
 }
 
 // ── MT compute ────────────────────────────────────────────────────────────────
-function computeMT(f: FaultState): SystemState {
-  let ambient           = BASELINE.ambient
-  let suctionSatTemp    = BASELINE.suctionSatTemp
-  let condensingSatTemp = BASELINE.condensingSatTemp
-  let superheat         = BASELINE.superheat
-  let subcooling        = BASELINE.subcooling
+function computeMT(f: FaultState, oat: number): SystemState {
+  // Condenser approach delta — starts at 15 °F (clean coil, all fans running)
+  let approachDelta      = 15
+  let suctionSatTemp     = BASELINE.suctionSatTemp
+  let superheat          = BASELINE.superheat
+  let subcooling         = BASELINE.subcooling
   let dischargeSuperheat = BASELINE.dischargeSuperheat
-  let oilDiff           = BASELINE.oilDiff
-  let caseTemp          = BASELINE.caseTemp
-  let ampsMultiplier    = 1.0
-  let ncExtraGauge      = 0
-  const compRunning     = [true, true, true, true]
+  let oilDiff            = BASELINE.oilDiff
+  let caseTemp           = BASELINE.caseTemp
+  let ampsMultiplier     = 1.0
+  let ncExtraGauge       = 0
+  const compRunning      = [true, true, true, true]
 
-  if (f.highAmbient)     { ambient += 20; condensingSatTemp += 20; dischargeSuperheat += 6;  ampsMultiplier *= 1.10 }
+  // ── OAT-driven physics ───────────────────────────────────────────────────
+  // Low ambient: liquid stacks in condenser → more subcooling; extreme cold → slugging risk
+  if (oat < 40) {
+    const coldOffset = Math.min(40 - oat, 40)
+    subcooling += coldOffset * 0.5          // up to +20 °F SC from liquid migration
+  }
+  // High ambient: compressor heat soak, increased case infiltration load
+  if (oat > 90) {
+    const hotOffset = oat - 90
+    dischargeSuperheat += hotOffset * 0.4
+    ampsMultiplier     *= 1 + hotOffset * 0.004
+    caseTemp           += hotOffset * 0.08  // heat infiltration into MT cases
+  }
+
+  // ── Machine room ─────────────────────────────────────────────────────────
   if (f.poorVentilation) { dischargeSuperheat += 18; ampsMultiplier *= 1.06 }
 
-  if (f.dirtyCondenser)  { condensingSatTemp += 14; dischargeSuperheat += 8; ampsMultiplier *= 1.07 }
+  // ── Condenser faults (each adds to approach delta) ───────────────────────
+  if (f.dirtyCondenser) { approachDelta += 14; dischargeSuperheat += 8; ampsMultiplier *= 1.07 }
   const fansFailed = (f.fan1Failed ? 1 : 0) + (f.fan2Failed ? 1 : 0)
-  if (fansFailed === 1)  { condensingSatTemp += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
-  if (fansFailed === 2)  { condensingSatTemp += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
+  if (fansFailed === 1) { approachDelta += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
+  if (fansFailed === 2) { approachDelta += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
 
+  // Head pressure control floor — fans cycle off / HP valve modulates to maintain minimum
+  const rawCondensingTemp = oat + approachDelta
+  const hpCtrlActive      = rawCondensingTemp < HP_CTRL_MIN_COND_SAT
+  let condensingSatTemp   = Math.max(rawCondensingTemp, HP_CTRL_MIN_COND_SAT)
+
+  // ── Charge faults ─────────────────────────────────────────────────────────
   if (f.underchargeModerate && !f.underchargeSevere) {
     suctionSatTemp -= 8; condensingSatTemp -= 7; superheat += 22; subcooling -= 10; dischargeSuperheat += 18; ampsMultiplier *= 0.94; caseTemp += 4
   }
@@ -192,9 +230,9 @@ function computeMT(f: FaultState): SystemState {
   if (f.overcharge) {
     suctionSatTemp += 6; condensingSatTemp += 20; superheat -= 14; subcooling += 22; dischargeSuperheat -= 18; ampsMultiplier *= 1.10
   }
-
   if (f.filterDrierRestricted) { suctionSatTemp -= 5; superheat += 12; caseTemp += 3 }
 
+  // ── Compressor faults ─────────────────────────────────────────────────────
   if (f.comp1Failed) compRunning[0] = false
   if (f.comp2Failed) compRunning[1] = false
   if (f.comp3Failed) compRunning[2] = false
@@ -206,64 +244,87 @@ function computeMT(f: FaultState): SystemState {
     if (runningCount > 0) ampsMultiplier *= (4 / runningCount) * 0.90
   }
 
+  // ── Load faults ───────────────────────────────────────────────────────────
   if (f.txvNotFeeding)  { suctionSatTemp -= 12; condensingSatTemp -= 10; superheat += 28; dischargeSuperheat += 22; caseTemp += 8 }
   if (f.defrostStuckOn) { suctionSatTemp += 7; caseTemp += 12; if (superheat > 8) superheat -= 8 }
-  if (f.oilLow)         { oilDiff = 8 }
+
+  // ── Oil / Misc ────────────────────────────────────────────────────────────
+  if (f.oilLow)          { oilDiff = 8 }
   if (f.nonCondensables) { ncExtraGauge = 28; dischargeSuperheat += 10; ampsMultiplier *= 1.05 }
 
+  // ── Clamp ─────────────────────────────────────────────────────────────────
   subcooling        = Math.max(subcooling, 0.3)
   superheat         = Math.max(superheat, 0)
   oilDiff           = Math.max(oilDiff, 0)
   condensingSatTemp = Math.max(condensingSatTemp, suctionSatTemp + 20)
 
-  const suctionPsia      = ptLookup(suctionSatTemp)
-  const dischargePsia    = ptLookup(condensingSatTemp)
-  const suctionPsig      = Math.max(toGauge(suctionPsia), 0.1)
-  const dischargePsig    = toGauge(dischargePsia) + ncExtraGauge
-  const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
-  const suctionGasTemp   = suctionSatTemp + superheat
-  const liquidTemp       = condensingSatTemp - subcooling
-  const dischargeTemp    = condensingSatTemp + dischargeSuperheat
+  // ── Derived values ────────────────────────────────────────────────────────
+  const suctionPsia       = ptLookup(suctionSatTemp)
+  const dischargePsia     = ptLookup(condensingSatTemp)
+  const suctionPsig       = Math.max(toGauge(suctionPsia), 0.1)
+  const dischargePsig     = toGauge(dischargePsia) + ncExtraGauge
+  const compressionRatio  = (dischargePsig + 14.696) / (suctionPsig + 14.696)
+  const suctionGasTemp    = suctionSatTemp + superheat
+  const liquidTemp        = condensingSatTemp - subcooling
+  const dischargeTemp     = condensingSatTemp + dischargeSuperheat
   const filterDrierDeltaT = f.filterDrierRestricted ? 9 : 0
-  const oilPressurePsig  = suctionPsig + oilDiff
+  const oilPressurePsig   = suctionPsig + oilDiff
+  const compAmps          = compRunning.map(r => r ? Math.round(BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
 
-  const compAmps = compRunning.map(r => r ? Math.round(BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
-
+  // ── Alarms ────────────────────────────────────────────────────────────────
   const alarms: Alarm[] = []
-  if (dischargePsig >= SAFETY.hpcoPsig)     alarms.push({ code: 'HPCO',     severity: 'CRITICAL', message: `High Pressure Cutout — ${Math.round(dischargePsig)} psig (limit ${SAFETY.hpcoPsig} psig). All compressors tripped.` })
-  else if (dischargePsig >= SAFETY.hpcoWarnPsig) alarms.push({ code: 'HP-HIGH', severity: 'WARNING',  message: `High discharge pressure warning — ${Math.round(dischargePsig)} psig (approaching ${SAFETY.hpcoPsig} psig HPCO)` })
-  if (suctionPsig <= SAFETY.lpcoPsig)       alarms.push({ code: 'LPCO',     severity: 'CRITICAL', message: `Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig (limit ${SAFETY.lpcoPsig} psig). Compressors tripped.` })
-  else if (suctionPsig <= SAFETY.lpcoWarnPsig)   alarms.push({ code: 'LP-LOW',  severity: 'WARNING',  message: `Low suction pressure warning — ${suctionPsig.toFixed(1)} psig (warn ${SAFETY.lpcoWarnPsig} psig, cutout ${SAFETY.lpcoPsig} psig)` })
-  if (dischargeTemp >= SAFETY.highDischargeF)     alarms.push({ code: 'HI-DT',   severity: 'CRITICAL', message: `High discharge temperature — ${Math.round(dischargeTemp)} °F. Liquid injection active.` })
-  else if (dischargeTemp >= SAFETY.warnDischargeF) alarms.push({ code: 'HI-DT-W', severity: 'WARNING', message: `Elevated discharge temperature — ${Math.round(dischargeTemp)} °F (limit ${SAFETY.highDischargeF} °F)` })
-  if (oilDiff <= SAFETY.oilTripDiff)         alarms.push({ code: 'OFC',     severity: 'CRITICAL', message: `Oil Failure Control — ${Math.round(oilDiff)} psi differential (Y825 normal: 20–25 psi). Compressor protected.` })
-  else if (oilDiff <= SAFETY.oilWarnDiff)    alarms.push({ code: 'OIL-W',   severity: 'WARNING',  message: `Low oil pressure differential — ${Math.round(oilDiff)} psi (normal 20–25 psi above suction)` })
-  if (superheat >= 45)                        alarms.push({ code: 'HI-SH',   severity: 'WARNING',  message: `High MT suction superheat — ${Math.round(superheat)} °F. Check charge, TXV bulb, filter drier.` })
-  else if (superheat <= 4 && runningCount > 0) alarms.push({ code: 'LO-SH',  severity: 'WARNING',  message: `Low MT suction superheat — ${Math.round(superheat)} °F. Flood-back risk.` })
-  if (subcooling <= 1.5)                      alarms.push({ code: 'FLASH-GAS', severity: 'WARNING', message: `Near-zero subcooling (${subcooling.toFixed(1)} °F) — flash gas likely in liquid line.` })
-  if (caseTemp >= 42)                         alarms.push({ code: 'MT-CASE', severity: 'WARNING',  message: `MT case temperature high — ${Math.round(caseTemp)} °F.` })
+  if (dischargePsig >= SAFETY.hpcoPsig)
+    alarms.push({ code: 'HPCO',      severity: 'CRITICAL', message: `High Pressure Cutout — ${Math.round(dischargePsig)} psig (limit ${SAFETY.hpcoPsig} psig). All compressors tripped.` })
+  else if (dischargePsig >= SAFETY.hpcoWarnPsig)
+    alarms.push({ code: 'HP-HIGH',   severity: 'WARNING',  message: `High discharge pressure — ${Math.round(dischargePsig)} psig (approaching ${SAFETY.hpcoPsig} psig HPCO)` })
+  if (suctionPsig <= SAFETY.lpcoPsig)
+    alarms.push({ code: 'LPCO',      severity: 'CRITICAL', message: `Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig (limit ${SAFETY.lpcoPsig} psig).` })
+  else if (suctionPsig <= SAFETY.lpcoWarnPsig)
+    alarms.push({ code: 'LP-LOW',    severity: 'WARNING',  message: `Low suction pressure — ${suctionPsig.toFixed(1)} psig (warn ${SAFETY.lpcoWarnPsig} psig, cutout ${SAFETY.lpcoPsig} psig)` })
+  if (dischargeTemp >= SAFETY.highDischargeF)
+    alarms.push({ code: 'HI-DT',     severity: 'CRITICAL', message: `High discharge temp — ${Math.round(dischargeTemp)} °F. Liquid injection active.` })
+  else if (dischargeTemp >= SAFETY.warnDischargeF)
+    alarms.push({ code: 'HI-DT-W',  severity: 'WARNING',  message: `Elevated discharge temp — ${Math.round(dischargeTemp)} °F (limit ${SAFETY.highDischargeF} °F)` })
+  if (oilDiff <= SAFETY.oilTripDiff)
+    alarms.push({ code: 'OFC',       severity: 'CRITICAL', message: `Oil Failure Control — ${Math.round(oilDiff)} psi diff (Y825 normal: 20–25 psi). Compressor protected.` })
+  else if (oilDiff <= SAFETY.oilWarnDiff)
+    alarms.push({ code: 'OIL-W',    severity: 'WARNING',  message: `Low oil pressure differential — ${Math.round(oilDiff)} psi (normal 20–25 psi above suction)` })
+  if (superheat >= 45)
+    alarms.push({ code: 'HI-SH',    severity: 'WARNING',  message: `High MT suction superheat — ${Math.round(superheat)} °F. Check charge, TXV bulb, filter drier.` })
+  else if (superheat <= 4 && runningCount > 0)
+    alarms.push({ code: 'LO-SH',    severity: 'WARNING',  message: `Low MT suction superheat — ${Math.round(superheat)} °F. Flood-back risk.` })
+  if (subcooling <= 1.5)
+    alarms.push({ code: 'FLASH-GAS',severity: 'WARNING',  message: `Near-zero subcooling (${subcooling.toFixed(1)} °F) — flash gas likely in liquid line.` })
+  if (caseTemp >= 42)
+    alarms.push({ code: 'MT-CASE',  severity: 'WARNING',  message: `MT case temperature high — ${Math.round(caseTemp)} °F.` })
   compRunning.forEach((r, i) => { if (!r) alarms.push({ code: `COMP${i + 1}`, severity: 'CRITICAL', message: `Compressor ${i + 1} not running` }) })
-  if (f.nonCondensables) alarms.push({ code: 'NON-COND', severity: 'WARNING', message: `Non-condensables — head ${Math.round(dischargePsig)} psig vs PT-only ${Math.round(dischargePsig - ncExtraGauge)} psig at ${Math.round(condensingSatTemp)} °F sat.` })
-  if (f.defrostStuckOn)  alarms.push({ code: 'MT-DEF',   severity: 'WARNING', message: 'MT defrost circuit stuck on — case temperatures rising, suction elevated' })
+  if (f.nonCondensables)
+    alarms.push({ code: 'NON-COND', severity: 'WARNING',  message: `Non-condensables — head ${Math.round(dischargePsig)} psig vs PT-only ${Math.round(dischargePsig - ncExtraGauge)} psig at ${Math.round(condensingSatTemp)} °F sat.` })
+  if (f.defrostStuckOn)
+    alarms.push({ code: 'MT-DEF',   severity: 'WARNING',  message: 'MT defrost stuck on — case temperatures rising, suction elevated' })
+  // Low ambient
+  if (hpCtrlActive && oat <= 20)
+    alarms.push({ code: 'LOW-AMB',  severity: oat < 0 ? 'CRITICAL' : 'WARNING', message: `OAT ${oat}°F — HP control holding condensing at ${Math.round(condensingSatTemp)}°F sat. Monitor for liquid migration.` })
+  if (oat < 0)
+    alarms.push({ code: 'CRANKCASE',severity: 'WARNING',  message: 'Extreme low ambient — confirm crankcase heaters energized before compressor start.' })
 
   return {
-    ambient, suctionSatTemp, suctionPsig, suctionGasTemp, suctionSuperheat: superheat,
+    ambient: oat, suctionSatTemp, suctionPsig, suctionGasTemp, suctionSuperheat: superheat,
     condensingTemp: condensingSatTemp, dischargePsig, dischargeTemp, dischargeSuperheat,
     compressionRatio, liquidTemp, subcooling, filterDrierDeltaT,
     oilDiff, oilPressurePsig, compRunning, compAmps, caseTemp,
-    nonCondensables: f.nonCondensables, alarms,
+    nonCondensables: f.nonCondensables, hpCtrlActive, alarms,
   }
 }
 
 // ── LT Booster compute ────────────────────────────────────────────────────────
-// LT boosters discharge into the MT suction header — discharge sat temp = MT suction sat temp
 function computeLT(f: FaultState, mtSuctionSatTemp: number): LTState {
   let suctionSatTemp   = LT_BASELINE.suctionSatTemp
   let superheat        = LT_BASELINE.superheat
   let caseTemp         = LT_BASELINE.caseTemp
   let ampsMultiplier   = 1.0
   const compRunning    = [true, true]
-  const dischargeSatTemp = mtSuctionSatTemp  // booster feeds MT suction header
+  const dischargeSatTemp = mtSuctionSatTemp  // boosters discharge into MT suction header
 
   if (f.ltComp1Failed) { compRunning[0] = false; suctionSatTemp += 8; caseTemp += 8; ampsMultiplier *= 1.80 }
   if (f.ltComp2Failed) { compRunning[1] = false; suctionSatTemp += 18; caseTemp += 18 }
@@ -271,30 +332,35 @@ function computeLT(f: FaultState, mtSuctionSatTemp: number): LTState {
   if (f.ltDefrostStuckOn)  { suctionSatTemp += 8;  caseTemp  += 18; if (superheat > 5) superheat -= 5 }
 
   superheat      = Math.max(superheat, 0)
-  suctionSatTemp = Math.min(suctionSatTemp, dischargeSatTemp - 12)  // must stay below discharge
+  suctionSatTemp = Math.min(suctionSatTemp, dischargeSatTemp - 12)
 
-  const runningCount = compRunning.filter(Boolean).length
-  const suctionPsia    = ptLookup(suctionSatTemp)
-  const dischargePsia  = ptLookup(dischargeSatTemp)
-  const suctionPsig    = Math.max(toGauge(suctionPsia), 0.1)
-  const dischargePsig  = toGauge(dischargePsia)
+  const runningCount     = compRunning.filter(Boolean).length
+  const suctionPsia      = ptLookup(suctionSatTemp)
+  const dischargePsia    = ptLookup(dischargeSatTemp)
+  const suctionPsig      = Math.max(toGauge(suctionPsia), 0.1)
+  const dischargePsig    = toGauge(dischargePsia)
   const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
   const suctionGasTemp   = suctionSatTemp + superheat
-  // LT discharge superheat increases with compression ratio (hot gas to MT suction header)
   const dischargeSuperheat = 40 + (compressionRatio - 2.5) * 10
   const dischargeTemp    = dischargeSatTemp + dischargeSuperheat
-
-  const compAmps = compRunning.map(r => r ? Math.round(LT_BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
+  const compAmps         = compRunning.map(r => r ? Math.round(LT_BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
 
   const alarms: Alarm[] = []
-  if (suctionPsig <= LT_SAFETY.lpcoPsig)       alarms.push({ code: 'LT-LPCO',   severity: 'CRITICAL', message: `LT Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig. Boosters tripped — negative pressure risk.` })
-  else if (suctionPsig <= LT_SAFETY.lpcoWarnPsig) alarms.push({ code: 'LT-LP-W', severity: 'WARNING',  message: `LT Low suction warning — ${suctionPsig.toFixed(1)} psig. Monitor closely.` })
-  if (caseTemp >= LT_SAFETY.highCaseTemp)       alarms.push({ code: 'LT-CASE',   severity: 'CRITICAL', message: `LT case temperature ${Math.round(caseTemp)} °F — frozen food at risk.` })
-  else if (caseTemp >= LT_SAFETY.warnCaseTemp)  alarms.push({ code: 'LT-CASE-W', severity: 'WARNING',  message: `LT case temperature warning — ${Math.round(caseTemp)} °F (target −5 to 0 °F).` })
-  if (superheat >= LT_SAFETY.highSH)            alarms.push({ code: 'LT-HI-SH',  severity: 'WARNING',  message: `LT high superheat — ${superheat.toFixed(1)} °F. Check TXV bulb and LT charge.` })
+  if (suctionPsig <= LT_SAFETY.lpcoPsig)
+    alarms.push({ code: 'LT-LPCO',   severity: 'CRITICAL', message: `LT Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig. Negative pressure risk.` })
+  else if (suctionPsig <= LT_SAFETY.lpcoWarnPsig)
+    alarms.push({ code: 'LT-LP-W',   severity: 'WARNING',  message: `LT Low suction warning — ${suctionPsig.toFixed(1)} psig.` })
+  if (caseTemp >= LT_SAFETY.highCaseTemp)
+    alarms.push({ code: 'LT-CASE',   severity: 'CRITICAL', message: `LT case temp ${Math.round(caseTemp)} °F — frozen food at risk.` })
+  else if (caseTemp >= LT_SAFETY.warnCaseTemp)
+    alarms.push({ code: 'LT-CASE-W', severity: 'WARNING',  message: `LT case temp warning — ${Math.round(caseTemp)} °F (target −5 to 0 °F).` })
+  if (superheat >= LT_SAFETY.highSH)
+    alarms.push({ code: 'LT-HI-SH',  severity: 'WARNING',  message: `LT high superheat — ${superheat.toFixed(1)} °F. Check TXV bulb and LT charge.` })
   compRunning.forEach((r, i) => { if (!r) alarms.push({ code: `LT-B${i + 1}`, severity: 'CRITICAL', message: `LT Booster ${i + 1} not running` }) })
-  if (f.ltDefrostStuckOn) alarms.push({ code: 'LT-DEF', severity: 'WARNING', message: 'LT defrost stuck on — frozen food cases warming rapidly' })
-  if (runningCount === 0) alarms.push({ code: 'LT-NOCOMP', severity: 'CRITICAL', message: 'All LT boosters offline — no LT pumping. Case temps rising.' })
+  if (f.ltDefrostStuckOn)
+    alarms.push({ code: 'LT-DEF',    severity: 'WARNING',  message: 'LT defrost stuck on — frozen food cases warming rapidly' })
+  if (runningCount === 0)
+    alarms.push({ code: 'LT-NOCOMP', severity: 'CRITICAL', message: 'All LT boosters offline — no LT pumping. Case temps rising.' })
 
   return {
     suctionSatTemp, suctionPsig, suctionGasTemp, superheat,
@@ -307,22 +373,25 @@ function computeLT(f: FaultState, mtSuctionSatTemp: number): LTState {
 interface Scenario {
   id: string; name: string; description: string
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
+  oat?: number              // OAT locked during scenario (if omitted, defaults to 80 °F)
   faults: Partial<FaultState>; answer: FaultKey[]
 }
 
 const SCENARIOS: Scenario[] = [
   {
     id: 'summer_head',
-    name: 'Head Pressure Running Away',
+    name: 'Head Pressure Running High',
     difficulty: 'Beginner',
-    description: 'Service call mid-afternoon — head pressure alarm firing. Store manager says the freezers were fine this morning. Machine room hasn\'t been serviced in 8 months.',
-    faults: { highAmbient: true, dirtyCondenser: true },
-    answer: ['highAmbient', 'dirtyCondenser'],
+    oat: 100,
+    description: 'Service call on a hot summer day — OAT 100 °F. Discharge pressure 340+ psig (normal is 200–240 psig for this store). Machine room maintenance hasn\'t been done since spring. What are the contributing mechanical faults?',
+    faults: { dirtyCondenser: true, fan1Failed: true },
+    answer: ['dirtyCondenser', 'fan1Failed'],
   },
   {
     id: 'gradual_warmup',
     name: 'Cases Getting Warm (Gradual)',
     difficulty: 'Intermediate',
+    oat: 80,
     description: 'MT cases have been slowly warming over 2 weeks — about 2–3 °F per week. No sudden alarms. Subcooling is low and the sight glass shows some flashing.',
     faults: { underchargeModerate: true, filterDrierRestricted: true },
     answer: ['underchargeModerate', 'filterDrierRestricted'],
@@ -331,6 +400,7 @@ const SCENARIOS: Scenario[] = [
     id: 'monday_lt',
     name: 'Monday Morning Frozen Food Mess',
     difficulty: 'Beginner',
+    oat: 72,
     description: 'Opened the store Monday. All LT (frozen food) cases above 10 °F. MT medium-temp side seems fine. Defrost was scheduled to run at 4 AM.',
     faults: { ltDefrostStuckOn: true },
     answer: ['ltDefrostStuckOn'],
@@ -339,7 +409,8 @@ const SCENARIOS: Scenario[] = [
     id: 'oil_fault',
     name: 'Overnight Oil Pressure Alarm',
     difficulty: 'Intermediate',
-    description: 'Overnight call — oil pressure alarm tripped Comp 3. It\'s now off. Oil differential reading 8 psi on the gauge. Remaining compressors amps are elevated.',
+    oat: 70,
+    description: 'Overnight call — oil pressure alarm tripped Comp 3. It\'s now off. Oil differential reading 8 psi on the gauge. Remaining compressor amps are elevated.',
     faults: { oilLow: true, comp3Failed: true },
     answer: ['oilLow', 'comp3Failed'],
   },
@@ -347,44 +418,72 @@ const SCENARIOS: Scenario[] = [
     id: 'lt_no_pulldown',
     name: 'LT Won\'t Pull Down After Repair',
     difficulty: 'Advanced',
-    description: 'LT circuit was worked on last week (defrost board swap). Since then it won\'t pull down. LT booster suction very low, superheats are extremely high, LT cases at 15 °F and rising. MT is running fine.',
+    oat: 80,
+    description: 'LT circuit was worked on last week (defrost board swap). Since then it won\'t pull down. LT booster suction very low, superheats extremely high, LT cases at 15 °F and rising. MT running fine.',
     faults: { ltTxvNotFeeding: true, ltComp1Failed: true },
     answer: ['ltTxvNotFeeding', 'ltComp1Failed'],
   },
+  {
+    id: 'winter_low_amb',
+    name: 'Winter — Cases Running Warm',
+    difficulty: 'Intermediate',
+    oat: 15,
+    description: 'January service call — outdoor temp 15 °F. Head pressure seems unusually low; the tech notes the HP control valve is holding condensing at minimum. MT cases are warm and subcooling is very high. A slow leak went unnoticed over the fall.',
+    faults: { underchargeModerate: true },
+    answer: ['underchargeModerate'],
+  },
 ]
 
-// ── Diagnose text builder ─────────────────────────────────────────────────────
-function buildDiagnoseText(mt: SystemState, lt: LTState): string {
+// ── Diagnose text ─────────────────────────────────────────────────────────────
+function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps: number[]): string {
   const allAlarms = [...mt.alarms, ...lt.alarms]
+  const mtCases   = STORE_LINEUP.filter(s => s.circuit === 'MT')
+  const ltCases   = STORE_LINEUP.filter(s => s.circuit === 'LT')
   return [
     '=== ColdIQ Rack Simulator — Diagnostic Snapshot ===',
     'System: Hussmann Parallel Rack | R-404A | MT + LT Booster',
     '',
-    `MT CIRCUIT (Setpoint: 20 °F SST / ${(ptLookup(20) - 14.696).toFixed(1)} psig):`,
-    `  Suction:          ${mt.suctionPsig.toFixed(1)} psig  /  ${mt.suctionSatTemp.toFixed(1)} °F SST`,
+    `ENVIRONMENT:`,
+    `  Outdoor Ambient Temp (OAT): ${oat} °F`,
+    `  Head Pressure Control: ${mt.hpCtrlActive ? `ACTIVE — holding condensing at ${Math.round(mt.condensingTemp)}°F sat min` : 'Off (OAT above minimum)'}`,
+    '',
+    `MT CIRCUIT (Setpoint: 20 °F SST / ${toGauge(ptLookup(20)).toFixed(1)} psig):`,
+    `  Suction:           ${mt.suctionPsig.toFixed(1)} psig  /  ${mt.suctionSatTemp.toFixed(1)} °F SST`,
     `  Suction superheat: ${mt.suctionSuperheat.toFixed(1)} °F`,
-    `  Discharge:        ${mt.dischargePsig.toFixed(1)} psig  /  ${mt.condensingTemp.toFixed(1)} °F sat`,
-    `  Discharge temp:   ${Math.round(mt.dischargeTemp)} °F`,
-    `  Subcooling:       ${mt.subcooling.toFixed(1)} °F  —  Sight glass: ${mt.subcooling < 2 ? 'BUBBLES' : mt.subcooling < 6 ? 'CLOUDY' : 'CLEAR'}`,
-    `  Oil differential: ${mt.oilDiff.toFixed(0)} psi (Y825 normal 20–25 psi)`,
+    `  Discharge:         ${mt.dischargePsig.toFixed(1)} psig  /  ${mt.condensingTemp.toFixed(1)} °F sat`,
+    `  Discharge temp:    ${Math.round(mt.dischargeTemp)} °F`,
+    `  Subcooling:        ${mt.subcooling.toFixed(1)} °F  —  Sight glass: ${mt.subcooling < 2 ? 'BUBBLES' : mt.subcooling < 6 ? 'CLOUDY' : 'CLEAR'}`,
+    `  Oil differential:  ${mt.oilDiff.toFixed(0)} psi (Y825 normal 20–25 psi)`,
     `  Compression ratio: ${mt.compressionRatio.toFixed(2)} : 1`,
     `  Compressors: ${mt.compRunning.filter(Boolean).length} / 4 running  —  ${mt.compAmps.filter(a => a > 0).map(a => a.toFixed(1)).join(' / ')} A`,
-    `  MT case temp: ${mt.caseTemp.toFixed(1)} °F (target 35 °F)`,
     ...(mt.filterDrierDeltaT > 0 ? [`  Filter drier ΔT: ${mt.filterDrierDeltaT} °F — restricted!`] : []),
     '',
-    `LT BOOSTER CIRCUIT (Setpoint: −20 °F SST / ${(ptLookup(-20) - 14.696).toFixed(1)} psig):`,
-    `  LT suction:      ${lt.suctionPsig.toFixed(1)} psig  /  ${lt.suctionSatTemp.toFixed(1)} °F SST`,
-    `  LT superheat:    ${lt.superheat.toFixed(1)} °F`,
-    `  LT discharge:    ${lt.dischargePsig.toFixed(1)} psig  →  MT suction header`,
-    `  LT comp ratio:   ${lt.compressionRatio.toFixed(2)} : 1`,
+    `LT BOOSTER CIRCUIT (Setpoint: −20 °F SST / ${toGauge(ptLookup(-20)).toFixed(1)} psig):`,
+    `  LT suction:    ${lt.suctionPsig.toFixed(1)} psig  /  ${lt.suctionSatTemp.toFixed(1)} °F SST`,
+    `  LT superheat:  ${lt.superheat.toFixed(1)} °F`,
+    `  LT discharge:  ${lt.dischargePsig.toFixed(1)} psig  →  MT suction header`,
+    `  LT comp ratio: ${lt.compressionRatio.toFixed(2)} : 1`,
     `  LT boosters: ${lt.compRunning.filter(Boolean).length} / 2 running  —  ${lt.compAmps.filter(a => a > 0).map(a => a.toFixed(1)).join(' / ')} A`,
-    `  LT case temp: ${lt.caseTemp.toFixed(1)} °F (target −5 to 0 °F)`,
+    '',
+    'STORE LINEUP — CASE TEMPERATURES:',
+    '  MT Circuit:',
+    ...mtCases.map((s, i) => {
+      const temp = caseTemps[i]
+      const flag = temp >= s.criticalTemp ? ' ⚠ CRITICAL' : temp >= s.warnTemp ? ' ↑ HIGH' : ''
+      return `    ${s.name} (${s.equipment} × ${s.count}): ${temp.toFixed(1)} °F${flag}`
+    }),
+    '  LT Circuit (Frozen Food):',
+    ...ltCases.map((s, i) => {
+      const temp = caseTemps[mtCases.length + i]
+      const flag = temp >= s.criticalTemp ? ' ⚠ CRITICAL' : temp >= s.warnTemp ? ' ↑ HIGH' : ''
+      return `    ${s.name} (${s.equipment} × ${s.count}): ${temp.toFixed(1)} °F${flag}`
+    }),
     '',
     `Active alarms: ${allAlarms.length}${allAlarms.length === 0 ? ' — System NORMAL' : ''}`,
     ...allAlarms.map(a => `  [${a.severity}] ${a.code}: ${a.message}`),
     '',
     allAlarms.length > 0
-      ? 'Based on these readings, diagnose the most likely root cause(s) and what you would check first on site.'
+      ? 'Based on these readings and case lineup, diagnose the most likely root cause(s) and what you would check first on site.'
       : 'System appears normal. Describe what these readings indicate about the health of this rack system.',
   ].join('\n')
 }
@@ -392,16 +491,26 @@ function buildDiagnoseText(mt: SystemState, lt: LTState): string {
 // ── UI helpers ────────────────────────────────────────────────────────────────
 function statusColor(val: number, warn: number, alarm: number, reversed = false) {
   const bad  = reversed ? val <= alarm : val >= alarm
-  const warn2 = reversed ? val <= warn  : val >= warn
-  if (bad)   return 'text-red-400'
-  if (warn2) return 'text-amber-400'
+  const wrn  = reversed ? val <= warn  : val >= warn
+  if (bad) return 'text-red-400'
+  if (wrn) return 'text-amber-400'
   return 'text-emerald-400'
 }
 function dotColor(val: number, warn: number, alarm: number, reversed = false) {
   const bad  = reversed ? val <= alarm : val >= alarm
-  const warn2 = reversed ? val <= warn  : val >= warn
-  if (bad)   return 'bg-red-500'
-  if (warn2) return 'bg-amber-400'
+  const wrn  = reversed ? val <= warn  : val >= warn
+  if (bad) return 'bg-red-500'
+  if (wrn) return 'bg-amber-400'
+  return 'bg-emerald-500'
+}
+function caseTempColor(temp: number, s: CaseSection) {
+  if (temp >= s.criticalTemp) return 'text-red-400'
+  if (temp >= s.warnTemp)     return 'text-amber-400'
+  return 'text-emerald-400'
+}
+function caseDotColor(temp: number, s: CaseSection) {
+  if (temp >= s.criticalTemp) return 'bg-red-500'
+  if (temp >= s.warnTemp)     return 'bg-amber-400'
   return 'bg-emerald-500'
 }
 
@@ -442,8 +551,8 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
       onClick={onChange} disabled={disabled} title={hint}
       className={[
         'w-full flex items-start gap-2 px-3 py-2 text-left rounded-lg transition-all text-xs',
-        active    ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300' : 'bg-slate-700/40 border border-transparent text-slate-400 hover:bg-slate-700 hover:text-slate-200',
-        disabled  ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer',
+        active   ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300' : 'bg-slate-700/40 border border-transparent text-slate-400 hover:bg-slate-700 hover:text-slate-200',
+        disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
       <div className={`mt-0.5 flex-shrink-0 w-7 h-3.5 rounded-full transition-colors flex items-center px-0.5 ${active ? 'bg-amber-500' : 'bg-slate-600'}`}>
@@ -458,30 +567,36 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
 export default function SimulationPage() {
   const router = useRouter()
 
-  // Normal mode
+  // Free-play state
   const [faults,       setFaults]       = useState<FaultState>(INITIAL_FAULTS)
+  const [oat,          setOat]          = useState(80)        // °F — outdoor ambient
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
 
-  // Scenario mode
-  const [scenarioMode,     setScenarioMode]     = useState(false)
-  const [activeScenario,   setActiveScenario]   = useState<Scenario | null>(null)
-  const [userGuess,        setUserGuess]        = useState<FaultState>(INITIAL_FAULTS)
-  const [submitted,        setSubmitted]        = useState(false)
+  // Scenario state
+  const [scenarioMode,   setScenarioMode]   = useState(false)
+  const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
+  const [userGuess,      setUserGuess]      = useState<FaultState>(INITIAL_FAULTS)
+  const [submitted,      setSubmitted]      = useState(false)
 
-  // The faults that drive readings: scenario faults when in scenario mode, else user faults
-  const activeFaults = scenarioMode && activeScenario
-    ? { ...INITIAL_FAULTS, ...activeScenario.faults }
-    : faults
+  // Active values — scenarios override free-play faults and OAT
+  const activeFaults = scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults
+  const activeOat    = scenarioMode ? (activeScenario?.oat ?? 80) : oat
 
-  const mt = useMemo(() => computeMT(activeFaults), [activeFaults])
+  const mt = useMemo(() => computeMT(activeFaults, activeOat), [activeFaults, activeOat])
   const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp), [activeFaults, mt.suctionSatTemp])
 
-  const allAlarms      = [...mt.alarms, ...lt.alarms]
-  const hasCritical    = allAlarms.some(a => a.severity === 'CRITICAL')
-  const hasWarning     = allAlarms.some(a => a.severity === 'WARNING')
-  const systemStatus   = hasCritical ? 'ALARM' : hasWarning ? 'WARNING' : 'NORMAL'
-  const statusBadge    = hasCritical
+  // Individual case temperatures — deviation from aggregate caseTemp × sensitivity
+  const caseTemps = useMemo(() => STORE_LINEUP.map(s => {
+    if (s.circuit === 'MT') return s.setpoint + (mt.caseTemp - BASELINE.caseTemp) * s.sensitivity
+    else                     return s.setpoint + (lt.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
+  }), [mt.caseTemp, lt.caseTemp])
+
+  const allAlarms    = [...mt.alarms, ...lt.alarms]
+  const hasCritical  = allAlarms.some(a => a.severity === 'CRITICAL')
+  const hasWarning   = allAlarms.some(a => a.severity === 'WARNING')
+  const systemStatus = hasCritical ? 'ALARM' : hasWarning ? 'WARNING' : 'NORMAL'
+  const statusBadge  = hasCritical
     ? 'bg-red-500/20 text-red-400 border-red-500/40'
     : hasWarning ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
     : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
@@ -496,7 +611,6 @@ export default function SimulationPage() {
       return next
     })
   }
-
   function toggleGuess(key: FaultKey) {
     const def = FAULT_DEFS.find(d => d.key === key)
     setUserGuess(prev => {
@@ -506,28 +620,16 @@ export default function SimulationPage() {
     })
   }
 
-  function resetAll() { setFaults(INITIAL_FAULTS); setRevealFaults(false) }
-
-  function enterScenarioMode() {
-    setScenarioMode(true); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false)
-  }
-
-  function exitScenarioMode() {
-    setScenarioMode(false); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false)
-  }
-
-  function loadScenario(s: Scenario) {
-    setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false)
-  }
-
+  function resetAll() { setFaults(INITIAL_FAULTS); setOat(80); setRevealFaults(false) }
+  function enterScenarioMode() { setScenarioMode(true); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
+  function exitScenarioMode()  { setScenarioMode(false); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
+  function loadScenario(s: Scenario) { setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
   function submitDiagnosis() { setSubmitted(true) }
-
   function diagnoseInColdIQ() {
-    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt)) } catch { /* ignore */ }
+    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps)) } catch { /* ignore */ }
     router.push('/dashboard')
   }
 
-  // Score calculation
   const score = (() => {
     if (!activeScenario || !submitted) return null
     const correct = activeScenario.answer.filter(k => userGuess[k]).length
@@ -538,6 +640,16 @@ export default function SimulationPage() {
   })()
 
   const faultsByGroup = FAULT_GROUPS.map(g => ({ group: g, faults: FAULT_DEFS.filter(d => d.group === g) }))
+
+  // OAT colour helper
+  const oatColor = activeOat <= 32 ? 'text-blue-300'
+    : activeOat <= 60 ? 'text-cyan-300'
+    : activeOat <= 85 ? 'text-emerald-400'
+    : activeOat <= 100 ? 'text-amber-400'
+    : 'text-red-400'
+
+  // Clean-condenser condensing sat for reference
+  const cleanCondensingPsig = Math.round(toGauge(ptLookup(Math.max(activeOat + 15, HP_CTRL_MIN_COND_SAT))))
 
   return (
     <div className="min-h-[100dvh] bg-slate-900 flex flex-col">
@@ -553,7 +665,7 @@ export default function SimulationPage() {
             <span className="hidden sm:inline text-[10px] text-slate-500">4 × Copeland Scroll MT + 2 × Booster LT</span>
           </div>
           <p className="text-[10px] text-slate-500 hidden md:block">
-            MT setpoint: 20 °F sat (31.7 psig) · LT setpoint: −20 °F sat (3.2 psig) · HP cutout: 400 psig · Oil diff: 20–25 psi (Y825)
+            MT: 20 °F sat (31.7 psig) · LT: −20 °F sat (3.2 psig) · HP cutout: 400 psig · OAT: <span className={oatColor}>{activeOat} °F</span>
           </p>
         </div>
 
@@ -565,22 +677,18 @@ export default function SimulationPage() {
           </span>
         )}
 
-        {/* Diagnose button */}
         <button
           onClick={diagnoseInColdIQ}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-          title="Send current readings to ColdIQ Expert chat"
+          title="Send current readings snapshot to ColdIQ Expert chat"
         >
           <MessageSquare size={12}/> Diagnose
         </button>
 
-        {/* Scenario mode toggle */}
         <button
           onClick={scenarioMode ? exitScenarioMode : enterScenarioMode}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-            scenarioMode
-              ? 'bg-violet-600 text-white border-violet-500'
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600 border-slate-600'
+            scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 border-slate-600'
           }`}
         >
           <Target size={12}/> {scenarioMode ? 'Exit Scenario' : 'Scenario Mode'}
@@ -599,7 +707,7 @@ export default function SimulationPage() {
       {/* ── Body ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Left panel ── */}
+        {/* ── Left panel — fault injection / diagnosis ── */}
         <div className={`${showFaults ? 'flex' : 'hidden'} md:flex flex-col w-56 lg:w-60 flex-shrink-0 bg-slate-800 border-r border-slate-700 overflow-y-auto`}>
           <div className="px-3 py-2 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -636,13 +744,9 @@ export default function SimulationPage() {
             ))}
           </div>
 
-          {/* Bottom of left panel */}
           <div className="p-3 border-t border-slate-700">
             {scenarioMode && activeScenario && !submitted && (
-              <button
-                onClick={submitDiagnosis}
-                className="w-full px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
+              <button onClick={submitDiagnosis} className="w-full px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
                 Submit Diagnosis
               </button>
             )}
@@ -652,19 +756,19 @@ export default function SimulationPage() {
                   {score.pct}%
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  {score.correct}/{score.total} correct{score.fp > 0 ? ` · ${score.fp} false positive${score.fp > 1 ? 's' : ''}` : ''}
+                  {score.correct}/{score.total} correct{score.fp > 0 ? ` · ${score.fp} false +ve` : ''}
                 </div>
               </div>
             )}
             {!scenarioMode && (
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Set faults above, then hit <strong className="text-slate-400">Diagnose</strong> to pre-fill ColdIQ Expert with these readings.
+                Set faults + OAT slider, then <strong className="text-slate-400">Diagnose</strong> to pre-fill ColdIQ chat.
               </p>
             )}
           </div>
         </div>
 
-        {/* ── Mobile fault toggle ── */}
+        {/* ── Mobile fault toggle button ── */}
         <button
           onClick={() => setShowFaults(v => !v)}
           className="md:hidden fixed bottom-4 right-4 z-20 bg-amber-500 text-white rounded-full px-4 py-2 text-xs font-semibold shadow-lg flex items-center gap-1.5"
@@ -677,7 +781,54 @@ export default function SimulationPage() {
         <div className="flex-1 overflow-y-auto p-3 md:p-4">
           <div className="max-w-4xl mx-auto space-y-3">
 
-            {/* Scenario picker / info */}
+            {/* ── OAT Slider ── */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Thermometer size={13} className="text-slate-400"/>
+                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Outdoor Ambient Temperature (OAT)</span>
+                </div>
+                {scenarioMode && (
+                  <span className="text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full">
+                    {activeScenario ? 'Set by scenario' : 'Locked in scenario mode'}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-slate-500 w-12 text-right flex-shrink-0">−20 °F</span>
+                <input
+                  type="range" min={-20} max={115} step={5}
+                  value={activeOat}
+                  onChange={e => setOat(Number(e.target.value))}
+                  disabled={scenarioMode}
+                  className="flex-1 accent-blue-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="text-[10px] text-slate-500 w-10 flex-shrink-0">115 °F</span>
+                <span className={`text-2xl font-bold font-mono tabular-nums w-20 text-right flex-shrink-0 ${oatColor}`}>
+                  {activeOat}°F
+                </span>
+              </div>
+
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[10px] text-slate-500">
+                <span>
+                  HP Control:{' '}
+                  <span className={mt.hpCtrlActive ? 'text-amber-400 font-medium' : 'text-slate-500'}>
+                    {mt.hpCtrlActive
+                      ? `Active — clamping condensing at ${Math.round(mt.condensingTemp)}°F sat (${Math.round(toGauge(ptLookup(mt.condensingTemp)))} psig)`
+                      : 'Off'}
+                  </span>
+                </span>
+                <span>
+                  Clean-condenser target:{' '}
+                  <span className="text-slate-400">{Math.max(activeOat + 15, HP_CTRL_MIN_COND_SAT)}°F sat / {cleanCondensingPsig} psig</span>
+                </span>
+                {activeOat < 32 && <span className="text-blue-300 font-medium">Below freezing — monitor for ice on coil</span>}
+                {activeOat > 95 && <span className="text-amber-400 font-medium">High heat load — inspect condenser fan operation</span>}
+              </div>
+            </div>
+
+            {/* ── Scenario picker / active scenario ── */}
             {scenarioMode && (
               <div className="bg-violet-900/30 border border-violet-500/40 rounded-xl overflow-hidden">
                 <div className="px-4 py-2 bg-violet-900/40 border-b border-violet-500/30 flex items-center gap-2">
@@ -686,20 +837,24 @@ export default function SimulationPage() {
                 </div>
                 {!activeScenario ? (
                   <div className="p-3 space-y-2">
-                    <p className="text-[11px] text-slate-400 mb-2">Pick a scenario. The readings will update — diagnose the fault using the left panel.</p>
+                    <p className="text-[11px] text-slate-400 mb-2">Pick a scenario. Readings will update — diagnose using the left panel.</p>
                     {SCENARIOS.map(s => (
-                      <button
-                        key={s.id}
-                        onClick={() => loadScenario(s)}
-                        className="w-full text-left px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-                      >
+                      <button key={s.id} onClick={() => loadScenario(s)}
+                        className="w-full text-left px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-medium text-white">{s.name}</span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
                             s.difficulty === 'Beginner' ? 'bg-emerald-500/20 text-emerald-400' :
                             s.difficulty === 'Advanced' ? 'bg-red-500/20 text-red-400' :
-                            'bg-amber-500/20 text-amber-400'
-                          }`}>{s.difficulty}</span>
+                            'bg-amber-500/20 text-amber-400'}`}>{s.difficulty}</span>
+                          {s.oat !== undefined && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                              (s.oat ?? 80) <= 32 ? 'bg-blue-500/20 text-blue-300' :
+                              (s.oat ?? 80) >= 90 ? 'bg-orange-500/20 text-orange-300' :
+                              'bg-slate-700 text-slate-400'}`}>
+                              OAT {s.oat}°F
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-400 leading-relaxed">{s.description}</p>
                       </button>
@@ -709,13 +864,18 @@ export default function SimulationPage() {
                   <div className="p-3">
                     <div className="flex items-start gap-2 mb-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-white">{activeScenario.name}</span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
                             activeScenario.difficulty === 'Beginner' ? 'bg-emerald-500/20 text-emerald-400' :
                             activeScenario.difficulty === 'Advanced' ? 'bg-red-500/20 text-red-400' :
-                            'bg-amber-500/20 text-amber-400'
-                          }`}>{activeScenario.difficulty}</span>
+                            'bg-amber-500/20 text-amber-400'}`}>{activeScenario.difficulty}</span>
+                          {activeScenario.oat !== undefined && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                              (activeScenario.oat ?? 80) <= 32 ? 'bg-blue-500/20 text-blue-300' :
+                              (activeScenario.oat ?? 80) >= 90 ? 'bg-orange-500/20 text-orange-300' :
+                              'bg-slate-700 text-slate-400'}`}>OAT {activeScenario.oat}°F</span>
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{activeScenario.description}</p>
                       </div>
@@ -733,8 +893,8 @@ export default function SimulationPage() {
                           {score.fp > 0 && <span className="text-[10px] text-red-400">{score.fp} false positive{score.fp > 1 ? 's' : ''}</span>}
                         </div>
                         {activeScenario.answer.map(key => {
-                          const def   = FAULT_DEFS.find(d => d.key === key)
-                          const hit   = userGuess[key]
+                          const def = FAULT_DEFS.find(d => d.key === key)
+                          const hit = userGuess[key]
                           return (
                             <div key={key} className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg ${hit ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
                               {hit ? <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0 mt-0.5"/> : <XCircle size={12} className="text-red-400 flex-shrink-0 mt-0.5"/>}
@@ -746,14 +906,14 @@ export default function SimulationPage() {
                           )
                         })}
                         <div className="flex gap-2 pt-1">
-                          <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">Try Again</button>
-                          <button onClick={() => setActiveScenario(null)} className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">New Scenario</button>
+                          <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
+                          <button onClick={() => setActiveScenario(null)} className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg">New Scenario</button>
                         </div>
                       </div>
                     )}
                     {!submitted && (
                       <p className="text-[10px] text-slate-500 mt-2">
-                        Look at the readings below, then use the <strong className="text-slate-400">Your Diagnosis</strong> panel on the left to select what you think is wrong. Hit <strong className="text-slate-400">Submit Diagnosis</strong> when ready.
+                        Look at the readings below, then toggle faults in the <strong className="text-slate-400">Your Diagnosis</strong> panel. Hit <strong className="text-slate-400">Submit Diagnosis</strong> when ready.
                       </p>
                     )}
                   </div>
@@ -761,7 +921,7 @@ export default function SimulationPage() {
               </div>
             )}
 
-            {/* Active alarms */}
+            {/* ── Active alarms ── */}
             {allAlarms.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-700/50 border-b border-slate-700 flex items-center gap-2">
@@ -780,7 +940,7 @@ export default function SimulationPage() {
               </div>
             )}
 
-            {/* Row 1: MT Suction + Discharge */}
+            {/* ── MT Suction + Discharge ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="MT Suction Side" icon={<Gauge size={13}/>}>
                 <ReadingRow label="Suction pressure" value={`${mt.suctionPsig.toFixed(1)} psig`} sub={`${(mt.suctionPsig + 14.696).toFixed(1)} psia`}
@@ -799,7 +959,9 @@ export default function SimulationPage() {
                   dot={dotColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
                   color={statusColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
                   note={mt.nonCondensables ? `≈ ${Math.round(mt.dischargePsig - 28)} psig without non-cond.` : undefined} />
-                <ReadingRow label="Condensing sat temp" value={`${mt.condensingTemp.toFixed(1)} °F`} sub="from PT" color="text-slate-300" />
+                <ReadingRow label="Condensing sat temp" value={`${mt.condensingTemp.toFixed(1)} °F`} sub="from PT"
+                  color={mt.hpCtrlActive ? 'text-amber-400' : 'text-slate-300'}
+                  note={mt.hpCtrlActive ? 'HP control active — minimum setpoint' : undefined} />
                 <ReadingRow label="Discharge temp" value={`${Math.round(mt.dischargeTemp)} °F`}
                   dot={dotColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
                   color={statusColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
@@ -810,20 +972,21 @@ export default function SimulationPage() {
               </Card>
             </div>
 
-            {/* Row 2: Liquid line + Oil */}
+            {/* ── Liquid line + Oil ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="Liquid Line" icon={<Activity size={13}/>}>
                 <ReadingRow label="Liquid line temp" value={`${mt.liquidTemp.toFixed(1)} °F`} color="text-slate-300" />
                 <ReadingRow label="Subcooling" value={`${mt.subcooling.toFixed(1)} °F`}
                   dot={mt.subcooling < 3 ? 'bg-red-500' : mt.subcooling < 8 ? 'bg-amber-400' : mt.subcooling > 30 ? 'bg-amber-400' : 'bg-emerald-500'}
                   color={mt.subcooling < 3 ? 'text-red-400' : mt.subcooling < 8 ? 'text-amber-400' : mt.subcooling > 30 ? 'text-amber-400' : 'text-emerald-400'}
-                  note={mt.subcooling < 2 ? 'Flash gas — check charge' : mt.subcooling > 30 ? 'Very high — overcharge?' : undefined} />
+                  note={mt.subcooling < 2 ? 'Flash gas — check charge' : mt.subcooling > 25 ? 'High SC — liquid stacking (low ambient?)' : undefined} />
                 {mt.filterDrierDeltaT > 0 && (
-                  <ReadingRow label="Drier ΔT (upstream→outlet)" value={`${mt.filterDrierDeltaT} °F`} dot="bg-amber-400" color="text-amber-400" note="Restricted — replace core" />
+                  <ReadingRow label="Drier ΔT (in→out)" value={`${mt.filterDrierDeltaT} °F`} dot="bg-amber-400" color="text-amber-400" note="Restricted — replace core" />
                 )}
                 <ReadingRow label="Sight glass" value={mt.subcooling < 2 ? 'BUBBLES' : mt.subcooling < 6 ? 'CLOUDY' : 'CLEAR'}
                   color={mt.subcooling < 2 ? 'text-red-400' : mt.subcooling < 6 ? 'text-amber-400' : 'text-emerald-400'} />
-                <ReadingRow label="Ambient" value={`${mt.ambient} °F`} color="text-slate-300" />
+                <ReadingRow label="Outdoor ambient" value={`${activeOat} °F`}
+                  color={oatColor} />
               </Card>
 
               <Card title="Oil System (Y825 Valve)" icon={<Wind size={13}/>}>
@@ -838,7 +1001,7 @@ export default function SimulationPage() {
               </Card>
             </div>
 
-            {/* Row 3: MT Compressors */}
+            {/* ── MT Compressors ── */}
             <Card title="MT Compressors — 4 × Copeland Scroll" icon={<Zap size={13}/>}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1">
                 {mt.compRunning.map((running, i) => (
@@ -861,13 +1024,9 @@ export default function SimulationPage() {
               </div>
             </Card>
 
-            {/* Row 4: LT Booster */}
-            <Card
-              title="LT Booster Circuit — 2 × Scroll (−20 °F SST setpoint)"
-              icon={<Zap size={13}/>}
-              accent="bg-blue-900/40 border-blue-700/50"
-              className="border-blue-700/40"
-            >
+            {/* ── LT Booster ── */}
+            <Card title="LT Booster Circuit — 2 × Scroll (−20 °F SST setpoint)" icon={<Zap size={13}/>}
+              accent="bg-blue-900/40 border-blue-700/50" className="border-blue-700/40">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 py-1">
                 <div>
                   <ReadingRow label="LT suction pressure" value={`${lt.suctionPsig.toFixed(1)} psig`} sub={`${(lt.suctionPsig + 14.696).toFixed(1)} psia`}
@@ -883,13 +1042,12 @@ export default function SimulationPage() {
                 <div>
                   <ReadingRow label="LT discharge (→MT suction)" value={`${lt.dischargePsig.toFixed(1)} psig`} sub={`${lt.dischargeSatTemp.toFixed(0)} °F sat`} color="text-blue-300" />
                   <ReadingRow label="LT discharge temp" value={`${Math.round(lt.dischargeTemp)} °F`} color="text-slate-300" />
-                  <ReadingRow label="LT case temp" value={`${lt.caseTemp.toFixed(1)} °F`}
+                  <ReadingRow label="LT case temp (avg)" value={`${lt.caseTemp.toFixed(1)} °F`}
                     dot={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'bg-red-500' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'bg-amber-400' : 'bg-emerald-500'}
                     color={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'text-red-400' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'text-amber-400' : 'text-emerald-400'}
                     note={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'Frozen food at risk!' : undefined} />
                 </div>
               </div>
-              {/* LT Booster compressors */}
               <div className="grid grid-cols-2 gap-2 pt-1 mt-1 border-t border-slate-700/50">
                 {lt.compRunning.map((running, i) => (
                   <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-700/40 border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
@@ -906,74 +1064,122 @@ export default function SimulationPage() {
               </div>
             </Card>
 
-            {/* Row 5: Case temps + Reference */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Card title="Case Temperatures" icon={<Thermometer size={13}/>}>
-                <ReadingRow label="MT avg case temp" value={`${mt.caseTemp.toFixed(1)} °F`}
-                  dot={mt.caseTemp > 42 ? 'bg-red-500' : mt.caseTemp > 38 ? 'bg-amber-400' : 'bg-emerald-500'}
-                  color={mt.caseTemp > 42 ? 'text-red-400' : mt.caseTemp > 38 ? 'text-amber-400' : 'text-emerald-400'}
-                  note={mt.caseTemp > 42 ? 'Product safety at risk' : undefined} />
-                <ReadingRow label="LT avg case temp" value={`${lt.caseTemp.toFixed(1)} °F`}
-                  dot={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'bg-red-500' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'bg-amber-400' : 'bg-emerald-500'}
-                  color={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'text-red-400' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'text-amber-400' : 'text-emerald-400'}
-                  note={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'Frozen food at risk!' : undefined} />
-                <div className="py-1 text-[10px] text-slate-500">MT target: 35 °F · LT target: −5 to 0 °F</div>
-              </Card>
+            {/* ── Store Load Profile ── */}
+            <Card title="Store Load Profile — Case Temperatures" icon={<Package size={13}/>}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 pt-1">
+                {/* MT cases */}
+                <div>
+                  <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest mb-2">MT Circuit — Medium Temp</p>
+                  {STORE_LINEUP.filter(s => s.circuit === 'MT').map(s => {
+                    const idx  = STORE_LINEUP.indexOf(s)
+                    const temp = caseTemps[idx]
+                    return (
+                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-700/30 last:border-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
+                          <div className="min-w-0">
+                            <span className="text-xs text-slate-300 font-medium">{s.name}</span>
+                            <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
+                          </div>
+                        </div>
+                        <div className="text-right ml-2 flex-shrink-0">
+                          <span className={`text-sm font-mono font-bold tabular-nums ${caseTempColor(temp, s)}`}>{temp.toFixed(1)}°F</span>
+                          <div className="text-[9px] text-slate-600">tgt {s.setpoint}°F</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="text-[9px] text-slate-600 mt-1.5">⚠ Food safety: &gt;45 °F</div>
+                </div>
 
+                {/* LT cases */}
+                <div className="mt-4 sm:mt-0">
+                  <p className="text-[9px] font-semibold text-blue-500/70 uppercase tracking-widest mb-2">LT Circuit — Frozen Food</p>
+                  {STORE_LINEUP.filter(s => s.circuit === 'LT').map(s => {
+                    const idx  = STORE_LINEUP.indexOf(s)
+                    const temp = caseTemps[idx]
+                    return (
+                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-700/30 last:border-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
+                          <div className="min-w-0">
+                            <span className="text-xs text-slate-300 font-medium">{s.name}</span>
+                            <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
+                          </div>
+                        </div>
+                        <div className="text-right ml-2 flex-shrink-0">
+                          <span className={`text-sm font-mono font-bold tabular-nums ${caseTempColor(temp, s)}`}>{temp.toFixed(1)}°F</span>
+                          <div className="text-[9px] text-slate-600">tgt {s.setpoint}°F</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="text-[9px] text-slate-600 mt-1.5">⚠ Food safety: &gt;10 °F (frozen)</div>
+                </div>
+              </div>
+            </Card>
+
+            {/* ── Reference + Instructor reveal ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="R-404A Normal Ranges" icon={<Info size={13}/>}>
                 <div className="text-[10px] text-slate-500 space-y-0.5 py-1 leading-relaxed">
-                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit (20 °F SST setpoint)</div>
+                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit (20 °F SST · OAT 80 °F baseline)</div>
                   <div><span className="text-slate-400 w-32 inline-block">Suction</span> 28–38 psig (15–25 °F sat)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Discharge</span> 150–250 psig</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Suction SH</span> 15–25 °F (rack header)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Discharge</span> 150–250 psig (70–90 °F OAT)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Suction SH</span> 15–25 °F</div>
                   <div><span className="text-slate-400 w-32 inline-block">Subcooling</span> 10–20 °F (clear glass)</div>
                   <div><span className="text-slate-400 w-32 inline-block">Discharge temp</span> 130–200 °F</div>
                   <div><span className="text-slate-400 w-32 inline-block">Oil diff</span> 20–25 psi (Y825)</div>
-                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster (−20 °F SST setpoint)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT suction</span> 2–5 psig (−25 to −15 °F sat)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT ratio</span> 2.0–3.5 : 1 (to MT header)</div>
+                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster (−20 °F SST)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">LT suction</span> 2–5 psig</div>
+                  <div><span className="text-slate-400 w-32 inline-block">LT ratio</span> 2.0–3.5 : 1</div>
                   <div><span className="text-slate-400 w-32 inline-block">LT superheat</span> 10–20 °F</div>
+                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control (Low Ambient)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> 65 °F sat (~103 psig)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~50 °F</div>
                 </div>
               </Card>
-            </div>
 
-            {/* Instructor reveal — normal mode only */}
-            {!scenarioMode && (
-              <>
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-slate-300 font-medium">Instructor mode — reveal active faults</p>
-                    <p className="text-[10px] text-slate-500">Use after the trainee has given their diagnosis</p>
+              {!scenarioMode ? (
+                <div className="space-y-3">
+                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-300 font-medium">Instructor mode — reveal active faults</p>
+                      <p className="text-[10px] text-slate-500">Use after trainee gives their diagnosis</p>
+                    </div>
+                    <button
+                      onClick={() => setRevealFaults(v => !v)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                    >
+                      {revealFaults ? 'Hide faults' : 'Reveal faults'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setRevealFaults(v => !v)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
-                  >
-                    {revealFaults ? 'Hide faults' : 'Reveal faults'}
-                  </button>
-                </div>
-                {revealFaults && (
-                  <div className="bg-slate-800 border border-amber-500/30 rounded-xl p-3">
-                    <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-2">Active faults</p>
-                    {activeFaultCount === 0 ? (
-                      <p className="text-xs text-slate-400 italic">No faults active — system is in normal operation</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
-                          <div key={d.key} className="flex items-start gap-2 text-xs text-amber-300">
-                            <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-amber-500"/>
-                            <div>
-                              <span className="font-medium">{d.label}</span>
-                              <span className="text-amber-400/60 ml-1.5">— {d.hint}</span>
+                  {revealFaults && (
+                    <div className="bg-slate-800 border border-amber-500/30 rounded-xl p-3">
+                      <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-2">Active faults · OAT {activeOat} °F</p>
+                      {activeFaultCount === 0 ? (
+                        <p className="text-xs text-slate-400 italic">No faults active — system in normal operation</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
+                            <div key={d.key} className="flex items-start gap-2 text-xs text-amber-300">
+                              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-amber-500"/>
+                              <div><span className="font-medium">{d.label}</span><span className="text-amber-400/60 ml-1.5">— {d.hint}</span></div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-center">
+                  <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                    Instructor reveal disabled in scenario mode.<br/>Exit scenario mode to use it.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="text-[10px] text-slate-600 text-center pb-2 leading-relaxed">
               Based on Hussmann Parallel Rack Systems I/O Manual P/N 0427598_E · R-404A · MT 20 °F SST / LT −20 °F SST ·
