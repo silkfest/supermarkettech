@@ -315,7 +315,7 @@ const SCENARIOS: Scenario[] = [
     id: 'summer_head',
     name: 'Head Pressure Running Away',
     difficulty: 'Beginner',
-    description: 'Service call mid-afternoon — head pressure alarm firing. Store manager says the freezers were fine this morning. Machine room hasn't been serviced in 8 months.',
+    description: 'Service call mid-afternoon — head pressure alarm firing. Store manager says the freezers were fine this morning. Machine room hasn\'t been serviced in 8 months.',
     faults: { highAmbient: true, dirtyCondenser: true },
     answer: ['highAmbient', 'dirtyCondenser'],
   },
