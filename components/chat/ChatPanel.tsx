@@ -253,6 +253,17 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     } catch { /* ignore – SSR or private browsing */ }
   }, [equipment?.id])
 
+  // Pre-fill input from simulation "Diagnose" button (stored in localStorage)
+  useEffect(() => {
+    try {
+      const prefill = localStorage.getItem('coldiq_prefill')
+      if (prefill) {
+        setInput(prefill)
+        localStorage.removeItem('coldiq_prefill')
+      }
+    } catch { /* ignore – SSR or private browsing */ }
+  }, [])
+
   // Reset chat when the selected equipment changes
   useEffect(() => {
     // Cancel any in-flight request
