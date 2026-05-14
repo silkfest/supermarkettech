@@ -29,10 +29,11 @@ export interface Equipment {
   status: EquipmentStatus
   notes?: string | null
   created_at: string
-  // Joined
+  // Joined / enriched
   active_alarms?: AlarmEvent[]
   latest_readings?: SensorReading[]
   maintenance_logs?: MaintenanceLog[]
+  last_pm_date?: string | null
 }
 
 export interface SensorReading {

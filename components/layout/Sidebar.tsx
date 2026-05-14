@@ -166,6 +166,10 @@ function SidebarContent({
 
         {equipment.map(eq => {
           const alarms = (eq.active_alarms ?? []).filter((a: any) => !a.resolved_at)
+          const daysSincePm = eq.last_pm_date
+            ? Math.floor((Date.now() - new Date(eq.last_pm_date).getTime()) / 86400000)
+            : null
+          const pmOverdue = daysSincePm === null || daysSincePm > 90
           return (
             <button
               key={eq.id}
@@ -185,6 +189,11 @@ function SidebarContent({
                   {alarms.length > 0 && (
                     <p className="text-[10px] text-red-500 font-medium mt-0.5">
                       ⚠ {alarms.length} alarm{alarms.length>1?'s':''}
+                    </p>
+                  )}
+                  {pmOverdue && alarms.length === 0 && (
+                    <p className="text-[10px] text-amber-500 font-medium mt-0.5">
+                      {daysSincePm === null ? '⚑ No PM on record' : `⚑ PM overdue (${daysSincePm}d)`}
                     </p>
                   )}
                 </div>

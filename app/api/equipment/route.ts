@@ -12,7 +12,31 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  const rows = data ?? []
+  if (rows.length === 0) return NextResponse.json([])
+
+  // Enrich with the latest PM date per equipment (single query, group client-side)
+  const equipIds = rows.map((e: { id: string }) => e.id)
+  const { data: pmRows } = await supabase
+    .from('pm_reports')
+    .select('equipment_id, performed_at')
+    .in('equipment_id', equipIds)
+    .order('performed_at', { ascending: false })
+
+  const lastPmByEquip: Record<string, string> = {}
+  for (const pm of pmRows ?? []) {
+    if (pm.equipment_id && !lastPmByEquip[pm.equipment_id]) {
+      lastPmByEquip[pm.equipment_id] = pm.performed_at
+    }
+  }
+
+  const enriched = rows.map((e: Record<string, unknown>) => ({
+    ...e,
+    last_pm_date: lastPmByEquip[e.id as string] ?? null,
+  }))
+
+  return NextResponse.json(enriched)
 }
 
 export async function POST(req: NextRequest) {
