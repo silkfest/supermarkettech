@@ -37,6 +37,19 @@ function ptLookup(tempF: number): number {
 
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
 
+// Reverse PT lookup — convert gauge pressure (psig) → saturation temperature (°F)
+function ptReverse(psig: number): number {
+  const psia = psig + 14.696
+  if (psia <= R404A_PT[0][1]) return R404A_PT[0][0]
+  if (psia >= R404A_PT[R404A_PT.length - 1][1]) return R404A_PT[R404A_PT.length - 1][0]
+  for (let i = 0; i < R404A_PT.length - 1; i++) {
+    const [t0, p0] = R404A_PT[i]
+    const [t1, p1] = R404A_PT[i + 1]
+    if (psia >= p0 && psia <= p1) return t0 + (psia - p0) / (p1 - p0) * (t1 - t0)
+  }
+  return R404A_PT[0][0]
+}
+
 // ── Fault types ───────────────────────────────────────────────────────────────
 // NOTE: 'highAmbient' removed — OAT is now a continuous slider, not a fault toggle.
 type FaultKey =
@@ -181,10 +194,10 @@ interface LTState {
 }
 
 // ── MT compute ────────────────────────────────────────────────────────────────
-function computeMT(f: FaultState, oat: number): SystemState {
+function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number): SystemState {
   // Condenser approach delta — starts at 15 °F (clean coil, all fans running)
   let approachDelta      = 15
-  let suctionSatTemp     = BASELINE.suctionSatTemp
+  let suctionSatTemp     = mtSatSetpoint
   let superheat          = BASELINE.superheat
   let subcooling         = BASELINE.subcooling
   let dischargeSuperheat = BASELINE.dischargeSuperheat
@@ -219,8 +232,8 @@ function computeMT(f: FaultState, oat: number): SystemState {
 
   // Head pressure control floor — fans cycle off / HP valve modulates to maintain minimum
   const rawCondensingTemp = oat + approachDelta
-  const hpCtrlActive      = rawCondensingTemp < HP_CTRL_MIN_COND_SAT
-  let condensingSatTemp   = Math.max(rawCondensingTemp, HP_CTRL_MIN_COND_SAT)
+  const hpCtrlActive      = rawCondensingTemp < hpCtrlSatTemp
+  let condensingSatTemp   = Math.max(rawCondensingTemp, hpCtrlSatTemp)
 
   // ── Charge faults ─────────────────────────────────────────────────────────
   if (f.underchargeModerate && !f.underchargeSevere) {
@@ -320,8 +333,8 @@ function computeMT(f: FaultState, oat: number): SystemState {
 }
 
 // ── LT Booster compute ────────────────────────────────────────────────────────
-function computeLT(f: FaultState, mtSuctionSatTemp: number): LTState {
-  let suctionSatTemp   = LT_BASELINE.suctionSatTemp
+function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: number): LTState {
+  let suctionSatTemp   = ltSatSetpoint
   let superheat        = LT_BASELINE.superheat
   let caseTemp         = LT_BASELINE.caseTemp
   let ampsMultiplier   = 1.0
@@ -575,6 +588,14 @@ export default function SimulationPage() {
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
 
+  // Rack configuration — matches what techs read from the rack controller / setup sheet
+  const [rackSettingsOpen, setRackSettingsOpen] = useState(false)
+  const [rackConfig, setRackConfig] = useState({
+    hpCtrlPsig:    165,  // HP control minimum discharge set point (psig)
+    mtSuctionPsig:  32,  // MT suction set point (psig) — ~20 °F SST on R-404A
+    ltSuctionPsig:   3,  // LT booster suction set point (psig) — ~−20 °F SST on R-404A
+  })
+
   // Scenario state
   const [scenarioMode,   setScenarioMode]   = useState(false)
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
@@ -585,8 +606,13 @@ export default function SimulationPage() {
   const activeFaults = scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults
   const activeOat    = scenarioMode ? (activeScenario?.oat ?? 80) : oat
 
-  const mt = useMemo(() => computeMT(activeFaults, activeOat), [activeFaults, activeOat])
-  const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp), [activeFaults, mt.suctionSatTemp])
+  // Derive sat-temp equivalents from the configured psig set points
+  const hpCtrlSatTemp  = ptReverse(rackConfig.hpCtrlPsig)
+  const mtSatSetpoint  = ptReverse(rackConfig.mtSuctionPsig)
+  const ltSatSetpoint  = ptReverse(rackConfig.ltSuctionPsig)
+
+  const mt = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint])
+  const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp, ltSatSetpoint), [activeFaults, mt.suctionSatTemp, ltSatSetpoint])
 
   // Individual case temperatures — deviation from aggregate caseTemp × sensitivity
   const caseTemps = useMemo(() => STORE_LINEUP.map(s => {
@@ -650,8 +676,8 @@ export default function SimulationPage() {
     : activeOat <= 100 ? 'text-amber-400'
     : 'text-red-400'
 
-  // Clean-condenser condensing sat for reference
-  const cleanCondensingPsig = Math.round(toGauge(ptLookup(Math.max(activeOat + 15, HP_CTRL_MIN_COND_SAT))))
+  // Clean-condenser condensing sat for reference (HP ctrl floor applied)
+  const cleanCondensingPsig = Math.round(toGauge(ptLookup(Math.max(activeOat + 15, hpCtrlSatTemp))))
 
   return (
     <div className="min-h-[100dvh] bg-slate-900 flex flex-col">
@@ -667,7 +693,7 @@ export default function SimulationPage() {
             <span className="hidden sm:inline text-[10px] text-slate-500">4 × Copeland Scroll MT + 2 × Booster LT</span>
           </div>
           <p className="text-[10px] text-slate-500 hidden md:block">
-            MT: 20 °F sat (31.7 psig) · LT: −20 °F sat (3.2 psig) · HP cutout: 400 psig · OAT: <span className={oatColor}>{activeOat} °F</span>
+            MT: {mtSatSetpoint.toFixed(1)}°F SST ({rackConfig.mtSuctionPsig} psig) · LT: {ltSatSetpoint.toFixed(1)}°F SST ({rackConfig.ltSuctionPsig} psig) · HP ctrl: {rackConfig.hpCtrlPsig} psig · OAT: <span className={oatColor}>{activeOat} °F</span>
           </p>
         </div>
 
@@ -725,6 +751,88 @@ export default function SimulationPage() {
               Pick a scenario from the readings panel, then toggle what you think is causing the symptoms.
             </div>
           )}
+
+          {/* ── Rack Settings (collapsible) ── */}
+          <div className="border-b border-slate-700">
+            <button
+              onClick={() => setRackSettingsOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors"
+            >
+              <span>Rack Settings</span>
+              <span className={`transition-transform ${rackSettingsOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+
+            {rackSettingsOpen && (
+              <div className="px-3 pb-3 space-y-4">
+
+                {/* HP Control Set Point */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-slate-400">HP Control Set Point</span>
+                    <span className="text-[11px] font-mono font-semibold text-amber-300">{rackConfig.hpCtrlPsig} psig</span>
+                  </div>
+                  <input
+                    type="range" min={130} max={200} step={5}
+                    value={rackConfig.hpCtrlPsig}
+                    onChange={e => setRackConfig(c => ({ ...c, hpCtrlPsig: Number(e.target.value) }))}
+                    className="w-full accent-amber-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
+                    <span>130</span>
+                    <span className="text-slate-500">
+                      {hpCtrlSatTemp.toFixed(1)}°F sat · fans cycle below OAT ~{Math.round(hpCtrlSatTemp - 15)}°F
+                    </span>
+                    <span>200</span>
+                  </div>
+                </div>
+
+                {/* MT Suction Set Point */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-slate-400">MT Suction Set Point</span>
+                    <span className="text-[11px] font-mono font-semibold text-emerald-300">{rackConfig.mtSuctionPsig} psig</span>
+                  </div>
+                  <input
+                    type="range" min={20} max={45} step={1}
+                    value={rackConfig.mtSuctionPsig}
+                    onChange={e => setRackConfig(c => ({ ...c, mtSuctionPsig: Number(e.target.value) }))}
+                    className="w-full accent-emerald-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
+                    <span>20</span>
+                    <span className="text-slate-500">{mtSatSetpoint.toFixed(1)}°F SST</span>
+                    <span>45</span>
+                  </div>
+                </div>
+
+                {/* LT Suction Set Point */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-slate-400">LT Suction Set Point</span>
+                    <span className="text-[11px] font-mono font-semibold text-blue-300">{rackConfig.ltSuctionPsig} psig</span>
+                  </div>
+                  <input
+                    type="range" min={1} max={10} step={1}
+                    value={rackConfig.ltSuctionPsig}
+                    onChange={e => setRackConfig(c => ({ ...c, ltSuctionPsig: Number(e.target.value) }))}
+                    className="w-full accent-blue-400"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
+                    <span>1</span>
+                    <span className="text-slate-500">{ltSatSetpoint.toFixed(1)}°F SST</span>
+                    <span>10</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setRackConfig({ hpCtrlPsig: 165, mtSuctionPsig: 32, ltSuctionPsig: 3 })}
+                  className="text-[9px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+                >
+                  Reset to defaults
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-3">
             {faultsByGroup.map(({ group, faults: defs }) => (
@@ -817,13 +925,13 @@ export default function SimulationPage() {
                   HP Control:{' '}
                   <span className={mt.hpCtrlActive ? 'text-amber-400 font-medium' : 'text-slate-500'}>
                     {mt.hpCtrlActive
-                      ? `Active — clamping condensing at ${Math.round(mt.condensingTemp)}°F sat (${Math.round(toGauge(ptLookup(mt.condensingTemp)))} psig)`
-                      : 'Off'}
+                      ? `Active — holding ${Math.round(mt.condensingTemp)}°F sat / ${Math.round(toGauge(ptLookup(mt.condensingTemp)))} psig (set ${rackConfig.hpCtrlPsig} psig)`
+                      : `Off (set point ${rackConfig.hpCtrlPsig} psig / ${hpCtrlSatTemp.toFixed(1)}°F sat)`}
                   </span>
                 </span>
                 <span>
-                  Clean-condenser target:{' '}
-                  <span className="text-slate-400">{Math.max(activeOat + 15, HP_CTRL_MIN_COND_SAT)}°F sat / {cleanCondensingPsig} psig</span>
+                  Expected discharge at this OAT:{' '}
+                  <span className="text-slate-400">{cleanCondensingPsig} psig</span>
                 </span>
                 {activeOat < 32 && <span className="text-blue-300 font-medium">Below freezing — monitor for ice on coil</span>}
                 {activeOat > 95 && <span className="text-amber-400 font-medium">High heat load — inspect condenser fan operation</span>}
@@ -1125,21 +1233,21 @@ export default function SimulationPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="R-404A Normal Ranges" icon={<Info size={13}/>}>
                 <div className="text-[10px] text-slate-500 space-y-0.5 py-1 leading-relaxed">
-                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit (20 °F SST · OAT 80 °F baseline)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Suction</span> 28–38 psig (15–25 °F sat)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Discharge</span> 150–250 psig (70–90 °F OAT)</div>
+                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit — configured {rackConfig.mtSuctionPsig} psig / {mtSatSetpoint.toFixed(1)}°F SST</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Suction setpoint</span> {rackConfig.mtSuctionPsig} psig ({mtSatSetpoint.toFixed(1)}°F sat)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Discharge (HP ctrl)</span> {rackConfig.hpCtrlPsig} psig min</div>
                   <div><span className="text-slate-400 w-32 inline-block">Suction SH</span> 15–25 °F</div>
                   <div><span className="text-slate-400 w-32 inline-block">Subcooling</span> 10–20 °F (clear glass)</div>
                   <div><span className="text-slate-400 w-32 inline-block">Discharge temp</span> 130–200 °F</div>
                   <div><span className="text-slate-400 w-32 inline-block">Oil diff</span> 20–25 psi (Y825)</div>
-                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster (−20 °F SST)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT suction</span> 2–5 psig</div>
+                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — configured {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
+                  <div><span className="text-slate-400 w-32 inline-block">LT suction setpoint</span> {rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F sat)</div>
                   <div><span className="text-slate-400 w-32 inline-block">LT ratio</span> 2.0–3.5 : 1</div>
                   <div><span className="text-slate-400 w-32 inline-block">LT superheat</span> 10–20 °F</div>
-                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control (Low Ambient)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> 85 °F sat (~146 psig)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~70 °F (clean rack)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Hussmann setpoint</span> typically 155–175 psig</div>
+                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — configured {rackConfig.hpCtrlPsig} psig</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> {hpCtrlSatTemp.toFixed(1)}°F sat ({rackConfig.hpCtrlPsig} psig)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~{Math.round(hpCtrlSatTemp - 15)}°F (clean rack)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Typical range</span> 155–175 psig (rack setup sheet)</div>
                 </div>
               </Card>
 
