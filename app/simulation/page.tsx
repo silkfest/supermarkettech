@@ -193,6 +193,23 @@ interface LTState {
   caseTemp: number; alarms: Alarm[]
 }
 
+// ── Field Readings diagnostic ─────────────────────────────────────────────────
+interface Finding {
+  severity: 'critical' | 'warning' | 'info' | 'ok'
+  label: string
+  measurement: string
+  causes: string[]
+  checks: string[]
+}
+
+const FIELD_EMPTY = {
+  oat: '', mtSuctionPsig: '', mtSuctionTemp: '', ltSuctionPsig: '', ltSuctionTemp: '',
+  dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
+  drierInTemp: '', drierOutTemp: '', oilDiffPsi: '',
+  mtCompsRunning: '', ltCompsRunning: '',
+}
+type FieldReadings = typeof FIELD_EMPTY
+
 // ── MT compute ────────────────────────────────────────────────────────────────
 function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number): SystemState {
   // Condenser approach delta — starts at 15 °F (clean coil, all fans running)
@@ -503,6 +520,240 @@ function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps:
   ].join('\n')
 }
 
+// ── Field analysis engine ─────────────────────────────────────────────────────
+type RackCfg = { hpCtrlPsig: number; mtSuctionPsig: number; ltSuctionPsig: number }
+
+function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: RackCfg): { derived: Record<string, number | null>; findings: Finding[] } {
+  const n = (s: string) => s.trim() === '' ? null : Number(s)
+  const oat            = n(r.oat)
+  const dischargePsig  = n(r.dischargePsig)
+  const dischargeTemp  = n(r.dischargeTemp)
+  const mtSuctionPsig  = n(r.mtSuctionPsig)
+  const mtSuctionTemp  = n(r.mtSuctionTemp)
+  const ltSuctionPsig  = n(r.ltSuctionPsig)
+  const ltSuctionTemp  = n(r.ltSuctionTemp)
+  const liquidLineTemp = n(r.liquidLineTemp)
+  const drierInTemp    = n(r.drierInTemp)
+  const drierOutTemp   = n(r.drierOutTemp)
+  const oilDiffPsi     = n(r.oilDiffPsi)
+
+  const condensingSatTemp     = dischargePsig  !== null ? ptReverse(dischargePsig)  : null
+  const mtSatTemp             = mtSuctionPsig  !== null ? ptReverse(mtSuctionPsig)  : null
+  const ltSatTemp             = ltSuctionPsig  !== null ? ptReverse(ltSuctionPsig)  : null
+  const mtSuperheat           = mtSatTemp      !== null && mtSuctionTemp  !== null ? mtSuctionTemp  - mtSatTemp      : null
+  const ltSuperheat           = ltSatTemp      !== null && ltSuctionTemp  !== null ? ltSuctionTemp  - ltSatTemp      : null
+  const subcooling            = condensingSatTemp !== null && liquidLineTemp !== null ? condensingSatTemp - liquidLineTemp : null
+  const dischargeSuperheat    = condensingSatTemp !== null && dischargeTemp !== null  ? dischargeTemp  - condensingSatTemp : null
+  const approachDelta         = condensingSatTemp !== null && oat !== null ? condensingSatTemp - oat : null
+  const drierDeltaT           = drierInTemp !== null && drierOutTemp !== null ? drierInTemp - drierOutTemp : null
+  const mtCompRatio           = dischargePsig !== null && mtSuctionPsig !== null ? (dischargePsig + 14.696) / (mtSuctionPsig + 14.696) : null
+  const ltCompRatio           = mtSuctionPsig !== null && ltSuctionPsig !== null ? (mtSuctionPsig + 14.696) / (ltSuctionPsig + 14.696) : null
+  const expectedCondSatTemp   = oat !== null ? Math.max(oat + 15, hpCtrlSatTemp) : null
+  const expectedDischargePsig = expectedCondSatTemp !== null ? toGauge(ptLookup(expectedCondSatTemp)) : null
+  const dischargeDeviation    = dischargePsig !== null && expectedDischargePsig !== null ? dischargePsig - expectedDischargePsig : null
+  const hpCtrlFloor           = condensingSatTemp !== null ? condensingSatTemp <= hpCtrlSatTemp + 1 : false
+  const mtSuctionDev          = mtSuctionPsig !== null ? mtSuctionPsig - cfg.mtSuctionPsig : null
+  const ltSuctionDev          = ltSuctionPsig !== null ? ltSuctionPsig - cfg.ltSuctionPsig : null
+
+  const findings: Finding[] = []
+
+  // Approach delta
+  if (approachDelta !== null) {
+    if (approachDelta > 28)
+      findings.push({ severity: 'critical', label: 'Very high approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal 12–18°F)`,
+        causes: ['Badly fouled condenser coil', 'Multiple condenser fans failed', 'Non-condensables in system', 'Machine room hot air recirculation'],
+        checks: ['Wash condenser coil', 'Verify all fans spinning at full speed', 'Compare discharge psig vs PT equivalent — gap = non-condensables', 'Inspect machine room louvres / baffles'] })
+    else if (approachDelta > 18)
+      findings.push({ severity: 'warning', label: 'Elevated approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal 12–18°F)`,
+        causes: ['Partially fouled condenser coil', 'One fan failed or reduced speed', 'Airflow restriction'],
+        checks: ['Inspect condenser coil', 'Verify fan amp draw and blade condition', 'Check all louvres fully open'] })
+  }
+
+  // Discharge vs expected
+  if (dischargeDeviation !== null && oat !== null) {
+    if (dischargeDeviation > 50)
+      findings.push({ severity: 'critical', label: 'Discharge well above expected for OAT', measurement: `${Math.round(dischargePsig!)} psig actual vs ~${Math.round(expectedDischargePsig!)} psig expected at ${oat}°F OAT`,
+        causes: ['Dirty condenser coil', 'Fan failure(s)', 'Non-condensables', 'Poor ventilation', 'Overcharge'],
+        checks: ['Cross-reference approach ΔT', 'Count fans running and check amps', 'Compare discharge psig vs PT sat — if psig exceeds PT, non-condensables likely'] })
+    else if (dischargeDeviation > 25)
+      findings.push({ severity: 'warning', label: 'Discharge above expected for OAT', measurement: `${Math.round(dischargePsig!)} psig vs ~${Math.round(expectedDischargePsig!)} psig expected`,
+        causes: ['Partial condenser fouling', 'Fan at reduced speed', 'Slight overcharge'],
+        checks: ['Inspect condenser coil', 'Verify all fans running at design speed'] })
+    else if (dischargeDeviation < -20 && !hpCtrlFloor)
+      findings.push({ severity: 'warning', label: 'Discharge lower than expected', measurement: `${Math.round(dischargePsig!)} psig vs ~${Math.round(expectedDischargePsig!)} psig expected`,
+        causes: ['HP control set point lower than configured', 'Undercharge pulling head down'],
+        checks: ['Verify HP control set point on rack controller display', 'Check subcooling — if very low, undercharge is pulling head down'] })
+  }
+
+  // MT superheat
+  if (mtSuperheat !== null) {
+    if (mtSuperheat > 50)
+      findings.push({ severity: 'critical', label: 'Very high MT suction superheat', measurement: `${mtSuperheat.toFixed(1)}°F (target 15–25°F)`,
+        causes: ['Severe undercharge', 'TXV bulb failed or lost charge', 'Filter drier severely restricted', 'Liquid line blocked'],
+        checks: ['Check subcooling and sight glass immediately', 'Feel liquid line for ΔT across drier', 'Inspect TXV bulb contact and clamp', 'Weigh refrigerant charge'] })
+    else if (mtSuperheat > 30)
+      findings.push({ severity: 'warning', label: 'High MT suction superheat', measurement: `${mtSuperheat.toFixed(1)}°F (target 15–25°F)`,
+        causes: ['Moderate undercharge', 'TXV hunting or partially closed', 'Filter drier partially restricted', 'Low load'],
+        checks: ['Check subcooling — if < 8°F, suspect undercharge', 'Measure drier in/out ΔT', 'Verify TXV superheat setting'] })
+    else if (mtSuperheat < 5 && mtSuperheat >= 0)
+      findings.push({ severity: 'warning', label: 'Low MT superheat — floodback risk', measurement: `${mtSuperheat.toFixed(1)}°F (target 15–25°F)`,
+        causes: ['Overcharge', 'TXV overfeeding', 'Defrost stuck on', 'Low load on partially idle circuit'],
+        checks: ['Check subcooling — if > 30°F, suspect overcharge', 'Verify TXV setting', 'Check MT defrost termination'] })
+    else if (mtSuperheat < 0)
+      findings.push({ severity: 'critical', label: 'Negative MT superheat — active floodback', measurement: `${mtSuperheat.toFixed(1)}°F — liquid at suction header`,
+        causes: ['Severe overcharge', 'TXV wide open', 'Defrost stuck on with flooded circuit'],
+        checks: ['Immediate liquid slugging risk', 'Check crankcase sight glass for oil foaming', 'Recover excess charge if overcharged'] })
+  }
+
+  // Subcooling
+  if (subcooling !== null) {
+    if (subcooling < 3)
+      findings.push({ severity: 'critical', label: 'Near-zero subcooling — flash gas', measurement: `${subcooling.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['Undercharge', 'Restricted filter drier creating pressure drop', 'Head pressure too low', 'Long liquid line with elevation rise'],
+        checks: ['Check sight glass — bubbles confirm flash gas', 'Measure drier ΔT', 'Weigh charge', 'Verify head pressure at set point'] })
+    else if (subcooling < 8)
+      findings.push({ severity: 'warning', label: 'Low subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['Marginal charge', 'Partial drier restriction reducing liquid pressure'],
+        checks: ['Inspect sight glass for intermittent bubbling', 'Measure drier in/out ΔT', 'Compare with expected charge weight'] })
+    else if (subcooling > 30)
+      findings.push({ severity: 'warning', label: 'High subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['Overcharge', 'Low ambient — liquid migrating to condenser/receiver', 'Liquid backup from downstream restriction'],
+        checks: ['Check OAT — if low and HP ctrl active, may be normal', 'If high OAT + high SC, suspect overcharge — recover excess'] })
+  }
+
+  // LT superheat
+  if (ltSuperheat !== null) {
+    if (ltSuperheat > 35)
+      findings.push({ severity: 'critical', label: 'Very high LT booster superheat', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['LT TXV bulb failed or lost contact', 'LT drier restricted', 'LT severe undercharge', 'Liquid solenoid not opening'],
+        checks: ['Verify LT TXV bulb clamped on suction line', 'Check ΔT across LT drier', 'Inspect liquid solenoid to frozen cases'] })
+    else if (ltSuperheat > 25)
+      findings.push({ severity: 'warning', label: 'High LT booster superheat', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['LT TXV not feeding adequately', 'Partial LT drier restriction', 'LT moderate undercharge'],
+        checks: ['Check LT TXV bulb position and external equalizer', 'Check drier ΔT on LT liquid feed'] })
+    else if (ltSuperheat < 4 && ltSuperheat >= 0)
+      findings.push({ severity: 'warning', label: 'Low LT superheat — liquid carryover risk', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
+        causes: ['LT TXV overfeeding', 'LT defrost stuck on', 'Low LT load'],
+        checks: ['Verify LT defrost has terminated', 'Check LT TXV setting', 'Watch LT booster for slugging signs'] })
+  }
+
+  // Discharge superheat
+  if (dischargeSuperheat !== null && dischargeSuperheat > 100)
+    findings.push({ severity: 'critical', label: 'Very high discharge superheat', measurement: `${dischargeSuperheat.toFixed(0)}°F above condensing sat`,
+      causes: ['High suction SH driving discharge up', 'Poor compressor valve efficiency', 'High compression ratio'],
+      checks: ['Correlate with MT suction superheat', 'Verify liquid injection is functioning', 'Check discharge temp sensor accuracy'] })
+  else if (dischargeSuperheat !== null && dischargeSuperheat > 80)
+    findings.push({ severity: 'warning', label: 'Elevated discharge superheat', measurement: `${dischargeSuperheat.toFixed(0)}°F above condensing sat`,
+      causes: ['Elevated suction superheat', 'High compression ratio', 'High OAT combined with other faults'],
+      checks: ['Correlate with suction superheat — usually linked'] })
+
+  // Filter drier
+  if (drierDeltaT !== null) {
+    if (drierDeltaT > 8)
+      findings.push({ severity: 'critical', label: 'Filter drier severely restricted', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core saturated with moisture or debris', 'Drier icing (moisture in system)'],
+        checks: ['Replace drier core immediately', 'After replacement check subcooling and sight glass', 'Nitrogen purge and vacuum if moisture confirmed'] })
+    else if (drierDeltaT > 3)
+      findings.push({ severity: 'warning', label: 'Filter drier showing restriction', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core partially saturated'],
+        checks: ['Plan drier core replacement', 'Monitor sight glass for bubbling downstream of drier'] })
+  }
+
+  // Oil differential
+  if (oilDiffPsi !== null) {
+    if (oilDiffPsi < 10)
+      findings.push({ severity: 'critical', label: 'Oil differential below OFC trip point', measurement: `${oilDiffPsi.toFixed(0)} psi (Y825 target 20–25 psi above suction)`,
+        causes: ['Y825 valve out of adjustment', 'Low oil in separator', 'Oil logged in system', 'Oil pump failure'],
+        checks: ['Adjust Y825 needle valve — DO NOT restart compressor until oil issue resolved', 'Check oil sight glass in separator', 'Inspect oil return lines from cases'] })
+    else if (oilDiffPsi < 18)
+      findings.push({ severity: 'warning', label: 'Low oil differential', measurement: `${oilDiffPsi.toFixed(0)} psi (Y825 target 20–25 psi above suction)`,
+        causes: ['Y825 valve needs adjustment', 'Oil level slightly low'],
+        checks: ['Adjust Y825 — clockwise raises differential', 'Monitor oil sight glass level'] })
+  }
+
+  // MT suction vs setpoint
+  if (mtSuctionDev !== null && Math.abs(mtSuctionDev) > 6)
+    findings.push({ severity: 'warning',
+      label: mtSuctionDev > 0 ? 'MT suction above set point' : 'MT suction below set point',
+      measurement: `${n(r.mtSuctionPsig)?.toFixed(1)} psig vs ${cfg.mtSuctionPsig} psig configured set point`,
+      causes: mtSuctionDev > 0
+        ? ['Excess load', 'Defrost stuck on', 'TXV overfeeding', 'Overcharge']
+        : ['Undercharge', 'TXV not feeding', 'Low load', 'Set point needs adjustment'],
+      checks: mtSuctionDev > 0
+        ? ['Check MT case loads and defrost status', 'Verify suction set point on rack controller']
+        : ['Check subcooling and sight glass for undercharge', 'Verify all TXVs feeding properly'] })
+
+  // LT suction vs setpoint
+  if (ltSuctionDev !== null && Math.abs(ltSuctionDev) > 2)
+    findings.push({ severity: 'warning',
+      label: ltSuctionDev > 0 ? 'LT suction above set point' : 'LT suction below set point',
+      measurement: `${n(r.ltSuctionPsig)?.toFixed(1)} psig vs ${cfg.ltSuctionPsig} psig configured set point`,
+      causes: ltSuctionDev > 0 ? ['LT defrost stuck on', 'High frozen food load', 'LT TXV overfeeding'] : ['LT undercharge', 'LT TXV not feeding', 'Low LT load'],
+      checks: ['Check LT defrost status', 'Verify LT TXV bulb and feeding', 'Inspect LT case temps'] })
+
+  // High compression ratio
+  if (mtCompRatio !== null && mtCompRatio > 10)
+    findings.push({ severity: 'warning', label: 'High MT compression ratio', measurement: `${mtCompRatio.toFixed(2)} : 1 (normal 4–8 : 1)`,
+      causes: ['Combination of low suction + elevated discharge'],
+      checks: ['Address root causes separately — high ratio stresses compressor valves and raises discharge temp'] })
+
+  // All OK
+  const hasData = [dischargePsig, mtSuctionPsig, liquidLineTemp, mtSuctionTemp].some(v => v !== null)
+  if (findings.length === 0 && hasData)
+    findings.push({ severity: 'ok', label: 'No significant deviations found', measurement: '',
+      causes: [], checks: ['Readings appear within normal range for this rack config — enter more measurements for a fuller picture'] })
+
+  return {
+    derived: { condensingSatTemp, mtSatTemp, ltSatTemp, mtSuperheat, ltSuperheat, subcooling, dischargeSuperheat, approachDelta, drierDeltaT, mtCompRatio, ltCompRatio, expectedDischargePsig, dischargeDeviation },
+    findings,
+  }
+}
+
+function buildFieldDiagnoseText(r: FieldReadings, derived: Record<string, number | null>, findings: Finding[], cfg: RackCfg): string {
+  const fmt  = (v: number | null, dec = 1, unit = '') => v === null ? '—' : `${v.toFixed(dec)}${unit}`
+  const fmtR = (v: string, unit: string) => v.trim() ? `${v} ${unit}` : '—'
+  return [
+    '=== ColdIQ Field Readings Diagnostic ===',
+    'System: Hussmann Parallel Rack | R-404A',
+    `Rack config: HP ctrl ${cfg.hpCtrlPsig} psig | MT suction ${cfg.mtSuctionPsig} psig | LT suction ${cfg.ltSuctionPsig} psig`,
+    '',
+    'FIELD MEASUREMENTS:',
+    `  OAT:                 ${fmtR(r.oat, '°F')}`,
+    `  MT Suction:          ${fmtR(r.mtSuctionPsig, 'psig')}  /  Line temp: ${fmtR(r.mtSuctionTemp, '°F')}`,
+    `  LT Suction:          ${fmtR(r.ltSuctionPsig, 'psig')}  /  Line temp: ${fmtR(r.ltSuctionTemp, '°F')}`,
+    `  Discharge:           ${fmtR(r.dischargePsig, 'psig')}  /  Discharge temp: ${fmtR(r.dischargeTemp, '°F')}`,
+    `  Liquid line temp:    ${fmtR(r.liquidLineTemp, '°F')}`,
+    ...(r.drierInTemp || r.drierOutTemp ? [`  Filter drier:        In ${fmtR(r.drierInTemp, '°F')} → Out ${fmtR(r.drierOutTemp, '°F')}`] : []),
+    ...(r.oilDiffPsi      ? [`  Oil differential:   ${fmtR(r.oilDiffPsi, 'psi')}`] : []),
+    ...(r.mtCompsRunning  ? [`  MT compressors:     ${r.mtCompsRunning} running`]  : []),
+    ...(r.ltCompsRunning  ? [`  LT boosters:        ${r.ltCompsRunning} running`]  : []),
+    '',
+    'CALCULATED VALUES:',
+    `  Condensing sat temp: ${fmt(derived.condensingSatTemp, 1, '°F sat')}`,
+    `  MT sat temp:         ${fmt(derived.mtSatTemp, 1, '°F sat')}`,
+    `  MT superheat:        ${fmt(derived.mtSuperheat, 1, '°F')}`,
+    `  Subcooling:          ${fmt(derived.subcooling, 1, '°F')}`,
+    `  Discharge superheat: ${fmt(derived.dischargeSuperheat, 0, '°F')}`,
+    `  Approach ΔT:         ${fmt(derived.approachDelta, 1, '°F')}`,
+    `  MT comp ratio:       ${fmt(derived.mtCompRatio, 2, ' : 1')}`,
+    ...(derived.ltSatTemp      !== null ? [`  LT sat temp:         ${fmt(derived.ltSatTemp, 1, '°F sat')}`]      : []),
+    ...(derived.ltSuperheat    !== null ? [`  LT superheat:        ${fmt(derived.ltSuperheat, 1, '°F')}`]         : []),
+    ...(derived.ltCompRatio    !== null ? [`  LT comp ratio:       ${fmt(derived.ltCompRatio, 2, ' : 1')}`]       : []),
+    ...(derived.drierDeltaT    !== null ? [`  Filter drier ΔT:     ${fmt(derived.drierDeltaT, 1, '°F')}`]        : []),
+    `  Expected discharge:  ${fmt(derived.expectedDischargePsig, 0, ' psig')} at this OAT`,
+    `  Deviation:           ${derived.dischargeDeviation !== null ? (derived.dischargeDeviation >= 0 ? '+' : '') + derived.dischargeDeviation.toFixed(0) + ' psig vs expected' : '—'}`,
+    '',
+    `FINDINGS (${findings.length}):`,
+    ...findings.map(f =>
+      [`  [${f.severity.toUpperCase()}] ${f.label}${f.measurement ? ' — ' + f.measurement : ''}`,
+       ...(f.causes.length ? ['    Possible causes: ' + f.causes.join(', ')] : []),
+       ...(f.checks.length ? ['    Check first: ' + f.checks[0]] : []),
+      ].join('\n')),
+    '',
+    'Based on these field readings and findings, what is the most likely root cause and what should I check next on site?',
+  ].join('\n')
+}
+
 // ── UI helpers ────────────────────────────────────────────────────────────────
 function statusColor(val: number, warn: number, alarm: number, reversed = false) {
   const bad  = reversed ? val <= alarm : val >= alarm
@@ -559,6 +810,28 @@ function Card({ title, icon, children, className = '', accent = 'bg-slate-700/50
   )
 }
 
+interface FieldInputProps { label: string; value: string; onChange: (v: string) => void; unit: string; placeholder?: string; hint?: string }
+function FieldInput({ label, value, onChange, unit, placeholder, hint }: FieldInputProps) {
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <div className="w-36 flex-shrink-0">
+        <div className="text-[10px] text-slate-400 leading-tight">{label}</div>
+        {hint && <div className="text-[9px] text-slate-600">{hint}</div>}
+      </div>
+      <div className="relative flex-1">
+        <input
+          type="number"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder ?? '—'}
+          className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-2.5 py-1.5 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none">{unit}</span>
+      </div>
+    </div>
+  )
+}
+
 interface ToggleProps { active: boolean; onChange: () => void; label: string; hint: string; disabled?: boolean }
 function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
   return (
@@ -595,6 +868,12 @@ export default function SimulationPage() {
     mtSuctionPsig:  32,  // MT suction set point (psig) — ~20 °F SST on R-404A
     ltSuctionPsig:   3,  // LT booster suction set point (psig) — ~−20 °F SST on R-404A
   })
+
+  // Field Readings diagnostic tab
+  const [diagTab,       setDiagTab]       = useState<'sim' | 'field'>('sim')
+  const [fieldReadings, setFieldReadings] = useState<FieldReadings>(FIELD_EMPTY)
+  const updateField = (key: keyof FieldReadings, val: string) =>
+    setFieldReadings(prev => ({ ...prev, [key]: val }))
 
   // Scenario state
   const [scenarioMode,   setScenarioMode]   = useState(false)
@@ -653,8 +932,18 @@ export default function SimulationPage() {
   function exitScenarioMode()  { setScenarioMode(false); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
   function loadScenario(s: Scenario) { setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
   function submitDiagnosis() { setSubmitted(true) }
+  const fieldAnalysis = useMemo(
+    () => analyzeFieldReadings(fieldReadings, hpCtrlSatTemp, rackConfig),
+    [fieldReadings, hpCtrlSatTemp, rackConfig]
+  )
+
   function diagnoseInColdIQ() {
     try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps)) } catch { /* ignore */ }
+    router.push('/dashboard')
+  }
+
+  function diagnoseField() {
+    try { localStorage.setItem('coldiq_prefill', buildFieldDiagnoseText(fieldReadings, fieldAnalysis.derived, fieldAnalysis.findings, rackConfig)) } catch { /* ignore */ }
     router.push('/dashboard')
   }
 
@@ -887,9 +1176,186 @@ export default function SimulationPage() {
           {showFaults ? 'Hide' : scenarioMode ? 'Diagnose' : `Faults${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
         </button>
 
-        {/* ── Readings panel ── */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4">
-          <div className="max-w-4xl mx-auto space-y-3">
+        {/* ── Readings panel + tab bar ── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Tab bar */}
+          <div className="flex-shrink-0 border-b border-slate-700 flex bg-slate-800">
+            <button onClick={() => setDiagTab('sim')}
+              className={`flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${diagTab === 'sim' ? 'text-blue-400 border-blue-500' : 'text-slate-500 hover:text-slate-300 border-transparent'}`}>
+              🔧 Fault Simulator
+            </button>
+            <button onClick={() => setDiagTab('field')}
+              className={`flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${diagTab === 'field' ? 'text-emerald-400 border-emerald-500' : 'text-slate-500 hover:text-slate-300 border-transparent'}`}>
+              📋 Field Readings
+            </button>
+          </div>
+
+          {diagTab === 'field' ? (
+          /* ── Field Readings Diagnostic ─────────────────────────────────── */
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+
+            {/* Left: input form */}
+            <div className="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-700 overflow-y-auto p-4 space-y-1">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-slate-300">Enter Your Readings</span>
+                <button onClick={() => setFieldReadings(FIELD_EMPTY)} className="text-[10px] text-slate-500 hover:text-slate-300 underline underline-offset-2">Clear all</button>
+              </div>
+
+              <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">Enter what you see on site — leave blank any values you haven&apos;t measured yet. Calculations update instantly.</p>
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-1 pb-0.5">Environment</div>
+              <FieldInput label="Outdoor Ambient (OAT)" value={fieldReadings.oat} onChange={v => updateField('oat', v)} unit="°F" placeholder="e.g. 75" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">MT Circuit</div>
+              <FieldInput label="MT Suction Pressure" value={fieldReadings.mtSuctionPsig} onChange={v => updateField('mtSuctionPsig', v)} unit="psig" placeholder="e.g. 32" hint="gauge at rack header" />
+              <FieldInput label="MT Suction Line Temp" value={fieldReadings.mtSuctionTemp} onChange={v => updateField('mtSuctionTemp', v)} unit="°F" placeholder="e.g. 42" hint="pipe temp at rack" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">LT Booster Circuit</div>
+              <FieldInput label="LT Suction Pressure" value={fieldReadings.ltSuctionPsig} onChange={v => updateField('ltSuctionPsig', v)} unit="psig" placeholder="e.g. 3" hint="booster suction gauge" />
+              <FieldInput label="LT Suction Line Temp" value={fieldReadings.ltSuctionTemp} onChange={v => updateField('ltSuctionTemp', v)} unit="°F" placeholder="e.g. -8" hint="pipe temp at booster" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Discharge Side</div>
+              <FieldInput label="Discharge Pressure" value={fieldReadings.dischargePsig} onChange={v => updateField('dischargePsig', v)} unit="psig" placeholder="e.g. 165" hint="rack discharge header" />
+              <FieldInput label="Discharge Line Temp" value={fieldReadings.dischargeTemp} onChange={v => updateField('dischargeTemp', v)} unit="°F" placeholder="e.g. 185" hint="pipe temp at discharge" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Liquid Line</div>
+              <FieldInput label="Liquid Line Temp" value={fieldReadings.liquidLineTemp} onChange={v => updateField('liquidLineTemp', v)} unit="°F" placeholder="e.g. 78" hint="after condenser / at receiver" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Filter Drier (optional)</div>
+              <FieldInput label="Drier Inlet Temp" value={fieldReadings.drierInTemp} onChange={v => updateField('drierInTemp', v)} unit="°F" placeholder="e.g. 80" />
+              <FieldInput label="Drier Outlet Temp" value={fieldReadings.drierOutTemp} onChange={v => updateField('drierOutTemp', v)} unit="°F" placeholder="e.g. 77" hint="ΔT > 3°F = restriction" />
+
+              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Oil &amp; Compressors</div>
+              <FieldInput label="Oil Diff Pressure" value={fieldReadings.oilDiffPsi} onChange={v => updateField('oilDiffPsi', v)} unit="psi" placeholder="e.g. 22" hint="Y825 — target 20–25 psi above suc" />
+              <FieldInput label="MT Compressors" value={fieldReadings.mtCompsRunning} onChange={v => updateField('mtCompsRunning', v)} unit="running" placeholder="e.g. 3" hint="how many are running" />
+              <FieldInput label="LT Boosters" value={fieldReadings.ltCompsRunning} onChange={v => updateField('ltCompsRunning', v)} unit="running" placeholder="e.g. 2" />
+
+              <div className="pt-4">
+                <button onClick={diagnoseField}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                  <MessageSquare size={13}/> Ask ColdIQ AI About These Readings
+                </button>
+              </div>
+            </div>
+
+            {/* Right: derived calculations + findings */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+              {/* Derived values */}
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-3 py-2 bg-slate-700/50 border-b border-slate-700 flex items-center gap-2">
+                  <Activity size={13} className="text-slate-400"/>
+                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Calculated Values</span>
+                </div>
+                <div className="px-3 py-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                  {(() => {
+                    const d = fieldAnalysis.derived
+                    const row = (label: string, val: number | null, dec: number, unit: string, note?: string, color?: string) => (
+                      val === null ? null :
+                      <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-700/40 last:border-0">
+                        <span className="text-[10px] text-slate-400">{label}</span>
+                        <div className="text-right">
+                          <span className={`text-sm font-mono font-semibold tabular-nums ${color ?? 'text-white'}`}>{val.toFixed(dec)} {unit}</span>
+                          {note && <div className="text-[9px] text-amber-400">{note}</div>}
+                        </div>
+                      </div>
+                    )
+                    return [
+                      row('Condensing sat temp', d.condensingSatTemp, 1, '°F sat'),
+                      row('MT sat temp (suction)', d.mtSatTemp, 1, '°F sat'),
+                      row('MT superheat', d.mtSuperheat, 1, '°F',
+                        d.mtSuperheat !== null && d.mtSuperheat > 30 ? 'HIGH' : d.mtSuperheat !== null && d.mtSuperheat < 5 ? 'LOW' : undefined,
+                        d.mtSuperheat !== null && (d.mtSuperheat > 30 || d.mtSuperheat < 5) ? 'text-amber-400' : 'text-emerald-400'),
+                      row('Subcooling', d.subcooling, 1, '°F',
+                        d.subcooling !== null && d.subcooling < 3 ? 'FLASH GAS' : d.subcooling !== null && d.subcooling < 8 ? 'LOW' : undefined,
+                        d.subcooling !== null && d.subcooling < 8 ? 'text-amber-400' : 'text-emerald-400'),
+                      row('Discharge superheat', d.dischargeSuperheat, 0, '°F',
+                        d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'HIGH' : undefined,
+                        d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'text-amber-400' : 'text-white'),
+                      row('Approach ΔT', d.approachDelta, 1, '°F',
+                        d.approachDelta !== null && d.approachDelta > 18 ? 'ELEVATED' : undefined,
+                        d.approachDelta !== null && d.approachDelta > 18 ? 'text-amber-400' : 'text-emerald-400'),
+                      row('MT compression ratio', d.mtCompRatio, 2, ': 1',
+                        d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'HIGH' : undefined,
+                        d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'text-amber-400' : 'text-white'),
+                      row('LT sat temp (suction)', d.ltSatTemp, 1, '°F sat'),
+                      row('LT superheat', d.ltSuperheat, 1, '°F',
+                        d.ltSuperheat !== null && d.ltSuperheat > 25 ? 'HIGH' : d.ltSuperheat !== null && d.ltSuperheat < 4 ? 'LOW' : undefined,
+                        d.ltSuperheat !== null && (d.ltSuperheat > 25 || d.ltSuperheat < 4) ? 'text-amber-400' : 'text-emerald-400'),
+                      row('LT compression ratio', d.ltCompRatio, 2, ': 1'),
+                      row('Filter drier ΔT', d.drierDeltaT, 1, '°F',
+                        d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'RESTRICTED' : undefined,
+                        d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'text-amber-400' : 'text-emerald-400'),
+                      row('Expected discharge', d.expectedDischargePsig, 0, 'psig'),
+                      d.dischargeDeviation !== null ? (
+                        <div key="dev" className="flex items-center justify-between py-1.5 border-b border-slate-700/40 last:border-0">
+                          <span className="text-[10px] text-slate-400">Discharge deviation</span>
+                          <span className={`text-sm font-mono font-semibold tabular-nums ${Math.abs(d.dischargeDeviation) > 25 ? 'text-amber-400' : 'text-slate-300'}`}>
+                            {d.dischargeDeviation >= 0 ? '+' : ''}{d.dischargeDeviation.toFixed(0)} psig
+                          </span>
+                        </div>
+                      ) : null,
+                    ]
+                  })()}
+                </div>
+              </div>
+
+              {/* Findings */}
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-3 py-2 bg-slate-700/50 border-b border-slate-700 flex items-center gap-2">
+                  <AlertTriangle size={13} className="text-slate-400"/>
+                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Findings</span>
+                  <span className="ml-auto text-[10px] text-slate-500">{fieldAnalysis.findings.length} result{fieldAnalysis.findings.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="p-3 space-y-3">
+                  {fieldAnalysis.findings.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">Enter readings on the left to see analysis</p>
+                  ) : fieldAnalysis.findings.map((f, i) => (
+                    <div key={i} className={`rounded-lg border p-3 ${
+                      f.severity === 'critical' ? 'bg-red-500/10 border-red-500/40' :
+                      f.severity === 'warning'  ? 'bg-amber-500/10 border-amber-500/40' :
+                      f.severity === 'ok'       ? 'bg-emerald-500/10 border-emerald-500/40' :
+                      'bg-slate-700/40 border-slate-600'}`}>
+                      <div className="flex items-start gap-2 mb-1.5">
+                        {f.severity === 'critical' ? <XCircle size={13} className="text-red-400 flex-shrink-0 mt-0.5"/> :
+                         f.severity === 'warning'  ? <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5"/> :
+                         f.severity === 'ok'       ? <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0 mt-0.5"/> :
+                         <Info size={13} className="text-slate-400 flex-shrink-0 mt-0.5"/>}
+                        <div className="min-w-0">
+                          <span className={`text-xs font-semibold ${
+                            f.severity === 'critical' ? 'text-red-300' :
+                            f.severity === 'warning'  ? 'text-amber-300' :
+                            f.severity === 'ok'       ? 'text-emerald-300' : 'text-slate-300'}`}>{f.label}</span>
+                          {f.measurement && <span className="text-[10px] text-slate-400 ml-1.5">{f.measurement}</span>}
+                        </div>
+                      </div>
+                      {f.causes.length > 0 && (
+                        <div className="ml-5 mb-1">
+                          <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">Possible causes: </span>
+                          <span className="text-[10px] text-slate-400">{f.causes.join(' · ')}</span>
+                        </div>
+                      )}
+                      {f.checks.map((c, j) => (
+                        <div key={j} className="ml-5 flex items-start gap-1.5 mt-0.5">
+                          <span className="text-[9px] text-slate-600 mt-0.5">→</span>
+                          <span className="text-[10px] text-slate-400 leading-snug">{c}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-600 text-center pb-2">
+                Rack config used: HP ctrl {rackConfig.hpCtrlPsig} psig · MT suc {rackConfig.mtSuctionPsig} psig · LT suc {rackConfig.ltSuctionPsig} psig — adjust in Rack Settings
+              </p>
+            </div>
+          </div>
+          ) : (
+          /* ── Sim readings (existing) ─────────────────────────────────────── */
+          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+            <div className="max-w-4xl mx-auto space-y-3">
 
             {/* ── OAT Slider ── */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
@@ -1298,6 +1764,9 @@ export default function SimulationPage() {
             </div>
 
           </div>
+          </div>
+          )}
+
         </div>
       </div>
     </div>
