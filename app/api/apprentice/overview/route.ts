@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/client'
+import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const supabase = getSupabaseServer()
 
   const [{ data: apprentices }, { data: allProgress }, { data: tasks }, { data: journeymen }] = await Promise.all([
