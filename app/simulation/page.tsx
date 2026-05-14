@@ -105,7 +105,9 @@ const BASELINE = {
   baseAmps:           21,   // A per compressor (460 V / 3 Ph)
 }
 // Head pressure control: minimum condensing sat temp (models HP control valve/fan cycling)
-const HP_CTRL_MIN_COND_SAT = 65  // °F sat ≈ 103 psig — typical minimum setpoint
+// Hussmann standard HPC setpoint: 85 °F sat ≈ 146 psig (commonly displayed as ~165 psig on older gauges)
+// Activates whenever OAT + approach would fall below this floor (typically OAT < 70 °F on a clean rack)
+const HP_CTRL_MIN_COND_SAT = 85  // °F sat ≈ 146 psig
 
 const SAFETY = {
   hpcoPsig:        400,
@@ -1135,8 +1137,9 @@ export default function SimulationPage() {
                   <div><span className="text-slate-400 w-32 inline-block">LT ratio</span> 2.0–3.5 : 1</div>
                   <div><span className="text-slate-400 w-32 inline-block">LT superheat</span> 10–20 °F</div>
                   <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control (Low Ambient)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> 65 °F sat (~103 psig)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~50 °F</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> 85 °F sat (~146 psig)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~70 °F (clean rack)</div>
+                  <div><span className="text-slate-400 w-32 inline-block">Hussmann setpoint</span> typically 155–175 psig</div>
                 </div>
               </Card>
 
