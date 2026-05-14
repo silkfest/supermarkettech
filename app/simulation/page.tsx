@@ -183,6 +183,10 @@ interface SystemState {
   compRunning: boolean[]; compAmps: number[]
   caseTemp: number; nonCondensables: boolean
   hpCtrlActive: boolean
+  approachDelta: number
+  fansActive: number; fansCycling: boolean
+  liquidLinePsig: number
+  expectedDischargePsig: number; dischargeDeviation: number
   alarms: Alarm[]
 }
 
@@ -212,8 +216,8 @@ type FieldReadings = typeof FIELD_EMPTY
 
 // ── MT compute ────────────────────────────────────────────────────────────────
 function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number): SystemState {
-  // Condenser approach delta — starts at 15 °F (clean coil, all fans running)
-  let approachDelta      = 15
+  // Condenser approach accumulator — starts at 15 °F (clean coil, all fans running)
+  let baseApproach       = 15
   let suctionSatTemp     = mtSatSetpoint
   let superheat          = BASELINE.superheat
   let subcooling         = BASELINE.subcooling
@@ -242,13 +246,13 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   if (f.poorVentilation) { dischargeSuperheat += 18; ampsMultiplier *= 1.06 }
 
   // ── Condenser faults (each adds to approach delta) ───────────────────────
-  if (f.dirtyCondenser) { approachDelta += 14; dischargeSuperheat += 8; ampsMultiplier *= 1.07 }
+  if (f.dirtyCondenser) { baseApproach += 14; dischargeSuperheat += 8; ampsMultiplier *= 1.07 }
   const fansFailed = (f.fan1Failed ? 1 : 0) + (f.fan2Failed ? 1 : 0)
-  if (fansFailed === 1) { approachDelta += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
-  if (fansFailed === 2) { approachDelta += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
+  if (fansFailed === 1) { baseApproach += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
+  if (fansFailed === 2) { baseApproach += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
 
   // Head pressure control floor — fans cycle off / HP valve modulates to maintain minimum
-  const rawCondensingTemp = oat + approachDelta
+  const rawCondensingTemp = oat + baseApproach
   const hpCtrlActive      = rawCondensingTemp < hpCtrlSatTemp
   let condensingSatTemp   = Math.max(rawCondensingTemp, hpCtrlSatTemp)
 
@@ -299,9 +303,24 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   const suctionGasTemp    = suctionSatTemp + superheat
   const liquidTemp        = condensingSatTemp - subcooling
   const dischargeTemp     = condensingSatTemp + dischargeSuperheat
-  const filterDrierDeltaT = f.filterDrierRestricted ? 9 : 0
-  const oilPressurePsig   = suctionPsig + oilDiff
-  const compAmps          = compRunning.map(r => r ? Math.round(BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
+  const filterDrierDeltaT     = f.filterDrierRestricted ? 9 : 0
+  const oilPressurePsig       = suctionPsig + oilDiff
+  const compAmps              = compRunning.map(r => r ? Math.round(BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
+
+  // Approach ΔT — how far condensing sat temp is above OAT (clean rack baseline = 15 °F)
+  const approachDelta         = condensingSatTemp - oat
+
+  // Fan staging — when HP ctrl is active, fans cycle to hold head pressure
+  const fansRunning           = 4 - fansFailed
+  const fansCycling           = hpCtrlActive && fansFailed === 0
+  const fansActive            = fansCycling ? Math.max(1, Math.round(fansRunning * Math.min(1, oat / (hpCtrlSatTemp - 10)))) : fansRunning
+
+  // Liquid line pressure — discharge minus nominal ~8 psig line loss to cases
+  const liquidLinePsig        = Math.max(dischargePsig - 8, 0)
+
+  // Expected discharge at this OAT on a clean, healthy rack
+  const expectedDischargePsig = toGauge(ptLookup(Math.max(oat + 15, hpCtrlSatTemp)))
+  const dischargeDeviation    = dischargePsig - expectedDischargePsig
 
   // ── Alarms ────────────────────────────────────────────────────────────────
   const alarms: Alarm[] = []
@@ -345,7 +364,10 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     condensingTemp: condensingSatTemp, dischargePsig, dischargeTemp, dischargeSuperheat,
     compressionRatio, liquidTemp, subcooling, filterDrierDeltaT,
     oilDiff, oilPressurePsig, compRunning, compAmps, caseTemp,
-    nonCondensables: f.nonCondensables, hpCtrlActive, alarms,
+    nonCondensables: f.nonCondensables, hpCtrlActive,
+    approachDelta, fansActive, fansCycling,
+    liquidLinePsig, expectedDischargePsig, dischargeDeviation,
+    alarms,
   }
 }
 
@@ -1396,7 +1418,15 @@ export default function SimulationPage() {
                   </span>
                 </span>
                 <span>
-                  Expected discharge at this OAT:{' '}
+                  Condenser fans:{' '}
+                  <span className={mt.fansCycling ? 'text-amber-400 font-medium' : mt.fansActive < 4 ? 'text-red-400 font-medium' : 'text-emerald-400 font-medium'}>
+                    {mt.fansCycling
+                      ? `Cycling — HP ctrl maintaining head (≈${mt.fansActive} of 4 active)`
+                      : `${mt.fansActive} of 4 running`}
+                  </span>
+                </span>
+                <span>
+                  Expected discharge:{' '}
                   <span className="text-slate-400">{cleanCondensingPsig} psig</span>
                 </span>
                 {activeOat < 32 && <span className="text-blue-300 font-medium">Below freezing — monitor for ice on coil</span>}
@@ -1531,6 +1561,19 @@ export default function SimulationPage() {
               </Card>
 
               <Card title="MT Discharge Side" icon={<Thermometer size={13}/>}>
+                {/* Expected vs actual discharge banner */}
+                <div className={`mx-0 mt-1 mb-2 px-2.5 py-1.5 rounded-lg text-[10px] flex items-center justify-between ${
+                  mt.dischargeDeviation > 50 ? 'bg-red-500/15 border border-red-500/30 text-red-300' :
+                  mt.dischargeDeviation > 25 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' :
+                  'bg-slate-700/40 border border-slate-700 text-slate-400'}`}>
+                  <span>Expected at {activeOat}°F OAT</span>
+                  <span className="font-mono font-semibold">
+                    ~{Math.round(mt.expectedDischargePsig)} psig
+                    <span className={`ml-2 ${mt.dischargeDeviation > 25 ? 'text-amber-300 font-bold' : mt.dischargeDeviation < -15 ? 'text-blue-300' : 'text-slate-500'}`}>
+                      ({mt.dischargeDeviation >= 0 ? '+' : ''}{Math.round(mt.dischargeDeviation)})
+                    </span>
+                  </span>
+                </div>
                 <ReadingRow label="Discharge pressure" value={`${mt.dischargePsig.toFixed(1)} psig`} sub={`${(mt.dischargePsig + 14.696).toFixed(1)} psia`}
                   dot={dotColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
                   color={statusColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
@@ -1538,6 +1581,10 @@ export default function SimulationPage() {
                 <ReadingRow label="Condensing sat temp" value={`${mt.condensingTemp.toFixed(1)} °F`} sub="from PT"
                   color={mt.hpCtrlActive ? 'text-amber-400' : 'text-slate-300'}
                   note={mt.hpCtrlActive ? 'HP control active — minimum setpoint' : undefined} />
+                <ReadingRow label="Approach ΔT" value={`${mt.approachDelta.toFixed(1)} °F`}
+                  dot={mt.approachDelta > 25 ? 'bg-red-500' : mt.approachDelta > 18 ? 'bg-amber-400' : mt.hpCtrlActive ? 'bg-amber-400' : 'bg-emerald-500'}
+                  color={mt.approachDelta > 25 ? 'text-red-400' : mt.approachDelta > 18 ? 'text-amber-400' : mt.hpCtrlActive ? 'text-amber-400' : 'text-emerald-400'}
+                  note={mt.approachDelta > 25 ? 'High — dirty coil / fan fault' : mt.approachDelta > 18 ? 'Elevated — inspect condenser' : mt.hpCtrlActive ? 'HP ctrl floor — not airside ΔT' : 'Normal (12–18 °F clean rack)'} />
                 <ReadingRow label="Discharge temp" value={`${Math.round(mt.dischargeTemp)} °F`}
                   dot={dotColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
                   color={statusColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
@@ -1551,6 +1598,9 @@ export default function SimulationPage() {
             {/* ── Liquid line + Oil ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="Liquid Line" icon={<Activity size={13}/>}>
+                <ReadingRow label="Liquid line pressure" value={`${mt.liquidLinePsig.toFixed(1)} psig`}
+                  sub="discharge − 8 psig loss"
+                  color="text-slate-300" />
                 <ReadingRow label="Liquid line temp" value={`${mt.liquidTemp.toFixed(1)} °F`} color="text-slate-300" />
                 <ReadingRow label="Subcooling" value={`${mt.subcooling.toFixed(1)} °F`}
                   dot={mt.subcooling < 3 ? 'bg-red-500' : mt.subcooling < 8 ? 'bg-amber-400' : mt.subcooling > 30 ? 'bg-amber-400' : 'bg-emerald-500'}
