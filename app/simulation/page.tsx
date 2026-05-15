@@ -956,13 +956,22 @@ function caseDotColor(temp: number, s: CaseSection) {
   return 'bg-emerald-500'
 }
 
-interface ReadingRowProps { label: string; value: string; sub?: string; dot?: string; color?: string; note?: string }
-function ReadingRow({ label, value, sub, dot, color, note }: ReadingRowProps) {
+interface ReadingRowProps { label: string; value: string; sub?: string; dot?: string; color?: string; note?: string; tooltip?: string }
+function ReadingRow({ label, value, sub, dot, color, note, tooltip }: ReadingRowProps) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-slate-700/50 last:border-0">
       <div className="text-xs text-slate-400 flex items-center gap-1.5 min-w-0">
         {dot && <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />}
         <span className="truncate">{label}</span>
+        {tooltip && (
+          <span className="relative group/tip flex-shrink-0">
+            <Info size={11} className="text-slate-600 hover:text-slate-400 cursor-help transition-colors" />
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 rounded-lg bg-slate-900 border border-slate-600 text-slate-200 text-[10px] leading-relaxed px-2.5 py-2 shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
+              {tooltip}
+              <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-slate-600" />
+            </span>
+          </span>
+        )}
       </div>
       <div className="text-right ml-2 flex-shrink-0">
         <span className={`text-sm font-mono font-semibold tabular-nums ${color ?? 'text-white'}`}>{value}</span>
@@ -1470,10 +1479,21 @@ export default function SimulationPage() {
                 <div className="px-3 py-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                   {(() => {
                     const d = fieldAnalysis.derived
-                    const row = (label: string, val: number | null, dec: number, unit: string, note?: string, color?: string) => (
+                    const row = (label: string, val: number | null, dec: number, unit: string, note?: string, color?: string, tooltip?: string) => (
                       val === null ? null :
                       <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-700/40 last:border-0">
-                        <span className="text-[10px] text-slate-400">{label}</span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                          {label}
+                          {tooltip && (
+                            <span className="relative group/tip flex-shrink-0">
+                              <Info size={10} className="text-slate-600 hover:text-slate-400 cursor-help transition-colors" />
+                              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 rounded-lg bg-slate-900 border border-slate-600 text-slate-200 text-[10px] leading-relaxed px-2.5 py-2 shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
+                                {tooltip}
+                                <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-slate-600" />
+                              </span>
+                            </span>
+                          )}
+                        </span>
                         <div className="text-right">
                           <span className={`text-sm font-mono font-semibold tabular-nums ${color ?? 'text-white'}`}>{val.toFixed(dec)} {unit}</span>
                           {note && <div className="text-[9px] text-amber-400">{note}</div>}
@@ -1494,7 +1514,8 @@ export default function SimulationPage() {
                         d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'text-amber-400' : 'text-white'),
                       row('Approach ΔT', d.approachDelta, 1, '°F',
                         d.approachDelta !== null && d.approachDelta > 18 ? 'ELEVATED' : undefined,
-                        d.approachDelta !== null && d.approachDelta > 18 ? 'text-amber-400' : 'text-emerald-400'),
+                        d.approachDelta !== null && d.approachDelta > 18 ? 'text-amber-400' : 'text-emerald-400',
+                        'Condensing sat temp minus outdoor air temp (OAT). On a clean rack with all fans running, baseline is ~15°F. Higher values indicate condenser inefficiency — dirty coil, failed fans, or non-condensables. Normal range: 12–18°F.'),
                       row('MT compression ratio', d.mtCompRatio, 2, ': 1',
                         d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'HIGH' : undefined,
                         d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'text-amber-400' : 'text-white'),
@@ -1781,7 +1802,8 @@ export default function SimulationPage() {
                 <ReadingRow label="Approach ΔT" value={`${mt.approachDelta.toFixed(1)} °F`}
                   dot={mt.approachDelta > 25 ? 'bg-red-500' : mt.approachDelta > 18 ? 'bg-amber-400' : mt.hpCtrlActive ? 'bg-amber-400' : 'bg-emerald-500'}
                   color={mt.approachDelta > 25 ? 'text-red-400' : mt.approachDelta > 18 ? 'text-amber-400' : mt.hpCtrlActive ? 'text-amber-400' : 'text-emerald-400'}
-                  note={mt.approachDelta > 25 ? 'High — dirty coil / fan fault' : mt.approachDelta > 18 ? 'Elevated — inspect condenser' : mt.hpCtrlActive ? 'HP ctrl floor — not airside ΔT' : 'Normal (12–18 °F clean rack)'} />
+                  note={mt.approachDelta > 25 ? 'High — dirty coil / fan fault' : mt.approachDelta > 18 ? 'Elevated — inspect condenser' : mt.hpCtrlActive ? 'HP ctrl floor — not airside ΔT' : 'Normal (12–18 °F clean rack)'}
+                  tooltip="Condensing sat temp minus outdoor air temp (OAT). On a clean rack with all fans running, baseline is ~15°F. A higher approach means the condenser is less efficient — caused by a dirty coil, failed fans, or non-condensables. Normal range: 12–18°F." />
                 <ReadingRow label="Discharge temp" value={`${Math.round(mt.dischargeTemp)} °F`}
                   dot={dotColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
                   color={statusColor(mt.dischargeTemp, SAFETY.warnDischargeF, SAFETY.highDischargeF)}
