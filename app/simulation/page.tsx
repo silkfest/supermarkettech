@@ -9,93 +9,147 @@ import {
   ChevronUp, MessageSquare, Trophy, Target, Package,
 } from 'lucide-react'
 
-// ── R-404A Saturation P-T table (psia) — extended to 150 °F ─────────────────
-const R404A_PT: [number, number][] = [
-  [-40, 10.5], [-35, 12.0], [-30, 13.8], [-25, 15.8], [-20, 17.9],
-  [-15, 20.4], [-10, 23.1], [-5,  26.1], [0,   29.4], [5,   33.1],
-  [10,  37.1], [15,  41.5], [20,  46.4], [25,  51.6], [30,  57.4],
-  [35,  63.6], [40,  70.4], [45,  77.7], [50,  85.7], [55,  94.2],
-  [60, 103.4], [65, 113.3], [70, 123.9], [75, 135.3], [80, 147.5],
-  [85, 160.5], [90, 174.4], [95, 189.1], [100,204.8], [105,221.4],
-  [110,239.0], [115,257.7], [120,277.4], [125,298.2], [130,320.2],
-  [135,342.0], [140,365.0], [145,390.0], [150,416.0],
+// ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
+// R-404A: Arkema/Forane data via learnmetrics.com (liquid bubble + vapor dew columns)
+// R-448A: Honeywell Solstice N40 / Opteon XP40 data via learnmetrics.com
+//         Values 105–120 °F interpolated (source data corrupted in that range)
+// R-407A: National Refrigerants 7th Ed. Reference Guide + igasusa.com
+// All values in psia = psig + 14.696.
+// BUBBLE = liquid / saturated-liquid point → use for condensing / high side
+// DEW    = vapor  / saturated-vapor  point → use for evaporating / suction side
+
+const R404A_BUBBLE: [number, number][] = [
+  [-40, 19.6], [-35, 22.2], [-30, 25.0], [-25, 28.1], [-20, 31.5],
+  [-15, 35.2], [-10, 39.3], [-5,  43.6], [0,   48.4], [5,   53.5],
+  [10,  59.0], [15,  64.9], [20,  71.3], [25,  78.1], [30,  85.4],
+  [35,  93.3], [40, 101.6], [45, 110.5], [50, 120.0], [55, 130.0],
+  [60, 140.7], [65, 152.0], [70, 164.0], [75, 176.7], [80, 190.1],
+  [85, 204.2], [90, 219.2], [95, 234.9], [100,251.5], [105,268.9],
+  [110,287.2], [115,306.5], [120,326.8], [125,348.0], [130,370.4],
+  [135,393.8], [140,418.4], [145,444.3], [150,471.5],
+]
+const R404A_DEW: [number, number][] = [
+  [-40, 19.0], [-35, 21.5], [-30, 24.3], [-25, 27.4], [-20, 30.7],
+  [-15, 34.4], [-10, 38.3], [-5,  42.6], [0,   47.3], [5,   52.4],
+  [10,  57.8], [15,  63.7], [20,  70.0], [25,  76.8], [30,  84.0],
+  [35,  91.8], [40, 100.1], [45, 108.9], [50, 118.3], [55, 128.3],
+  [60, 138.9], [65, 150.2], [70, 162.1], [75, 174.8], [80, 188.1],
+  [85, 202.2], [90, 217.1], [95, 232.8], [100,248.9], [105,266.8],
+  [110,285.1], [115,304.3], [120,324.6], [125,345.9], [130,368.2],
+  [135,391.7], [140,416.4], [145,442.4], [150,469.8],
 ]
 
-// ── R-448A Saturation P-T table (psia) — Opteon XP40, ~3-5% lower than R-404A ─
-const R448A_PT: [number, number][] = [
-  [-40, 9.4],  [-35, 10.8], [-30, 12.4], [-25, 14.2], [-20, 17.0],
-  [-15, 17.3], [-10, 19.7], [-5,  22.4], [0,   27.5], [5,   31.1],
-  [10,  35.0], [15,  39.3], [20,  44.1], [25,  49.3], [30,  54.9],
-  [35,  61.0], [40,  67.7], [45,  74.9], [50,  82.8], [55,  91.3],
-  [60, 100.5], [65, 110.5], [70, 121.2], [75, 132.7], [80, 145.0],
-  [85, 158.2], [90, 172.3], [95, 187.3], [100,203.3], [105,220.3],
-  [110,238.4], [115,257.5], [120,277.8], [125,299.3], [130,322.1],
-  [135,344.5], [140,368.3], [145,394.0], [150,421.0],
+// R-448A has significant temperature glide (~10–15 °F / 10–15 psig at operating conditions)
+const R448A_BUBBLE: [number, number][] = [
+  [-40, 19.4], [-35, 22.0], [-30, 24.9], [-25, 28.0], [-20, 31.4],
+  [-15, 35.1], [-10, 39.2], [-5,  43.6], [0,   48.4], [5,   53.6],
+  [10,  59.2], [15,  65.3], [20,  71.8], [25,  78.7], [30,  86.2],
+  [35,  94.2], [40, 102.7], [45, 111.8], [50, 121.5], [55, 131.8],
+  [60, 142.7], [65, 154.3], [70, 166.6], [75, 179.6], [80, 193.3],
+  [85, 207.8], [90, 223.1], [95, 239.1], [100,256.0], [105,275.7],
+  [110,295.7], [115,314.7], [120,334.7], [125,354.1], [130,376.7],
+  [135,400.2], [140,424.9], [145,450.6], [150,477.5],
+]
+const R448A_DEW: [number, number][] = [
+  [-40, 14.7], [-35, 16.6], [-30, 18.9], [-25, 21.5], [-20, 24.3],
+  [-15, 27.4], [-10, 30.8], [-5,  34.5], [0,   38.6], [5,   43.0],
+  [10,  47.8], [15,  53.1], [20,  58.7], [25,  64.8], [30,  71.3],
+  [35,  78.4], [40,  85.9], [45,  94.0], [50, 102.7], [55, 112.0],
+  [60, 121.9], [65, 132.4], [70, 143.7], [75, 155.6], [80, 168.3],
+  [85, 181.7], [90, 195.9], [95, 211.0], [100,227.0], [105,245.7],
+  [110,264.7], [115,283.7], [120,302.7], [125,321.2], [130,343.2],
+  [135,366.5], [140,391.0], [145,416.8], [150,444.1],
 ]
 
-// ── R-407A Saturation P-T table (psia) — ~70% of R-404A pressures; larger glide ─
-// Midpoint (avg bubble/dew) values. At -20°F R-407A is sub-atmospheric (vacuum territory).
-const R407A_PT: [number, number][] = [
-  [-40, 7.3],  [-35, 8.4],  [-30, 9.7],  [-25, 11.1], [-20, 12.7],
-  [-15, 14.4], [-10, 16.3], [-5,  18.5], [0,   20.9], [5,   23.5],
-  [10,  26.4], [15,  29.6], [20,  33.2], [25,  37.1], [30,  41.4],
-  [35,  46.1], [40,  51.3], [45,  56.9], [50,  63.0], [55,  69.7],
-  [60,  77.0], [65,  84.8], [70,  93.3], [75, 102.5], [80, 112.4],
-  [85, 123.0], [90, 134.4], [95, 146.6], [100,159.6], [105,173.5],
-  [110,188.3], [115,204.0], [120,220.6], [125,238.2], [130,256.8],
-  [135,276.3], [140,296.9], [145,318.6], [150,341.4],
+// R-407A has significant temperature glide (~8–13 °F / 8–12 psig at operating conditions)
+const R407A_BUBBLE: [number, number][] = [
+  [-40, 18.6], [-35, 21.1], [-30, 23.9], [-25, 26.9], [-20, 30.3],
+  [-15, 33.9], [-10, 37.9], [-5,  42.2], [0,   46.9], [5,   52.0],
+  [10,  57.5], [15,  63.4], [20,  69.8], [25,  76.7], [30,  84.0],
+  [35,  91.9], [40, 100.3], [45, 109.3], [50, 118.7], [55, 128.7],
+  [60, 139.7], [65, 151.7], [70, 163.7], [75, 176.7], [80, 189.7],
+  [85, 204.7], [90, 219.7], [95, 235.7], [100,252.7], [105,269.7],
+  [110,288.7], [115,307.7], [120,328.7], [125,349.7], [130,372.7],
+  [135,396.7], [140,420.7], [145,446.6], [150,473.6],
+]
+const R407A_DEW: [number, number][] = [
+  [-40, 14.2], [-35, 15.7], [-30, 18.0], [-25, 20.5], [-20, 23.2],
+  [-15, 26.2], [-10, 29.6], [-5,  33.2], [0,   37.2], [5,   41.6],
+  [10,  46.3], [15,  51.4], [20,  57.0], [25,  63.0], [30,  69.5],
+  [35,  76.5], [40,  84.1], [45,  92.1], [50, 100.8], [55, 110.0],
+  [60, 119.7], [65, 130.7], [70, 141.7], [75, 153.7], [80, 166.7],
+  [85, 179.7], [90, 193.7], [95, 208.7], [100,224.7], [105,241.7],
+  [110,259.7], [115,278.7], [120,298.7], [125,319.7], [130,341.7],
+  [135,364.7], [140,389.7], [145,415.7], [150,443.0],
 ]
 
 type Refrigerant = 'R-404A' | 'R-448A' | 'R-407A'
-type PTTable = [number, number][]
 
-const PT_TABLES: Record<Refrigerant, PTTable> = {
-  'R-404A': R404A_PT,
-  'R-448A': R448A_PT,
-  'R-407A': R407A_PT,
+interface PTData {
+  /** Bubble (liquid / saturated-liquid) pressure in psia — use for condensing / high side */
+  bubble: [number, number][]
+  /** Dew (vapor / saturated-vapor) pressure in psia — use for evaporating / suction side */
+  dew: [number, number][]
+}
+// Keep alias so existing function signatures compile unchanged
+type PTTable = PTData
+
+const PT_TABLES: Record<Refrigerant, PTData> = {
+  'R-404A': { bubble: R404A_BUBBLE, dew: R404A_DEW },
+  'R-448A': { bubble: R448A_BUBBLE, dew: R448A_DEW },
+  'R-407A': { bubble: R407A_BUBBLE, dew: R407A_DEW },
 }
 
-// Default rack set points per refrigerant — maintains equivalent operating temps
+// Default rack set points per refrigerant (psig) — correct values for 20 °F MT SST,
+// −20 °F LT SST, and 85 °F condensing sat temp HP control floor
 const REFRIGERANT_DEFAULTS: Record<Refrigerant, { hpCtrlPsig: number; mtSuctionPsig: number; ltSuctionPsig: number }> = {
-  'R-404A': { hpCtrlPsig: 165, mtSuctionPsig: 32, ltSuctionPsig: 3  },
-  'R-448A': { hpCtrlPsig: 143, mtSuctionPsig: 30, ltSuctionPsig: 2  },
-  'R-407A': { hpCtrlPsig:  98, mtSuctionPsig: 18, ltSuctionPsig: 2  },
+  'R-404A': { hpCtrlPsig: 190, mtSuctionPsig: 55, ltSuctionPsig: 16 },
+  'R-448A': { hpCtrlPsig: 193, mtSuctionPsig: 44, ltSuctionPsig: 10 },
+  'R-407A': { hpCtrlPsig: 190, mtSuctionPsig: 42, ltSuctionPsig:  9 },
 }
 
 const SLIDER_RANGES: Record<Refrigerant, { hp: [number, number]; mt: [number, number]; lt: [number, number, number] }> = {
-  'R-404A': { hp: [130, 200], mt: [20, 45], lt: [1, 10, 1] },
-  'R-448A': { hp: [115, 185], mt: [18, 43], lt: [1, 9,  1] },
-  'R-407A': { hp: [75,  130], mt: [10, 28], lt: [1, 5,  1] },
+  'R-404A': { hp: [160, 315], mt: [30, 80], lt: [5, 22, 1] },
+  'R-448A': { hp: [155, 315], mt: [20, 65], lt: [1, 15, 1] },
+  'R-407A': { hp: [155, 310], mt: [18, 62], lt: [1, 14, 1] },
 }
 
-function ptLookup(tempF: number, table: PTTable = R404A_PT): number {
-  if (tempF <= table[0][0]) return table[0][1]
-  if (tempF >= table[table.length - 1][0]) return table[table.length - 1][1]
-  for (let i = 0; i < table.length - 1; i++) {
-    const [t0, p0] = table[i]
-    const [t1, p1] = table[i + 1]
-    if (tempF >= t0 && tempF <= t1) {
-      const frac = (tempF - t0) / (t1 - t0)
-      return p0 + frac * (p1 - p0)
-    }
+// ── P-T interpolation helpers ──────────────────────────────────────────────────
+function ptInterp(tempF: number, tbl: [number, number][]): number {
+  if (tempF <= tbl[0][0]) return tbl[0][1]
+  if (tempF >= tbl[tbl.length - 1][0]) return tbl[tbl.length - 1][1]
+  for (let i = 0; i < tbl.length - 1; i++) {
+    const [t0, p0] = tbl[i], [t1, p1] = tbl[i + 1]
+    if (tempF >= t0 && tempF <= t1) return p0 + (tempF - t0) / (t1 - t0) * (p1 - p0)
   }
-  return table[0][1]
+  return tbl[0][1]
 }
+function ptInterpReverse(psig: number, tbl: [number, number][]): number {
+  const psia = psig + 14.696
+  if (psia <= tbl[0][1]) return tbl[0][0]
+  if (psia >= tbl[tbl.length - 1][1]) return tbl[tbl.length - 1][0]
+  for (let i = 0; i < tbl.length - 1; i++) {
+    const [t0, p0] = tbl[i], [t1, p1] = tbl[i + 1]
+    if (psia >= p0 && psia <= p1) return t0 + (psia - p0) / (p1 - p0) * (t1 - t0)
+  }
+  return tbl[0][0]
+}
+
+/** Evaporating sat temp → psia (dew / suction side) */
+function ptDew(tempF: number, pt: PTData): number { return ptInterp(tempF, pt.dew) }
+/** Condensing sat temp → psia (bubble / high side) */
+function ptBubble(tempF: number, pt: PTData): number { return ptInterp(tempF, pt.bubble) }
+/** Suction psig → evaporating sat temp (dew side) */
+function ptDewReverse(psig: number, pt: PTData): number { return ptInterpReverse(psig, pt.dew) }
+/** High-side psig → condensing sat temp (bubble side) */
+function ptBubbleReverse(psig: number, pt: PTData): number { return ptInterpReverse(psig, pt.bubble) }
 
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
 
-// Reverse PT lookup — convert gauge pressure (psig) → saturation temperature (°F)
-function ptReverse(psig: number, table: PTTable = R404A_PT): number {
-  const psia = psig + 14.696
-  if (psia <= table[0][1]) return table[0][0]
-  if (psia >= table[table.length - 1][1]) return table[table.length - 1][0]
-  for (let i = 0; i < table.length - 1; i++) {
-    const [t0, p0] = table[i]
-    const [t1, p1] = table[i + 1]
-    if (psia >= p0 && psia <= p1) return t0 + (psia - p0) / (p1 - p0) * (t1 - t0)
-  }
-  return table[0][0]
-}
+// Legacy aliases — most suction-side callers can keep using these unchanged;
+// condensing-side callers have been updated to ptBubble / ptBubbleReverse explicitly.
+function ptLookup(tempF: number, pt: PTData = PT_TABLES['R-404A']): number { return ptDew(tempF, pt) }
+function ptReverse(psig: number, pt: PTData = PT_TABLES['R-404A']): number { return ptDewReverse(psig, pt) }
 
 // ── Fault types ───────────────────────────────────────────────────────────────
 // NOTE: 'highAmbient' removed — OAT is now a continuous slider, not a fault toggle.
@@ -173,7 +227,7 @@ const BASELINE = {
 // Head pressure control: minimum condensing sat temp (models HP control valve/fan cycling)
 // Hussmann standard HPC setpoint: 85 °F sat ≈ 146 psig (commonly displayed as ~165 psig on older gauges)
 // Activates whenever OAT + approach would fall below this floor (typically OAT < 70 °F on a clean rack)
-const HP_CTRL_MIN_COND_SAT = 85  // °F sat ≈ 146 psig
+const HP_CTRL_MIN_COND_SAT = 85  // °F sat ≈ 190 psig (R-404A bubble) / 193 psig (R-448A) / 190 psig (R-407A)
 
 const SAFETY = {
   hpcoPsig:        400,
@@ -194,8 +248,8 @@ const LT_BASELINE = {
 }
 
 const LT_SAFETY = {
-  lpcoPsig:     1.0,
-  lpcoWarnPsig: 2.5,
+  lpcoPsig:     5.0,   // ≈ −38 °F SST on R-404A dew — deep restriction / severe fault
+  lpcoWarnPsig: 9.0,   // ≈ −29 °F SST on R-404A dew — trips on ltTxvNotFeeding (−32 °F → 8.5 psig)
   highCaseTemp: 10,
   warnCaseTemp:  5,
   highSH:       30,
@@ -268,7 +322,7 @@ const FIELD_EMPTY = {
 type FieldReadings = typeof FIELD_EMPTY
 
 // ── MT compute ────────────────────────────────────────────────────────────────
-function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number, pt: PTTable = R404A_PT): SystemState {
+function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number, pt: PTTable = PT_TABLES['R-404A']): SystemState {
   // Condenser approach accumulator — starts at 15 °F (clean coil, all fans running)
   let baseApproach       = 15
   let suctionSatTemp     = mtSatSetpoint
@@ -364,8 +418,8 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   condensingSatTemp = Math.max(condensingSatTemp, suctionSatTemp + 20)
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const suctionPsia       = ptLookup(suctionSatTemp, pt)
-  const dischargePsia     = ptLookup(condensingSatTemp, pt)
+  const suctionPsia       = ptDew(suctionSatTemp, pt)       // suction reads dew-point pressure
+  const dischargePsia     = ptBubble(condensingSatTemp, pt)  // high side reads bubble-point pressure
   const suctionPsig       = Math.max(toGauge(suctionPsia), 0.1)
   const dischargePsig     = toGauge(dischargePsia) + ncExtraGauge
   const compressionRatio  = (dischargePsig + 14.696) / (suctionPsig + 14.696)
@@ -387,8 +441,8 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   // Liquid line pressure — discharge minus nominal ~8 psig line loss to cases
   const liquidLinePsig        = Math.max(dischargePsig - 8, 0)
 
-  // Expected discharge at this OAT on a clean, healthy rack
-  const expectedDischargePsig = toGauge(ptLookup(Math.max(oat + 15, hpCtrlSatTemp), pt))
+  // Expected discharge at this OAT on a clean, healthy rack (condensing side → bubble)
+  const expectedDischargePsig = toGauge(ptBubble(Math.max(oat + 15, hpCtrlSatTemp), pt))
   const dischargeDeviation    = dischargePsig - expectedDischargePsig
 
   // ── Alarms ────────────────────────────────────────────────────────────────
@@ -445,7 +499,7 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
 }
 
 // ── LT Booster compute ────────────────────────────────────────────────────────
-function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: number, pt: PTTable = R404A_PT): LTState {
+function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: number, pt: PTTable = PT_TABLES['R-404A']): LTState {
   let suctionSatTemp   = ltSatSetpoint
   let superheat        = LT_BASELINE.superheat
   let caseTemp         = LT_BASELINE.caseTemp
@@ -462,8 +516,8 @@ function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: numbe
   suctionSatTemp = Math.min(suctionSatTemp, dischargeSatTemp - 12)
 
   const runningCount     = compRunning.filter(Boolean).length
-  const suctionPsia      = ptLookup(suctionSatTemp, pt)
-  const dischargePsia    = ptLookup(dischargeSatTemp, pt)
+  const suctionPsia      = ptDew(suctionSatTemp, pt)    // LT suction: evaporating (dew)
+  const dischargePsia    = ptDew(dischargeSatTemp, pt)  // LT discharge = MT suction header (dew)
   const suctionPsig      = Math.max(toGauge(suctionPsia), 0.1)
   const dischargePsig    = toGauge(dischargePsia)
   const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
@@ -589,7 +643,7 @@ const SCENARIOS: Scenario[] = [
 ]
 
 // ── Diagnose text ─────────────────────────────────────────────────────────────
-function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps: number[], refrigerant: string = 'R-404A'): string {
+function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps: number[], refrigerant: string = 'R-404A', pt: PTData = PT_TABLES['R-404A']): string {
   const allAlarms = [...mt.alarms, ...lt.alarms]
   const mtCases   = STORE_LINEUP.filter(s => s.circuit === 'MT')
   const ltCases   = STORE_LINEUP.filter(s => s.circuit === 'LT')
@@ -601,7 +655,7 @@ function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps:
     `  Outdoor Ambient Temp (OAT): ${oat} °F`,
     `  Head Pressure Control: ${mt.hpCtrlActive ? `ACTIVE — holding condensing at ${Math.round(mt.condensingTemp)}°F sat min` : 'Off (OAT above minimum)'}`,
     '',
-    `MT CIRCUIT (Setpoint: 20 °F SST / ${toGauge(ptLookup(20)).toFixed(1)} psig):`,
+    `MT CIRCUIT (Setpoint: 20 °F SST / ${toGauge(ptDew(20, pt)).toFixed(1)} psig):`,
     `  Suction:           ${mt.suctionPsig.toFixed(1)} psig  /  ${mt.suctionSatTemp.toFixed(1)} °F SST`,
     `  Suction superheat: ${mt.suctionSuperheat.toFixed(1)} °F`,
     `  Discharge:         ${mt.dischargePsig.toFixed(1)} psig  /  ${mt.condensingTemp.toFixed(1)} °F sat`,
@@ -612,7 +666,7 @@ function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps:
     `  Compressors: ${mt.compRunning.filter(Boolean).length} / 4 running  —  ${mt.compAmps.filter(a => a > 0).map(a => a.toFixed(1)).join(' / ')} A`,
     ...(mt.filterDrierDeltaT > 0 ? [`  Filter drier ΔT: ${mt.filterDrierDeltaT} °F — restricted!`] : []),
     '',
-    `LT BOOSTER CIRCUIT (Setpoint: −20 °F SST / ${toGauge(ptLookup(-20)).toFixed(1)} psig):`,
+    `LT BOOSTER CIRCUIT (Setpoint: −20 °F SST / ${toGauge(ptDew(-20, pt)).toFixed(1)} psig):`,
     `  LT suction:    ${lt.suctionPsig.toFixed(1)} psig  /  ${lt.suctionSatTemp.toFixed(1)} °F SST`,
     `  LT superheat:  ${lt.superheat.toFixed(1)} °F`,
     `  LT discharge:  ${lt.dischargePsig.toFixed(1)} psig  →  MT suction header`,
@@ -645,7 +699,7 @@ function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps:
 // ── Field analysis engine ─────────────────────────────────────────────────────
 type RackCfg = { hpCtrlPsig: number; mtSuctionPsig: number; ltSuctionPsig: number }
 
-function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: RackCfg, pt: PTTable = R404A_PT): { derived: Record<string, number | null>; findings: Finding[] } {
+function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: RackCfg, pt: PTTable = PT_TABLES['R-404A']): { derived: Record<string, number | null>; findings: Finding[] } {
   const n = (s: string) => s.trim() === '' ? null : Number(s)
   const oat            = n(r.oat)
   const dischargePsig  = n(r.dischargePsig)
@@ -659,9 +713,9 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
   const drierOutTemp   = n(r.drierOutTemp)
   const oilDiffPsi     = n(r.oilDiffPsi)
 
-  const condensingSatTemp     = dischargePsig  !== null ? ptReverse(dischargePsig, pt)  : null
-  const mtSatTemp             = mtSuctionPsig  !== null ? ptReverse(mtSuctionPsig, pt)  : null
-  const ltSatTemp             = ltSuctionPsig  !== null ? ptReverse(ltSuctionPsig, pt)  : null
+  const condensingSatTemp     = dischargePsig  !== null ? ptBubbleReverse(dischargePsig, pt)  : null
+  const mtSatTemp             = mtSuctionPsig  !== null ? ptDewReverse(mtSuctionPsig, pt)     : null
+  const ltSatTemp             = ltSuctionPsig  !== null ? ptDewReverse(ltSuctionPsig, pt)     : null
   const mtSuperheat           = mtSatTemp      !== null && mtSuctionTemp  !== null ? mtSuctionTemp  - mtSatTemp      : null
   const ltSuperheat           = ltSatTemp      !== null && ltSuctionTemp  !== null ? ltSuctionTemp  - ltSatTemp      : null
   const subcooling            = condensingSatTemp !== null && liquidLineTemp !== null ? condensingSatTemp - liquidLineTemp : null
@@ -671,7 +725,7 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
   const mtCompRatio           = dischargePsig !== null && mtSuctionPsig !== null ? (dischargePsig + 14.696) / (mtSuctionPsig + 14.696) : null
   const ltCompRatio           = mtSuctionPsig !== null && ltSuctionPsig !== null ? (mtSuctionPsig + 14.696) / (ltSuctionPsig + 14.696) : null
   const expectedCondSatTemp   = oat !== null ? Math.max(oat + 15, hpCtrlSatTemp) : null
-  const expectedDischargePsig = expectedCondSatTemp !== null ? toGauge(ptLookup(expectedCondSatTemp, pt)) : null
+  const expectedDischargePsig = expectedCondSatTemp !== null ? toGauge(ptBubble(expectedCondSatTemp, pt)) : null
   const dischargeDeviation    = dischargePsig !== null && expectedDischargePsig !== null ? dischargePsig - expectedDischargePsig : null
   const hpCtrlFloor           = condensingSatTemp !== null ? condensingSatTemp <= hpCtrlSatTemp + 1 : false
   const mtSuctionDev          = mtSuctionPsig !== null ? mtSuctionPsig - cfg.mtSuctionPsig : null
@@ -987,9 +1041,9 @@ export default function SimulationPage() {
   const [rackSettingsOpen, setRackSettingsOpen] = useState(false)
   const [rackConfig, setRackConfig] = useState({
     refrigerant:   'R-404A' as Refrigerant,
-    hpCtrlPsig:    165,  // HP control minimum discharge set point (psig)
-    mtSuctionPsig:  32,  // MT suction set point (psig) — ~20 °F SST on R-404A
-    ltSuctionPsig:   3,  // LT booster suction set point (psig) — ~−20 °F SST on R-404A
+    hpCtrlPsig:    190,  // HP control min discharge psig — ~85 °F condensing sat (R-404A bubble)
+    mtSuctionPsig:  55,  // MT suction set point (psig) — ~20 °F SST on R-404A dew
+    ltSuctionPsig:  16,  // LT booster suction set point (psig) — ~−20 °F SST on R-404A dew
   })
 
   // Field Readings diagnostic tab
@@ -1010,9 +1064,9 @@ export default function SimulationPage() {
 
   // Derive sat-temp equivalents from the configured psig set points
   const pt             = PT_TABLES[rackConfig.refrigerant]
-  const hpCtrlSatTemp  = ptReverse(rackConfig.hpCtrlPsig, pt)
-  const mtSatSetpoint  = ptReverse(rackConfig.mtSuctionPsig, pt)
-  const ltSatSetpoint  = ptReverse(rackConfig.ltSuctionPsig, pt)
+  const hpCtrlSatTemp  = ptBubbleReverse(rackConfig.hpCtrlPsig, pt)   // HP ctrl → condensing sat temp (bubble)
+  const mtSatSetpoint  = ptDewReverse(rackConfig.mtSuctionPsig, pt)   // MT suction → evap sat temp (dew)
+  const ltSatSetpoint  = ptDewReverse(rackConfig.ltSuctionPsig, pt)   // LT suction → evap sat temp (dew)
 
   const mt = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
   const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt])
@@ -1062,7 +1116,7 @@ export default function SimulationPage() {
   )
 
   function diagnoseInColdIQ() {
-    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant)) } catch { /* ignore */ }
+    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant, pt)) } catch { /* ignore */ }
     router.push('/dashboard')
   }
 
@@ -1089,8 +1143,8 @@ export default function SimulationPage() {
     : activeOat <= 100 ? 'text-amber-400'
     : 'text-red-400'
 
-  // Clean-condenser condensing sat for reference (HP ctrl floor applied)
-  const cleanCondensingPsig = Math.round(toGauge(ptLookup(Math.max(activeOat + 15, hpCtrlSatTemp), pt)))
+  // Clean-condenser condensing sat for reference (HP ctrl floor applied); condensing → bubble
+  const cleanCondensingPsig = Math.round(toGauge(ptBubble(Math.max(activeOat + 15, hpCtrlSatTemp), pt)))
 
   return (
     <div className="min-h-[100dvh] bg-slate-900 flex flex-col">
@@ -1102,7 +1156,7 @@ export default function SimulationPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h1 className="text-sm font-semibold text-white">Hussmann Parallel Rack · {rackConfig.refrigerant} · MT + LT</h1>
+            <h1 className="text-sm font-semibold text-white"><span className="hidden sm:inline">Hussmann Parallel Rack · </span>{rackConfig.refrigerant} · MT + LT</h1>
             <span className="hidden sm:inline text-[10px] text-slate-500">4 × Copeland Scroll MT + 2 × Booster LT</span>
           </div>
           <p className="text-[10px] text-slate-500 hidden md:block">
@@ -1123,7 +1177,7 @@ export default function SimulationPage() {
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
           title="Send current readings snapshot to ColdIQ Expert chat"
         >
-          <MessageSquare size={12}/> Diagnose
+          <MessageSquare size={12}/><span className="hidden sm:inline"> Diagnose</span>
         </button>
 
         <button
@@ -1131,16 +1185,18 @@ export default function SimulationPage() {
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
             scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 border-slate-600'
           }`}
+          title={scenarioMode ? 'Exit Scenario Mode' : 'Scenario Mode'}
         >
-          <Target size={12}/> {scenarioMode ? 'Exit Scenario' : 'Scenario Mode'}
+          <Target size={12}/><span className="hidden sm:inline"> {scenarioMode ? 'Exit Scenario' : 'Scenario'}</span>
         </button>
 
         {!scenarioMode && (
           <button
             onClick={resetAll}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700"
+            title="Reset all faults"
           >
-            <RotateCcw size={12}/> Reset
+            <RotateCcw size={12}/><span className="hidden sm:inline"> Reset</span>
           </button>
         )}
       </div>
@@ -1148,14 +1204,22 @@ export default function SimulationPage() {
       {/* ── Body ── */}
       <div className="flex flex-1 overflow-hidden">
 
+        {/* ── Mobile backdrop for fault/settings panel ── */}
+        {showFaults && (
+          <div
+            className="fixed inset-0 bg-black/50 z-20 md:hidden"
+            onClick={() => setShowFaults(false)}
+          />
+        )}
+
         {/* ── Left panel — fault injection / diagnosis ── */}
-        <div className={`${showFaults ? 'flex' : 'hidden'} md:flex flex-col w-56 lg:w-60 flex-shrink-0 bg-slate-800 border-r border-slate-700 overflow-y-auto`}>
+        <div className={`${showFaults ? 'flex' : 'hidden'} md:flex flex-col fixed inset-y-0 left-0 w-72 z-30 md:relative md:inset-auto md:w-56 lg:w-60 md:flex-shrink-0 bg-slate-800 border-r border-slate-700 overflow-y-auto`}>
           <div className="px-3 py-2 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
               {scenarioMode ? '🎯 Your Diagnosis' : 'Fault Injection'}
             </span>
-            <button onClick={() => setShowFaults(false)} className="md:hidden text-slate-500 hover:text-white">
-              <ChevronUp size={14}/>
+            <button onClick={() => setShowFaults(false)} className="md:hidden p-1.5 -mr-1 text-slate-400 hover:text-white active:bg-slate-700 rounded-lg">
+              <ChevronUp size={16}/>
             </button>
           </div>
 
@@ -1320,14 +1384,16 @@ export default function SimulationPage() {
           </div>
         </div>
 
-        {/* ── Mobile fault toggle button ── */}
-        <button
-          onClick={() => setShowFaults(v => !v)}
-          className="md:hidden fixed bottom-4 right-4 z-20 bg-amber-500 text-white rounded-full px-4 py-2 text-xs font-semibold shadow-lg flex items-center gap-1.5"
-        >
-          <Zap size={12}/>
-          {showFaults ? 'Hide' : scenarioMode ? 'Diagnose' : `Faults${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
-        </button>
+        {/* ── Mobile fault toggle button — hidden when panel is open (panel has own close button) ── */}
+        {!showFaults && (
+          <button
+            onClick={() => setShowFaults(true)}
+            className="md:hidden fixed bottom-5 right-4 z-20 bg-amber-500 text-white rounded-full px-4 py-2.5 text-xs font-semibold shadow-lg flex items-center gap-1.5"
+          >
+            <Zap size={13}/>
+            {scenarioMode ? 'Diagnose' : `Faults${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
+          </button>
+        )}
 
         {/* ── Readings panel + tab bar ── */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -1346,10 +1412,10 @@ export default function SimulationPage() {
 
           {diagTab === 'field' ? (
           /* ── Field Readings Diagnostic ─────────────────────────────────── */
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
 
             {/* Left: input form */}
-            <div className="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-700 overflow-y-auto p-4 space-y-1">
+            <div className="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-700 md:overflow-y-auto p-4 space-y-1 pb-24 md:pb-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-slate-300">Enter Your Readings</span>
                 <button onClick={() => setFieldReadings(FIELD_EMPTY)} className="text-[10px] text-slate-500 hover:text-slate-300 underline underline-offset-2">Clear all</button>
@@ -1361,7 +1427,7 @@ export default function SimulationPage() {
               <FieldInput label="Outdoor Ambient (OAT)" value={fieldReadings.oat} onChange={v => updateField('oat', v)} unit="°F" placeholder="e.g. 75" />
 
               <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">MT Circuit</div>
-              <FieldInput label="MT Suction Pressure" value={fieldReadings.mtSuctionPsig} onChange={v => updateField('mtSuctionPsig', v)} unit="psig" placeholder="e.g. 32" hint="gauge at rack header" />
+              <FieldInput label="MT Suction Pressure" value={fieldReadings.mtSuctionPsig} onChange={v => updateField('mtSuctionPsig', v)} unit="psig" placeholder="e.g. 55" hint="gauge at rack header" />
               <FieldInput label="MT Suction Line Temp" value={fieldReadings.mtSuctionTemp} onChange={v => updateField('mtSuctionTemp', v)} unit="°F" placeholder="e.g. 42" hint="pipe temp at rack" />
 
               <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">LT Booster Circuit</div>
@@ -1393,7 +1459,7 @@ export default function SimulationPage() {
             </div>
 
             {/* Right: derived calculations + findings */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 md:overflow-y-auto p-4 space-y-4 pb-24 md:pb-4">
 
               {/* Derived values */}
               <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
@@ -1507,7 +1573,7 @@ export default function SimulationPage() {
           </div>
           ) : (
           /* ── Sim readings (existing) ─────────────────────────────────────── */
-          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 pb-24 md:pb-4">
             <div className="max-w-4xl mx-auto space-y-3">
 
             {/* ── OAT Slider ── */}
@@ -1524,17 +1590,17 @@ export default function SimulationPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-slate-500 w-12 text-right flex-shrink-0">−20 °F</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 hidden xs:block w-12 text-right flex-shrink-0">−20°F</span>
                 <input
                   type="range" min={-20} max={115} step={5}
                   value={activeOat}
                   onChange={e => setOat(Number(e.target.value))}
                   disabled={scenarioMode}
-                  className="flex-1 accent-blue-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  className="flex-1 min-w-0 accent-blue-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <span className="text-[10px] text-slate-500 w-10 flex-shrink-0">115 °F</span>
-                <span className={`text-2xl font-bold font-mono tabular-nums w-20 text-right flex-shrink-0 ${oatColor}`}>
+                <span className="text-[10px] text-slate-500 hidden xs:block w-10 flex-shrink-0">115°F</span>
+                <span className={`text-xl sm:text-2xl font-bold font-mono tabular-nums flex-shrink-0 ${oatColor}`}>
                   {activeOat}°F
                 </span>
               </div>
@@ -1544,7 +1610,7 @@ export default function SimulationPage() {
                   HP Control:{' '}
                   <span className={mt.hpCtrlActive ? 'text-amber-400 font-medium' : 'text-slate-500'}>
                     {mt.hpCtrlActive
-                      ? `Active — holding ${Math.round(mt.condensingTemp)}°F sat / ${Math.round(toGauge(ptLookup(mt.condensingTemp, pt)))} psig (set ${rackConfig.hpCtrlPsig} psig)`
+                      ? `Active — holding ${Math.round(mt.condensingTemp)}°F sat / ${Math.round(toGauge(ptBubble(mt.condensingTemp, pt)))} psig (set ${rackConfig.hpCtrlPsig} psig)`
                       : `Off (set point ${rackConfig.hpCtrlPsig} psig / ${hpCtrlSatTemp.toFixed(1)}°F sat)`}
                   </span>
                 </span>
@@ -1878,23 +1944,23 @@ export default function SimulationPage() {
 
             {/* ── Reference + Instructor reveal ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Card title="R-404A Normal Ranges" icon={<Info size={13}/>}>
+              <Card title="Normal Ranges" icon={<Info size={13}/>}>
                 <div className="text-[10px] text-slate-500 space-y-0.5 py-1 leading-relaxed">
-                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit — configured {rackConfig.mtSuctionPsig} psig / {mtSatSetpoint.toFixed(1)}°F SST</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Suction setpoint</span> {rackConfig.mtSuctionPsig} psig ({mtSatSetpoint.toFixed(1)}°F sat)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Discharge (HP ctrl)</span> {rackConfig.hpCtrlPsig} psig min</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Suction SH</span> 15–25 °F</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Subcooling</span> 10–20 °F (clear glass)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Discharge temp</span> 130–200 °F</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Oil diff</span> 20–25 psi (Y825)</div>
-                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — configured {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT suction setpoint</span> {rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F sat)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT ratio</span> 2.0–3.5 : 1</div>
-                  <div><span className="text-slate-400 w-32 inline-block">LT superheat</span> 10–20 °F</div>
-                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — configured {rackConfig.hpCtrlPsig} psig</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Min cond sat</span> {hpCtrlSatTemp.toFixed(1)}°F sat ({rackConfig.hpCtrlPsig} psig)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Activates below</span> OAT ~{Math.round(hpCtrlSatTemp - 15)}°F (clean rack)</div>
-                  <div><span className="text-slate-400 w-32 inline-block">Typical range</span> 155–175 psig (rack setup sheet)</div>
+                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit — {rackConfig.mtSuctionPsig} psig / {mtSatSetpoint.toFixed(1)}°F SST</div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Suction setpoint</span><span>{rackConfig.mtSuctionPsig} psig ({mtSatSetpoint.toFixed(1)}°F)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Discharge (HP ctrl)</span><span>{rackConfig.hpCtrlPsig} psig min</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Suction SH</span><span>15–25 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Subcooling</span><span>10–20 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Discharge temp</span><span>130–200 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Oil diff</span><span>20–25 psi (Y825)</span></div>
+                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT suction setpoint</span><span>{rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT ratio</span><span>2.0–3.5 : 1</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT superheat</span><span>10–20 °F</span></div>
+                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig</div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Min cond sat</span><span>{hpCtrlSatTemp.toFixed(1)}°F ({rackConfig.hpCtrlPsig} psig)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Activates below OAT</span><span>~{Math.round(hpCtrlSatTemp - 15)}°F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Typical range</span><span>155–175 psig</span></div>
                 </div>
               </Card>
 

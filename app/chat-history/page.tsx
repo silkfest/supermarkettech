@@ -241,7 +241,7 @@ export default function ChatHistoryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3">
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
           <Home size={18} />
         </button>
@@ -256,7 +256,7 @@ export default function ChatHistoryPage() {
         <span className="text-sm font-medium text-slate-700">Chat History</span>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + filters */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
           <div className="flex-1">
@@ -271,7 +271,7 @@ export default function ChatHistoryPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-36"
+              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white flex-1 sm:w-36 sm:flex-none min-w-0"
             />
             <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-xs">
               {(['all', 'EXPERT', 'MAINTENANCE'] as const).map(m => (

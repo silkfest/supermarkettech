@@ -943,7 +943,7 @@ export default function ComponentRegistryPage() {
               </p>
             )}
             {types.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                 <button onClick={() => { setActiveType(''); setQuery('') }}
                   className="flex flex-col items-center justify-center gap-2 p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-300 hover:shadow-sm active:scale-95 transition-all">
                   <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center"><LayoutGrid size={22}/></div>

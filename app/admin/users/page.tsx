@@ -83,24 +83,24 @@ export default function AdminUsersPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600">
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <div className="flex items-baseline gap-0.5">
+          <div className="flex items-baseline gap-0.5 flex-shrink-0">
             <span className="text-lg font-bold text-blue-600">Cold</span>
             <span className="text-lg font-bold text-slate-800">IQ</span>
           </div>
-          <span className="text-slate-400">/</span>
-          <span className="text-sm font-medium text-slate-700">User Management</span>
+          <span className="text-slate-400 flex-shrink-0">/</span>
+          <span className="text-sm font-medium text-slate-700 truncate">User Management</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => router.push('/admin/technicians')}
-            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2.5 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors hidden sm:block"
           >
             Technician Profiles →
           </button>
@@ -108,7 +108,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
         {error && (
           <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
             <span>{error}</span>
@@ -123,8 +123,8 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">User</th>

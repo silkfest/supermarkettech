@@ -198,7 +198,7 @@ export default function TipsPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3">
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
           <Home size={18} />
         </button>
@@ -213,9 +213,9 @@ export default function TipsPage() {
         <span className="text-sm font-medium text-slate-700">Troubleshooting Tips</span>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + search */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex-1">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <Lightbulb size={20} className="text-amber-500" />
@@ -227,7 +227,7 @@ export default function TipsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search tips…"
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-48"
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full sm:w-48"
           />
         </div>
 

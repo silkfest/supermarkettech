@@ -359,7 +359,7 @@ function TrainingInner() {
         {/* Badges */}
         <div>
           <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Badges</h3>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {BADGES.map(b => {
               const earned = earnedBadges.some(e => e.id === b.id)
               const isNew  = newBadge === b.id

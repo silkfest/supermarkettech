@@ -152,7 +152,7 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
           <Home size={18}/>
         </button>
@@ -167,9 +167,9 @@ export default function LibraryPage() {
         <span className="text-sm font-medium text-slate-700">Manual Library</span>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + search */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex-1">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <BookOpen size={20} className="text-blue-600"/>
@@ -183,7 +183,7 @@ export default function LibraryPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="pl-8 pr-8 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-44"
+              className="pl-8 pr-8 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full sm:w-48"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -315,14 +315,14 @@ export default function LibraryPage() {
 
                 {/* Admin actions: assign + rename + delete */}
                 {isAdmin && (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {assigning[doc.id] ? (
                       <Loader2 size={14} className="animate-spin text-slate-400"/>
                     ) : (
                       <select
                         value={doc.equipment_id ?? ''}
                         onChange={e => assignEquipment(doc.id, e.target.value || null)}
-                        className="text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[140px] truncate"
+                        className="text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-28 sm:w-36 truncate hidden sm:block"
                         title="Assign to equipment"
                       >
                         <option value="">Unassigned</option>
