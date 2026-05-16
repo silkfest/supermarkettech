@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, Home, Settings, History, BookOpen, FlaskConical, UserCircle, Shield } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -29,9 +29,20 @@ function SidebarContent({
   equipment, selected, mode, currentUser, onSelect, onMode, onAdd, onMobileClose,
 }: Omit<Props, 'mobileOpen'>) {
   const router = useRouter()
-  const [loggingOut, setLoggingOut] = useState(false)
+  const [loggingOut,    setLoggingOut]    = useState(false)
+  const [pendingCount,  setPendingCount]  = useState(0)
   const alarmCount   = equipment.filter(e => e.status === 'ALARM').length
   const warningCount = equipment.filter(e => e.status === 'WARNING').length
+
+  // Fetch pending user count for admins/managers
+  useEffect(() => {
+    if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) return
+    getSupabaseBrowser()
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => setPendingCount(count ?? 0))
+  }, [currentUser])
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -262,6 +273,11 @@ function SidebarContent({
           >
             <Users size={13} className="opacity-60"/>
             Manage users
+            {pendingCount > 0 && (
+              <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-amber-500 text-white rounded-full">
+                {pendingCount}
+              </span>
+            )}
           </button>
         </div>
       )}
