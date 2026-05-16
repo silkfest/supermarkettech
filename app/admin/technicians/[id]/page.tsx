@@ -70,13 +70,17 @@ export default function TechnicianProfilePage() {
         router.push('/dashboard'); return
       }
 
-      const [
-        { data: techData, error: techError },
-        { data: certData },
-        { data: pmData },
-        { data: irData },
-      ] = await Promise.all([
-        sb.from('users').select('*').eq('id', id).single(),
+      // Fetch user via API route (service role bypasses RLS)
+      const techRes = await fetch(`/api/users/${id}`)
+      if (!techRes.ok) {
+        const body = await techRes.json().catch(() => ({}))
+        setLoadError(body.error ?? `HTTP ${techRes.status}`)
+        setLoading(false)
+        return
+      }
+      const techData: UserRow = await techRes.json()
+
+      const [{ data: certData }, { data: pmData }, { data: irData }] = await Promise.all([
         sb.from('tech_certifications').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         sb.from('pm_reports').select('id,store_name,performed_at,report_type')
           .contains('technician', { id })
@@ -86,8 +90,7 @@ export default function TechnicianProfilePage() {
           .order('performed_at', { ascending: false }).limit(10),
       ])
 
-      if (techError) setLoadError(techError.message)
-      setTech((techData as unknown as UserRow) ?? null)
+      setTech(techData)
       setCerts((certData ?? []) as Cert[])
       setReports({ pm: (pmData ?? []) as Report[], individual: (irData ?? []) as Report[] })
       setLoading(false)

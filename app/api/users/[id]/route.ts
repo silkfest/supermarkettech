@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = getSupabaseServer()
+
+  // Caller must be admin, manager, or journeyman
+  const { data: caller } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (!caller || !['admin', 'manager', 'journeyman'].includes(caller.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { data, error } = await supabase.from('users').select('*').eq('id', id).single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
+  return NextResponse.json(data)
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
