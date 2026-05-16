@@ -34,14 +34,14 @@ function SidebarContent({
   const alarmCount   = equipment.filter(e => e.status === 'ALARM').length
   const warningCount = equipment.filter(e => e.status === 'WARNING').length
 
-  // Fetch pending user count for admins/managers
+  // Fetch pending user count for admins/managers (via API — browser client is RLS-restricted)
   useEffect(() => {
     if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) return
-    getSupabaseBrowser()
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .then(({ count }) => setPendingCount(count ?? 0))
+    fetch('/api/users')
+      .then(r => r.ok ? r.json() : [])
+      .then((users: { status: string }[]) =>
+        setPendingCount(Array.isArray(users) ? users.filter(u => u.status === 'pending').length : 0)
+      )
   }, [currentUser])
 
   async function handleLogout() {

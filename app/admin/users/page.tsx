@@ -33,16 +33,17 @@ export default function AdminUsersPage() {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
 
+      // Own profile via browser client (reading own row is always allowed)
       const { data: profileData } = await sb.from('users').select('*').eq('id', user.id).single()
       const profile = profileData as unknown as UserRow | null
       if (!profile || profile.role !== 'admin') { router.push('/dashboard'); return }
       setCurrentUser(profile)
 
-      const { data: allUsersData } = await sb
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-      setUsers((allUsersData as unknown as UserRow[]) ?? [])
+      // All users via API route (service role bypasses RLS)
+      const res = await fetch('/api/users')
+      if (res.ok) {
+        setUsers(await res.json())
+      }
       setLoading(false)
     }
     load()
