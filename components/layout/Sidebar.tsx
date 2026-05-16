@@ -123,15 +123,17 @@ function SidebarContent({
           className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
         >
           <span className="opacity-60"><Database size={13}/></span>
-          Component registry
+          Components
         </button>
-        <button
-          onClick={() => { router.push('/library'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-        >
-          <span className="opacity-60"><BookOpen size={13}/></span>
-          Manual library
-        </button>
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={() => { router.push('/library'); onMobileClose?.() }}
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          >
+            <span className="opacity-60"><BookOpen size={13}/></span>
+            Manual library
+          </button>
+        )}
         <button
           onClick={() => { router.push('/simulation'); onMobileClose?.() }}
           className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
