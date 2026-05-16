@@ -219,6 +219,7 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ChatPanel({ equipment, mode, onUpload }: Props) {
+  const router = useRouter()
   const [messages, setMessages]   = useState<ChatMessage[]>([])
   const [input, setInput]         = useState('')
   const [streaming, setStreaming] = useState(false)
