@@ -36,8 +36,8 @@ const TRADE_COLOURS: Record<string, string> = {
   general:       '',
 }
 const STORE_COLOURS: Record<string, string> = {
-  Sobeys:  'bg-red-50 text-red-700 border-red-200',
-  Loblaws: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  Sobeys:  'bg-green-50 text-green-700 border-green-200',
+  Loblaws: 'bg-red-50 text-red-700 border-red-200',
   Metro:   'bg-blue-50 text-blue-700 border-blue-200',
   CK:      'bg-purple-50 text-purple-700 border-purple-200',
 }
