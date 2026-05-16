@@ -189,7 +189,7 @@ function MaintenanceHubContent() {
                       : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
-                  {t === 'all' ? 'All types' : t === 'pm' ? 'PM' : 'Service calls'}
+                  {t === 'all' ? 'All' : t === 'pm' ? 'PM' : <><span className="sm:hidden">Service</span><span className="hidden sm:inline">Service calls</span></>}
                 </button>
               ))}
             </div>

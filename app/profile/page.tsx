@@ -332,12 +332,12 @@ function ProfileContent() {
 
             {editingAppr ? (
               <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
+                  <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
-                    <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1">Apprenticeship Year</label>
                     <select value={editYear} onChange={e => setEditYear(Number(e.target.value))}
@@ -346,12 +346,12 @@ function ProfileContent() {
                       <option value={6}>Journeyman</option>
                     </select>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Hours Logged</label>
-                  <input type="number" min={0} value={editHours} onChange={e => setEditHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Total apprenticeship hours"/>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Hours Logged</label>
+                    <input type="number" min={0} value={editHours} onChange={e => setEditHours(Number(e.target.value))}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Total hours"/>
+                  </div>
                 </div>
               </div>
             ) : (

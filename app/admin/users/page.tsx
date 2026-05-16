@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 
 import { ROLE_LABEL as _RL, STATUS_BADGE } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
@@ -123,8 +124,107 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
+        {/* ── Mobile card list (< md) ───────────────────────────────────────── */}
+        <div className="md:hidden space-y-3">
+          {users.map(user => (
+            <div key={user.id}
+              className={`bg-white rounded-xl border p-4 ${user.status === 'pending' ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200'}`}
+            >
+              {/* Name / email / status */}
+              <div className="flex items-start gap-2 mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="font-semibold text-slate-800 text-sm">{user.name || '—'}</span>
+                    {statusBadge(user.status)}
+                  </div>
+                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                </div>
+                {saving === user.id && <Loader2 size={14} className="animate-spin text-blue-400 flex-shrink-0 mt-0.5"/>}
+              </div>
+
+              {/* Role + mentor selects */}
+              <div className={`grid gap-2 mb-3 ${user.role === 'apprentice' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Role</label>
+                  <select
+                    value={user.role}
+                    onChange={e => updateUser(user.id, { role: e.target.value as Role })}
+                    disabled={saving === user.id || user.id === currentUser?.id}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-2 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="journeyman">Journeyman</option>
+                    <option value="apprentice">Apprentice</option>
+                  </select>
+                </div>
+                {user.role === 'apprentice' && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Mentor</label>
+                    <select
+                      value={user.mentor_id ?? ''}
+                      onChange={e => updateUser(user.id, { mentor_id: e.target.value || null })}
+                      disabled={saving === user.id}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-2 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">No mentor</option>
+                      {journeymen.filter(j => j.id !== user.id).map(j => (
+                        <option key={j.id} value={j.id}>{j.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {user.status === 'pending' && (
+                  <button
+                    onClick={() => updateUser(user.id, { status: 'active' })}
+                    disabled={saving === user.id}
+                    className="flex-1 text-sm py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                )}
+                {user.status === 'active' && user.id !== currentUser?.id && (
+                  <button
+                    onClick={() => {
+                      if (!confirm(`Suspend ${user.name || user.email}?`)) return
+                      updateUser(user.id, { status: 'suspended' })
+                    }}
+                    disabled={saving === user.id}
+                    className="flex-1 text-sm py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Suspend
+                  </button>
+                )}
+                {user.status === 'suspended' && (
+                  <button
+                    onClick={() => {
+                      if (!confirm(`Reactivate ${user.name || user.email}?`)) return
+                      updateUser(user.id, { status: 'active' })
+                    }}
+                    disabled={saving === user.id}
+                    className="flex-1 text-sm py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
+                  >
+                    Reactivate
+                  </button>
+                )}
+                <button
+                  onClick={() => router.push(`/admin/technicians/${user.id}`)}
+                  className="px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50"
+                >
+                  Profile
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Desktop table (md+) ──────────────────────────────────────────────── */}
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">User</th>
@@ -141,9 +241,7 @@ export default function AdminUsersPage() {
                     <div className="font-medium text-slate-800">{user.name || '—'}</div>
                     <div className="text-xs text-slate-500">{user.email}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    {statusBadge(user.status)}
-                  </td>
+                  <td className="px-4 py-3">{statusBadge(user.status)}</td>
                   <td className="px-4 py-3">
                     <select
                       value={user.role}

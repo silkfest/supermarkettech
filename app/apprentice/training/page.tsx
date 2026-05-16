@@ -549,17 +549,17 @@ function TrainingInner() {
         {/* Badges */}
         <div>
           <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Badges</h3>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
             {BADGES.map(b => {
               const earned = earnedBadges.some(e => e.id === b.id)
               const isNew  = newBadge === b.id
               return (
                 <div key={b.id}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'bg-slate-700 border-slate-500' : 'bg-slate-800/50 border-slate-700 opacity-40 grayscale'}`}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'bg-slate-700 border-slate-500' : 'bg-slate-800/50 border-slate-700 opacity-40 grayscale'}`}
                   title={`${b.name}: ${b.desc}`}
                 >
-                  <span className="text-2xl">{b.icon}</span>
-                  <span className="text-[9px] text-center text-slate-300 font-medium leading-tight">{b.name}</span>
+                  <span className="text-xl sm:text-2xl">{b.icon}</span>
+                  <span className="text-[10px] text-center text-slate-300 font-medium leading-tight">{b.name}</span>
                 </div>
               )
             })}
