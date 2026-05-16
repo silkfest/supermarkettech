@@ -9,7 +9,7 @@ interface Props {
   storeId?: string
 }
 
-const REFRIGERANTS = ['R-448A','R-449A','R-404A','R-507A','R-134a','R-290','R-744','R-22']
+const REFRIGERANTS = ['R-404A','R-448A','R-449A','R-407A','R-407F','R-507A','R-22','R-410A','R-134a','R-290','R-717','R-744','Other']
 const EQUIP_TYPES  = ['rack','case','condenser','rooftop','compressor','other']
 
 export default function AddEquipmentModal({ onClose, onCreated, storeId: presetStoreId }: Props) {
