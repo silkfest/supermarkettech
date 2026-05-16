@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   ArrowLeft, Shield, Plus, Trash2, CheckCircle, AlertTriangle,
-  Loader2, Edit2, X, Save, ClipboardList, Wrench, UserCircle,
+  Loader2, Edit2, X, Save, Wrench, UserCircle,
 } from 'lucide-react'
 
 type Role   = 'admin' | 'manager' | 'journeyman' | 'apprentice'
@@ -17,8 +17,7 @@ interface Cert {
 }
 interface Report { id: string; store_name: string; performed_at: string; report_type?: string }
 
-const CERT_TYPES = ['EPA 608', 'NATE', 'State License', 'ESCO', 'OSHA 10', 'OSHA 30', 'Other']
-const EPA_SUBTYPES = ['Type I', 'Type II', 'Type III', 'Universal']
+const CERT_TYPES = ['313A', 'Gas 1', 'Gas 2', 'Gas 3', 'ODP Certificate', '309A', '442A', 'R-410A', 'WHMIS', 'Working at Heights', 'First Aid', 'Other']
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', manager: 'Manager', journeyman: 'Journeyman', apprentice: 'Apprentice' }
 const ROLE_COLOR: Record<Role, string> = {
   admin: 'bg-purple-100 text-purple-700', manager: 'bg-blue-100 text-blue-700',
@@ -38,7 +37,7 @@ function certBadge(c: Cert) {
   return <span className="flex items-center gap-1 text-emerald-600 text-[10px] font-semibold"><CheckCircle size={10}/>Valid</span>
 }
 
-const emptyForm = { certType: 'EPA 608', certSubtype: 'Universal', certNumber: '', issuedDate: '', expiryDate: '', notes: '' }
+const emptyForm = { certType: CERT_TYPES[0], certSubtype: '', certNumber: '', issuedDate: '', expiryDate: '', notes: '' }
 
 export default function TechnicianProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -64,7 +63,9 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
       const { data: me } = await sb.from('users').select('role').eq('id', user.id).single()
-      if (!me || (me as { role: string }).role !== 'admin') { router.push('/dashboard'); return }
+      if (!me || !['admin', 'manager', 'journeyman'].includes((me as { role: string }).role)) {
+        router.push('/dashboard'); return
+      }
 
       const [{ data: techData }, { data: certData }, { data: pmData }, { data: irData }] = await Promise.all([
         sb.from('users').select('*').eq('id', id).single(),
@@ -90,16 +91,16 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
     const payload = {
       userId:      id,
       certType:    form.certType,
-      certSubtype: form.certSubtype,
+      certSubtype: form.certSubtype || form.certType,
       certNumber:  form.certNumber,
       issuedDate:  form.issuedDate || null,
       expiryDate:  form.expiryDate || null,
       notes:       form.notes,
     }
-    const url   = editId ? `/api/tech-certs/${editId}` : '/api/tech-certs'
+    const url    = editId ? `/api/tech-certs/${editId}` : '/api/tech-certs'
     const method = editId ? 'PATCH' : 'POST'
-    const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    const data = await res.json()
+    const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    const data   = await res.json()
     if (res.ok) {
       if (editId) setCerts(prev => prev.map(c => c.id === editId ? data : c))
       else setCerts(prev => [data, ...prev])
@@ -115,6 +116,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
   }
 
   async function deleteCert(certId: string) {
+    if (!confirm('Remove this certificate?')) return
     setDeletingId(certId)
     await fetch(`/api/tech-certs/${certId}`, { method: 'DELETE' })
     setCerts(prev => prev.filter(c => c.id !== certId))
@@ -122,7 +124,9 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Loading…</div>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+      <Loader2 size={20} className="animate-spin mr-2"/> Loading…
+    </div>
   )
   if (!tech) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Tech not found.</div>
@@ -146,6 +150,14 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
         </div>
         <span className="text-slate-300">/</span>
         <span className="text-sm font-medium text-slate-700 truncate">{tech.name || tech.email}</span>
+        <div className="ml-auto">
+          <button
+            onClick={() => router.push(`/profile?userId=${tech.id}`)}
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2.5 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            Full profile →
+          </button>
+        </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
@@ -195,23 +207,15 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
             <div className="bg-white border border-blue-200 rounded-xl p-4 mb-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Certification Type</label>
+                  <label className={labelCls}>Certification</label>
                   <select value={form.certType} onChange={e => set('certType', e.target.value)} className={inputCls}>
                     {CERT_TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
-                {form.certType === 'EPA 608' && (
-                  <div>
-                    <label className={labelCls}>EPA Type</label>
-                    <select value={form.certSubtype} onChange={e => set('certSubtype', e.target.value)} className={inputCls}>
-                      {EPA_SUBTYPES.map(t => <option key={t}>{t}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className={labelCls}>Cert / License Number</label>
-                <input value={form.certNumber} onChange={e => set('certNumber', e.target.value)} placeholder="e.g. 608-12345" className={inputCls} />
+                <div>
+                  <label className={labelCls}>Cert / Ticket Number</label>
+                  <input value={form.certNumber} onChange={e => set('certNumber', e.target.value)} placeholder="e.g. TSSA-123456" className={inputCls} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -225,21 +229,16 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <label className={labelCls}>Notes <span className="text-slate-400 font-normal">(optional)</span></label>
-                <input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. Proctored by ESCO" className={inputCls} />
+                <input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. Issued by TSSA" className={inputCls} />
               </div>
               <div className="flex gap-2 pt-1">
-                <button
-                  onClick={saveCert}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
+                <button onClick={saveCert} disabled={saving}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                   {editId ? 'Save' : 'Add Cert'}
                 </button>
-                <button
-                  onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm) }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-600 text-sm rounded-lg hover:bg-slate-200"
-                >
+                <button onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm) }}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-600 text-sm rounded-lg hover:bg-slate-200">
                   <X size={13} /> Cancel
                 </button>
               </div>
@@ -250,7 +249,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
             <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center">
               <Shield size={24} className="text-slate-300 mx-auto mb-2" />
               <p className="text-sm text-slate-400">No certifications on record</p>
-              <p className="text-xs text-slate-300 mt-0.5">Add EPA 608, NATE, or other credentials</p>
+              <p className="text-xs text-slate-300 mt-0.5">Add 313A, Gas tickets, or other credentials</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -259,7 +258,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
                       <p className="text-sm font-semibold text-slate-800">
-                        {c.cert_type}{c.cert_subtype ? ` — ${c.cert_subtype}` : ''}
+                        {c.cert_subtype || c.cert_type}
                       </p>
                       {certBadge(c)}
                     </div>
@@ -274,11 +273,8 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
                     <button onClick={() => startEdit(c)} className="p-1.5 text-slate-300 hover:text-blue-500 rounded-lg hover:bg-slate-50 transition-colors">
                       <Edit2 size={13} />
                     </button>
-                    <button
-                      onClick={() => deleteCert(c.id)}
-                      disabled={deletingId === c.id}
-                      className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
-                    >
+                    <button onClick={() => deleteCert(c.id)} disabled={deletingId === c.id}
+                      className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">
                       {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     </button>
                   </div>
@@ -291,7 +287,9 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
         {/* Recent work */}
         {mergedReports.length > 0 && (
           <div>
-            <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Recent Work</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <Wrench size={11}/> Recent Work
+            </h3>
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
               {mergedReports.map(r => (
                 <button
