@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, Home, Settings, History, BookOpen, FlaskConical } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, Home, Settings, History, BookOpen, FlaskConical, UserCircle, Shield } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
@@ -141,6 +141,20 @@ function SidebarContent({
         >
           <span className="opacity-60"><FlaskConical size={13}/></span>
           Rack simulator
+        </button>
+        <button
+          onClick={() => { router.push('/profile'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        >
+          <span className="opacity-60"><UserCircle size={13}/></span>
+          My profile
+        </button>
+        <button
+          onClick={() => { router.push('/policies'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        >
+          <span className="opacity-60"><Shield size={13}/></span>
+          Policies &amp; procedures
         </button>
         <button
           onClick={() => { router.push('/settings'); onMobileClose?.() }}
