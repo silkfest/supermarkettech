@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Lightbulb, Check, X, Wrench, ExternalLink } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter } from 'next/navigation'
@@ -218,40 +218,23 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-function sessionStorageKey(equipmentId?: string) {
-  return `chatSession_${equipmentId ?? 'global'}`
-}
-
 export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [messages, setMessages]   = useState<ChatMessage[]>([])
   const [input, setInput]         = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const [error, setError]         = useState<string | null>(null)
 
-  // Save-as-tip state
-  const [showTipInput,   setShowTipInput]   = useState(false)
-  const [tipTitle,       setTipTitle]       = useState('')
-  const [tipTags,        setTipTags]        = useState<string[]>([])
-  const [savingTip,      setSavingTip]      = useState(false)
-  const [tipSaved,       setTipSaved]       = useState(false)
-  const [tipAlreadySaved,setTipAlreadySaved]= useState(false)
-  const [tipError,       setTipError]       = useState('')
-
-  const TIP_TAG_OPTIONS = ['Superheat', 'Defrost', 'Leak', 'Compressor', 'Alarms', 'Electrical', 'Controls']
+  // Save conversation state
+  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  const [saveTitle,      setSaveTitle]      = useState('')
+  const [savingChat,     setSavingChat]     = useState(false)
+  const [chatSaved,      setChatSaved]      = useState(false)
+  const [saveError,      setSaveError]      = useState('')
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
-
-  // Restore sessionId from localStorage when equipment selection changes
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(sessionStorageKey(equipment?.id))
-      setSessionId(stored ?? undefined)
-    } catch { /* ignore – SSR or private browsing */ }
-  }, [equipment?.id])
 
   // Pre-fill input from simulation "Diagnose" button (stored in localStorage)
   useEffect(() => {
@@ -272,11 +255,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     setError(null)
     setInput('')
     setStreaming(false)
-    setShowTipInput(false)
-    setTipTitle('')
-    setTipTags([])
-    setTipSaved(false)
-    setTipError('')
+    setShowSavePrompt(false)
+    setSaveTitle('')
+    setChatSaved(false)
+    setSaveError('')
   }, [equipment?.id])
 
   // Scroll to bottom whenever messages update
@@ -328,7 +310,6 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          sessionId: sessionId ?? null,
           equipmentId: equipment?.id,
           mode,
           message: text,
@@ -403,12 +384,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               }
               break
 
-            case 'done':
-              if (event.sessionId) {
-                setSessionId(event.sessionId)
-                try { localStorage.setItem(sessionStorageKey(equipment?.id), event.sessionId) } catch { /* ignore */ }
-              }
-              {
+            case 'done': {
                 // Snapshot before reset — React batches state updaters and executes
                 // them after the current synchronous block. Without snapshots the
                 // closure would read the already-reset `undefined` values.
@@ -419,11 +395,11 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                     ? { ...m, isStreaming: false, sources: snapshotSources, componentLinks: snapshotLinks }
                     : m
                 ))
+                setStreaming(false)
+                pendingSources = undefined
+                pendingComponentLinks = undefined
+                break
               }
-              setStreaming(false)
-              pendingSources = undefined
-              pendingComponentLinks = undefined
-              break
 
             case 'error':
               setMessages(prev => prev.map(m =>
@@ -465,7 +441,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       ))
       setStreaming(false)
     }
-  }, [input, streaming, messages, mode, equipment, sessionId])
+  }, [input, streaming, messages, mode, equipment])
 
   function handleRetry() {
     const text = lastSentMsgRef.current
@@ -486,24 +462,35 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     handleSubmit({ overrideText: text, overrideHistory })
   }
 
-  async function handleSaveTip() {
-    if (!sessionId || !tipTitle.trim()) return
-    setSavingTip(true)
-    setTipError('')
+  async function handleSaveChat() {
+    if (!saveTitle.trim() || savingChat) return
+    setSavingChat(true)
+    setSaveError('')
     try {
-      const res = await fetch('/api/tips', {
+      const messagesToSave = messages
+        .filter(m => !m.isStreaming)
+        .map(m => ({ role: m.role, content: m.content }))
+      const res = await fetch('/api/chat/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, title: tipTitle.trim(), tags: tipTags }),
+        body: JSON.stringify({
+          messages: messagesToSave,
+          equipmentId: equipment?.id,
+          mode,
+          title: saveTitle.trim(),
+        }),
       })
-      if (res.status === 409) { setTipAlreadySaved(true); setShowTipInput(false); return }
-      if (!res.ok) { const j = await res.json(); setTipError(j?.error ?? 'Failed to save'); return }
-      setTipSaved(true)
-      setShowTipInput(false)
+      if (!res.ok) {
+        const j = await res.json()
+        setSaveError(j?.error ?? 'Failed to save')
+        return
+      }
+      setChatSaved(true)
+      setShowSavePrompt(false)
     } catch {
-      setTipError('Network error — please try again')
+      setSaveError('Network error — please try again')
     } finally {
-      setSavingTip(false)
+      setSavingChat(false)
     }
   }
 
@@ -551,69 +538,44 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         )}
       </div>
 
-      {/* ── Save as tip bar ── shown when there's a completed session */}
-      {sessionId && !streaming && messages.length >= 2 && (
+      {/* ── Save conversation bar ── shown after any completed exchange */}
+      {!streaming && messages.length >= 2 && (
         <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 py-2">
           <div className="max-w-2xl mx-auto w-full">
-            {tipSaved ? (
+            {chatSaved ? (
               <div className="flex items-center gap-1.5 text-xs text-emerald-600 py-1">
-                <Check size={13} /> Saved as a troubleshooting tip
+                <Check size={13} /> Conversation saved
               </div>
-            ) : tipAlreadySaved ? (
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 py-1">
-                <Check size={13} /> Already saved as a tip
-              </div>
-            ) : showTipInput ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Lightbulb size={13} className="text-amber-500 flex-shrink-0" />
-                  <input
-                    autoFocus
-                    value={tipTitle}
-                    onChange={e => setTipTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveTip(); if (e.key === 'Escape') setShowTipInput(false) }}
-                    placeholder="Give this tip a title…"
-                    className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                  <button
-                    onClick={handleSaveTip}
-                    disabled={savingTip || !tipTitle.trim()}
-                    className="px-2.5 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1"
-                  >
-                    {savingTip ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                    Save
-                  </button>
-                  <button onClick={() => setShowTipInput(false)} className="text-slate-400 hover:text-slate-600">
-                    <X size={14} />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1 pl-5">
-                  {TIP_TAG_OPTIONS.map(tag => {
-                    const active = tipTags.includes(tag)
-                    return (
-                      <button
-                        key={tag}
-                        onClick={() => setTipTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
-                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                          active
-                            ? 'bg-amber-100 border-amber-300 text-amber-700 font-medium'
-                            : 'bg-white border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-600'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    )
-                  })}
-                </div>
-                {tipError && <span className="text-xs text-red-500 pl-5">{tipError}</span>}
+            ) : showSavePrompt ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={saveTitle}
+                  onChange={e => setSaveTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveChat(); if (e.key === 'Escape') setShowSavePrompt(false) }}
+                  placeholder="Name this conversation…"
+                  className="flex-1 text-xs px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <button
+                  onClick={handleSaveChat}
+                  disabled={savingChat || !saveTitle.trim()}
+                  className="px-2.5 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {savingChat ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                  Save
+                </button>
+                <button onClick={() => setShowSavePrompt(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
+                </button>
+                {saveError && <span className="text-xs text-red-500 ml-1">{saveError}</span>}
               </div>
             ) : (
               <button
-                onClick={() => { setShowTipInput(true); setTipTitle(messages[0]?.content?.slice(0, 80) ?? '') }}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-600 transition-colors py-1"
+                onClick={() => { setShowSavePrompt(true); setSaveTitle(messages[0]?.content?.slice(0, 80) ?? '') }}
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 transition-colors py-1"
               >
-                <Lightbulb size={13} />
-                Save as troubleshooting tip
+                <MessageSquare size={12} />
+                Save this conversation
               </button>
             )}
           </div>
@@ -679,14 +641,24 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               }
               {config.label} mode · Enter to send, Shift+Enter for new line
             </span>
-            <button
-              onClick={onUpload}
-              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
-              title="Upload a PDF manual for this unit"
-            >
-              <Upload size={9} />
-              Upload manual
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push('/chat-history')}
+                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                title="View saved conversations"
+              >
+                <History size={9} />
+                History
+              </button>
+              <button
+                onClick={onUpload}
+                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                title="Upload a PDF manual for this unit"
+              >
+                <Upload size={9} />
+                Upload manual
+              </button>
+            </div>
           </div>
         </div>
       </div>

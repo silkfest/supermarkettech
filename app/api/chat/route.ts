@@ -146,18 +146,7 @@ export async function POST(req: NextRequest) {
         if (componentLinks.length > 0) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks })}\n\n`))
         }
-        let activeSessionId = sessionId ?? undefined
-        if (!activeSessionId) {
-          const { data: sess } = await supabase.from('chat_sessions').insert({ equipment_id: equipmentId ?? null, mode, title: message.slice(0, 80) }).select('id').single()
-          activeSessionId = sess?.id
-        }
-        if (activeSessionId) {
-          await supabase.from('chat_messages').insert([
-            { session_id: activeSessionId, role: 'user', content: message },
-            { session_id: activeSessionId, role: 'assistant', content: fullContent, sources: sources.length > 0 ? sources : null },
-          ])
-        }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', sessionId: activeSessionId })}\n\n`))
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err)
         console.error('[Chat stream error]', detail, err)
