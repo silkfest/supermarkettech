@@ -254,7 +254,7 @@ export default function LibraryPage() {
             {docs.map(doc => (
               <div
                 key={doc.id}
-                className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 group"
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 group"
               >
                 {/* Icon */}
                 <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
@@ -307,30 +307,39 @@ export default function LibraryPage() {
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {doc.page_count && <span className="text-xs text-slate-400">{doc.page_count}p</span>}
                     {doc.file_size  && <span className="text-xs text-slate-400">{formatBytes(doc.file_size)}</span>}
-                    <span className="text-xs text-slate-400">
-                      {doc.equipment_name ? `📎 ${doc.equipment_name}` : 'Unassigned'}
-                    </span>
+                    {!isAdmin && (
+                      <span className="text-xs text-slate-400">
+                        {doc.equipment_name ? `📎 ${doc.equipment_name}` : 'Unassigned'}
+                      </span>
+                    )}
                   </div>
+                  {/* Admin: assign to equipment — visible on all screen sizes */}
+                  {isAdmin && (
+                    <div className="mt-1.5">
+                      {assigning[doc.id] ? (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                          <Loader2 size={12} className="animate-spin"/> Assigning…
+                        </div>
+                      ) : (
+                        <select
+                          value={doc.equipment_id ?? ''}
+                          onChange={e => assignEquipment(doc.id, e.target.value || null)}
+                          className="text-xs px-2 py-1 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-44"
+                          title="Assign to equipment"
+                        >
+                          <option value="">Unassigned</option>
+                          {equipment.map(eq => (
+                            <option key={eq.id} value={eq.id}>{eq.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Admin actions: assign + rename + delete */}
+                {/* Admin actions: rename + delete */}
                 {isAdmin && (
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {assigning[doc.id] ? (
-                      <Loader2 size={14} className="animate-spin text-slate-400"/>
-                    ) : (
-                      <select
-                        value={doc.equipment_id ?? ''}
-                        onChange={e => assignEquipment(doc.id, e.target.value || null)}
-                        className="text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-28 sm:w-36 truncate hidden sm:block"
-                        title="Assign to equipment"
-                      >
-                        <option value="">Unassigned</option>
-                        {equipment.map(eq => (
-                          <option key={eq.id} value={eq.id}>{eq.name}</option>
-                        ))}
-                      </select>
-                    )}
                     <button
                       onClick={() => { setEditingId(doc.id); setEditTitle(doc.title) }}
                       className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

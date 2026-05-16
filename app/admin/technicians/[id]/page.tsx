@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   ArrowLeft, Shield, Plus, Trash2, CheckCircle, AlertTriangle,
@@ -39,14 +39,16 @@ function certBadge(c: Cert) {
 
 const emptyForm = { certType: CERT_TYPES[0], certSubtype: '', certNumber: '', issuedDate: '', expiryDate: '', notes: '' }
 
-export default function TechnicianProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function TechnicianProfilePage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
 
   const [tech, setTech]     = useState<UserRow | null>(null)
   const [certs, setCerts]   = useState<Cert[]>([])
   const [reports, setReports] = useState<{ pm: Report[]; individual: Report[] }>({ pm: [], individual: [] })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Cert form
   const [showForm, setShowForm]   = useState(false)
@@ -58,6 +60,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
+    if (!id) return
     async function load() {
       const sb = getSupabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
@@ -67,7 +70,12 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
         router.push('/dashboard'); return
       }
 
-      const [{ data: techData }, { data: certData }, { data: pmData }, { data: irData }] = await Promise.all([
+      const [
+        { data: techData, error: techError },
+        { data: certData },
+        { data: pmData },
+        { data: irData },
+      ] = await Promise.all([
         sb.from('users').select('*').eq('id', id).single(),
         sb.from('tech_certifications').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         sb.from('pm_reports').select('id,store_name,performed_at,report_type')
@@ -78,6 +86,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
           .order('performed_at', { ascending: false }).limit(10),
       ])
 
+      if (techError) setLoadError(techError.message)
       setTech((techData as unknown as UserRow) ?? null)
       setCerts((certData ?? []) as Cert[])
       setReports({ pm: (pmData ?? []) as Report[], individual: (irData ?? []) as Report[] })
@@ -129,7 +138,12 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ id
     </div>
   )
   if (!tech) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Tech not found.</div>
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-2 text-sm text-slate-400">
+      <p>Tech not found.</p>
+      {loadError && <p className="text-xs text-red-400 max-w-xs text-center">{loadError}</p>}
+      <p className="text-xs text-slate-300">ID: {id || '(empty)'}</p>
+      <button onClick={() => router.back()} className="mt-2 text-xs text-blue-500 underline">Go back</button>
+    </div>
   )
 
   const mergedReports = [

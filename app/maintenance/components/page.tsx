@@ -672,8 +672,8 @@ function ComponentCard({
                 </button>
               )}
               {isAdmin && c.isCatalog && (
-                <button onClick={() => onEdit(c)} className="p-1 text-slate-300 hover:text-blue-500 rounded transition-colors" title="Edit component">
-                  <Pencil size={12}/>
+                <button onClick={() => onEdit(c)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit component">
+                  <Pencil size={14}/>
                 </button>
               )}
             </div>
