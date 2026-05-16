@@ -3,7 +3,8 @@ import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 const ELEVATED_ROLES = ['admin', 'manager', 'journeyman']
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -24,12 +25,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.sort_order       !== undefined) update.sort_order       = body.sort_order
   if (body.is_published     !== undefined) update.is_published     = body.is_published
 
-  const { data, error } = await supabase.from('courses').update(update).eq('id', params.id).select().single()
+  const { data, error } = await supabase.from('courses').update(update).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -38,7 +40,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const role = (profile as { role: string } | null)?.role ?? ''
   if (!['admin', 'manager'].includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { error } = await supabase.from('courses').delete().eq('id', params.id)
+  const { error } = await supabase.from('courses').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
