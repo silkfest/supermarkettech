@@ -17,7 +17,7 @@ interface Cert {
 }
 interface Report { id: string; store_name: string; performed_at: string; report_type?: string }
 
-const CERT_TYPES = ['313A', 'Gas 1', 'Gas 2', 'Gas 3', 'ODP Certificate', '309A', '442A', 'R-410A', 'WHMIS', 'Working at Heights', 'First Aid', 'Other']
+const CERT_TYPES = ['313A', 'Gas 1', 'Gas 2', 'Gas 3', 'ODP Certificate', 'WHMIS', 'Working at Heights', 'First Aid', 'Other']
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', manager: 'Manager', journeyman: 'Journeyman', apprentice: 'Apprentice' }
 const ROLE_COLOR: Record<Role, string> = {
   admin: 'bg-purple-100 text-purple-700', manager: 'bg-blue-100 text-blue-700',
