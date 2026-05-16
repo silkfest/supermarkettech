@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, Home, Settings, History, BookOpen, FlaskConical, UserCircle, Shield } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, History, BookOpen, FlaskConical, UserCircle, Shield } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
@@ -160,13 +160,6 @@ function SidebarContent({
           <span className="opacity-60"><Shield size={13}/></span>
           Policies &amp; procedures
         </button>
-        <button
-          onClick={() => { router.push('/settings'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-        >
-          <span className="opacity-60"><Settings size={13}/></span>
-          Settings
-        </button>
       </div>
 
       {/* Equipment list */}
@@ -230,19 +223,6 @@ function SidebarContent({
           <Plus size={12}/> Add equipment
         </button>
       </div>
-
-      {/* Training link — apprentices only */}
-      {currentUser?.role === 'apprentice' && (
-        <div className="px-2 pb-1">
-          <button
-            onClick={() => { router.push('/apprentice/training'); onMobileClose?.() }}
-            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
-          >
-            <GraduationCap size={13} className="opacity-60"/>
-            My training
-          </button>
-        </div>
-      )}
 
       {/* Apprentices overview — managers, journeymen, admins */}
       {currentUser?.role && ['admin', 'manager', 'journeyman'].includes(currentUser.role) && (

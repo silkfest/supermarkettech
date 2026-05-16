@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   Home, ArrowLeft, User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
-  FileText,
+  FileText, Settings,
 } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -480,6 +480,40 @@ function ProfileContent() {
           </div>
           <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
         </button>
+
+        {/* ── My Training quick link — apprentices only ─────────────────────── */}
+        {isOwnProfile && profile.role === 'apprentice' && (
+          <button
+            onClick={() => router.push('/apprentice/training')}
+            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <GraduationCap size={18} className="text-amber-600"/>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800">My Training</p>
+              <p className="text-xs text-slate-500">View your training modules, progress, and assigned tasks</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
+          </button>
+        )}
+
+        {/* ── Settings quick link ───────────────────────────────────────────── */}
+        {isOwnProfile && (
+          <button
+            onClick={() => router.push('/settings')}
+            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <Settings size={18} className="text-slate-500"/>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800">Settings</p>
+              <p className="text-xs text-slate-500">Update your display name and change your password</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
+          </button>
+        )}
 
       </div>
     </div>
