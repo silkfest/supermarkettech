@@ -58,7 +58,7 @@ function MaintenanceHubContent() {
       : Promise.resolve([])
 
     Promise.all([fetchPm, fetchInd]).then(([pm, individual]) =>
-      setRecent({ pm: pm.slice(0, 10), individual: individual.slice(0, 10) })
+      setRecent({ pm: pm.slice(0, 20), individual: individual.slice(0, 20) })
     )
   }, [equipmentId, filterStoreId, filterType])
 
@@ -91,7 +91,7 @@ function MaintenanceHubContent() {
     ...recent.individual.map(r => ({ ...r, kind: 'individual' as const })),
   ]
     .sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime())
-    .slice(0, 12)
+    .slice(0, 24)
 
   const hasFilters = filterStoreId || filterType !== 'all'
 
@@ -197,33 +197,66 @@ function MaintenanceHubContent() {
           </div>
 
           {mergedRecent.length > 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
-              {mergedRecent.map(r => (
-                <button
-                  key={r.id}
-                  onClick={() => router.push(`/maintenance/report/${r.id}?type=${r.kind}&report_type=${r.report_type ?? ''}`)}
-                  className="w-full text-left px-4 py-4 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${r.kind === 'individual' ? 'bg-purple-400' : r.report_type === 'hvac' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{r.store_name}</p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {r.kind === 'individual' ? 'Individual Report' : r.report_type === 'hvac' ? 'HVAC PM' : 'Refrigeration PM'}
-                        {r.technician?.name ? ` · ${r.technician.name}` : ''}
-                      </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {mergedRecent.map(r => {
+                const isIndividual = r.kind === 'individual'
+                const isHvac = r.report_type === 'hvac'
+                const icon = isIndividual
+                  ? <ClipboardList size={18} className="text-purple-500" />
+                  : isHvac
+                    ? <Wind size={18} className="text-emerald-500" />
+                    : <Snowflake size={18} className="text-blue-500" />
+                const typeLabel = isIndividual ? 'Individual Report' : isHvac ? 'HVAC PM' : 'Refrigeration PM'
+                const badgeStyle = isIndividual
+                  ? 'bg-purple-50 text-purple-700'
+                  : isHvac
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-blue-50 text-blue-700'
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => router.push(`/maintenance/report/${r.id}?type=${r.kind}&report_type=${r.report_type ?? ''}`)}
+                    className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:border-slate-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col gap-2.5 group"
+                  >
+                    {/* Top row: icon + badge + date */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {icon}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                        {new Date(r.performed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                    <span className="text-xs text-slate-400">{new Date(r.performed_at).toLocaleDateString()}</span>
-                    <ChevronRight size={14} className="text-slate-300" />
-                  </div>
-                </button>
-              ))}
+
+                    {/* Store name */}
+                    <p className="text-sm font-semibold text-slate-800 truncate leading-snug">
+                      {r.store_name}
+                    </p>
+
+                    {/* Issue snippet (individual reports only) */}
+                    {isIndividual && r.issue_explanation && (
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {r.issue_explanation}
+                      </p>
+                    )}
+
+                    {/* Footer: technician + chevron */}
+                    <div className="flex items-center justify-between mt-auto pt-1">
+                      <span className="text-[11px] text-slate-400 truncate">
+                        {r.technician?.name ?? ''}
+                      </span>
+                      <ChevronRight size={13} className="text-slate-300 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-xl px-4 py-8 text-center text-sm text-slate-400">
-              {hasFilters ? 'No reports match the current filters.' : 'No reports yet.'}
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-10 text-center text-sm text-slate-400">
+              {hasFilters ? 'No reports match the current filters.' : 'No reports yet — create your first one above.'}
             </div>
           )}
         </div>
