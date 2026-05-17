@@ -84,10 +84,11 @@ function HvacPMContent() {
   const equipmentId = searchParams.get('equipmentId')
   const equipmentName = searchParams.get('equipmentName') ?? ''
   const editId = searchParams.get('id')
+  const presetStoreId = searchParams.get('storeId')
 
   // Store info
   const [storeName, setStoreName] = useState('')
-  const [storeId, setStoreId] = useState<string | null>(null)
+  const [storeId, setStoreId] = useState<string | null>(presetStoreId ?? null)
   const [sitesList, setSitesList] = useState<{ id: string; name: string; address: string }[]>([])
   const [storeAddress, setStoreAddress] = useState('')
   const [technician, setTechnician] = useState('')
@@ -125,11 +126,18 @@ function HvacPMContent() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
-  // Fetch sites list for store picker
+  // Fetch sites list for store picker — also pre-fills name/address if storeId came from URL
   useEffect(() => {
     fetch('/api/stores').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setSitesList(data)
+      if (Array.isArray(data)) {
+        setSitesList(data)
+        if (presetStoreId && !editId) {
+          const site = data.find((s: { id: string; name: string; address: string }) => s.id === presetStoreId)
+          if (site) { setStoreName(site.name); setStoreAddress(site.address ?? '') }
+        }
+      }
     }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Load existing report

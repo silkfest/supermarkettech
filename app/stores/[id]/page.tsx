@@ -345,6 +345,22 @@ export default function StoreDetailPage() {
           </div>
         </div>
 
+        {/* Quick actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push(`/maintenance/refrigeration-pm?storeId=${store.id}`)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
+          >
+            <RefrigeratorIcon size={15} className="text-blue-500" /> Refrigeration PM
+          </button>
+          <button
+            onClick={() => router.push(`/maintenance/hvac-pm?storeId=${store.id}`)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-emerald-300 hover:shadow-sm transition-all"
+          >
+            <Wind size={15} className="text-emerald-500" /> HVAC PM
+          </button>
+        </div>
+
         {/* Equipment grouped by type */}
         {typeOrder.map(type => {
           const items = grouped?.[type]

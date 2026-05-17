@@ -7,6 +7,7 @@ import {
   ArrowLeft, Package, Wrench, Pencil, Check, X,
   Building2, MapPin, Calendar, Thermometer, Tag, StickyNote,
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
+  FileText, ExternalLink, Loader2,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import EditableRow from '@/components/EditableRow'
@@ -37,6 +38,15 @@ interface PMEntry {
   store_name: string
   performed_at: string
   report_type: string
+}
+
+interface DocRow {
+  id: string
+  title: string
+  status: string
+  page_count: number | null
+  file_size: number | null
+  url: string | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -97,6 +107,9 @@ export default function EquipmentDetailPage() {
   const [saving, setSaving] = useState(false)
   const [savedField, setSavedField] = useState<string | null>(null)
 
+  const [documents, setDocuments] = useState<DocRow[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(false)
+
   useEffect(() => {
     async function init() {
       const supabase = getSupabaseBrowser()
@@ -112,6 +125,17 @@ export default function EquipmentDetailPage() {
     }
     init()
   }, [id, router])
+
+  // Load relevant documents for this equipment
+  useEffect(() => {
+    if (!id) return
+    setLoadingDocs(true)
+    fetch(`/api/documents?equipmentId=${id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: DocRow[]) => setDocuments(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setLoadingDocs(false))
+  }, [id])
 
   async function saveField(field: string, value: string) {
     if (!equip) return
@@ -372,17 +396,72 @@ export default function EquipmentDetailPage() {
         {/* Quick actions */}
         <div className="flex gap-2">
           <button
-            onClick={() => router.push(`/maintenance?equipmentId=${equip.id}&equipmentName=${encodeURIComponent(equip.name)}`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
+            onClick={() => router.push(`/maintenance/individual-report?equipmentId=${equip.id}&equipmentName=${encodeURIComponent(equip.name)}`)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-purple-300 hover:shadow-sm transition-all"
           >
-            <Wrench size={15} className="text-blue-500"/> Run PM
+            <ClipboardList size={15} className="text-purple-500"/> Individual Report
           </button>
           <button
             onClick={() => router.push(`/maintenance/components?search=${encodeURIComponent(equip.name)}`)}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
           >
-            <ClipboardList size={15} className="text-purple-500"/> Components
+            <Package size={15} className="text-blue-500"/> Components
           </button>
+        </div>
+
+        {/* Documents */}
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Manuals & Documents</p>
+          </div>
+          {loadingDocs ? (
+            <div className="flex items-center gap-2 px-4 py-4 text-xs text-slate-400">
+              <Loader2 size={12} className="animate-spin"/> Loading…
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="px-4 py-5 text-center">
+              <FileText size={20} className="text-slate-200 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400">No manuals linked yet</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">Open this unit in the dashboard to link or upload a manual</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {documents.map(doc => {
+                const ready = doc.status === 'READY' && doc.url
+                const processing = doc.status === 'PROCESSING'
+                return ready ? (
+                  <a
+                    key={doc.id}
+                    href={doc.url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                  >
+                    <FileText size={14} className="text-red-400 flex-shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-600 truncate">{doc.title}</p>
+                      <p className="text-xs text-slate-400">
+                        {doc.page_count ? `${doc.page_count} pages` : 'PDF'}
+                        {doc.file_size ? ` · ${Math.round(doc.file_size / 1024)}KB` : ''}
+                      </p>
+                    </div>
+                    <ExternalLink size={12} className="text-slate-300 flex-shrink-0"/>
+                  </a>
+                ) : (
+                  <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
+                    {processing
+                      ? <Loader2 size={14} className="text-amber-400 animate-spin flex-shrink-0"/>
+                      : <FileText size={14} className="text-slate-300 flex-shrink-0"/>
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-500 truncate">{doc.title}</p>
+                      <p className="text-xs text-slate-400">{processing ? 'Processing…' : doc.status}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* PM History */}
