@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { searchParams } = new URL(req.url)
   const equipmentId = searchParams.get('equipmentId')
+  const search      = searchParams.get('search')       // free-text title search (for link-doc UI)
   const supabase = getSupabaseServer()
 
   let docIds: string[] | null = null
@@ -54,12 +55,36 @@ export async function GET(req: NextRequest) {
       return c.document_id ? [c.document_id as string] : []
     })
 
-    // Merge and deduplicate
+    // 4. Document title directly contains the equipment model (catches manuals not in manual_components)
+    let titleMatchIds: string[] = []
+    if (eq?.model) {
+      const modelTrim = eq.model.trim()
+      const modelNorm = modelTrim.replace(/[-\s]+/g, '') // "RL-5" → "RL5"
+      const { data: titleDocs } = await supabase
+        .from('documents')
+        .select('id')
+        .ilike('title', `%${modelTrim}%`)
+      titleMatchIds = (titleDocs ?? []).map(d => d.id as string)
+      // Also try hyphen-stripped form if different
+      if (modelNorm !== modelTrim && modelNorm.length >= 2) {
+        const { data: titleDocs2 } = await supabase
+          .from('documents')
+          .select('id')
+          .ilike('title', `%${modelNorm}%`)
+        titleMatchIds.push(...(titleDocs2 ?? []).map(d => d.id as string))
+      }
+    }
+
+    // Merge and deduplicate all four sources
     const directIds = (directDocs ?? []).map(d => d.id as string)
-    docIds = [...new Set([...directIds, ...manufacturerDocIds, ...linkedDocIds])]
+    docIds = [...new Set([...directIds, ...manufacturerDocIds, ...linkedDocIds, ...titleMatchIds])]
   }
 
   let query = supabase.from('documents').select('*').order('created_at', { ascending: false })
+  if (search) {
+    // Free-text title search used by the "link document" picker in the Context panel
+    query = query.ilike('title', `%${search}%`)
+  }
   if (docIds !== null) {
     if (docIds.length === 0) {
       // No relevant docs found — return empty array immediately

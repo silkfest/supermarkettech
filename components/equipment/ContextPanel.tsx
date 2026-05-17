@@ -17,6 +17,7 @@ function Reading({ label, value, warn, alarm }: { label: string; value: string; 
 
 interface DocWithUrl extends Document {
   url?: string | null
+  equipment_id?: string | null
 }
 
 interface LinkedComponent {
@@ -63,7 +64,17 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
   const [unlinkingId,    setUnlinkingId]    = useState<string | null>(null)
   const searchTimeout                        = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const canManage = userRole ? ['admin', 'manager', 'journeyman'].includes(userRole) : false
+  // Document linking state
+  const [showLinkDoc,    setShowLinkDoc]    = useState(false)
+  const [docSearch,      setDocSearch]      = useState('')
+  const [docResults,     setDocResults]     = useState<DocWithUrl[]>([])
+  const [searchingDocs,  setSearchingDocs]  = useState(false)
+  const [linkingDocId,   setLinkingDocId]   = useState<string | null>(null)
+  const [unlinkingDocId, setUnlinkingDocId] = useState<string | null>(null)
+  const docSearchTimeout                    = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const canManage   = userRole ? ['admin', 'manager', 'journeyman'].includes(userRole) : false
+  const canLinkDocs = userRole ? ['admin', 'manager'].includes(userRole) : false
 
   // Fetch linked components whenever equipment changes
   useEffect(() => {
@@ -92,6 +103,55 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
         .finally(() => setSearchingComps(false))
     }, 350)
   }, [compSearch])
+
+  // Debounced document search (for link-doc picker)
+  useEffect(() => {
+    if (docSearchTimeout.current) clearTimeout(docSearchTimeout.current)
+    if (!docSearch.trim()) { setDocResults([]); return }
+    setSearchingDocs(true)
+    docSearchTimeout.current = setTimeout(() => {
+      fetch(`/api/documents?search=${encodeURIComponent(docSearch)}`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: DocWithUrl[]) => {
+          const shownIds = new Set(documents.map(d => d.id))
+          setDocResults(Array.isArray(data) ? data.filter(d => !shownIds.has(d.id)).slice(0, 8) : [])
+        })
+        .catch(() => setDocResults([]))
+        .finally(() => setSearchingDocs(false))
+    }, 350)
+  }, [docSearch, documents])
+
+  async function handleLinkDoc(docId: string) {
+    if (!equipment?.id) return
+    setLinkingDocId(docId)
+    try {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ equipment_id: equipment.id }),
+      })
+      if (res.ok) {
+        setShowLinkDoc(false)
+        setDocSearch('')
+        setDocResults([])
+        onDocRetried?.()
+      }
+    } catch { /* ignore */ }
+    finally { setLinkingDocId(null) }
+  }
+
+  async function handleUnlinkDoc(docId: string) {
+    setUnlinkingDocId(docId)
+    try {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ equipment_id: null }),
+      })
+      if (res.ok) onDocRetried?.()
+    } catch { /* ignore */ }
+    finally { setUnlinkingDocId(null) }
+  }
 
   async function handleLinkComponent(componentId: string) {
     if (!equipment?.id) return
@@ -322,9 +382,61 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
 
         {/* Documents */}
         <div className="px-3 py-3">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Documents</p>
-          {documents.length === 0 && (
-            <p className="text-[11px] text-slate-400 mb-2">No manuals uploaded yet</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Documents</p>
+            {canLinkDocs && (
+              <button
+                onClick={() => { setShowLinkDoc(v => !v); setDocSearch(''); setDocResults([]) }}
+                className="p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                title="Search & link a manual"
+              >
+                <Plus size={11}/>
+              </button>
+            )}
+          </div>
+
+          {/* Link-doc search picker */}
+          {showLinkDoc && (
+            <div className="mb-2 relative">
+              <input
+                type="text"
+                value={docSearch}
+                onChange={e => setDocSearch(e.target.value)}
+                placeholder="Search manuals…"
+                autoFocus
+                className="w-full border border-slate-300 rounded-md px-2 py-1 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {(searchingDocs || docResults.length > 0 || (docSearch.trim() && !searchingDocs)) && (
+                <div className="absolute top-full left-0 right-0 z-20 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-44 overflow-y-auto">
+                  {searchingDocs && (
+                    <div className="flex items-center gap-1.5 px-2 py-2 text-[11px] text-slate-400">
+                      <Loader2 size={10} className="animate-spin"/> Searching…
+                    </div>
+                  )}
+                  {!searchingDocs && docResults.map(doc => (
+                    <button
+                      key={doc.id}
+                      onClick={() => handleLinkDoc(doc.id)}
+                      disabled={!!linkingDocId}
+                      className="w-full text-left px-2 py-1.5 text-[11px] hover:bg-blue-50 text-slate-700 transition-colors flex items-center gap-1.5"
+                    >
+                      {linkingDocId === doc.id
+                        ? <Loader2 size={9} className="animate-spin flex-shrink-0"/>
+                        : <FileText size={9} className="text-red-400 flex-shrink-0"/>
+                      }
+                      <span className="truncate">{doc.title}</span>
+                    </button>
+                  ))}
+                  {!searchingDocs && docResults.length === 0 && docSearch.trim() && (
+                    <p className="px-2 py-2 text-[11px] text-slate-400">No matching manuals found</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {documents.length === 0 && !showLinkDoc && (
+            <p className="text-[11px] text-slate-400 mb-2">No manuals yet — use + to link one or upload below</p>
           )}
           <div className="space-y-1 mb-2">
             {documents.map(doc => {
@@ -359,6 +471,19 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
                   </div>
                   {canOpen && (
                     <ExternalLink size={10} className="text-slate-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"/>
+                  )}
+                  {canLinkDocs && doc.equipment_id === equipment?.id && !isFailed && !isProcessing && (
+                    <button
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); handleUnlinkDoc(doc.id) }}
+                      disabled={unlinkingDocId === doc.id}
+                      title="Unlink from this unit"
+                      className="flex-shrink-0 p-0.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      {unlinkingDocId === doc.id
+                        ? <Loader2 size={10} className="animate-spin"/>
+                        : <X size={10}/>
+                      }
+                    </button>
                   )}
                   {isFailed && (
                     <button
