@@ -10,13 +10,21 @@ interface Props {
 }
 
 const REFRIGERANTS = ['R-404A','R-448A','R-449A','R-407A','R-407F','R-507A','R-22','R-410A','R-134a','R-290','R-717','R-744','Other']
-const EQUIP_TYPES  = ['rack','case','condenser','rooftop','compressor','other']
+const EQUIP_TYPES: { value: string; label: string }[] = [
+  { value: 'rack',         label: 'Refrigeration Rack' },
+  { value: 'display_case', label: 'Display Case' },
+  { value: 'walk_in',      label: 'Walk-In Cooler/Freezer' },
+  { value: 'condenser',    label: 'Condenser Unit' },
+  { value: 'hvac',         label: 'HVAC / Rooftop' },
+  { value: 'compressor',   label: 'Standalone Compressor' },
+  { value: 'other',        label: 'Other' },
+]
 
 export default function AddEquipmentModal({ onClose, onCreated, storeId: presetStoreId }: Props) {
   const [form, setForm] = useState({
     name: '', manufacturer: '', model: '',
     serial_number: '', refrigerant: 'R-448A',
-    location: '', equipmentType: 'rack',
+    location: '', equipmentType: 'display_case',
   })
   const [storeId,  setStoreId]  = useState(presetStoreId ?? '')
   const [stores,   setStores]   = useState<{ id: string; name: string }[]>([])
@@ -101,7 +109,7 @@ export default function AddEquipmentModal({ onClose, onCreated, storeId: presetS
           <div>
             <label className={lbl}>Equipment type</label>
             <select value={form.equipmentType} onChange={e => set('equipmentType', e.target.value)} className={inp}>
-              {EQUIP_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {EQUIP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
 

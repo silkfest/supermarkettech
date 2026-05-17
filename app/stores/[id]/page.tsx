@@ -67,18 +67,24 @@ const EMPTY_EQUIP: AddEquipForm = {
 const EQUIP_TYPES = [
   { value: 'rack',         label: 'Refrigeration Rack' },
   { value: 'display_case', label: 'Display Case' },
+  { value: 'case',         label: 'Display Case' },       // legacy alias
   { value: 'walk_in',      label: 'Walk-In Cooler/Freezer' },
-  { value: 'hvac',         label: 'HVAC Unit' },
   { value: 'condenser',    label: 'Condenser Unit' },
+  { value: 'hvac',         label: 'HVAC / Rooftop' },
+  { value: 'rooftop',      label: 'HVAC / Rooftop' },    // legacy alias
+  { value: 'compressor',   label: 'Standalone Compressor' },
   { value: 'other',        label: 'Other' },
 ]
 
 const TYPE_META: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   rack:         { bg: 'bg-blue-50',    text: 'text-blue-600',   icon: <RefrigeratorIcon size={16}/> },
   display_case: { bg: 'bg-cyan-50',    text: 'text-cyan-600',   icon: <RefrigeratorIcon size={16}/> },
+  case:         { bg: 'bg-cyan-50',    text: 'text-cyan-600',   icon: <RefrigeratorIcon size={16}/> },
   walk_in:      { bg: 'bg-indigo-50',  text: 'text-indigo-600', icon: <RefrigeratorIcon size={16}/> },
-  hvac:         { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={16}/> },
   condenser:    { bg: 'bg-violet-50',  text: 'text-violet-600', icon: <Thermometer size={16}/> },
+  hvac:         { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={16}/> },
+  rooftop:      { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={16}/> },
+  compressor:   { bg: 'bg-orange-50',  text: 'text-orange-600', icon: <Thermometer size={16}/> },
   other:        { bg: 'bg-slate-100',  text: 'text-slate-500',  icon: <Package size={16}/> },
 }
 
@@ -178,7 +184,7 @@ export default function StoreDetailPage() {
     return acc
   }, {} as Record<string, EquipmentRow[]>)
 
-  const typeOrder = ['rack', 'display_case', 'walk_in', 'hvac', 'condenser', 'other']
+  const typeOrder = ['rack', 'display_case', 'case', 'walk_in', 'condenser', 'hvac', 'rooftop', 'compressor', 'other']
 
   if (loading) {
     return (
