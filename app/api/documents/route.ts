@@ -45,9 +45,14 @@ export async function GET(req: NextRequest) {
       .select('component:manual_components(document_id)')
       .eq('equipment_id', equipmentId)
 
-    const linkedDocIds: string[] = (linkedComps ?? [])
-      .map((row: { component: { document_id: string } | null }) => row.component?.document_id)
-      .filter((id): id is string => !!id)
+    // Supabase returns the joined relation as an array — handle both array and object shapes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const linkedDocIds: string[] = (linkedComps ?? []).flatMap((row: any) => {
+      const c = row.component
+      if (!c) return []
+      if (Array.isArray(c)) return (c as { document_id: string }[]).map(x => x.document_id).filter(Boolean)
+      return c.document_id ? [c.document_id as string] : []
+    })
 
     // Merge and deduplicate
     const directIds = (directDocs ?? []).map(d => d.id as string)
