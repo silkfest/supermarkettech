@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Database, Filter, AlertTriangle } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Filter, AlertTriangle } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 
 interface RecentReport {
@@ -86,14 +86,6 @@ function MaintenanceHubContent() {
     },
   ]
 
-  const registryCard = {
-    path: '/maintenance/components',
-    icon: <Database size={30} className="text-slate-500" />,
-    title: 'Component Registry',
-    desc: 'All logged compressors and components across every site',
-    color: 'hover:border-slate-300',
-  }
-
   const mergedRecent = [
     ...recent.pm.map(r => ({ ...r, kind: 'pm' as const })),
     ...recent.individual.map(r => ({ ...r, kind: 'individual' as const })),
@@ -137,7 +129,7 @@ function MaintenanceHubContent() {
             Create New Report
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[...reportTypes, registryCard].map(rt => (
+            {reportTypes.map(rt => (
               <button
                 key={rt.path}
                 onClick={() => router.push(rt.path)}
