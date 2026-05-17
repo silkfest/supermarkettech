@@ -7,8 +7,7 @@ import { cn, statusDot } from '@/lib/utils'
 import type { Equipment, ChatMode, User } from '@/types'
 
 const MODES: { id: ChatMode; label: string; icon: React.ReactNode }[] = [
-  { id: 'EXPERT',      label: 'ColdIQ Expert',  icon: <MessageSquare size={13}/> },
-  { id: 'MAINTENANCE', label: 'Maintenance',     icon: <WrenchIcon size={13}/> },
+  { id: 'EXPERT', label: 'ColdIQ Expert', icon: <MessageSquare size={13}/> },
 ]
 
 interface Props {
@@ -117,6 +116,13 @@ function SidebarContent({
         >
           <span className="opacity-60"><Building2 size={13}/></span>
           Sites
+        </button>
+        <button
+          onClick={() => { router.push('/maintenance'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        >
+          <span className="opacity-60"><WrenchIcon size={13}/></span>
+          Maintenance
         </button>
         <button
           onClick={() => { router.push('/maintenance/components'); onMobileClose?.() }}
