@@ -12,12 +12,55 @@ export async function GET(req: NextRequest) {
   const equipmentId = searchParams.get('equipmentId')
   const supabase = getSupabaseServer()
 
-  let query = supabase.from('documents').select('*').order('created_at', { ascending: false })
+  let docIds: string[] | null = null
 
-  // When filtering by equipment, also include global docs (equipment_id IS NULL)
-  // — mirrors how match_doc_chunks RAG already works.
   if (equipmentId) {
-    query = query.or(`equipment_id.eq.${equipmentId},equipment_id.is.null`)
+    // 1. Docs directly assigned to this equipment
+    const { data: directDocs } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('equipment_id', equipmentId)
+
+    // 2. Look up equipment's manufacturer + model, then find matching manual_components docs
+    const { data: eq } = await supabase
+      .from('equipment')
+      .select('manufacturer, model')
+      .eq('id', equipmentId)
+      .single()
+
+    let manufacturerDocIds: string[] = []
+    if (eq?.manufacturer || eq?.model) {
+      let compQuery = supabase.from('manual_components').select('document_id')
+      if (eq.manufacturer) compQuery = compQuery.ilike('manufacturer', `%${eq.manufacturer}%`)
+      if (eq.model)        compQuery = compQuery.ilike('model',        `%${eq.model}%`)
+      const { data: matchedComps } = await compQuery
+      manufacturerDocIds = (matchedComps ?? [])
+        .map(c => c.document_id as string)
+        .filter(Boolean)
+    }
+
+    // 3. Docs from explicitly linked components (equipment_components → manual_components → document_id)
+    const { data: linkedComps } = await supabase
+      .from('equipment_components')
+      .select('component:manual_components(document_id)')
+      .eq('equipment_id', equipmentId)
+
+    const linkedDocIds: string[] = (linkedComps ?? [])
+      .map((row: { component: { document_id: string } | null }) => row.component?.document_id)
+      .filter((id): id is string => !!id)
+
+    // Merge and deduplicate
+    const directIds = (directDocs ?? []).map(d => d.id as string)
+    docIds = [...new Set([...directIds, ...manufacturerDocIds, ...linkedDocIds])]
+  }
+
+  let query = supabase.from('documents').select('*').order('created_at', { ascending: false })
+  if (docIds !== null) {
+    if (docIds.length === 0) {
+      // No relevant docs found — return empty array immediately
+      return NextResponse.json([])
+    }
+    query = query.in('id', docIds)
   }
 
   const { data, error } = await query

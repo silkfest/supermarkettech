@@ -276,7 +276,7 @@ export default function Dashboard() {
               </div>
               {/* Context panel — hidden on mobile to save space */}
               <div className="hidden lg:block">
-                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker} onDocRetried={() => loadDocuments(selected?.id)}/>
+                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker} onDocRetried={() => loadDocuments(selected?.id)} userRole={currentUser?.role} onComponentsChanged={() => loadDocuments(selected?.id)}/>
               </div>
             </>
           )}

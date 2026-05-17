@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2, AlertTriangle, RefreshCw, QrCode, X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Upload, FileText, Globe, Thermometer, ExternalLink, Loader2, AlertTriangle, RefreshCw, QrCode, X, Plus, Cpu } from 'lucide-react'
 import { cn, formatBytes, timeAgo } from '@/lib/utils'
 import type { Equipment, Document, SensorSnapshot } from '@/types'
 
@@ -19,16 +19,117 @@ interface DocWithUrl extends Document {
   url?: string | null
 }
 
+interface LinkedComponent {
+  id: string // equipment_components.id
+  component: {
+    id: string
+    type: string
+    manufacturer: string
+    model: string
+    manual_title: string
+    document_id: string
+  }
+}
+
+interface ComponentResult {
+  key: string
+  catalogId: string | null
+  isCatalog: boolean
+  type: string
+  manufacturer: string
+  model: string
+  manualTitle: string
+}
+
 interface Props {
   equipment: Equipment | null
   documents: DocWithUrl[]
   snapshot?: SensorSnapshot
   onUpload: () => void
+  userRole?: string
+  onComponentsChanged?: () => void
 }
 
-export default function ContextPanel({ equipment, documents, snapshot, onUpload, onDocRetried }: Props & { onDocRetried?: () => void }) {
-  const [retrying, setRetrying] = useState<Record<string, boolean>>({})
-  const [showQr, setShowQr]     = useState(false)
+export default function ContextPanel({ equipment, documents, snapshot, onUpload, onDocRetried, userRole, onComponentsChanged }: Props & { onDocRetried?: () => void }) {
+  const [retrying,       setRetrying]       = useState<Record<string, boolean>>({})
+  const [showQr,         setShowQr]         = useState(false)
+  const [components,     setComponents]     = useState<LinkedComponent[]>([])
+  const [loadingComps,   setLoadingComps]   = useState(false)
+  const [showAddComp,    setShowAddComp]    = useState(false)
+  const [compSearch,     setCompSearch]     = useState('')
+  const [compResults,    setCompResults]    = useState<ComponentResult[]>([])
+  const [searchingComps, setSearchingComps] = useState(false)
+  const [linkingComp,    setLinkingComp]    = useState(false)
+  const [unlinkingId,    setUnlinkingId]    = useState<string | null>(null)
+  const searchTimeout                        = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const canManage = userRole ? ['admin', 'manager', 'journeyman'].includes(userRole) : false
+
+  // Fetch linked components whenever equipment changes
+  useEffect(() => {
+    if (!equipment?.id) { setComponents([]); return }
+    setLoadingComps(true)
+    fetch(`/api/equipment/${equipment.id}/components`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: LinkedComponent[]) => setComponents(Array.isArray(data) ? data : []))
+      .catch(() => setComponents([]))
+      .finally(() => setLoadingComps(false))
+  }, [equipment?.id])
+
+  // Debounced component search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!compSearch.trim()) { setCompResults([]); return }
+    setSearchingComps(true)
+    searchTimeout.current = setTimeout(() => {
+      fetch(`/api/components?q=${encodeURIComponent(compSearch)}`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: ComponentResult[]) => {
+          // Only show catalog entries (manual_components rows with a catalogId for linking)
+          setCompResults(Array.isArray(data) ? data.filter(c => c.isCatalog && c.catalogId) : [])
+        })
+        .catch(() => setCompResults([]))
+        .finally(() => setSearchingComps(false))
+    }, 350)
+  }, [compSearch])
+
+  async function handleLinkComponent(componentId: string) {
+    if (!equipment?.id) return
+    setLinkingComp(true)
+    try {
+      const res = await fetch(`/api/equipment/${equipment.id}/components`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ componentId }),
+      })
+      if (res.ok) {
+        const newLink: LinkedComponent = await res.json()
+        setComponents(c => [...c, newLink])
+        setShowAddComp(false)
+        setCompSearch('')
+        setCompResults([])
+        onComponentsChanged?.()
+      }
+    } catch { /* ignore */ }
+    finally { setLinkingComp(false) }
+  }
+
+  async function handleUnlinkComponent(linkId: string, componentId: string) {
+    if (!equipment?.id) return
+    setUnlinkingId(linkId)
+    try {
+      const res = await fetch(`/api/equipment/${equipment.id}/components`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ componentId }),
+      })
+      if (res.ok) {
+        setComponents(c => c.filter(lc => lc.id !== linkId))
+        onComponentsChanged?.()
+      }
+    } catch { /* ignore */ }
+    finally { setUnlinkingId(null) }
+  }
 
   async function handleRetry(docId: string) {
     setRetrying(r => ({ ...r, [docId]: true }))
@@ -113,6 +214,107 @@ export default function ContextPanel({ equipment, documents, snapshot, onUpload,
               <div key={k as string} className="flex justify-between gap-2">
                 <span className="text-[11px] text-slate-400 flex-shrink-0">{k}</span>
                 <span className="text-[11px] font-medium text-slate-700 text-right truncate">{v as string}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Components */}
+        <div className="px-3 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Components</p>
+            {canManage && (
+              <button
+                onClick={() => { setShowAddComp(v => !v); setCompSearch(''); setCompResults([]) }}
+                className="p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                title="Link a component"
+              >
+                <Plus size={11}/>
+              </button>
+            )}
+          </div>
+
+          {/* Add component search */}
+          {showAddComp && (
+            <div className="mb-2 relative">
+              <input
+                type="text"
+                value={compSearch}
+                onChange={e => setCompSearch(e.target.value)}
+                placeholder="Search components…"
+                autoFocus
+                className="w-full border border-slate-300 rounded-md px-2 py-1 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {(searchingComps || compResults.length > 0) && (
+                <div className="absolute top-full left-0 right-0 z-20 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                  {searchingComps && (
+                    <div className="flex items-center gap-1.5 px-2 py-2 text-[11px] text-slate-400">
+                      <Loader2 size={10} className="animate-spin"/> Searching…
+                    </div>
+                  )}
+                  {!searchingComps && compResults.map(comp => {
+                    const alreadyLinked = components.some(lc => lc.component.id === comp.catalogId)
+                    return (
+                      <button
+                        key={comp.key}
+                        onClick={() => !alreadyLinked && comp.catalogId && handleLinkComponent(comp.catalogId)}
+                        disabled={alreadyLinked || linkingComp}
+                        className={cn(
+                          'w-full text-left px-2 py-1.5 text-[11px] transition-colors',
+                          alreadyLinked
+                            ? 'text-slate-400 cursor-default'
+                            : 'hover:bg-blue-50 text-slate-700 cursor-pointer'
+                        )}
+                      >
+                        <span className="font-medium">{comp.manufacturer} {comp.model}</span>
+                        <span className="text-slate-400 ml-1">· {comp.type}</span>
+                        {alreadyLinked && <span className="ml-1 text-[10px] text-slate-400">(linked)</span>}
+                      </button>
+                    )
+                  })}
+                  {!searchingComps && compResults.length === 0 && compSearch.trim() && (
+                    <p className="px-2 py-2 text-[11px] text-slate-400">No components found</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {loadingComps && (
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Loader2 size={10} className="animate-spin"/> Loading…
+            </div>
+          )}
+          {!loadingComps && components.length === 0 && (
+            <p className="text-[11px] text-slate-400">
+              {canManage ? 'No components linked — use + to add' : 'No components linked'}
+            </p>
+          )}
+          <div className="space-y-1">
+            {components.map(lc => (
+              <div key={lc.id} className="flex items-center gap-1.5 group">
+                <div className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                  <Cpu size={9} className="text-slate-400"/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium text-slate-700 truncate leading-tight">
+                    {lc.component.manufacturer} {lc.component.model}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate">{lc.component.type}</p>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={() => handleUnlinkComponent(lc.id, lc.component.id)}
+                    disabled={unlinkingId === lc.id}
+                    title="Unlink"
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 text-slate-300 hover:text-red-500 transition-all"
+                  >
+                    {unlinkingId === lc.id
+                      ? <Loader2 size={10} className="animate-spin"/>
+                      : <X size={10}/>
+                    }
+                  </button>
+                )}
               </div>
             ))}
           </div>
