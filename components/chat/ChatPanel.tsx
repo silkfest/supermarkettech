@@ -43,32 +43,34 @@ function TypingDots() {
 }
 
 function Citations({ sources }: { sources: CitationSource[] }) {
-  // Deduplicate by documentId — one chip per source document
-  const unique = sources.filter((s, i, arr) => arr.findIndex(x => x.documentId === s.documentId) === i)
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      {unique.map((s) => {
+      {sources.map((s) => {
         const inner = (
           <>
+            <span className="flex-shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full">
+              {s.citationNumber}
+            </span>
             <BookOpen size={9} className="flex-shrink-0 text-slate-400" />
-            <span className="font-medium truncate max-w-[160px]">{s.title}</span>
+            <span className="font-medium truncate max-w-[140px]">{s.title}</span>
+            {s.pageNumber != null && <span className="text-slate-400 flex-shrink-0">p.{s.pageNumber}</span>}
             {s.signedUrl && <ExternalLink size={9} className="flex-shrink-0 text-slate-400" />}
           </>
         )
         const baseClass = 'flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-500'
         return s.signedUrl ? (
           <a
-            key={s.documentId}
+            key={s.chunkId}
             href={s.signedUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title="Open manual PDF"
+            title={`Open ${s.title}${s.pageNumber != null ? `, p.${s.pageNumber}` : ''}`}
             className={`${baseClass} hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer`}
           >
             {inner}
           </a>
         ) : (
-          <div key={s.documentId} className={baseClass} title="Source document">
+          <div key={s.chunkId} className={baseClass} title="Source document">
             {inner}
           </div>
         )
@@ -106,8 +108,13 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
   )
 }
 
+function processInlineCitations(content: string): string {
+  return content.replace(/\[Doc (\d+)\]/g, (_, n) => `[${n}](#cite-${n})`)
+}
+
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === 'user'
+  const sources = msg.sources
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -152,9 +159,25 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                     code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 rounded text-xs font-mono">{children}</code>,
                     pre: ({ children }) => <pre className="bg-slate-100 rounded-lg p-3 overflow-x-auto text-xs font-mono mb-2">{children}</pre>,
                     hr:  () => <hr className="my-2 border-slate-200" />,
+                    a: ({ href, children }) => {
+                      const citeMatch = href?.match(/^#cite-(\d+)$/)
+                      if (citeMatch) {
+                        const n = parseInt(citeMatch[1], 10)
+                        const source = sources?.find(s => s.citationNumber === n)
+                        const badge = (
+                          <sup className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full mx-0.5 leading-none">
+                            {n}
+                          </sup>
+                        )
+                        return source?.signedUrl ? (
+                          <a href={source.signedUrl} target="_blank" rel="noopener noreferrer" title={source.title} className="no-underline">{badge}</a>
+                        ) : badge
+                      }
+                      return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{children}</a>
+                    },
                   }}
                 >
-                  {msg.content}
+                  {processInlineCitations(msg.content)}
                 </ReactMarkdown>
               )
           }
