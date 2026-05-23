@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Home, ArrowLeft, BookOpen, Search, X, ExternalLink,
-  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check,
+  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
@@ -55,6 +55,9 @@ export default function LibraryPage() {
   const [editTitle,    setEditTitle]    = useState('')
   const [savingTitle,  setSavingTitle]  = useState(false)
   const [deletingId,   setDeletingId]   = useState<string | null>(null)
+  const [reindexing,   setReindexing]   = useState(false)
+  const [reindexDone,  setReindexDone]  = useState(false)
+  const [reindexError, setReindexError] = useState<string | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -177,6 +180,40 @@ export default function LibraryPage() {
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">All manuals and documents across your stores</p>
           </div>
+          {isAdmin && (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={async () => {
+                  setReindexing(true)
+                  setReindexDone(false)
+                  setReindexError(null)
+                  try {
+                    const res = await fetch('/api/admin/reindex', { method: 'POST' })
+                    const json = await res.json()
+                    if (!res.ok) throw new Error(json?.error ?? 'Reindex failed')
+                    setReindexDone(true)
+                    setTimeout(() => setReindexDone(false), 4000)
+                  } catch (e) {
+                    setReindexError(e instanceof Error ? e.message : 'Reindex failed')
+                  } finally {
+                    setReindexing(false)
+                  }
+                }}
+                disabled={reindexing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-colors"
+                title="Re-process all manuals to update page-level citation links"
+              >
+                {reindexing
+                  ? <Loader2 size={12} className="animate-spin"/>
+                  : reindexDone
+                    ? <Check size={12} className="text-emerald-500"/>
+                    : <RefreshCw size={12}/>
+                }
+                {reindexing ? 'Re-indexing…' : reindexDone ? 'Done' : 'Re-index manuals'}
+              </button>
+              {reindexError && <p className="text-[10px] text-red-500">{reindexError}</p>}
+            </div>
+          )}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
             <input
