@@ -173,6 +173,10 @@ export async function POST(req: NextRequest) {
 }
 
 async function processDocument(documentId: string, arrayBuf: ArrayBuffer) {
+  await processDocumentBuffer(documentId, arrayBuf)
+}
+
+export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayBuffer) {
   const supabase = getSupabaseServer()
   try {
     const pdfParse = (await import('pdf-parse')).default
