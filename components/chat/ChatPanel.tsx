@@ -61,7 +61,7 @@ function Citations({ sources }: { sources: CitationSource[] }) {
         return s.signedUrl ? (
           <a
             key={s.chunkId}
-            href={s.signedUrl}
+            href={pdfUrl(s.signedUrl, s.pageNumber)}
             target="_blank"
             rel="noopener noreferrer"
             title={`Open ${s.title}${s.pageNumber != null ? `, p.${s.pageNumber}` : ''}`}
@@ -106,6 +106,10 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
       </div>
     </div>
   )
+}
+
+function pdfUrl(signedUrl: string, pageNumber?: number | null): string {
+  return pageNumber != null ? `${signedUrl}#page=${pageNumber}` : signedUrl
 }
 
 function processInlineCitations(content: string): string {
@@ -170,7 +174,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                           : `Source ${n}`
                         const badgeClass = 'inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full mx-0.5 leading-none'
                         return source?.signedUrl ? (
-                          <a href={source.signedUrl} target="_blank" rel="noopener noreferrer" title={tooltip} className="no-underline hover:opacity-75 transition-opacity">
+                          <a href={pdfUrl(source.signedUrl, source.pageNumber)} target="_blank" rel="noopener noreferrer" title={tooltip} className="no-underline hover:opacity-75 transition-opacity">
                             <sup className={badgeClass}>{n}</sup>
                           </a>
                         ) : (
