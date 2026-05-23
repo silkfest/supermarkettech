@@ -176,11 +176,23 @@ async function processDocument(documentId: string, arrayBuf: ArrayBuffer) {
   const supabase = getSupabaseServer()
   try {
     const pdfParse = (await import('pdf-parse')).default
-    const pdfData  = await pdfParse(Buffer.from(arrayBuf))
-    await ingestDocument(documentId, pdfData.text, pdfData.numpages)
+    const pageTexts: string[] = []
+    const pdfData = await pdfParse(Buffer.from(arrayBuf), {
+      pagerender: async (pageData: any) => {
+        try {
+          const textContent = await pageData.getTextContent()
+          const text = textContent.items.map((item: any) => item.str ?? '').join(' ').trim()
+          pageTexts.push(text)
+          return text
+        } catch {
+          pageTexts.push('')
+          return ''
+        }
+      },
+    })
+    await ingestDocument(documentId, pageTexts.length > 0 ? pageTexts : [pdfData.text], pdfData.numpages)
   } catch (err) {
     console.error(`[Ingest failed] doc=${documentId}`, err)
-    // Ensure the document is marked FAILED so the UI shows a retry button
     await supabase.from('documents').update({ status: 'FAILED' }).eq('id', documentId)
   }
 }

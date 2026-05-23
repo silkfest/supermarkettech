@@ -147,19 +147,28 @@ export function chunkText(text: string): Array<{ content: string; chunkIndex: nu
   return chunks
 }
 
-export async function ingestDocument(documentId: string, text: string, pageCount?: number) {
+export async function ingestDocument(documentId: string, pageTexts: string[], pageCount?: number) {
   const supabase = getSupabaseServer()
 
   try {
-    const chunks = chunkText(text)
-    if (chunks.length === 0) throw new Error('No text extracted')
+    // Chunk each page independently so we can store the page number with each chunk
+    const allChunks: Array<{ content: string; chunkIndex: number; pageNumber: number }> = []
+    for (let p = 0; p < pageTexts.length; p++) {
+      const pageChunks = chunkText(pageTexts[p])
+      pageChunks.forEach(c => {
+        allChunks.push({ content: c.content, chunkIndex: allChunks.length, pageNumber: p + 1 })
+      })
+    }
 
-    const embeddings = await embedTexts(chunks.map(c => c.content))
+    if (allChunks.length === 0) throw new Error('No text extracted')
 
-    const rows = chunks.map((c, i) => ({
+    const embeddings = await embedTexts(allChunks.map(c => c.content))
+
+    const rows = allChunks.map((c, i) => ({
       document_id: documentId,
       content: c.content,
       chunk_index: c.chunkIndex,
+      page_number: c.pageNumber,
       embedding: embeddings[i],
     }))
 
