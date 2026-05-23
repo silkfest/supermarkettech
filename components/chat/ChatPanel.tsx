@@ -165,14 +165,17 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                       if (citeMatch) {
                         const n = parseInt(citeMatch[1], 10)
                         const source = sources?.find(s => s.citationNumber === n)
-                        const badge = (
-                          <sup className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full mx-0.5 leading-none">
-                            {n}
-                          </sup>
-                        )
+                        const tooltip = source
+                          ? `${source.title}${source.pageNumber != null ? `, p.${source.pageNumber}` : ''}`
+                          : `Source ${n}`
+                        const badgeClass = 'inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full mx-0.5 leading-none'
                         return source?.signedUrl ? (
-                          <a href={source.signedUrl} target="_blank" rel="noopener noreferrer" title={source.title} className="no-underline">{badge}</a>
-                        ) : badge
+                          <a href={source.signedUrl} target="_blank" rel="noopener noreferrer" title={tooltip} className="no-underline hover:opacity-75 transition-opacity">
+                            <sup className={badgeClass}>{n}</sup>
+                          </a>
+                        ) : (
+                          <sup className={`${badgeClass} cursor-default`} title={tooltip}>{n}</sup>
+                        )
                       }
                       return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{children}</a>
                     },
