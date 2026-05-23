@@ -141,7 +141,17 @@ export async function POST(req: NextRequest) {
         }
 
         if (sources.length > 0) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`))
+          // Only surface sources that were actually cited inline in the response.
+          // The model writes [Doc N] when it draws from a chunk; filter to those N values
+          // so manuals retrieved but not used don't appear as spurious sources.
+          const citedNumbers = new Set<number>()
+          for (const m of fullContent.matchAll(/\[Doc (\d+)\]/g)) {
+            citedNumbers.add(parseInt(m[1], 10))
+          }
+          const citedSources = sources.filter(s => citedNumbers.has(s.citationNumber))
+          if (citedSources.length > 0) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources: citedSources })}\n\n`))
+          }
         }
         if (componentLinks.length > 0) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks })}\n\n`))

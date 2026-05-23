@@ -105,9 +105,10 @@ export function formatContext(chunks: RetrievedChunk[], maxChars = 12000): strin
 }
 
 export function chunksToCitations(chunks: RetrievedChunk[]): CitationSource[] {
-  return chunks.map(c => ({
+  return chunks.map((c, i) => ({
     documentId: c.document_id,
     chunkId: c.chunk_id,
+    citationNumber: i + 1,
     pageNumber: c.page_number,
     title: c.document_title,
     sourceType: c.source_type,

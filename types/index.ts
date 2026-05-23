@@ -92,6 +92,7 @@ export interface MaintenanceLog {
 export interface CitationSource {
   documentId: string
   chunkId: string
+  citationNumber: number
   pageNumber?: number | null
   title: string
   sourceType: string

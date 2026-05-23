@@ -194,7 +194,7 @@ const FORMAT_INSTRUCTIONS = `
 RESPONSE FORMAT:
 - Use clear markdown: headers (##), numbered steps for procedures, bullets for options
 - Safety warnings: ⚠️ **Safety:** {warning text}
-- Do NOT include inline source citations in the response text — sources are displayed automatically in the UI
+- When you draw a fact or procedure from a retrieved manual chunk, place [Doc N] at the end of the relevant sentence, where N is the number shown in the [Doc N: title] label for that chunk. Only cite sources for content genuinely taken from that chunk — do not cite [Doc N] for general knowledge statements.
 - Keep responses focused and actionable — technicians are on the floor
 `
 
