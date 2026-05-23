@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
           // The model writes [Doc N] when it draws from a chunk; filter to those N values
           // so manuals retrieved but not used don't appear as spurious sources.
           const citedNumbers = new Set<number>()
-          for (const m of fullContent.matchAll(/\[Doc (\d+)\]/g)) {
+          for (const m of fullContent.matchAll(/\[Doc (\d+)[^\]]*\]/g)) {
             citedNumbers.add(parseInt(m[1], 10))
           }
           const citedSources = sources.filter(s => citedNumbers.has(s.citationNumber))

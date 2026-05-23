@@ -194,7 +194,7 @@ const FORMAT_INSTRUCTIONS = `
 RESPONSE FORMAT:
 - Use clear markdown: headers (##), numbered steps for procedures, bullets for options
 - Safety warnings: ⚠️ **Safety:** {warning text}
-- When you draw a fact or procedure from a retrieved manual chunk, place [Doc N] at the end of the relevant sentence, where N is the number shown in the [Doc N: title] label for that chunk. Only cite sources for content genuinely taken from that chunk — do not cite [Doc N] for general knowledge statements.
+- When you draw a fact or procedure from a retrieved manual chunk, place [Doc N] at the end of the relevant sentence — for example [Doc 1] or [Doc 3]. Use ONLY the number (e.g. [Doc 2]), never include the title or page in the inline marker. N must match the number in the [Doc N: title] label for that chunk. Only cite sources for content genuinely taken from that chunk — do not add citations to general knowledge statements.
 - Keep responses focused and actionable — technicians are on the floor
 `
 

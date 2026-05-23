@@ -109,7 +109,8 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
 }
 
 function processInlineCitations(content: string): string {
-  return content.replace(/\[Doc (\d+)\]/g, (_, n) => `[${n}](#cite-${n})`)
+  // Match [Doc N] or [Doc N: any title text] — the model sometimes includes the full label
+  return content.replace(/\[Doc (\d+)[^\]]*\]/g, (_, n) => `[${n}](#cite-${n})`)
 }
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
