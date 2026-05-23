@@ -69,20 +69,10 @@ export async function POST(req: NextRequest) {
       retrievedContext = formatContext(chunks, 15000)
       sources = chunksToCitations(chunks)
 
-      // Attach signed PDF URLs so the frontend can open the manual directly
+      // Attach proxy PDF URLs — the /api/pdf route serves PDFs inline so that
+      // #page=N fragments work in the browser's built-in PDF viewer.
       if (sources.length > 0) {
-        const uniqueDocIds = [...new Set(sources.map(s => s.documentId))]
-        const { data: docs } = await supabase.from('documents').select('id, file_name').in('id', uniqueDocIds)
-        const urlMap: Record<string, string> = {}
-        if (docs) {
-          for (const doc of docs) {
-            if (doc.file_name) {
-              const { data: signed } = await supabase.storage.from('documents').createSignedUrl(doc.file_name, 3600)
-              if (signed?.signedUrl) urlMap[doc.id] = signed.signedUrl
-            }
-          }
-        }
-        sources = sources.map(s => ({ ...s, signedUrl: urlMap[s.documentId] ?? null }))
+        sources = sources.map(s => ({ ...s, signedUrl: `/api/pdf?docId=${s.documentId}` }))
       }
 
       if (chunks.length > 0) {
