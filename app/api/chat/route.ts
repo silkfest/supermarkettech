@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
   let retrievedContext = ''
   let sources: ReturnType<typeof chunksToCitations> = []
   let componentLinks: ComponentLink[] = []
+  let compDocMap = new Map<string, string>() // catalogId -> documentId, for post-response filtering
   const jinaKey = process.env.JINA_API_KEY
   if (jinaKey) {
     try {
@@ -89,16 +90,19 @@ export async function POST(req: NextRequest) {
         const docIds = [...new Set(chunks.map(c => c.document_id))]
         const { data: comps, error: compsError } = await supabase
           .from('manual_components')
-          .select('id, type, manufacturer, model, manual_title')
+          .select('id, type, manufacturer, model, manual_title, document_id')
           .in('document_id', docIds)
         console.log(JSON.stringify({ compsCount: comps?.length ?? 0, docIds, compsErr: compsError?.message ?? null }))
-        componentLinks = (comps ?? []).map(c => ({
-          catalogId:   c.id            as string,
-          type:        c.type          as string ?? 'Component',
-          manufacturer: c.manufacturer as string ?? '',
-          model:       c.model         as string ?? '',
-          manualTitle: c.manual_title  as string ?? '',
-        }))
+        componentLinks = (comps ?? []).map(c => {
+          compDocMap.set(c.id as string, c.document_id as string)
+          return {
+            catalogId:    c.id            as string,
+            type:         c.type          as string ?? 'Component',
+            manufacturer: c.manufacturer  as string ?? '',
+            model:        c.model         as string ?? '',
+            manualTitle:  c.manual_title  as string ?? '',
+          }
+        })
       }
     } catch (e) {
       console.error(JSON.stringify({ ragError: true, msg: e instanceof Error ? e.message : String(e) }))
@@ -140,21 +144,26 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Extract cited [Doc N] numbers and filter sources + component links to only
+        // those actually drawn from in the response.
+        const citedNumbers = new Set<number>()
+        for (const m of fullContent.matchAll(/\[Doc (\d+)[^\]]*\]/g)) {
+          citedNumbers.add(parseInt(m[1], 10))
+        }
         if (sources.length > 0) {
-          // Only surface sources that were actually cited inline in the response.
-          // The model writes [Doc N] when it draws from a chunk; filter to those N values
-          // so manuals retrieved but not used don't appear as spurious sources.
-          const citedNumbers = new Set<number>()
-          for (const m of fullContent.matchAll(/\[Doc (\d+)[^\]]*\]/g)) {
-            citedNumbers.add(parseInt(m[1], 10))
-          }
           const citedSources = sources.filter(s => citedNumbers.has(s.citationNumber))
           if (citedSources.length > 0) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources: citedSources })}\n\n`))
           }
         }
         if (componentLinks.length > 0) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks })}\n\n`))
+          const citedDocIds = new Set(
+            sources.filter(s => citedNumbers.has(s.citationNumber)).map(s => s.documentId)
+          )
+          const citedLinks = componentLinks.filter(l => citedDocIds.has(compDocMap.get(l.catalogId) ?? ''))
+          if (citedLinks.length > 0) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks: citedLinks })}\n\n`))
+          }
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
       } catch (err) {
