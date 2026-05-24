@@ -118,7 +118,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
       const pdfParse = (await import('pdf-parse')).default
       const pdfData = await pdfParse(Buffer.from(arrayBuf))
-      await ingestDocument(id, pdfData.text, pdfData.numpages)
+      await ingestDocument(id, [pdfData.text], pdfData.numpages)
       console.log(`[reingest] doc=${id} complete, pages=${pdfData.numpages}`)
     } catch (err) {
       console.error(`[reingest] doc=${id} failed`, err)

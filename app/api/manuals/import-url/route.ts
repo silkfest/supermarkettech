@@ -122,5 +122,5 @@ async function fetchAndImport({
 async function processDoc(documentId: string, arrayBuf: ArrayBuffer) {
   const pdfParse = (await import('pdf-parse')).default
   const pdfData  = await pdfParse(Buffer.from(arrayBuf))
-  await ingestDocument(documentId, pdfData.text, pdfData.numpages)
+  await ingestDocument(documentId, [pdfData.text], pdfData.numpages)
 }
