@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getSupabaseRouteAuth, getSupabaseServer } from '@/lib/supabase/client'
-import { processDocumentBuffer } from '@/app/api/documents/route'
+import { processDocumentBuffer } from '@/lib/ai/ingest'
 
 // Allow up to 5 minutes for re-ingesting many documents
 export const maxDuration = 300

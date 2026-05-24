@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { ingestDocument } from '@/lib/ai/rag'
+import { processDocumentBuffer } from '@/lib/ai/ingest'
 
 // Allow up to 60 s so the async ingest (pdf-parse + Jina embed) has time to finish
 export const maxDuration = 60
@@ -174,29 +174,4 @@ export async function POST(req: NextRequest) {
 
 async function processDocument(documentId: string, arrayBuf: ArrayBuffer) {
   await processDocumentBuffer(documentId, arrayBuf)
-}
-
-export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayBuffer) {
-  const supabase = getSupabaseServer()
-  try {
-    const pdfParse = (await import('pdf-parse')).default
-    const pageTexts: string[] = []
-    const pdfData = await pdfParse(Buffer.from(arrayBuf), {
-      pagerender: async (pageData: any) => {
-        try {
-          const textContent = await pageData.getTextContent()
-          const text = textContent.items.map((item: any) => item.str ?? '').join(' ').trim()
-          pageTexts.push(text)
-          return text
-        } catch {
-          pageTexts.push('')
-          return ''
-        }
-      },
-    })
-    await ingestDocument(documentId, pageTexts.length > 0 ? pageTexts : [pdfData.text], pdfData.numpages)
-  } catch (err) {
-    console.error(`[Ingest failed] doc=${documentId}`, err)
-    await supabase.from('documents').update({ status: 'FAILED' }).eq('id', documentId)
-  }
 }
