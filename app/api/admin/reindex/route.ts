@@ -11,10 +11,12 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabaseServer()
 
+  // Only reindex docs that aren't already READY — so repeated runs progressively clear failures
   const { data: docs, error } = await supabase
     .from('documents')
     .select('id, file_name, title')
     .not('file_name', 'is', null)
+    .neq('status', 'READY')
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
   if (!docs?.length) return Response.json({ message: 'No documents found', results: [] })
