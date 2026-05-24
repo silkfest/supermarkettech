@@ -7,8 +7,9 @@ export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayB
     const pdfParse = (await import('pdf-parse')).default
     const pageTexts: string[] = []
     const pdfData = await pdfParse(Buffer.from(arrayBuf), {
+      // pdf-parse awaits pagerender at runtime; the @types/pdf-parse signature is wrong (sync-only)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pagerender: async (pageData: any) => {
+      pagerender: (async (pageData: any) => {
         try {
           const textContent = await pageData.getTextContent()
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,7 +20,8 @@ export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayB
           pageTexts.push('')
           return ''
         }
-      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as unknown as (pageData: any) => string,
     })
     await ingestDocument(documentId, pageTexts.length > 0 ? pageTexts : [pdfData.text], pdfData.numpages)
   } catch (err) {
