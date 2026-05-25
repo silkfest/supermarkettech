@@ -270,7 +270,53 @@ Terminals: **C** (Common), **S** (Start), **R** (Run)
 | R → S | = (C→S) + (C→R) — must equal sum |
 | Any terminal → ground | OL (∞) — any reading = ground fault, replace compressor |
 
-If any winding reads open (OL) or shorted (near 0 Ω), the compressor is failed internally.`
+If any winding reads open (OL) or shorted (near 0 Ω), the compressor is failed internally.
+
+---
+
+## General HVAC Troubleshooting
+
+### Initial Assessment — Check These Before Anything Else
+- Power/electrical supply
+- Thermostat settings, mode, and battery
+- Air filter condition
+- Outdoor unit status
+
+### No Cooling
+*Unit not cooling, warm air from vents, running but not effective, or not running at all.*
+
+Work through in order:
+1. **Thermostat** — correct mode (Cool)? Set below room temp? Battery good?
+2. **Breakers** — check both indoor and outdoor disconnect/breaker
+3. **Air filter** — clogged filter is one of the most common causes of poor cooling and coil freeze-up
+4. **Outdoor unit** — is it running? Dirty coil? Fan spinning?
+5. **Indoor blower** — operating? Belt intact and tensioned?
+
+### Electrical Issues
+*Unit not starting, tripping breakers, intermittent operation, strange hum.*
+
+- **Contactor not pulling in:** check 24 V control voltage at coil terminals; if voltage present but no pull-in → bad contactor
+- **Capacitor failure:** motor hums but won't start; test capacitance with meter (must be within 6% of rating); start capacitor failure is most common
+- **Loose/burnt connections:** check all terminal blocks and wiring connectors — inspect contactor contacts for pitting
+- **Transformer:** verify primary voltage present; measure secondary (usually 24 VAC); if primary OK but no secondary → failed transformer
+
+### Refrigerant Circuit
+*Poor cooling, ice on lines or coil, high electric bills, hissing sounds.*
+
+- Check superheat (evap outlet) and subcooling (condenser outlet) — these tell you if the charge and metering are correct
+- Oil spots on coil, line connections, or under unit = likely leak location
+- Frozen evaporator coil = low airflow, low charge, or metering device fault (run defrost, find root cause before restarting)
+- Compare head and suction pressures to expected values for refrigerant and conditions
+
+Fix order: find and repair leak → recover → evacuate (500 microns) → recharge by weight or target superheat/subcooling values.
+
+### Airflow Problems
+*Uneven cooling, weak airflow, excessive noise, frequent cycling.*
+
+- Dirty or clogged air filter — replace first, always
+- Blocked return air grilles or supply registers
+- Ductwork: disconnected, crushed, or leaking (feel for air leaks in unconditioned space)
+- Blower motor: check amp draw vs. nameplate; belt-drive units — check belt tension and condition`
 
 function buildEquipmentContext(
   equipment: Equipment,
