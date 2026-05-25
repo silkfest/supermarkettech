@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [fetchError,   setFetchError]   = useState<string | null>(null)
   const [alarmToast,   setAlarmToast]   = useState<string | null>(null)
+  const [uploadToast,  setUploadToast]  = useState<{ type: 'uploading' | 'done' | 'error'; msg: string } | null>(null)
   const equipmentRef = useRef<Equipment[]>([])
   const autoSelectedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -134,12 +135,22 @@ export default function Dashboard() {
   useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
 
   async function handleUpload(file: File) {
+    setUploadToast({ type: 'uploading', msg: `Uploading ${file.name}…` })
     const fd = new FormData()
     fd.append('file', file)
     if (selected) fd.append('equipmentId', selected.id)
     fd.append('title', file.name.replace(/\.pdf$/i, ''))
-    await fetch('/api/documents', { method: 'POST', body: fd })
-    loadDocuments(selected?.id)
+    try {
+      const res = await fetch('/api/documents', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      setUploadToast({ type: 'done', msg: `"${data.title}" uploaded — processing in the background.` })
+      setTimeout(() => setUploadToast(null), 6000)
+      loadDocuments(selected?.id)
+    } catch (err) {
+      setUploadToast({ type: 'error', msg: err instanceof Error ? err.message : 'Upload failed' })
+      setTimeout(() => setUploadToast(null), 6000)
+    }
   }
 
   function openFilePicker() { fileInputRef.current?.click() }
@@ -249,6 +260,18 @@ export default function Dashboard() {
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white text-xs font-medium animate-in slide-in-from-top duration-300">
             <span className="flex-1">{alarmToast}</span>
             <button onClick={() => setAlarmToast(null)} className="text-red-200 hover:text-white leading-none ml-2 flex-shrink-0">×</button>
+          </div>
+        )}
+
+        {/* ─── Upload toast ─── */}
+        {uploadToast && (
+          <div className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-xs font-medium animate-in slide-in-from-top duration-300 ${
+            uploadToast.type === 'error'     ? 'bg-red-600 text-white' :
+            uploadToast.type === 'done'      ? 'bg-emerald-600 text-white' :
+                                               'bg-blue-600 text-white'
+          }`}>
+            <span className="flex-1">{uploadToast.msg}</span>
+            <button onClick={() => setUploadToast(null)} className="opacity-70 hover:opacity-100 leading-none ml-2 flex-shrink-0">×</button>
           </div>
         )}
 
