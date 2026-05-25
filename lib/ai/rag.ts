@@ -150,13 +150,18 @@ export function chunkText(text: string): Array<{ content: string; chunkIndex: nu
 export async function ingestDocument(documentId: string, pageTexts: string[], pageCount?: number) {
   const supabase = getSupabaseServer()
 
+  // Only store page numbers when we actually have per-page text (pdf-parse split by page).
+  // When a single blob arrives (Jina OCR or plain fallback) we can't reliably map chunks
+  // back to physical pages, so we leave page_number null to avoid bad page anchors.
+  const hasPageBreaks = pageTexts.length > 1
+
   try {
     // Chunk each page independently so we can store the page number with each chunk
-    const allChunks: Array<{ content: string; chunkIndex: number; pageNumber: number }> = []
+    const allChunks: Array<{ content: string; chunkIndex: number; pageNumber: number | null }> = []
     for (let p = 0; p < pageTexts.length; p++) {
       const pageChunks = chunkText(pageTexts[p])
       pageChunks.forEach(c => {
-        allChunks.push({ content: c.content, chunkIndex: allChunks.length, pageNumber: p + 1 })
+        allChunks.push({ content: c.content, chunkIndex: allChunks.length, pageNumber: hasPageBreaks ? p + 1 : null })
       })
     }
 
@@ -168,7 +173,7 @@ export async function ingestDocument(documentId: string, pageTexts: string[], pa
       document_id: documentId,
       content: c.content,
       chunk_index: c.chunkIndex,
-      page_number: c.pageNumber,
+      page_number: c.pageNumber ?? null,
       embedding: embeddings[i],
     }))
 
