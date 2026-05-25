@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
@@ -8,9 +8,8 @@ import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ComponentLink } f
 import { z } from 'zod'
 export const maxDuration = 60
 
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY ?? '',
-  baseURL: 'https://api.groq.com/openai/v1',
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY ?? '',
 })
 
 const Schema = z.object({
@@ -115,22 +114,23 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       let fullContent = ''
       try {
-        const groqStream = await groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+        const claudeStream = anthropic.messages.stream({
+          model: 'claude-haiku-4-5',
           max_tokens: 2048,
-          stream: true,
+          system: systemPrompt,
           messages: [
-            { role: 'system', content: systemPrompt },
             ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
             { role: 'user', content: message },
           ],
         })
 
-        for await (const chunk of groqStream) {
-          const text = chunk.choices[0]?.delta?.content ?? ''
-          if (text) {
-            fullContent += text
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
+        for await (const chunk of claudeStream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            const text = chunk.delta.text
+            if (text) {
+              fullContent += text
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
+            }
           }
         }
 
