@@ -117,7 +117,29 @@ Most CO₂ LT cases use electric or hot-gas defrost. Hot-gas defrost in CO₂ sy
 
 **Danfoss AK-SM 800/850:** Alarms in Service → Alarm Log. AKC/AK2 case controllers report to the supervisor. Alarm code format: XX-YY where XX = controller address, YY = alarm type. Manual reset required for compressor safety alarms.
 
-**Microthermo (LMP CO₂ systems):** Pressure transducers are 0–652 psi and 0–2000 psi ranges — confirm correct transducer range before replacing. CO₂ detector triggers ventilation interlock — test monthly. Case control alarms include defrost fail, sensor fault, and temperature high/low.`
+**Microthermo (LMP CO₂ systems):** Pressure transducers are 0–652 psi and 0–2000 psi ranges — confirm correct transducer range before replacing. CO₂ detector triggers ventilation interlock — test monthly. Case control alarms include defrost fail, sensor fault, and temperature high/low.
+
+---
+
+## Case Valve Types and Common Faults
+
+**EPR valves (Evaporator Pressure Regulating):** Hold evaporator pressure at a minimum setpoint regardless of rack suction. Essential for MT cases on shared LT/MT racks to prevent freezing. Types: pilot-operated (Sporlan ORI/OREO, Danfoss ICS), electrically driven stepper motor (Sporlan CDS series).
+
+**Sporlan CDS / CDST stepper motor pressure regulating valves:**
+- CDS = Sporlan stepper motor **evaporator pressure regulating valve** (NOT "case differential sensor")
+- Driven by a dedicated stepper motor driver board via 4-wire cable. Sizes: CDS-2, -4, -7, -9, -16, -17 (based on connection size, not pressure range)
+- On Micro Thermo: the controller drives the CDS valve directly. "Invalid" or "fault" status means the controller cannot verify valve position — usually a wiring fault, failed driver board, or valve motor winding failure
+- **Diagnosing CDS invalid on Micro Thermo:**
+  1. Check the 4-wire cable from controller to valve for damage, moisture, or loose pins at both ends
+  2. Verify the stepper motor driver board in the case controller has 24 VAC supply
+  3. Measure motor winding resistance at the valve connector — Sporlan spec is ~23–47 Ω phase-to-phase; open or shorted winding = failed motor assembly
+  4. Cycle power to the case controller to force valve re-initialization (audible clicking during init is normal)
+  5. If the valve is not initialising, disconnect the load, run a manual init — if it clicks but still reads invalid, suspect the driver board or feedback circuit
+- **Effect of CDS invalid while valve stays open:** suction pressure rises to rack suction → case overcools (exactly the 13°F vs 27°F setpoint scenario)
+- **Effect of CDS invalid while valve stays closed:** case warms up, high superheat
+
+**Solenoid valve on liquid line (LL solenoid):**
+On thermostat-controlled MT cases (no electronic controller), the liquid line solenoid stops refrigerant flow when the thermostat is satisfied. If the LL solenoid sticks open, the case overcools continuously regardless of thermostat. If it sticks closed, the case warms. To test: listen for click on thermostat call; verify 24 VAC coil voltage; measure coil resistance (~200–400 Ω for most 24 V coils — open = failed coil).`
 
 function buildEquipmentContext(
   equipment: Equipment,
