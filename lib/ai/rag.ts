@@ -118,6 +118,19 @@ export function chunksToCitations(chunks: RetrievedChunk[]): CitationSource[] {
 
 // ─── Text chunking for ingestion pipeline ────────────────────────────────────
 
+// Returns false for chunks that are predominantly non-English (German, French, Spanish, etc.)
+// based on the density of non-ASCII characters (umlauts, accented chars, etc.).
+// Threshold of 12% non-ASCII catches most European-language pages while keeping
+// lightly-accented English and technical symbols (°, ±, ², ×).
+function isLikelyEnglish(text: string): boolean {
+  if (text.length < 30) return true
+  let nonAscii = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) > 127) nonAscii++
+  }
+  return nonAscii / text.length < 0.12
+}
+
 export function chunkText(text: string): Array<{ content: string; chunkIndex: number }> {
   const TARGET_WORDS = 375
   const OVERLAP_WORDS = 38
@@ -156,13 +169,16 @@ export async function ingestDocument(documentId: string, pageTexts: string[], pa
   const hasPageBreaks = pageTexts.length > 1
 
   try {
-    // Chunk each page independently so we can store the page number with each chunk
+    // Chunk each page independently so we can store the page number with each chunk.
+    // Skip non-English chunks so multilingual PDFs don't pollute the index.
     const allChunks: Array<{ content: string; chunkIndex: number; pageNumber: number | null }> = []
     for (let p = 0; p < pageTexts.length; p++) {
       const pageChunks = chunkText(pageTexts[p])
-      pageChunks.forEach(c => {
-        allChunks.push({ content: c.content, chunkIndex: allChunks.length, pageNumber: hasPageBreaks ? p + 1 : null })
-      })
+      pageChunks
+        .filter(c => isLikelyEnglish(c.content))
+        .forEach(c => {
+          allChunks.push({ content: c.content, chunkIndex: allChunks.length, pageNumber: hasPageBreaks ? p + 1 : null })
+        })
     }
 
     if (allChunks.length === 0) throw new Error('No text extracted')

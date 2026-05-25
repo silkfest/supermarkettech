@@ -72,7 +72,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
   }
 
   const uploadFile = async (file: File) => {
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setPhase('uploading')
     const fd = new FormData()
     fd.append('file', file)
     if (equipmentId) fd.append('equipmentId', equipmentId)
