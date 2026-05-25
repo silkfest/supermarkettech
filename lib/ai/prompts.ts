@@ -19,7 +19,8 @@ BEHAVIOURAL RULES:
 2. Only ask a clarifying question when you genuinely cannot give a useful answer without it AND no relevant documentation has been retrieved. Ask one focused question at a time.
 3. Work systematically from symptoms to causes. Never jump to expensive component replacements before ruling out simple causes (dirty coil, closed valve, failed fan, sensor offset).
 4. Be precise with numbers — superheat targets, pressure specs, temperature setpoints, and resistance values matter in refrigeration diagnosis.
-5. Flag safety hazards only when there is a genuine, specific hazard relevant to the described task. Do not append generic disclaimers to every response.`
+5. Flag safety hazards only when there is a genuine, specific hazard relevant to the described task. Do not append generic disclaimers to every response.
+6. TERMINOLOGY — NEVER use the term "Case Differential Sensor" for CDS. In supermarket refrigeration, **CDS is a Sporlan stepper-motor Evaporator Pressure Regulating valve** (EPR valve), not a sensor. "Case Differential Sensor" does not exist as a refrigeration component. If a technician mentions a CDS valve or a CDS reading on their controller, treat it as a Sporlan stepper EPR valve.`
 
 // ── Deep refrigeration knowledge base ────────────────────────────────────────
 // This is baked into every system prompt so the model has strong fundamentals
@@ -530,6 +531,238 @@ Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defr
 - Charge by weight whenever possible; use manufacturer's nameplate charge
 - After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min`
 
+// ── Sporlan product knowledge base ──────────────────────────────────────────
+const SPORLAN_KNOWLEDGE = `
+## Sporlan Product Knowledge — Supermarket & Commercial Refrigeration
+
+### Thermostatic Expansion Valves (TXVs)
+
+**Body families:**
+- **O / OB series** — General-purpose TXV; most common in field; available in tons from 1/2 to 10 tons; external equalizer port (always pipe to suction line downstream of sensing bulb)
+- **EG / EGVE series** — Bi-flow TXV; used in heat pump and reverse-cycle applications; can meter in both directions
+- **Q / BQ series** — High-capacity valve for large evaporators; typically 10–50 tons; used on supermarket parallel rack circuits
+- **NX series** — Non-adjustable (factory set) TXV; used in OEM equipment where field adjustment is not intended
+- **W series** — Wide open on loss of charge; fails open to prevent liquid slugging in special applications
+- **R series** — Replaceable power element; only the sensing element/power element is swapped, not the whole valve body
+
+**Model number decoding (e.g., BEX 8-C/IAF-1/2):**
+- First letters = valve family (B = B-series, EX = electronic)
+- Number = nominal capacity in tons at ARI conditions
+- Letter suffix = refrigerant designation (C = R-22, Z = R-404A/R-507, ZE = R-448A/R-449A)
+- IAF = internal adjustment, external equalizer, flared connections
+- Last fraction = orifice size (field-selectable on adjustable models)
+
+**Critical TXV field notes:**
+- **Sensing bulb placement:** Clamp firmly at 4 or 8 o'clock position on clean, bare suction line; wrap with insulation; NEVER on the bottom (oil pooling) or at a joint
+- **External equalizer:** Must be piped downstream of the sensing bulb and upstream of the EPR — if piped upstream of EPR, the valve reads false pressure and overfeeds
+- **MOP (Maximum Operating Pressure):** Some TXV power elements have MOP — limits valve opening at high suction pressure (startup, pull-down); check element spec if compressor overloads on startup
+- **Superheat adjustment:** Clockwise = increases superheat; counter-clockwise = decreases; allow 15–20 min stabilisation between adjustments; target 6–12°F case superheat, 10–20°F rack return
+
+---
+
+### Electronic Expansion Valves (EEVs)
+
+**Sporlan EEV families:**
+- **SEI / SEH series** — Stepper motor EEV; 1,596 total steps (0 = fully closed, 1,596 = fully open); 4-wire bipolar stepper; coil resistance ~23–47 Ω phase-to-phase; used with Sporlan electronic controllers
+- **SER / SERI series** — Refrigeration EEV for medium and low temperature; available in multiple capacities; same 1,596-step motor family
+- **SEHI series** — High-capacity version; same wiring and step count; used on large evaporators
+
+**EEV troubleshooting:**
+- "Valve hunting" (suction pressure swings): superheat setpoint too tight; sensing lag; check bulb/transducer location
+- Valve fully open but high superheat: valve undersized, refrigerant shortage, or clogged strainer/distributor
+- Valve fully closed but flooding: failed valve (stuck open mechanically), wrong wiring polarity on stepper coil (A/B coil swap), or controller fault
+- Check stepper resistance: disconnect valve; measure between pins — all four should read ~23–47 Ω across each winding; open winding = failed motor
+
+---
+
+### CDS / CDST Stepper Motor EPR Valves
+
+**What they are:** Electrically driven evaporator pressure regulating valves (NOT "Case Differential Sensor"). CDS = pressure regulator with a stepper motor actuator controlled by the case controller (Micro Thermo, Danfoss AKC, etc.).
+
+**Sizing reference:**
+| Model | Nominal Capacity | Connection |
+|---|---|---|
+| CDS-2 | 2 tons | 1/2" ODF |
+| CDS-4 | 4 tons | 5/8" ODF |
+| CDS-7 | 7 tons | 7/8" ODF |
+| CDS-9 | 9 tons | 1-1/8" ODF |
+| CDS-16 | 16 tons | 1-3/8" ODF |
+| CDS-17 | 17 tons | 1-5/8" ODF |
+
+**Controller configuration (critical):** The case controller must be programmed with the correct **step count** matching the valve. CDS valves use 1,596 steps. If programmed wrong (e.g., 2,000 steps for a different valve), the controller will command the valve past its hard stop, strip the drive coupling, and show "invalid" indefinitely. Verify step count in controller settings matches the valve on the case.
+
+**Diagnosing "CDS invalid" on Micro Thermo / Danfoss:**
+1. Check 4-wire cable from controller board to valve — inspect for moisture, chafed insulation, loose pins
+2. Verify 24 VAC at the stepper driver board terminals
+3. Measure motor windings at valve connector: ~23–47 Ω across each phase; open or short = replace valve motor assembly
+4. Power-cycle the case controller to force valve re-initialization — listen for audible clicking (10–15 clicks) during init; no click = motor or driver board failed
+5. If valve initialises but reading remains invalid: suspect the position feedback circuit on the driver board — replace driver board
+6. Confirm step count setting in controller matches valve model
+
+---
+
+### Solenoid Valves
+
+**Series and applications:**
+- **B series** — Brass body; direct-acting; 1/4"–3/4" connections; liquid, suction, or hot gas; most common general-purpose
+- **E series** — Brass body; pilot-operated; for larger line sizes (7/8"–2-1/8"); requires minimum differential pressure to open (3–5 psi)
+- **W series** — Forged steel body; CO₂-rated (up to 60 bar); required on CO₂ hot gas defrost lines
+- **OLDR / DDR series** — Oil-drain return solenoids; small orifice; used in oil return lines from separator to crankcase
+- **NC vs NO:** Normally Closed (NC) = closed when de-energised (standard for liquid lines); Normally Open (NO) = open when de-energised (used in bypass and safety circuits)
+
+**Coil types:**
+- **MKC-1** — 24 VAC/DC coil; standard replacement; fits B, E series
+- **MKC-2** — 120 VAC coil; older systems; confirm voltage before ordering
+- **Coil resistance check:** 24 VAC coil ~200–400 Ω; open coil (OL) = no magnetic pull; shorted coil (near 0 Ω) = trips breaker or blows fuse
+
+**Common failures:**
+- Sticking open: worn or scored piston/plunger, contaminated refrigerant (acid/moisture), debris on seat → replace internal kit or full valve
+- Sticking closed: failed coil, no control voltage, wrong voltage coil installed, seized plunger (corrosion)
+- Chatter/buzz: low voltage (check at coil terminals, not just panel), partial coil failure, loose coil retaining nut
+
+---
+
+### Catch-All Filter-Driers
+
+**Series:**
+- **C series** — Standard catch-all; replaces moisture, acid, and particulates; sizes 032 through 415 (nominal tons at ARI); solid core
+- **RC series** — Replaceable core catch-all; shell stays in line; only the desiccant core is swapped; reduces downtime and refrigerant loss
+- **RSF series** — Suction line filter-drier; used after a burnout to trap acid and carbon; NOT for permanent installation — remove after 72 hours and replace with standard suction line filter
+
+**Desiccant core options:**
+- **HH core** — Activated alumina + molecular sieve; standard for clean systems; high moisture capacity
+- **XH core** — Molecular sieve only; for HFO refrigerants (R-448A, R-449A) and systems with very high moisture content; also required when system has been exposed to atmosphere
+
+**Replacement criteria:**
+- Pressure drop > 2 psi (0.14 bar) across the drier = replace immediately
+- Sight glass shows bubbles (flash gas at the drier outlet = restriction)
+- System has been open to atmosphere for more than a few minutes
+- After a burnout: install RSF suction line filter + replace liquid line drier with XH core
+
+---
+
+### EPR Pressure Regulating Valves (Pilot-Operated)
+
+**ORIT / OREO series** — Sporlan's standard pilot-operated EPR; holds downstream (evaporator outlet) pressure at setpoint; used on medium-temp cases to prevent freezing on shared MT/LT racks.
+
+**ORIT adjustment procedure (with gauge manifold):**
+1. Install compound gauge on evaporator outlet (downstream of ORIT)
+2. Allow system to reach normal operation (10–15 min after case reaches setpoint)
+3. Target pressure: convert case setpoint temperature to refrigerant saturation pressure (use PT chart) — e.g., R-404A at +20°F SST = ~57 psig
+4. Adjustment: remove cap, turn adjusting stem clockwise to increase setpoint pressure (opens valve more, allows evaporator to run warmer); counter-clockwise to decrease
+5. Allow 5–10 min stabilisation per adjustment step
+6. Replace cap and verify case temperature at setpoint
+
+**OROA** — Adjustable ORIT with external adjustment screw; no cap removal needed; used where frequent setpoint changes are expected.
+
+**DDR / OLDR** — Differential pressure regulating valves; maintain a pressure differential across a component (e.g., oil separator) rather than an absolute pressure.
+
+---
+
+### See-All Sight Glasses
+
+**SA series** — Moisture indicator sight glass; installed in liquid line upstream of expansion device.
+
+**Color interpretation:**
+- **Green** — Dry: moisture content acceptable; system is clean
+- **Yellow / Gold** — Wet: moisture present; replace filter-drier immediately; do not delay (acid formation accelerates)
+- **White / Cloudy** — System overloaded with moisture: immediate drier replacement required; inspect for open joints or flood-back damage
+
+**Bubbles in sight glass:**
+- Steady stream of bubbles = low refrigerant charge or filter-drier restriction causing flash gas
+- Occasional bubbles at startup = normal (pressure equalisation)
+- Clear glass with system underperforming = do not assume correct charge — check subcooling
+
+---
+
+### Distributors and Nozzles
+
+**Purpose:** Distribute refrigerant equally to multiple evaporator circuits; without a distributor, some circuits starve and others flood.
+
+**Selection methodology:**
+1. Determine evaporator capacity (tons) and number of circuits
+2. Select distributor body size to match TXV outlet connection
+3. Select nozzle to match pressure drop target — nozzle creates intentional restriction to equalise flow across circuits
+
+**Nozzle families:**
+- **G series nozzles** — General purpose; most common; colour-coded by size (stamped on nozzle body)
+- **C series nozzles** — For CO₂ and high-pressure refrigerants; rated to higher pressures
+
+**Field notes:**
+- Never use a distributor without a nozzle — circuits will not balance
+- Nozzle pressure drop should be 15–40% of total TXV pressure drop; too small = poor distribution; too large = capacity loss
+- Partially blocked nozzle shows as: some evaporator circuits frost up (those still getting flow), others are warm and have high superheat
+
+---
+
+### Sporlan Electronic Controls
+
+**Kelvin II controller** — Electronic superheat controller for TXV replacement; uses electronic sensing to replace the mechanical sensing bulb and power element; allows remote superheat setpoint adjustment; compatible with SEI/SER EEV bodies.
+
+**S3C case controller** — Sporlan's integrated case controller; manages: EEV superheat, case temperature, defrost scheduling (time or demand-based), and EPR valve position; communicates via RS-485; logs defrost history and alarm events.
+
+**IB-G interface board** — Gateway board connecting S3C case controllers to building EMS/BMS systems; translates RS-485 to BACnet or Modbus; allows supervisory monitoring without replacing controllers.
+
+---
+
+### Discharge Bypass Valves
+
+**ADRS / SDR series** — Discharge bypass valve; opens when suction pressure drops below setpoint to recirculate hot discharge gas back to the suction header; prevents compressor short-cycling at light loads; maintains minimum suction pressure.
+
+**Setting:** Factory-set discharge bypass typically opens at 5–10 psig below normal minimum suction pressure; adjustable in field; must be set above LPCO cutout to avoid nuisance tripping.
+
+---
+
+### Check Valves
+
+**CK series** — Standard check valve; spring-loaded disc; installed in discharge lines, oil return lines, and hot gas lines to prevent reverse flow; check cracking pressure (typically 1–5 psi) — too high causes pressure drop; too low allows reverse flow.
+
+**CSOV (Check/Solenoid combination)** — Combines check function with solenoid shutoff; used in cases where both backflow prevention and positive shutoff are needed (parallel rack discharge manifolds).
+
+---
+
+### Common Sporlan Field Mistakes
+
+1. **Piping external equalizer upstream of EPR** — causes TXV to read false (high) pressure and overfeed; always pipe equalizer downstream of EPR
+2. **Wrong step count in controller for CDS/EEV** — strips drive coupling, causes permanent "invalid" alarm; verify step count matches valve model before commissioning
+3. **Installing drier without moisture indicator** — no way to know when to change; always pair with a See-All
+4. **Not replacing nozzle when changing TXV** — old nozzle may be wrong size for new valve capacity; always check nozzle selection
+5. **Sensing bulb on bottom of suction line** — oil pools there, insulates bulb, causes false high temperature reading and overfeeding
+6. **Using NC solenoid on oil return line** — oil can't return during off-cycle; use NO (normally open) for oil return so it stays open when de-energised
+7. **Installing pilot-operated solenoid (E series) where there is no pressure differential** — pilot-operated valves need ≥3 psi differential to open; use direct-acting (B series) on low-pressure-drop circuits
+8. **Leaving suction line filter-drier (RSF) installed permanently** — RSF is for post-burnout cleanup only (72 hr max); leaves it in = excessive pressure drop; creates ongoing capacity loss
+9. **Replacing TXV without checking orifice size** — replacement valve in same family/capacity but wrong orifice size for the refrigerant or conditions; verify orifice designation in model number
+10. **Charging through liquid line drier** — acids/particles from manifold hose end up in the drier and degrade it; always charge through a dedicated charging port or schrader downstream of the drier
+11. **Running system without filter-drier after opening** — even brief air exposure adds enough moisture to cause acid formation within days; always install new drier after any open repair
+12. **Ignoring sight glass colour change** — yellow sight glass is an urgent warning, not a "monitor and see" situation; acid formation is exponential once moisture is in the system
+
+---
+
+### Sporlan Troubleshooting Decision Tree
+
+**High suction pressure (case overcooling):**
+1. Is EPR valve (ORIT/CDS) present? → Check valve position; if stuck open: case runs at rack suction; verify CDS wiring/steps, test ORIT setpoint
+2. Is LL solenoid stuck open? → Case runs continuously; check thermostat/controller call and solenoid voltage
+3. Is EEV/TXV overfeeding? → Check superheat; if < 5°F with normal load, valve is overfeeding; check sensing bulb placement
+
+**Low suction pressure (case undercooling):**
+1. Check filter-drier pressure drop (> 2 psi = replace)
+2. Check sight glass — bubbles indicate flash gas (low charge or restriction upstream)
+3. Check EEV/TXV superheat — if > 20°F: valve not opening; check wiring/power element/orifice
+4. Check distributor nozzle — partially blocked nozzle causes uneven frosting across circuits
+5. Check refrigerant charge — low subcooling confirms undercharge
+
+**Flooding / liquid slugging:**
+1. EEV/TXV overfeeding — check superheat, sensing bulb placement, power element MOP
+2. Defrost hot gas valve not closing — case fills with liquid during defrost; check HGV coil and controller
+3. Refrigerant overcharge — check subcooling (> 20°F = likely overcharge)
+4. Accumulator bypassed or failed — verify accumulator is in circuit and functional
+
+**Flash gas in sight glass with normal charge:**
+1. Filter-drier restriction — measure pressure drop; replace if > 2 psi
+2. Liquid line undersized — pressure drop along the run causes flash gas; check line sizing vs. run length
+3. Insufficient subcooling — condenser fan failure, fouled condenser, high ambient; verify fan operation and coil cleanliness`
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -715,7 +948,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(
