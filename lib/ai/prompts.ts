@@ -139,7 +139,184 @@ Most CO₂ LT cases use electric or hot-gas defrost. Hot-gas defrost in CO₂ sy
 - **Effect of CDS invalid while valve stays closed:** case warms up, high superheat
 
 **Solenoid valve on liquid line (LL solenoid):**
-On thermostat-controlled MT cases (no electronic controller), the liquid line solenoid stops refrigerant flow when the thermostat is satisfied. If the LL solenoid sticks open, the case overcools continuously regardless of thermostat. If it sticks closed, the case warms. To test: listen for click on thermostat call; verify 24 VAC coil voltage; measure coil resistance (~200–400 Ω for most 24 V coils — open = failed coil).`
+On thermostat-controlled MT cases (no electronic controller), the liquid line solenoid stops refrigerant flow when the thermostat is satisfied. If the LL solenoid sticks open, the case overcools continuously regardless of thermostat. If it sticks closed, the case warms. To test: listen for click on thermostat call; verify 24 VAC coil voltage; measure coil resistance (~200–400 Ω for most 24 V coils — open = failed coil).
+
+---
+
+## Quick Reference — Field Rules of Thumb
+
+### Temperature Difference (TD) and Humidity
+| Application | Evaporator TD | Space RH |
+|---|---|---|
+| A/C | 35°F | ~50% |
+| Reach-in coolers | 20°F | ~65% |
+| Walk-in coolers | 10°F | ~85% |
+| Walk-in (high humidity) | 8°F | ~90% |
+
+### Condenser Split (TD Over Ambient)
+- A/C (10 SEER and below): 30°F
+- Medium-temp refrigeration: 30°F
+- Low-temp refrigeration: 25°F
+- High-efficiency condensers: 20°F and below
+
+### System Pressures — R-404A / R-448A / R-449A
+**Medium-temp:**
+- Suction: 35–45 psig | SST: +15 to +25°F
+- Head: 180–250 psig | SCT: 90–110°F
+
+**Low-temp:**
+- Suction: 15–25 psig | SST: −10 to −20°F
+- Head: 180–250 psig | SCT: 90–110°F
+
+### Defrost Method Selection (MT Walk-ins)
+- Box ≥ 37°F → off-cycle defrost (thermostat)
+- Box ~35°F → time-clock planned defrost
+- Box < 33°F → time-clock + heat defrost
+
+### Superheat at Evaporator (TXV system)
+| Application | Target | Min | Max |
+|---|---|---|---|
+| A/C | 15°F | 5°F | 20°F |
+| Medium-temp | 10°F | 5°F | 20°F |
+| Low-temp | 5°F | 5°F | 20°F |
+Take superheat readings within 5°F of design conditions.
+
+### Subcooling
+- A/C: 15°F average
+- Standard refrigeration: 10°F average
+- Minimum: 5°F | Maximum: 20°F
+- Ambient below 70°F increases subcooling.
+
+### Critical Temperature Limits
+- Compressor discharge: **225°F maximum**
+- Oil sump: **180°F maximum**
+- Standard condensing: 105–125°F max | High-efficiency: 85–100°F max
+
+### Rack System Operation
+- Minimum compressor runtime: 5 min (prevents short cycling)
+- Target: 3–6 compressor starts per hour maximum
+- Oil return issues begin when suction superheat exceeds 20°F
+
+### Airflow (CFM per Ton)
+- A/C: 400 CFM/ton
+- Medium-temp: 250–350 CFM/ton
+- Low-temp: 175–250 CFM/ton
+
+### Compressor Amperage (average draw)
+- Single-phase: 6–7 A/hp
+- Three-phase 208/230V: 2.5–3 A/hp
+- Three-phase 460V: 1.25–1.5 A/hp
+
+### Compressor BTU Output (approximate)
+- A/C: 1 hp ≈ 12,000 BTU/h
+- Medium-temp: 1 hp ≈ 8,000 BTU/h
+- Low-temp: 1 hp ≈ 4,000 BTU/h
+
+### Suction Line Velocity
+- Low-temp: 1,500–2,500 ft/min
+- Medium-temp: 1,000–2,000 ft/min
+- Liquid line minimum: 300 ft/min
+- Trap suction lines on vertical risers over 5 ft.
+
+### Refrigerant Line Sizing (maximum runs)
+- ½" liquid line: up to 100 ft
+- ⅝" liquid line: up to 150 ft
+- ⅞" suction line: up to 75 ft
+Increase pipe size for longer runs to limit pressure drop.
+
+### Crankcase Heater
+Required when ambient drops below 50°F, on long off-cycles, or when using POE oil (R-410A, R-448A systems).
+
+### Receiver Charge Level
+- Air-cooled systems: 70–80% of receiver volume
+- Water-cooled systems: 60–70%
+- Supermarket racks: half-full during normal operation
+
+---
+
+## Reach-In Cooler / Freezer Troubleshooting
+
+Always work in order: Airflow → Electrical → Refrigerant Circuit.
+
+### 1. Airflow (check first)
+Without proper airflow the coil freezes or fails to cool regardless of refrigerant charge.
+
+| Issue | Symptoms | Fix |
+|---|---|---|
+| Dirty evaporator coil | Frost buildup, weak airflow, warm box | Clean coil thoroughly |
+| Failed evaporator fan | No air movement, ice buildup on coil | Replace fan motor |
+| Blocked vents / product overloading | Uneven cooling | Adjust product placement, clear vents |
+
+### 2. Electrical
+Electrical failures prevent cooling entirely and can damage compressors if missed.
+- No power: check supply voltage and breakers first
+- Start/run capacitors: test with a meter (capacitance function) — a weak or failed capacitor is the most common cause of a compressor that hums but won't start
+- Control circuit: verify correct voltage (24 V or 120 V depending on design) at thermostat and contactor coil
+- Compressor windings: if no hum at all, test windings before condemning
+
+### 3. Refrigerant Circuit
+Check only after airflow and electrical are confirmed good.
+- Low charge: low suction pressure, high superheat, bubbles in sight glass, frost before TXV
+- TXV / cap tube: high superheat with normal pressures → starving; low superheat / flooding → overfeeding or sensing bulb fault
+- Compressor valve failure: low head, high suction, no temperature difference across compressor
+
+### Single-Phase Compressor Winding Test (multimeter, Ω)
+Terminals: **C** (Common), **S** (Start), **R** (Run)
+
+| Test | Expected |
+|---|---|
+| C → S | Highest resistance |
+| C → R | Medium resistance |
+| R → S | = (C→S) + (C→R) — must equal sum |
+| Any terminal → ground | OL (∞) — any reading = ground fault, replace compressor |
+
+If any winding reads open (OL) or shorted (near 0 Ω), the compressor is failed internally.
+
+---
+
+## General HVAC Troubleshooting
+
+### Initial Assessment — Check These Before Anything Else
+- Power/electrical supply
+- Thermostat settings, mode, and battery
+- Air filter condition
+- Outdoor unit status
+
+### No Cooling
+*Unit not cooling, warm air from vents, running but not effective, or not running at all.*
+
+Work through in order:
+1. **Thermostat** — correct mode (Cool)? Set below room temp? Battery good?
+2. **Breakers** — check both indoor and outdoor disconnect/breaker
+3. **Air filter** — clogged filter is one of the most common causes of poor cooling and coil freeze-up
+4. **Outdoor unit** — is it running? Dirty coil? Fan spinning?
+5. **Indoor blower** — operating? Belt intact and tensioned?
+
+### Electrical Issues
+*Unit not starting, tripping breakers, intermittent operation, strange hum.*
+
+- **Contactor not pulling in:** check 24 V control voltage at coil terminals; if voltage present but no pull-in → bad contactor
+- **Capacitor failure:** motor hums but won't start; test capacitance with meter (must be within 6% of rating); start capacitor failure is most common
+- **Loose/burnt connections:** check all terminal blocks and wiring connectors — inspect contactor contacts for pitting
+- **Transformer:** verify primary voltage present; measure secondary (usually 24 VAC); if primary OK but no secondary → failed transformer
+
+### Refrigerant Circuit
+*Poor cooling, ice on lines or coil, high electric bills, hissing sounds.*
+
+- Check superheat (evap outlet) and subcooling (condenser outlet) — these tell you if the charge and metering are correct
+- Oil spots on coil, line connections, or under unit = likely leak location
+- Frozen evaporator coil = low airflow, low charge, or metering device fault (run defrost, find root cause before restarting)
+- Compare head and suction pressures to expected values for refrigerant and conditions
+
+Fix order: find and repair leak → recover → evacuate (500 microns) → recharge by weight or target superheat/subcooling values.
+
+### Airflow Problems
+*Uneven cooling, weak airflow, excessive noise, frequent cycling.*
+
+- Dirty or clogged air filter — replace first, always
+- Blocked return air grilles or supply registers
+- Ductwork: disconnected, crushed, or leaking (feel for air leaks in unconditioned space)
+- Blower motor: check amp draw vs. nameplate; belt-drive units — check belt tension and condition`
 
 function buildEquipmentContext(
   equipment: Equipment,
