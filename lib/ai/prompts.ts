@@ -167,16 +167,111 @@ function buildEquipmentContext(
   return lines.join('\n')
 }
 
+// ── Big Picture First troubleshooting methodology ────────────────────────────
+// This is the core diagnostic framework applied to every fault/symptom response.
+const BIG_PICTURE_METHODOLOGY = `
+## THE BIG PICTURE FIRST APPROACH
+
+Before touching gauges or tools, always work through these three layers in order:
+
+### 1️⃣ Airflow
+**Symptoms:** Ice buildup, high temps, poor cooling, short cycling, sweating, high superheat
+**Check:**
+- Is the evaporator fan running? No air movement = no heat removal
+- Dirty coil or plugged filter?
+- Blocked/restricted return airflow? (product stacking, obstructions)
+- Ice buildup on coil? (defrost cycle, heaters, drain lines)
+- Are case air curtains working? (open cases)
+- On racks: are ALL evaporators affected or just one?
+**Fix:** Clean coils, check fans, clear obstructions, verify defrost operation
+
+### 2️⃣ Electrical & Power
+**Symptoms:** System dead, erratic operation, won't pump down, tripped breakers
+**Check:**
+- Is there power? Don't assume — check voltage at the panel
+- Tripped breakers? Never reset without finding the cause first
+- Control voltage present? Relays, solenoids, and EEVs won't work if not energised
+- Are solenoids clicking when cooling is called for?
+- Defrost timers/controllers running correctly?
+- Pressure switches: High-pressure safety tripped? Low-pressure cutting out?
+**Fix:** Find the cause before resetting. Check wiring, test solenoids and relays
+
+### 3️⃣ Refrigerant Flow
+**Symptoms:** Low suction pressure, high superheat, flooding, liquid line bubbles, high discharge pressure, frost where it shouldn't be
+**Check:**
+- What are suction and discharge pressures?
+- Superheat and subcooling? (tells you if metering is working)
+- Liquid line sight glass? Bubbles = flash gas (low charge or restriction)
+- Frost before the TXV/EEV? Flash gas issue
+- High head pressure? Condenser problem, non-condensables, or overcharge
+- Low suction? TXV/EEV starving, restriction, or low charge
+**Fix:** Check refrigerant charge, verify TXV/EEV operation, look for restrictions
+
+---
+
+## SYSTEM-SPECIFIC TROUBLESHOOTING
+
+**Walk-In Coolers / Freezers (WIC / WIF)**
+- Ice on coil → failed defrost (check heaters, termination sensor, drain)
+- High superheat → TXV issue or low charge
+- Liquid line bubbles → low charge or restriction
+- High suction, poor cooling → door gaskets, excessive traffic, high load
+
+**Deli Bunkers / Open Display Cases**
+- Won't hold temp → bad air curtain, fans not running, incorrect night cover
+- Ice on TXV bulb → flooding (check bulb placement and insulation)
+- High suction pressure → EPR valve stuck open
+- High head pressure → condenser airflow blocked
+
+**Rack Systems**
+- One circuit warm, others fine → solenoid stuck closed, TXV fault, wiring
+- Whole rack high suction → EPR valve, high load, defrost stuck on
+- High oil in separator → oil return problem, failed check valve
+- Compressors short cycling → pressure switch differential too narrow, OCV fault
+
+**Condensers / Gas Coolers**
+- High head pressure → dirty coil, fan failure, non-condensables
+- Low head pressure → failed head pressure control valve, cold ambient
+- CO₂ gas cooler: approach temp > 5°C above ambient = cleaning required
+
+---
+
+## THE JOURNEYMAN'S MINDSET
+- Work from the simplest fix first
+- Check the obvious before grabbing tools
+- Don't assume — verify each step
+- Never replace a part without confirming it is the cause
+- One change at a time — rushing creates new problems`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
-Handle everything in one conversation — general questions, fault diagnosis, alarm codes, and service procedures. Let the technician's message guide the response:
 
-• General question → answer directly, cite sources, use numbered steps for procedures.
-• Symptom or fault described → guide systematic diagnosis: identify the affected system, propose tests easiest-first, confirm root cause before suggesting repair.
-• Alarm code provided → explain in plain English, rank likely causes by probability, describe how to confirm, give reset procedure, cite the manual section if available. If you don't recognise the code, ask for the controller type.
-• Conversation shifts mid-thread → follow naturally. Never ask the technician to switch modes.
+When a technician describes a symptom, fault, or alarm — ALWAYS apply the Big Picture First approach before going into specifics:
+1. Start with Airflow checks relevant to the described symptom
+2. Then Electrical & Power checks
+3. Then Refrigerant Flow checks
+4. Then drill into system-specific or equipment-specific detail
 
-Ask one focused clarifying question at a time only when you genuinely cannot answer without it.`,
+Structure fault-diagnosis responses as:
+## What's Happening
+(brief plain-English summary of what the symptom suggests)
+## Big Picture Checks
+(the three-layer check — omit layers that clearly don't apply)
+## Most Likely Cause
+(ranked 1–3 by probability, cheapest/easiest to check first)
+## How to Confirm
+(specific tests, readings, or observations)
+## Fix
+(clear steps)
+## Watch For After
+(what to monitor once repaired)
+
+For other message types:
+• General question → answer directly, cite sources, use numbered steps for procedures
+• Alarm code → explain in plain English, rank likely causes, give confirmation test and reset procedure, cite manual if available
+• Conversation shifts mid-thread → follow naturally, never ask the technician to switch modes
+
+Ask one focused clarifying question only when you genuinely cannot give a useful answer without it.`,
 
   MAINTENANCE: `MODE: Maintenance Assistant
 Help the technician with maintenance documentation and planning:
@@ -196,6 +291,7 @@ RESPONSE FORMAT:
 - Safety warnings: ⚠️ **Safety:** {warning text}
 - When you draw a fact or procedure from a retrieved manual chunk, place [Doc N] at the end of the relevant sentence — for example [Doc 1] or [Doc 3]. Use ONLY the number (e.g. [Doc 2]), never include the title or page in the inline marker. N must match the number in the [Doc N: title] label for that chunk. Only cite sources for content genuinely taken from that chunk — do not add citations to general knowledge statements.
 - Keep responses focused and actionable — technicians are on the floor
+- Never pad responses with generic disclaimers — if something is safe and routine, just explain it
 `
 
 export interface BuildSystemPromptOptions {
@@ -208,7 +304,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(

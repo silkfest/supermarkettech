@@ -302,7 +302,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
               <p className="text-sm font-semibold text-slate-800 mb-1">Manual saved!</p>
               <p className="text-xs text-slate-600 mb-1 font-medium">{linked.title}</p>
               <p className="text-xs text-slate-400 mb-5">
-                The AI will now use this manual when diagnosing this equipment.
+                Processing in the background — usually ready in under a minute. The AI will use it once indexing is complete.
               </p>
               <button
                 onClick={() => onLinked(linked)}

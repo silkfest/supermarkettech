@@ -110,11 +110,9 @@ async function fetchAndImport({
   }
 
   // Kick off async ingestion (Jina AI embeddings + chunking)
-  if (process.env.JINA_API_KEY) {
-    processDoc(doc.id, arrayBuf).catch(err =>
-      console.error(`[import-url ingest failed] doc=${doc.id}`, err)
-    )
-  }
+  processDoc(doc.id, arrayBuf).catch(err =>
+    console.error(`[import-url ingest failed] doc=${doc.id}`, err)
+  )
 
   return NextResponse.json({ id: doc.id, title: doc.title, status: 'PROCESSING' }, { status: 201 })
 }
