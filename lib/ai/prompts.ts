@@ -316,7 +316,219 @@ Fix order: find and repair leak → recover → evacuate (500 microns) → recha
 - Dirty or clogged air filter — replace first, always
 - Blocked return air grilles or supply registers
 - Ductwork: disconnected, crushed, or leaking (feel for air leaks in unconditioned space)
-- Blower motor: check amp draw vs. nameplate; belt-drive units — check belt tension and condition`
+- Blower motor: check amp draw vs. nameplate; belt-drive units — check belt tension and condition
+
+---
+
+## HVACR Acronyms & Abbreviations Reference
+
+### System Components
+
+**Compressors & Drives**
+- **VFD** — Variable Frequency Drive; modulates compressor or fan motor speed for capacity control; most efficient method
+- **EFM** — Evaporator Fan Motor; circulates air across the evaporator coil
+- **CFM** — Cubic Feet Per Minute; measures airflow rate
+
+**Expansion & Metering Devices**
+- **TXV** — Thermostatic Expansion Valve; meters refrigerant into evaporator by sensing superheat at the suction line; maintains 5–15°F superheat automatically
+- **EEV** — Electronic Expansion Valve; stepper motor or pulse-width modulated valve replacing TXV; controller-driven, more precise
+- **EPR** — Evaporator Pressure Regulator; holds back suction pressure to maintain a minimum evaporator temperature; prevents over-cooling; does NOT control superheat
+- **CPR** — Crankcase Pressure Regulator; limits compressor inlet pressure at startup to prevent motor overloading
+- **MOP** — Maximum Operating Pressure; TXV setting that limits suction pressure in low-temperature applications to protect the compressor
+- **SV / SOL** — Solenoid Valve; electromagnetically controlled on/off valve for liquid lines and hot gas lines
+- **HGV** — Hot Gas Valve; directs hot compressor discharge gas to the evaporator during defrost cycles
+- **CV** — Check Valve; one-way flow valve preventing reverse refrigerant flow
+- **BPV** — Back Pressure Valve; maintains minimum downstream pressure to prevent vacuum conditions
+
+**Heat Exchangers & Vessels**
+- **RD** — Receiver-Drier; high-side vessel storing liquid refrigerant, removing moisture, and filtering contaminants (sits between condenser and expansion device)
+- **ACC** — Accumulator; low-side vessel separating liquid from suction vapor before the compressor; prevents liquid slugging
+- **FD / LLFFD** — (Liquid Line) Filter-Drier; removes moisture and particulates from liquid refrigerant before the expansion valve
+- **IHX** — Internal Heat Exchanger; transfers heat between high-pressure liquid line and low-pressure suction gas; standard in CO₂ systems
+- **AHU** — Air Handling Unit; equipment that conditions and circulates air (used in indirect/secondary loop systems)
+- **FCU** — Fan Coil Unit; circulates cooled secondary fluid (chilled water or glycol) over a coil with a fan
+- **DX** — Direct Expansion; refrigerant circulates directly through display case evaporators rather than via a secondary loop
+
+**Compressor & System Protection**
+- **HPS** — High Pressure Switch; shuts compressor down if discharge pressure exceeds safe limit (typically 400–450 psig for HFC systems)
+- **LPS** — Low Pressure Switch; shuts compressor down if suction pressure drops too low; indicates refrigerant loss or evaporator blockage
+- **ODS** — Oil Differential Switch; monitors pressure differential across compressor oil pump; trips on low oil pressure
+- **OLP** — Overload Protector; thermal or electronic device protecting the compressor motor from excessive current
+
+---
+
+### Refrigerants
+
+- **R-744 / CO₂** — Carbon dioxide; natural refrigerant, near-zero GWP; critical point 87.8°F / 1,070 psi; used in transcritical booster systems
+- **R-404A** — Zeotropic blend (R-125/R-143a/R-134a); dominant in older supermarket freezer systems; GWP 3,922; being phased down under AIM Act
+- **R-448A / R-449A** — Lower-GWP HFO blends; drop-in replacements for R-404A; require liquid charging
+- **R-507** — Azeotropic blend (R-125/R-143a 50/50); used in low-temperature applications; zero ODP
+- **R-410A** — Azeotropic blend (R-32/R-125 50/50); standard in commercial HVAC; GWP 2,088; being phased down
+- **R-22** — HCFC (legacy); being phased out globally; common in older systems still in the field
+- **R-290** — Propane; natural refrigerant; very efficient; flammable (A3 safety class); emerging in commercial reach-ins
+- **ODP** — Ozone Depletion Potential; R-744 and HFCs = 0 ODP; HCFCs (R-22) > 0
+- **GWP** — Global Warming Potential; CO₂ baseline = 1; lower is better; R-404A = 3,922, R-448A = 1,387
+- **Temperature Glide** — For zeotropic blends: difference between bubble point (liquid starts boiling) and dew point (last vapor condenses) at a given pressure; R-404A glide ≈ 7°F; R-448A ≈ 11°F
+
+**Azeotropic vs Zeotropic:**
+- **Azeotropic** (R-410A, R-507): single boiling/condensing temperature at any pressure; behaves like a pure refrigerant; can be vapor-charged
+- **Zeotropic** (R-404A, R-448A): blend components have different boiling points; must be **liquid-charged** to maintain composition; vapor charging fractionates the blend
+
+---
+
+### Refrigerant Oils
+
+- **POE** — Polyol Ester; synthetic oil for HFC/HFO systems (R-410A, R-404A, R-448A); hygroscopic — keep containers sealed; incompatible with mineral oil
+- **PAG** — Polyalkylene Glycol; used in automotive R-134a systems; highly hygroscopic; incompatible with POE and mineral
+- **Mineral Oil** — For legacy R-12 and R-22 systems; NOT compatible with HFC refrigerants
+- **Viscosity** — POE viscosity grades: 22, 32, 68, 100 cSt — match to compressor manufacturer spec; wrong viscosity causes bearing wear
+
+---
+
+### Measurements & Calculations
+
+- **psig** — Pounds per Square Inch Gauge; pressure relative to atmosphere (what your gauge reads)
+- **psia** — Pounds per Square Inch Absolute; includes atmospheric pressure (psig + 14.7)
+- **inHg** — Inches of Mercury; vacuum measurement (deeper vacuum = lower number)
+- **Microns** — Unit of deep vacuum measurement; 500 microns = EPA-acceptable evacuation standard; decay test: isolate system for 30 min — should not rise above 500 microns
+- **SST** — Saturation Suction Temperature; refrigerant boiling temperature corresponding to measured suction pressure (read from PT chart); used to calculate superheat
+- **SCT** — Saturation Condensing Temperature; refrigerant condensing temperature corresponding to measured head pressure; used to calculate subcooling
+- **SH** — Superheat; actual suction line temperature MINUS SST; indicates if evaporator is feeding correctly
+- **SC** — Subcooling; SCT MINUS actual liquid line temperature; confirms adequate condenser cooling and liquid supply
+- **BTU** — British Thermal Unit; heat energy required to raise 1 lb of water 1°F
+- **TR** — Ton of Refrigeration; 12,000 BTU/hour; standard commercial sizing unit (a 50-TR rack = 600,000 BTU/h)
+- **PT Chart** — Pressure-Temperature chart; shows saturation temperature for a refrigerant at any given pressure; fundamental tool for every service call
+
+---
+
+### Electrical & Controls
+
+- **RTD** — Resistance Temperature Detector (Pt100, Pt1000); resistance increases predictably with temperature; used in precise electronic controllers
+- **NTC** — Negative Temperature Coefficient thermistor; resistance DECREASES as temperature rises; most common sensor type in supermarket case controls
+- **PTC** — Positive Temperature Coefficient thermistor; resistance INCREASES with temperature; used in motor protection and defrost heaters
+- **Contactor** — Heavy-duty electromagnetic switch; 24 VAC coil controls high-voltage/high-amperage compressor and motor loads; check contacts for pitting
+- **Starter** — Like a contactor but includes thermal overload heaters sized to the motor's full-load amperage
+- **EMS** — Energy Management System; central controller monitoring pressures, temperatures, and modulating rack operation
+- **PLC** — Programmable Logic Controller; industrial computer controlling rack sequencing, defrost schedules, and alarms
+- **DDC** — Direct Digital Control; building automation system integrating refrigeration, HVAC, and lighting
+
+---
+
+### Defrost
+
+- **ED** — Electric Defrost; heating elements melt frost; simple, high energy use; raises case temp 2–5°F during cycle
+- **HG / Hot Gas** — Hot Gas Defrost; superheated compressor discharge redirected through evaporator; most efficient; melts frost from inside
+- **Off-Cycle** — Compressor shuts down, natural warm-up melts frost; slow, only viable above 35°F box temp
+- **RCD** — Reverse Cycle Defrost; 4-way valve inverts refrigerant flow; used in heat pump configurations
+- **DoD** — Defrost on Demand (Adaptive Defrost); moisture/temperature sensors trigger defrost only when needed; saves 30–40% energy vs timer-based
+
+---
+
+### System Types & Configurations
+
+- **Parallel Rack** — Multiple compressors piped to common suction and discharge headers; central machinery room; most common in supermarkets
+- **Multiplex / Centralized** — Compressor racks in back room with refrigerant lines running to display cases on the sales floor
+- **Secondary Loop / Indirect** — Primary circuit cools a secondary fluid (glycol/brine) that circulates to cases; no refrigerant on the sales floor
+- **Cascade** — Two refrigeration cycles at different pressures; low-temp circuit (CO₂ or R-404A) cools the condenser of the high-temp circuit
+- **Self-Contained** — All components (compressor, condenser, evaporator) in one sealed unit; no field piping; reach-ins, chest freezers
+- **Pump Down** — Before compressor shuts off, liquid line solenoid closes and compressor evacuates low-side refrigerant to condenser/receiver; protects against migration during off-cycle
+
+---
+
+## Fundamental Knowledge
+
+### How to Read a PT Chart
+1. Identify the refrigerant — use the correct chart
+2. Read suction or discharge pressure on your gauge (psig)
+3. Find that pressure in the left column of the chart
+4. Read across to the saturation temperature column
+5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
+
+**Example — R-404A:**
+- Suction gauge reads 60 psig → PT chart dew point = 32°F (this is your SST)
+- Suction line thermocouple reads 45°F
+- Superheat = 45 − 32 = **13°F** ✓
+
+### The 4 Stages of the Refrigeration Cycle
+
+| Stage | Location | What Happens | Key Measurement |
+|---|---|---|---|
+| **1. Evaporation** | Evaporator coil | Liquid absorbs heat, boils to vapor | Superheat at coil outlet |
+| **2. Suction** | Suction line → compressor | Low-pressure vapor travels to compressor | Suction pressure & temp |
+| **3. Compression** | Compressor | Pressure and temperature rise | Discharge temp & pressure |
+| **4. Condensation** | Condenser → receiver | Hot vapor rejects heat, condenses to liquid | Subcooling at condenser outlet |
+
+### Superheat & Subcooling
+
+**Superheat** = suction line temperature − SST (from PT chart at measured suction pressure)
+- Too high (>20°F): starved evaporator — undercharge, TXV stuck closed, restriction
+- Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
+
+**Subcooling** = SCT (from PT chart at measured head pressure) − liquid line temperature
+- Too low (<5°F): undercharge, condenser fan failure, high load
+- Too high (>20°F): possible overcharge, cold ambient
+
+### TXV vs EPR — Key Difference
+
+| | TXV | EPR |
+|---|---|---|
+| **Controls** | Superheat (how much refrigerant enters evaporator) | Minimum evaporator pressure (minimum coil temperature) |
+| **Location** | Evaporator inlet | Evaporator outlet (suction line) |
+| **Senses** | Suction line temperature via remote bulb | Downstream suction pressure |
+| **Effect of failure** | Open = flooding; Closed = starving | Open = case overcools; Closed = case warms |
+
+Both are often used together: TXV feeds the evaporator correctly, EPR ensures the case doesn't drop below its minimum setpoint.
+
+### Liquid Slugging — What It Is and Why It Destroys Compressors
+Liquid refrigerant reaching the compressor instead of vapor. Liquids are incompressible — when the piston tries to compress liquid, the connecting rod bends or breaks, valve plates shatter, and bearings seize. Failure is immediate and complete (repair cost $5,000–$15,000+).
+
+**Causes:** flooded evaporator (TXV overfeeding), refrigerant migration during off-cycle, failed accumulator
+**Prevention:** accumulator on suction line, crankcase heater during off-cycle, proper superheat, pump-down system
+
+### Pump Down System
+Before the compressor shuts off:
+1. Controller closes the liquid line solenoid valve
+2. Compressor continues running, pulling suction pressure down to 0–5 psig
+3. Low-pressure switch trips → compressor stops
+4. All low-side refrigerant is stored in the condenser/receiver — no migration overnight
+
+At next startup: suction side is empty until the solenoid opens and refrigerant refills the circuit.
+
+### Oil Return
+Compressor oil circulates with refrigerant. Without good oil return:
+- Oil accumulates in evaporators → insulates the coil → reduced efficiency
+- Compressor loses oil → bearing failure, burnout
+Key components: **oil separator** (discharge line, ~95% recovery), **oil return line** (accumulator to crankcase), **crankcase heater** (boils dissolved refrigerant out of oil during off-cycle)
+
+### Undercharge vs Overcharge
+
+| | Undercharge | Overcharge |
+|---|---|---|
+| **Suction pressure** | Low | Normal–High |
+| **Superheat** | High | Low |
+| **Subcooling** | Low | High |
+| **Sight glass** | Bubbles / flash gas | Clear |
+| **Discharge temp** | High | Normal–High |
+| **Cause** | Leak | Technician error |
+
+### Compressor Capacity Control Methods
+1. **Unloading** — cylinder heads lifted or ported; compressor runs but doesn't compress; maintains oil circulation; 4-step unloaders common (0%, 33%, 67%, 100%)
+2. **VFD** — modulates RPM infinitely; most efficient; higher upfront cost
+3. **Pump Down / Stage Cycling** — bring additional compressors on/off the common suction header based on demand
+
+### Defrost Efficiency Ranking
+1. Hot Gas Defrost (~90% efficient) — fastest, least case temperature rise
+2. Reverse Cycle (~80%)
+3. Electric Defrost (~40%) — most common, highest energy cost
+4. Off-Cycle (~10%) — only viable in warmer walk-ins
+
+Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defrosting only when frost is actually present.
+
+### Refrigerant Charging Rules
+- **Zeotropic blends** (R-404A, R-448A): always charge as **liquid** through the high side; vapor charging fractionates the blend
+- **Azeotropic blends** (R-410A, R-507): can vapor-charge the low side
+- Charge by weight whenever possible; use manufacturer's nameplate charge
+- After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min`
 
 function buildEquipmentContext(
   equipment: Equipment,
