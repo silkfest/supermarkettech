@@ -69,8 +69,8 @@ export interface RetrievedChunk {
 export async function retrieveChunks(
   query: string,
   equipmentId?: string,
-  topK = 5,
-  minScore = 0.65
+  topK = 8,
+  minScore = 0.58
 ): Promise<RetrievedChunk[]> {
   const embedding = await embedQuery(query)
   const supabase = getSupabaseServer()
