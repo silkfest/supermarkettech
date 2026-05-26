@@ -763,6 +763,221 @@ const SPORLAN_KNOWLEDGE = `
 2. Liquid line undersized — pressure drop along the run causes flash gas; check line sizing vs. run length
 3. Insufficient subcooling — condenser fan failure, fouled condenser, high ambient; verify fan operation and coil cleanliness`
 
+// ── Copeland / Emerson compressor knowledge base ─────────────────────────────
+const COPELAND_KNOWLEDGE = `
+## Copeland / Emerson Compressor Knowledge — Supermarket & Commercial Refrigeration
+
+---
+
+### Copeland Scroll Compressors — ZB / ZF Series
+
+**Model number decoding (e.g. ZB38KQE-TFD-524):**
+- **Z** = Scroll compressor
+- **B** = Medium-temp refrigeration (evap −20°F to +45°F); **F** = Low-temp (evap −40°F to −20°F); **P** = A/C (R-410A); **D suffix** = Digital Scroll (ZBD / ZFD)
+- **Number** = capacity index (e.g. 38 in ZB38 ≈ 3-ton class); **K** multiplier = ×1,000 BTU/hr
+- **Generation:** K3 = older, K4, **K5 = current** (CoreSense Diagnostics standard on K5)
+- **E** = POE oil (required for all HFC/HFO refrigerants); **L** = less oil (shipped dry)
+- **Electrical after dash:** T = 3-phase, W = single-phase; F = 208–230V, D = 460V, M = 200–220V/50Hz
+
+**ZB vs ZF — critical difference:**
+| | ZB (Medium-Temp) | ZF (Low-Temp) |
+|---|---|---|
+| Evap range | −20°F to +45°F | −40°F to −20°F |
+| Liquid injection | Not typically required | **Mandatory** — required to control discharge temperature |
+| DTC valve | Not standard | Required: sensing bulb in discharge well, meters liquid to suction port |
+
+**Operating limits:**
+- Recommended max discharge line temp (6 in. from compressor): **225°F (107°C)**
+- Oil breakdown begins: **250°F (121°C)** — shut down and investigate immediately
+- CoreSense trip (PT1000 sensor): **154°C / 309°F** — auto-resets when temp drops below ~134°C
+- MAWP high side (R-404A/R-448A models): typically 450 psig — confirm nameplate
+
+**ASTP (Advanced Scroll Temperature Protection):**
+- Bimetal snap disc in the intermediate pressure cavity; trips at ~275–300°F internal temp
+- What happens: intermediate cavity vents to suction → orbiting scroll separates → **compression stops but motor keeps running** (drawing low amps)
+- Field symptom: compressor is running, suction and discharge pressures equalize, low amps, no refrigeration, compressor warm/hot to touch
+- Reset: compressor must cool down (2–6+ hours); motor protector usually trips first
+- **ASTP is not a system safety device** — repeated trips = system problem (low charge, blocked evap fans, high load, liquid line restriction)
+
+**Liquid injection on ZF compressors:**
+- DTC valve (thermostatic, dedicated to this compressor — never substitute a standard TXV) meters liquid from liquid line into suction port of compressor
+- Sensing bulb MUST be in the correct discharge well — wrong placement = erratic or no injection
+- Without liquid injection, a ZF on R-404A at −25°F evap will trip on high discharge temp within minutes
+
+---
+
+### Copeland Digital Scroll (ZBD / ZFD)
+
+**How axial unloading works:**
+- A solenoid-operated piston in the top cap moves the fixed (upper) scroll axially
+- **Solenoid DE-ENERGIZED:** discharge pressure holds scroll DOWN → 100% capacity (full compression)
+- **Solenoid ENERGIZED:** piston vents to suction → upper scroll lifts away → 0% capacity (motor still runs, no compression)
+- Controller varies the on/off ratio in a **20-second PWM cycle** → stepless **10–100% capacity modulation**
+- Blue LED (CoreSense): illuminates when solenoid is energized (unloaded state)
+
+**Common Digital Scroll faults:**
+
+| Symptom | Cause |
+|---|---|
+| Running, pressures equalized, low amps, no refrigeration | Solenoid stuck energized (unloaded) — verify voltage is cycling; if continuously on, replace solenoid |
+| Running at 100% only, cannot modulate | Solenoid stuck de-energized — check control signal from rack controller to solenoid |
+| Pressures equalized, solenoid cycling correctly electrically | Scroll mechanically stuck in unloaded position — oil migration in top cap or failed piston seal |
+
+**Fail-safe behavior:** If controller loses signal to solenoid, compressor defaults to 100% (fully loaded) — intentional fail-safe.
+
+---
+
+### Copeland Reciprocating Compressors (Discus / Copelametic Semi-Hermetic)
+
+**Model families:**
+- **2D** (2-cyl, 2–5 HP), **3D** (3-cyl, 5–15 HP), **4D** (4-cyl, 8–30 HP), **6D** (6-cyl, 15–50 HP), **8D** (8-cyl, 30–60 HP)
+- Older R-series: **3R, 4R, 4RA, 6R, 6RA** — same cylinder-count prefix, discontinued but widely in service
+- "Discus" = one-piece valve plate design (NOT individually serviceable reed valves)
+
+**Model number prefix decode:** Number = cylinder count; D = Discus valve; N = no unloaders; R = with unloaders; electrical suffix same convention as scroll (TFD = 3-phase 460V)
+
+**Cylinder unloading — critical field knowledge:**
+- Each unloader holds the suction valve off its seat so the cylinder draws gas but cannot compress it
+- **Solenoid DE-ENERGIZED = UNLOADED** (spring holds plunger up) — fail-safe to minimum capacity
+- **Solenoid ENERGIZED = LOADED** (oil/solenoid force releases suction valve — cylinder pumps)
+- If a solenoid coil burns out, that cylinder goes to unloaded (fails safe, not to full capacity)
+- Rack controllers typically start compressors with unloaders energized (loaded) after 5–30 sec delay
+
+**Capacity steps:**
+- 3D: 67% / 100%; 4D: 50% / 75% / 100%; 6D: 33% / 50% / 67% / 100%; 8D: 25% / 50% / 75% / 100%
+
+**Valve plate service:**
+- Discus valve plate is a one-piece assembly — replace entire plate, do not attempt to service individual reeds
+- Head bolt torque: **44 ft-lbs (60 N·m)** standard 3/8-16 grade 8 — use crisscross pattern, 70% first pass then full torque; retorque after first thermal cycle
+- After replacement: inspect bore for scoring, replace head gasket (never reuse), flush oil (valve fragments contaminate)
+
+**Oil sight glass:**
+- Correct operating level: **1/4 to 3/4 full** during steady-state operation; ideal target = 1/2
+- Foaming at startup = refrigerant migration dissolved in oil boiling off — crankcase heater likely not working
+- Oil type: R-22 → alkylbenzene or mineral (150 SUS); R-404A/R-448A/R-449A → **POE mandatory** (ISO 150 MT, ISO 220 LT); never mix POE and mineral
+
+**Common failure modes:**
+
+| Symptom | Cause | Diagnosis |
+|---|---|---|
+| Running, high suction, low/soft discharge pressure, low amps, **no temperature difference across compressor** | Valve plate failure | Pump-down test: good compressor spikes discharge immediately; failed valve won't build pressure |
+| Deep metallic knock, louder under load, disappears fully unloaded | Rod knock / bearing failure | Remove from service immediately; internal mechanical failure |
+| Oil foaming violently at startup, low crankcase level | Refrigerant migration; crankcase heater failed | Check heater; require 12-hour heat soak before restart |
+| Oil weeping from front of compressor | Crankshaft seal leak | Replace shaft seal kit |
+| Motor protector tripping repeatedly | Electrical overload or winding fault | Megohm test; winding balance; check voltage and amp draw |
+
+---
+
+### Motor Winding Testing
+
+**Insulation resistance (megohm test) — 500V DC megohmmeter:**
+- Test each terminal (T1, T2, T3) to compressor shell
+- **>100 MΩ** = good; **60–100 MΩ** = marginal; **<20 MΩ** = failed; **near 0 MΩ** = grounded/burnout
+- Test cold (more sensitive); warm test should show HIGHER resistance — if it drops when warm, moisture is present
+
+**Winding balance test — low-ohm meter:**
+- Measure T1–T2, T2–T3, T1–T3
+- All three should be **equal within ±5–10%**
+- Open winding (∞): winding failed open; shorted winding (one leg much lower): partial burnout
+
+---
+
+### Burnout Cleanup (Summary)
+
+1. Pull oil sample before recovery — acid test (Emerson Universal Acid Alert or equivalent)
+2. Recover refrigerant; remove failed compressor
+3. Flush piping; install oversized liquid line drier (2–3× normal) + temporary suction line filter (RSF or equivalent, acid-neutralizing core)
+4. Replace: liquid line drier, oil separator (drain/inspect), check valves in discharge stream
+5. Install replacement compressor with correct POE oil; evacuate to 500 microns
+6. Run 4 hours; recheck oil at 24 hr and 48 hr; repeat drier changes until acid test is negative and oil is clear
+7. Mild burnout: 1–2 drier changes over 1–2 weeks; severe burnout: 3–5 changes over 4–6 weeks
+
+---
+
+### CoreSense Diagnostics Module (K5 Scroll / Discus)
+
+Mounts to compressor terminal box. Replaces external motor protector; adds discharge temp protection, phase loss/imbalance detection, locked rotor detection, MODBUS communication to E2/E3 controller.
+
+**LED colors:**
+- **Solid GREEN** = normal operation
+- **Flashing GREEN** = alert (non-protective warning, compressor still running)
+- **Flashing YELLOW** = trip (auto-reset when condition clears)
+- **Flashing RED** = lockout (manual reset required — cycle control power)
+- **BLUE (Digital Scroll only)** = solenoid energized (unloaded)
+
+**Flash codes — Scroll (AE81424):**
+
+| Flashes | Color | Condition | Action |
+|---|---|---|---|
+| 1 | Yellow | Motor protector open (internal overload) | Allow 30–90 min cooldown; check condenser, voltage, discharge temp |
+| 2 | Yellow | High discharge temperature (>154°C / 309°F) | Check refrigerant charge, evap fans, DTC valve (ZF), condenser |
+| 3 | Yellow | Pressure switch cycling (high or low pressure) | Dirty condenser (HP), or low charge / frosted evap (LP) |
+| 4 | Yellow/Red | Locked rotor / failed to start | Check supply voltage, contactor, capacitors; check for tight mechanical |
+| 5 | Yellow | Sustained abnormal operation / running loss of charge | Check refrigerant charge |
+| 6 | Red | Open circuit / control circuit fault | Check wiring, contactor coil, safety switches in series with control circuit |
+| 7 | Red | **Reverse phase / phase loss / phase imbalance** | **Always a lockout (manual reset)** — check all 3 phases; swap two legs for reverse phase |
+| 8 | Yellow | Low discharge superheat / liquid slugging | Check TXV/EEV superheat, sensing bulb, low ambient, defrost timing |
+
+**Discus CoreSense (v2.11) adds:** Oil pressure differential monitoring (minimum 9–15 psi differential); 120-second delay after start before oil fault is active; MODBUS to E2 reports discharge temp, oil differential, and trip history.
+
+---
+
+### Emerson E2 / E3 Rack Controller
+
+**What it manages:** Compressor staging for up to 4 suction groups, circuit defrost scheduling, condenser fans, system alarms, floating setpoint energy optimization, MODBUS/BACnet communication.
+
+**Alarm log access:** MENU → Alarms → Active alarms or Alarm History; press Enter on any alarm for details; F1 to acknowledge.
+
+**Point status / manual override:** MENU → Configured Applications → [Suction Group] → Status → override individual compressor stage (Force ON / Force OFF / Return to Auto). **Always return to Auto after service** — overrides persist through power cycles on some firmware.
+
+**Common E2 alarm messages:**
+
+| Alarm | Meaning | Common causes |
+|---|---|---|
+| SUCTION HIGH PRESSURE | Suction > high limit | Compressor failure, all stages off, liquid bypass |
+| SUCTION LOW PRESSURE | Suction < low limit | Low charge, service valve partially closed, all cases in defrost |
+| OIL FAILURE | OMB/OMC oil fault | Low oil level, foaming (crankcase heater issue), failed fill solenoid, OMB wiring fault |
+| PROOF OF FLOW FAILURE | Stage commanded ON but didn't confirm | Compressor not starting, contactor failed, CoreSense lockout |
+| DEFROST TERM BY TIME | Defrost ended on failsafe time | Termination sensor failed, heater failed, coil not defrosting |
+| COMPRESSOR FAULT | External fault input tripped | Overload relay, CoreSense trip, manual trip |
+| PHASE LOSS / BROWN-OUT | Power quality fault | Utility issue, blown fuse, failed contactor leg |
+
+**Suction setpoint key parameters:** Setpoint PSI, Deadband (±1–2 PSI typical), Stage On/Off Delays (60–180 sec typical). Floating setpoint: raises suction pressure when all cases are satisfied (energy saving); lowers when any case is struggling.
+
+**Defrost key parameters:** Type (Electric / Hot Gas / Off-Cycle), number per day (1–8 MT, 3–6 LT), termination setpoint (50°F MT coil, 55°F LT), failsafe time (30 min MT, 45–60 min LT), drip time (5–15 min fan-off after heaters off).
+
+---
+
+### Emerson OMB / OMC Oil Level Controllers
+
+Replaces compressor oil sight glass. Controls oil fill solenoid and signals E2 on oil fault.
+
+| | OMB | OMC |
+|---|---|---|
+| Sensing | Hall-effect float (moving parts) | Capacitive (no moving parts) |
+| Foaming susceptibility | Low | Moderate |
+
+**Operation:** Oil drops below ½ sight glass → 10 sec delay → fill solenoid opens. If oil doesn't recover within ~2 min → alarm output → E2 "OIL FAILURE."
+
+**LED:** Green = OK; Yellow = filling; Red = fault (alarm active)
+
+**Common causes of false oil faults:**
+- **Oil foaming at startup** — refrigerant migration; crankcase heater not working; OMC reads foam as low oil
+- **Fill solenoid stuck closed** — no oil can enter; verify solenoid energizing and opening
+- **Oil reservoir/separator depleted** — source of oil supply is empty
+- **OMB Hall-effect contaminated by metal particles** — steel debris sticks to float magnet; reads falsely low
+- **Wiring fault** — loose NC terminal at E2 input holds alarm open even with normal oil level; bridge terminal to test
+
+---
+
+### Copeland Field Rules of Thumb
+
+- **Discharge line temp:** Target 150–200°F; investigate >225°F; shut down >250°F
+- **Oil sight glass:** Operate at 1/4 to 3/4 full; ideal = 1/2; never run empty; foaming at startup = crankcase heater issue
+- **Crankcase heater:** Must be energized **minimum 12 hours** before startup after any prolonged shutdown; always wired live (not switched with compressor contactor)
+- **Rebuilt reciprocating compressor break-in:** Run at minimum load (maximum unloaders on) for 30–60 min before loading to full capacity; monitor oil level, amps, discharge temp
+- **Oil change on refrigerant retrofit** (R-22 → R-407A/C/F or R-404A → R-448A/R-449A): Full POE oil flush required; verify compressor model is approved for new refrigerant; ZF DTC valve bulb charge must be compatible with new refrigerant family`
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -948,7 +1163,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(
