@@ -978,6 +978,182 @@ Replaces compressor oil sight glass. Controls oil fill solenoid and signals E2 o
 - **Rebuilt reciprocating compressor break-in:** Run at minimum load (maximum unloaders on) for 30–60 min before loading to full capacity; monitor oil level, amps, discharge temp
 - **Oil change on refrigerant retrofit** (R-22 → R-407A/C/F or R-404A → R-448A/R-449A): Full POE oil flush required; verify compressor model is approved for new refrigerant; ZF DTC valve bulb charge must be compatible with new refrigerant family`
 
+// ── Hussmann display cases and rack systems knowledge base ───────────────────
+const HUSSMANN_KNOWLEDGE = `
+## Hussmann Product Knowledge — Display Cases & Rack Systems
+
+---
+
+### Display Case Model Families
+
+**Reach-In Low Temperature (Frozen Food) — RL / RLN series:**
+- **RL** — Standard depth; INNOVATOR I or III glass doors; 5 rows of 22" shelves per door
+- **RLN** — Narrow (4" shallower bumper-to-back than RL); same product cube; RLNI = with INNOVATOR doors
+- **RLN-SP / RL-SP** — Self-contained R-290 (propane); no remote refrigeration; 2–5 door configurations
+- **RLTM** — Triple-deck medium temp variant of same family
+
+**Reach-In Medium Temperature (Dairy/Deli/Beverage) — RM / RMN series:**
+- **RM** — Standard depth medium temp; glass door, multi-shelf
+- **RMN** — Narrow medium temp; RMN-W = self-contained propane, water-cooled condenser rejection
+
+**Frozen Food Island / Coffin Cases — FW / FWG / FWE / LI / LWE family:**
+- **FW** — Open island, no glass; **FWG** — Open island with glass front panels
+- **FWE** — End section for FW lineups; **FWEG** — End with glass; **FWEL** — End with sliding glass lid
+- **LI** — Narrow single-deck island; **LWE** — Wide island end; **LWU/LWUG** — Unitized wide island (G = glass front)
+- Evaporator fans: 2 fans per 4–6 ft section, 4 fans per 8–12 ft section; typically 4W shaded-pole or ECM
+- Glass lids (sliding) reduce case energy 40–60% vs. open operation — common retrofit
+
+**Model number suffixes:**
+- **N** = Narrow; **G** = Glass front; **E** = End section; **W** = Wide or water-cooled; **L** = Lid; **I** = INNOVATOR door; **SP** = Self-contained propane; **U** = Unitized
+
+---
+
+### Defrost Types — Hussmann Specific
+
+| Code | Name | How it works |
+|---|---|---|
+| **E** | Electric | Resistance heaters in coil; drain pan electric heater |
+| **KGE** | KoolGas + Electric pan | **2-pipe** hot gas; taps **saturated vapor from receiver top** (NOT superheated discharge); lower, controlled defrost temp; drain pan electric |
+| **KGG** | KoolGas + KoolGas pan | 2-pipe; both coil and drain pan defrosted via KoolGas |
+| **HGE** | Hot Gas + Electric pan | **3-pipe** conventional hot gas from discharge; drain pan electric |
+| **HGG** | Hot Gas + Hot Gas pan | 3-pipe; drain pan via hot gas |
+
+**KoolGas is not the same as standard hot gas defrost.** KoolGas taps the liquid receiver vapor space (saturated, ~90–100°F), not the superheated discharge gas (~200°F+). This prevents thermal shock to the coil and reduces the refrigerant surge on the suction side at defrost end. If a case is labeled KGE, use 2-pipe KoolGas procedures — do not treat it as a 3-pipe hot gas system.
+
+**EPR bypass solenoid:** Hussmann parallel racks install a bypass solenoid around the EPR valve. This solenoid energizes during the **drip cycle** (after active defrost ends) to control refrigerant return rate. This is intentional by design — do not confuse a bypassed EPR during drip cycle with a defrost fault.
+
+---
+
+### Anti-Sweat Heaters — DASH Controller
+
+- **INNOVATOR I door cases:** Equipped with a **DASH controller** (Door Anti-Sweat Heater) that modulates door frame heater duty cycle based on store humidity; must have continuous 120V supply; **do NOT connect to a centralized anti-sweat system simultaneously**
+- **INNOVATOR III door cases:** DASH controller is NOT installed — INNOVATOR III uses a different integrated door design; do not expect to find a DASH board on these cases
+- Heater wattages: return glass ~16W/120V; nosing ~31W/120V; joining kit ~48W/120V
+- Common failure: heater wire breaks at door hinge pivot (repeated door opening fatigues wire) — check hinge area on every reach-in door before condemning the DASH board
+
+---
+
+### Fan Delay & Defrost Limit Thermostats
+
+- **Fan delay thermostat:** Opens at ~20°F, closes at ~35°F (post-defrost; fans off until coil is below frost temp to allow drip-down). If fans won't restart after defrost, this is the first check.
+- **Defrost limit thermostat:** Opens at ~90°F internal air temp during defrost (safety limit to prevent product thaw). Opens = terminates defrost early. Fails closed = defrost always runs to failsafe time.
+- **Defrost termination thermostat (coil):** Typically set to terminate at ~50–55°F coil temp for reach-in frozen cases.
+
+**Common part numbers:**
+| Part | P/N | Spec |
+|---|---|---|
+| Fan motor (standard EE) | 0435101 | Most RL/RLN/RM applications |
+| Fan blade 8" CW | 0315470 | Use with 0435101 |
+| Drain pan heater RL-5 | 0387031 | 300W, 120V, 134" tubular |
+| Drain pan heater RL-5 KoolGas | 0387039 | KoolGas variant |
+| Fan delay/defrost term thermostat | 3198087 | 55°F–35°F, 3-wire |
+| Heater limit thermostat | 3198088 | 75°F–40°F, 2-wire Klixon |
+
+---
+
+### Evaporator Coil Field Check (Open Multi-Deck Cases)
+
+1. Remove return air grille (front bottom, typically clips/screws); inspect coil with flashlight
+2. **Frost patterns:**
+   - Uniform frost, not clearing → defrost not initiating or heaters failed
+   - Bottom frosted, top clear → starved coil (low charge, TXV stuck, or distributor blockage)
+   - Top frosted, bottom clear → TXV flooding (over-feeding)
+   - Isolated section frosted → that circuit's distributor tube blocked
+3. Target superheat at case: ~4–8°F (open multi-deck); measure at suction line access port at the case
+4. Verify airflow: tissue paper or smoke pencil at discharge grille confirms air curtain direction (should flow down through product zone, return at bottom)
+5. Check drain: remove drain plug at case bottom; blocked drains cause drain pan ice that eventually frosts the coil from below
+6. Design ambient condition: **75°F / 55% RH maximum** — measure store conditions first before diagnosing refrigeration issues; cases will sweat and frost progressively in high-humidity stores
+
+---
+
+### Common Case Faults
+
+**Open case sweating / condensation:**
+1. Store humidity above 55% RH — measure with hygrometer; HVAC dehumidification likely failed
+2. Defrost not completing (frost building on coil, disrupts air curtain)
+3. Air curtain disrupted: dirty/damaged honeycomb grille, overstocked shelves, missing shelf dividers
+4. Anti-sweat heaters failed (mullions/glass frames cold to touch; moisture condenses)
+
+**Reach-in door sweating / fogging:**
+- Broken heater wire at hinge: open-circuit; door frame cold — test continuity at heater terminals
+- Failed DASH controller: heaters off entirely or full-on — check 120V supply, then DASH output
+- Cracked insulated glass seal (fogging between panes): replace the full IGU (glass door unit), not serviceable
+
+---
+
+### Hussmann Parallel Rack Systems
+
+**Configuration:**
+- Multiple compressors on common suction/discharge headers; designed per store BTU load
+- Typical: 1 MT suction group + 1 LT suction group per rack; naming convention **"Rack A High" (AH)** = MT, **"Rack A Low" (AL)** = LT
+- One rack can have 3+ suction groups (e.g., produce at +35°F SST, meat at +15°F, ice cream at −25°F)
+- Compressors: Copeland semi-hermetic or scroll (Hussmann specifies Copeland as primary)
+- Controller: **Emerson E2** (standard on all Hussmann parallel racks); Danfoss AKC case controllers (AK-CC55, AK-CC250, AK-CC550) at individual case level via RS-485 bus
+
+**Oil management:**
+- Oil separator on discharge line → oil reservoir → differential pressure return to compressor crankcases
+- Return valve: **Sporlan Y-825-2** differential return valve is Hussmann's standard rack oil return valve
+- If compressors run consistently low on oil: check oil separator efficiency and Y-825-2 operation before adding oil
+
+---
+
+### Hussmann Protocol Family — Distributed Rack Systems
+
+Protocol is Hussmann's distributed refrigeration system — smaller rack modules placed close to or inside the cases they serve, eliminating the traditional machine room.
+
+| System | Location | Refrigerant | Notes |
+|---|---|---|---|
+| **Protocol HFC/HE** | Indoor | R-448A, R-449A | Standard distributed; 50–75% less piping than parallel rack |
+| **Protocol SPI/SPO** | Indoor/Outdoor | HFCs | SPI = overhead mounting near cases; SPO = outdoor rated |
+| **Protocol CO₂** | Indoor | R-744 | Industry-first MT scroll with vapor injection; iron/copper piping; XP Pro Pack controller |
+| **Protocol A2L** | Indoor | A2L refrigerants | Integrated advanced leak detection; for new builds |
+| **Proto-Aire** | Outdoor | HFCs | Outdoor air-cooled; integral condenser; weatherproof |
+| **Proto-Aire EZ** | Outdoor | HFCs | 3–4 scrolls; digital scrolls for MT; 25%+ energy improvement |
+
+**Protocol vs. parallel rack — key differences:**
+- Protocol refrigerant charge: 80–275 lbs per unit vs. 1,200–1,800 lbs for a traditional parallel rack
+- No dedicated machine room required; installs in or adjacent to cases
+- Controller: **Protocol Control System (PCS)** on older Protocol racks; **XP Pro Pack** (touchscreen, Copeland) on Protocol CO₂; E2 on HFC variants
+- Field note: if servicing a Protocol rack, confirm controller type before attempting E2 navigation — PCS has completely different menus
+
+---
+
+### Hussmann CO₂ Systems
+
+- **Transcritical CO₂ rack** — Hussmann-manufactured (not sourced); built at Suwanee, GA plant; LT compressors discharge into MT suction header (booster configuration); gas cooler instead of condenser; operates subcritical below ~25°C ambient
+- **CO₂ Cascade rack** — Subcritical CO₂ only on LT circuit; primary HFC circuit cools the CO₂; lower complexity than full transcritical
+- **Pumped liquid CO₂** — CO₂ pumped as liquid secondary fluid to case evaporators; HFC primary stays in machine room; dramatically reduces HFC charge on sales floor
+- **Protocol CO₂** — Distributed Protocol architecture with R-744; indoor; small charge; iron/copper piping acceptable
+
+---
+
+### Refrigerant Quick Reference
+
+| Refrigerant | Application | Status |
+|---|---|---|
+| R-404A | Legacy LT/MT rack | Being phased down; GWP 3,922 |
+| R-448A / R-449A | Current HFC replacement for R-404A | Primary Hussmann rack refrigerants |
+| R-290 (propane) | Self-contained cases (RLN-SP, microDS) | ≤150g charge; factory pre-charged; **not field-rechargeable** |
+| R-744 (CO₂) | Transcritical racks, Protocol CO₂, cascade, pumped liquid | GWP=1 |
+| A2L blends (R-454B) | Protocol A2L systems | Mildly flammable; integrated leak detection required |
+
+**R-290 self-contained cases:** Charge ≤150g; hermetically sealed at factory. If a propane self-contained case loses charge (refrigerant leak), the sealed refrigeration module must be **replaced**, not recharged in the field.
+
+---
+
+### Serial/Model Plate Location & Parts Resources
+
+- **Reach-in cases (RL/RLN/RM):** Serial plate inside the **return air channel, front left corner** — shine a flashlight through the return air grille
+- **Island cases (FW/LWE):** Inside end panel or left interior wall
+- **Rack:** Right end panel facing service aisle; individual compressor nameplates on each compressor
+
+**Parts lookup (always use serial number):**
+- **parts.hussmann.com** — Hussmann Performance Parts; search by serial or part number
+- **bom.hussmann.com** — Enter serial number for complete factory bill of materials for that exact unit
+- **hussmann.com/aftermarket-parts-lists** — PDF replacement parts lists by model
+- Hussmann tech support: **1-800-922-1919** | Parts: **1-855-487-7778**
+- Third-party: Parts Town (partstown.com/hussmann), CaseParts.com`
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -1163,7 +1339,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(
