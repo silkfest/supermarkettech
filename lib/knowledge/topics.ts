@@ -118,7 +118,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'CircuitBoard',
     colorClass: 'purple',
     content: MICRO_THERMO_KNOWLEDGE,
-    manualKeywords: ['micro thermo', 'mt-alliance', 'mt alliance', 'mtt'],
+    manualKeywords: ['microthermo', 'micro-thermo', 'micro thermo', 'mt-alliance', 'mt alliance', '70-mta', '74-mta', '100-50-10', '70-phw'],
     tags: ['Controls', 'LonWorks', 'Case Controllers'],
     category: 'manufacturer',
   },
