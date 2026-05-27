@@ -589,15 +589,19 @@ export const SPORLAN_KNOWLEDGE = `
 | CDS-16 | 16 tons | 1-3/8" ODF |
 | CDS-17 | 17 tons | 1-5/8" ODF |
 
-**Controller configuration (critical):** The case controller must be programmed with the correct **step count** matching the valve. CDS valves use 1,596 steps. If programmed wrong (e.g., 2,000 steps for a different valve), the controller will command the valve past its hard stop, strip the drive coupling, and show "invalid" indefinitely. Verify step count in controller settings matches the valve on the case.
+**Controller configuration (critical):** The case controller must be programmed with the correct **step count** matching the valve model. Step counts differ by frame size:
+- **CDS-2, -4, -7** → **2,500 steps**
+- **CDS-9, -16, -17** → **6,386 steps**
+
+If programmed with the wrong count (e.g., entering 6,386 steps for a CDS-7), the controller will command the valve past its hard stop, strip the drive coupling, and show "invalid" indefinitely. Always verify step count in controller settings matches the specific valve model on the case before commissioning.
 
 **Diagnosing "CDS invalid" on Micro Thermo / Danfoss:**
 1. Check 4-wire cable from controller board to valve — inspect for moisture, chafed insulation, loose pins
 2. Verify 24 VAC at the stepper driver board terminals
-3. Measure motor windings at valve connector: ~23–47 Ω across each phase; open or short = replace valve motor assembly
+3. Measure motor windings at valve connector: **CDS-2/-4/-7 = ~100 Ω per phase; CDS-9/-16/-17 = ~75 Ω per phase**; open or short = replace valve motor assembly
 4. Power-cycle the case controller to force valve re-initialization — listen for audible clicking (10–15 clicks) during init; no click = motor or driver board failed
 5. If valve initialises but reading remains invalid: suspect the position feedback circuit on the driver board — replace driver board
-6. Confirm step count setting in controller matches valve model
+6. Confirm step count setting in controller matches valve model (CDS-2/-4/-7 = 2,500; CDS-9/-16/-17 = 6,386)
 
 ---
 
