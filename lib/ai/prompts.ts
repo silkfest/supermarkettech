@@ -1592,6 +1592,270 @@ Arneg cases connect to remote rack systems the same way as any North American di
 - Third-party parts: Parts Town (partstown.com/arneg), CaseParts.com
 - Serial plate location: inside the case on the right-side interior wall near the top, or on data sticker inside the end panel — includes model, serial, refrigerant type, charge weight, and electrical data`
 
+
+export const KEEPRITE_KNOWLEDGE = `
+## Keeprite Product Knowledge — Commercial Refrigeration & Supermarket Equipment
+
+Keeprite Refrigeration is a North American commercial refrigeration manufacturer (part of International Comfort Products / Carrier). Their unit coolers and condensing units are widely used in supermarket walk-in coolers, walk-in freezers, prep rooms, floral coolers, and back-of-house refrigeration across Canada and the US.
+
+---
+
+### Company & Brand Overview
+
+- **Owned by:** International Comfort Products (ICP), a Carrier subsidiary
+- **Primary markets:** Supermarkets, convenience stores, food service, cold storage
+- **Main product lines:** Unit coolers (evaporators), remote condensing units, self-contained packaged systems
+- **Manufacturing:** Products are sold through commercial refrigeration distributors; Copeland and Tecumseh compressors are common in their condensing units
+- **Documentation:** keepriterefrigeration.com — product data, installation manuals, selection software
+
+---
+
+### Unit Cooler Product Families
+
+#### KLP Series — Low Profile Unit Cooler
+
+The KLP is Keeprite's standard low-profile (horizontal air discharge) unit cooler for walk-in medium and low temperature applications.
+
+- **Mounting:** Ceiling-mounted, horizontal discharge; low clearance installation (suitable for walk-ins with 8–10 ft ceilings)
+- **Air throw:** Horizontal discharge across the cooler ceiling; multiple fans depending on length
+- **Temperature range:** Available in MT (medium temp, walk-in cooler) and LT (low temp, walk-in freezer) configurations
+- **Coil fin spacing:** MT models typically 4–6 fins per inch; LT models 2–3 fins per inch (wider spacing slows frost bridging)
+- **Defrost options:**
+  - MT: Off-cycle (fan stop) standard; electric optional
+  - LT: Electric resistance heaters standard; hot gas optional
+- **Fan motors:** Shaded-pole (older models) or PSC; EC fan motor upgrades available on newer versions
+- **Drain pan:** Electric drain pan heater on LT models; gravity drain on MT
+- **Standard features:** Fan delay thermostat, defrost termination thermostat, drain pan heater (LT)
+
+**KLP model number decoding (general pattern):**
+- First letters: KLP = Keeprite Low Profile
+- Capacity digits: indicate BTU/hr capacity (e.g., KLP060 ≈ 6,000 BTU/hr range — confirm in product data)
+- Temperature suffix: M = medium temp, L = low temp
+- Defrost suffix: E = electric, O = off-cycle, H = hot gas
+- Always verify against the unit nameplate and product datasheet — Keeprite revises suffixes across generations
+
+---
+
+#### KLV Series — Unit Cooler (Vertical / V-Type Coil)
+
+The KLV series uses a V-coil (two coil banks angled in a V configuration) for higher coil surface area in a compact footprint.
+
+- **Coil design:** Dual-slab V-coil; larger coil face area than flat coil designs for the same unit footprint
+- **Air discharge:** Vertical or horizontal depending on orientation and installation
+- **Application:** Higher-capacity walk-ins and blast coolers where maximum coil surface is needed
+- **Fin spacing:** Available in standard and wide-fin (LT) versions
+- **Defrost:** Electric standard on LT; off-cycle on MT
+- **Drainage:** Dual drain connections (one per coil slab); both must be piped and heat-traced on LT applications
+- **Refrigerant distributor:** Each coil slab has its own distributor; TXV must feed both slabs correctly — confirm distributor configuration before replacing TXV
+
+**Key field note — KLV dual distributor:** The V-coil has two refrigerant circuits. A single TXV feeds a Y-distributor (or two separate TXVs are used depending on model). If one slab is frosted and one is clear, suspect the corresponding distributor nozzle is clogged or one TXV bulb has migrated.
+
+---
+
+#### General Unit Cooler Families (Additional Keeprite Lines)
+
+| Series | Type | Notes |
+|---|---|---|
+| **KLP** | Low-profile horizontal | Most common in supermarket walk-ins; flat coil |
+| **KLV** | V-coil | Higher capacity in compact footprint; dual distributor |
+| **KHB** | High capacity | Larger walk-in freezers and blast coolers |
+| **KDT** | Dual-temp | Single unit cooler serving two temperature zones |
+| **KUH** | Unit heater / cooler | Combination heating/cooling for prep rooms |
+
+---
+
+### Defrost Systems — Keeprite Unit Coolers
+
+**Electric Defrost (LT standard):**
+- Resistance heaters embedded in coil fins and on drain pan
+- Defrost initiated by time clock or adaptive defrost control
+- Termination: coil termination thermostat (opens at ~50–55°F coil temp)
+- Fan delay: fans held off until coil cools to ~35°F after defrost to prevent blowing warm air over product
+- Drain pan heater: 120V tubular heater in drain pan; wired to run during defrost and a timed drip period after
+- If defrost water is pooling in pan and not draining: check drain line heat tape and drain line slope (minimum 1/4" per foot to drain)
+
+**Off-Cycle Defrost (MT standard):**
+- Fans stop; refrigeration circuit de-energizes; ambient store air melts frost naturally
+- Termination by time (15–30 min typical) — no heaters
+- Fan delay: fans restart when coil drops below ~38°F
+- If MT walk-in is not fully clearing frost during off-cycle: store ambient too cold, or defrost duration too short; extend defrost time before adding heaters
+
+**Hot Gas Defrost (optional):**
+- Discharge gas routed to coil inlet; solenoid valve opens on defrost call
+- Faster than electric; less product temperature rise
+- Requires 3-pipe installation; check solenoid valve for leakage between defrosts (warm coil when refrigerating = hot gas solenoid leaking by)
+
+**Adaptive Defrost Control:**
+- Some Keeprite units ship with or can be retrofitted with demand/adaptive defrost boards (e.g., Paragon, Grasslin, or Ranco timers)
+- Adaptive defrost skips unnecessary defrosts based on run time accumulation — field-adjustable threshold (e.g., skip if <2 hrs runtime since last defrost)
+
+---
+
+### Condensing Units
+
+Keeprite condensing units are air-cooled remote units used with their unit coolers for walk-in and reach-in applications.
+
+**Compressor types used:**
+- **Copeland scroll** (ZB/ZF series) on medium/larger capacity units
+- **Copeland semi-hermetic Discus** on high-capacity and LT units
+- **Tecumseh AEA/AGA** reciprocating on smaller capacity units (common in self-contained and small walk-in applications)
+
+**Refrigerant:**
+- Legacy: R-404A (phase-down; still found in installed units)
+- Current: R-448A, R-449A (near-drop-in HFC replacements; TXV resizing may be required)
+- Some self-contained units: R-134a or R-290
+
+**Condensing unit configuration:**
+- Single compressor or dual compressor (tandem) configurations
+- Integral condenser coil + condenser fans
+- High-ambient option (larger condenser coil, more fan CFM) for rooftop or outdoor installation in hot climates
+
+**Key specs to record at installation:**
+1. Compressor model and serial (on nameplate)
+2. Condensing unit model (on unit nameplate — inside the access panel)
+3. Refrigerant type and charge weight (on nameplate)
+4. High-pressure cutout setting (factory set; record for future reference)
+5. Low-pressure cutout setting (suction pressure cutout)
+6. Oil type (POE for HFC systems)
+
+**Rooftop condensing units:**
+- Common in supermarket walk-in applications where machine room space is limited
+- Check condenser coil for debris and biological growth (rooftop units collect organic matter)
+- Clean coil at minimum annually; high-ambient stores (desert/sun belt) may need quarterly cleaning
+- Verify head pressure control (fan cycling switch or VFD) — inadequate head pressure control in cold weather causes LO HEAD PRES trip
+
+---
+
+### Refrigerant & Oil
+
+| Refrigerant | Application | Notes |
+|---|---|---|
+| R-404A | Legacy installed units | Phase-down per AIM Act; retrofit with R-448A/449A is common |
+| R-448A | Current LT/MT standard | Compatible with POE oil; TXV may need upsizing ~10% |
+| R-449A | Current LT/MT standard | Similar to R-448A; confirm TXV compatibility with manufacturer |
+| R-134a | Small self-contained units | Single-door reach-ins, display cases |
+| R-290 (propane) | Small plug-in self-contained | Factory-sealed; ≤150g charge; NOT field-rechargeable |
+
+**Oil:** All HFC systems (R-404A, R-448A, R-449A) use **POE (polyolester) oil**. Never mix POE with mineral oil — POE is hygroscopic (absorbs moisture rapidly when exposed to air); keep containers sealed and minimize open-air exposure during service.
+
+**R-404A to R-448A/R-449A retrofit:**
+1. Recover R-404A fully
+2. Replace filter-drier (new drier sized for R-448A)
+3. Verify POE oil in system (if mineral oil present, flush required)
+4. Recharge with R-448A/R-449A per manufacturer weight spec (typically 5–15% less charge by weight than R-404A)
+5. Adjust TXV superheat (R-448A/449A have different pressure-temperature curve)
+6. Update unit nameplate and refrigerant identification labels per EPA requirements
+7. Update high-pressure and low-pressure cutout settings per new refrigerant PT chart
+
+---
+
+### Walk-In System Configuration — Supermarket Back-of-House
+
+Keeprite equipment is most commonly found in these supermarket walk-in configurations:
+
+**Produce walk-in cooler (MT):**
+- SST: +20 to +28°F; box temp 34–38°F
+- Unit cooler: KLP medium temp, off-cycle defrost, 2–4 fans
+- Condensing unit: remote air-cooled, rooftop or machine room
+- Typical superheat at suction: 6–10°F
+
+**Meat/deli walk-in cooler (MT):**
+- SST: +15 to +22°F; box temp 32–36°F
+- Tighter temperature control; often faster pull-down requirement
+- 2–3 defrosts per day off-cycle
+
+**Frozen food walk-in freezer (LT):**
+- SST: −20 to −15°F; box temp −10 to 0°F
+- Unit cooler: KLP or KLV low temp, electric defrost
+- 2–4 defrosts per 24 hours; termination at 55°F coil
+- Critical: drain line must be heat-traced and insulated; freeze-ups cause flooding at defrost end
+
+**Floral cooler (MT):**
+- SST: +28 to +32°F; box temp 36–40°F
+- High humidity requirement (75–85% RH); evaporator NOT defrosted frequently to preserve humidity
+- Off-cycle defrost; minimal run time per defrost
+
+**Seafood/fish cooler:**
+- SST: +20 to +25°F; box temp 29–33°F (near-freezing without freezing product)
+- Electric defrost often used due to tight temperature tolerance
+- Drain pan critically important — fish coolers generate high drainage volume
+
+---
+
+### Fan Motors — Keeprite Unit Coolers
+
+- **Shaded-pole:** Older/smaller models; 4W–15W; continuous run except during defrost; simple wiring
+- **PSC (permanent split capacitor):** Mid-range units; more efficient than shaded-pole; capacitor failure is most common fault
+- **EC (brushless electronically commutated):** Newest models; 15–50% more efficient; 0–10V or PWM speed control; cannot directly substitute shaded-pole without bypassing speed controller
+- Fan blade: check rotation — air must be drawn through coil (not blown through); incorrect rotation causes warm coil and poor capacity
+- Fan guard must be intact — missing fan guard disrupts coil airflow pattern and reduces capacity
+
+**Diagnosing fan motor failure:**
+1. Check voltage at motor leads (should be 120V or 208/230V depending on unit)
+2. Check motor winding resistance: open or shorted windings = replace motor
+3. For PSC motors: check run capacitor (capacitance and ESR) — failed capacitor causes motor to hum but not start, or run slow
+4. For shaded-pole: if motor is hot to touch but not running, check for mechanical seizure (bearing failure) — replace motor
+
+---
+
+### Common Keeprite Unit Cooler Faults
+
+**Walk-in too warm (MT):**
+1. Coil frosted solid — check defrost schedule and termination thermostat; inspect coil
+2. Fan motor(s) failed — check each motor; shaded-pole failure is silent (no heat, no noise)
+3. Suction pressure too high — EPR valve set too high or liquid line solenoid not closing during off cycle
+4. TXV hunting/underfeeding — measure superheat; target 6–10°F; check TXV bulb contact with suction line
+5. Dirty condenser coil — check condensing unit; high head pressure reduces capacity
+
+**Walk-in too warm (LT):**
+1. Incomplete defrost — coil iced; check heater continuity (each heater ~15–30Ω at 240V; higher resistance = partial open)
+2. Drain pan heater failed — water freezes in pan → ice dam → frost above pan
+3. Defrost termination thermostat detached from coil — stays open, defrost always hits max time
+4. Fan delay thermostat stuck open — fans never restart after defrost
+5. Suction pressure too high — check TXV superheat; check if discharge solenoid leaking hot gas into suction
+
+**Frosted only on top half of coil:**
+- TXV overfeeding (low superheat, wet suction) — check bulb position and charge
+
+**Frosted only on bottom half of coil:**
+- TXV underfeeding (high superheat) — check TXV bulb, screen, distributor nozzles
+
+**Noisy unit cooler:**
+- Ice contact with fan blade — defrost not clearing ice near fans; extend defrost time
+- Loose fan blade — check blade set screw (often Allen head on hub)
+- Bearing failure — replace motor; do not grease sealed bearings
+
+**Water dripping from unit during refrigeration (not defrost):**
+- Drain pan drain line partially frozen or blocked — clear drain; verify heat tape on drain line
+- Very humid store air infiltrating walk-in (door gasket failed; door left open frequently)
+
+---
+
+### Electrical — Keeprite Unit Coolers
+
+- **Standard voltages:** 120V single-phase (fans and controls); 208/240V single-phase or 208/240V 3-phase (heaters and larger fans)
+- **Control wiring:** 24V secondary from transformer for defrost timer and solenoid outputs on some models; others use line voltage directly
+- **Defrost timer location:** Often factory-mounted inside condensing unit; field-mounted in walk-in junction box on some installations
+- **Heater circuit:** Always check heater circuit fusing — blown heater fuse = no defrost = iced coil; check each heater element individually (disconnect one at a time)
+
+**Wiring check sequence after iced coil complaint:**
+1. Verify defrost timer is initiating (check timer motor, advance timer manually to defrost position)
+2. Verify heater contactor pulls in (listen/measure)
+3. Verify heater voltage at each element (208V or 240V depending on installation)
+4. Measure heater resistance (open heater = high resistance or OL)
+5. Verify termination thermostat continuity (NC at ambient; opens at setpoint)
+6. Verify fan delay thermostat continuity (closed at ambient; opens above 38°F)
+
+---
+
+### Parts and Resources
+
+- **Keeprite Refrigeration:** keepriterefrigeration.com — product data, installation manuals, drawings, selection software (KoolSelect)
+- **Replacement parts:** Parts Town (partstown.com/keeprite), Johnstone Supply, Waxman Industries
+- **Compressor warranty/service:** Route through Copeland or Tecumseh depending on compressor brand in condensing unit
+- **Technical support:** 1-800-448-5872 (ICP commercial refrigeration line)
+- **Serial plate location:** Unit coolers — inside the access panel or on the side of the unit near the electrical compartment; condensing units — on the compressor compartment access panel facing the service aisle`
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -1777,7 +2041,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(

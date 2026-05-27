@@ -5,6 +5,7 @@ import {
   HUSSMANN_KNOWLEDGE,
   DANFOSS_KNOWLEDGE,
   ARNEG_KNOWLEDGE,
+  KEEPRITE_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -91,6 +92,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: ARNEG_KNOWLEDGE,
     manualKeywords: ['arneg'],
     tags: ['Cases', 'Dixell', 'Carel'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'keeprite',
+    title: 'Keeprite',
+    shortTitle: 'Keeprite',
+    description: 'KLP/KLV unit cooler series, condensing units, walk-in cooler/freezer configurations, defrost systems, fan motors, refrigerant retrofits, and common faults.',
+    iconName: 'Thermometer',
+    colorClass: 'teal',
+    content: KEEPRITE_KNOWLEDGE,
+    manualKeywords: ['keeprite', 'keep-rite', 'klp', 'klv'],
+    tags: ['Unit Coolers', 'Walk-In', 'Condensing Units'],
     category: 'manufacturer',
   },
 ]
