@@ -9,6 +9,7 @@ import {
   MATH_AND_ELECTRICAL_KNOWLEDGE,
   MICRO_THERMO_KNOWLEDGE,
   EVAPCO_LMP_KNOWLEDGE,
+  PENN_CONTROLS_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -131,6 +132,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: EVAPCO_LMP_KNOWLEDGE,
     manualKeywords: ['evapco', 'lmp', 'evapco lmp', 'systems lmp'],
     tags: ['CO₂', 'Transcritical', 'Racks', 'Booster'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'penn-controls',
+    title: 'Penn Controls (Johnson Controls)',
+    shortTitle: 'Penn Controls',
+    description: 'A19 electromechanical temperature controls, A421 electronic digital controls, A28 two-stage controls, P70/P78 dual pressure controls, A99 NTC sensors, setpoint tables for R-404A/R-448A, and common field faults.',
+    iconName: 'ToggleRight',
+    colorClass: 'orange',
+    content: PENN_CONTROLS_KNOWLEDGE,
+    manualKeywords: ['penn', 'penn controls', 'a421', 'a19', 'p70', 'johnson controls'],
+    tags: ['Temperature Controls', 'Pressure Controls', 'A421', 'P70'],
     category: 'manufacturer',
   },
   {

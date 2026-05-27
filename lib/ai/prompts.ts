@@ -2465,6 +2465,229 @@ OSHA PEL for CO₂: **5,000 ppm (8-hour TWA)**. Detector alarm setpoints: 1,000 
 - **LMP startup form:** P/N "LMP Start up form 2022-07-13" — complete at every new commissioning; records all setpoints, transducer calibrations, and valve positions as-built baseline`
 
 
+export const PENN_CONTROLS_KNOWLEDGE = `
+## Penn Controls (Johnson Controls) — Temperature & Pressure Controls
+
+Penn Controls is a Johnson Controls brand. All Penn part numbers carry dual labeling (e.g., "Johnson Controls A421" = "PENN A421"). Products are identical regardless of label; documentation uses both names interchangeably.
+
+---
+
+### A19 Series — Electromechanical Temperature Controls
+
+**Overview:** Single-pole, liquid-filled bulb-and-capillary controls. Available in SPST and SPDT versions. Line voltage rated; no external power supply required.
+
+**SPDT terminal identification:**
+- **R** (red) = Common
+- **Y** (yellow) = Closes on temperature RISE (cooling output — opens as temp drops)
+- **B** (blue) = Closes on temperature DROP (heating output — opens as temp rises)
+
+**Wiring rules:**
+- For a compressor on a COOLER: wire load between R and Y; compressor energizes when temp rises above setpoint and drops out at setpoint minus differential
+- For a defrost heater or heat call: wire between R and B
+- Never jumper Y and B together — direct short across the switch
+
+**Setpoint and differential:**
+- Setpoint is adjusted by rotating the dial to the desired cut-in temperature
+- Differential is the gap between cut-in and cut-out; fixed on some models, adjustable (1–10°F typical) on others
+- Adjustable differential knob is behind the cover; a larger differential = fewer short cycles = more temperature swing
+- Constant differential — the gap does not change with ambient or load
+
+**Manual reset models:** Trip-Free® design. After a high-limit trip, must press physical reset button. Cannot be defeated by wiring a jumper across the switch. Use for unmonitored refrigeration to prevent nuisance restarts.
+
+**Typical operating ranges by model suffix:**
+| Suffix | Range | Application |
+|---|---|---|
+| A19ABC | 20–80°F | Walk-in cooler |
+| A19BBC | –40–30°F | Walk-in freezer / low-temp |
+| A19DAC | 40–110°F | Condenser fan cycling |
+| A19EBC | 60–160°F | Defrost termination / high-limit |
+
+**Field checks:**
+1. Set dial to a temperature above or below current actual temperature to verify contact switching — use a multimeter across R-Y and R-B
+2. Check capillary for kinks (kink = control locks at fixed temperature)
+3. Verify bulb is clamped firmly to the suction line or evaporator coil where specified — loose bulb causes hunting
+
+---
+
+### A421 Series — Electronic Temperature Controls
+
+**Overview:** Digital temperature control with backlit LCD, 3-button keypad, and optional keypad lockout. SPDT relay output. Available in 24 VAC and 120/240 VAC versions. Requires A99 NTC sensor (sold separately; P/N A99B-series).
+
+**Terminal block wiring:**
+| Terminal | Function |
+|---|---|
+| C1, C2 | Control power input (24 VAC or 120/240 VAC depending on model) |
+| SEN | Sensor signal (either lead of A99 — not polarity-sensitive) |
+| COM | Sensor and low-voltage common; connect shield drain here only |
+| Y1, R, B1 | SPDT relay output (R = common; Y1 = normally open; B1 = normally closed) |
+
+**Key settings (accessed via 3-button menu):**
+
+| Parameter | Code | Range | Notes |
+|---|---|---|---|
+| Setpoint | SP | –40 to 212°F | Main cut-in / cut-out temperature |
+| Differential | dIF | 1–30°F | Distance between cut-in and cut-out |
+| Anti-Short Cycle Delay | ASd | 0–12 min | Minimum off-time; prevents rapid cycling |
+| Keypad Lockout | LOC | On/Off | Prevents unauthorized setpoint changes |
+| Sensor Offset | OFS | –10 to +10°F | Calibrates reading to match reference thermometer |
+| Sensor Failure Mode | SF | On / Off | Relay state if sensor fails or disconnects |
+| Temperature Units | °F/°C | F or C | Display units |
+| Defrost Interval | dI | 2–24 hr / 0 = disabled | Hours between defrost initiations |
+| Defrost Duration | dFt | 1–99 min | Maximum defrost run time |
+| Defrost Termination Temp | dtE | –40 to 212°F | Ends defrost early if coil reaches this temp |
+
+**Defrost modes:**
+- Off-cycle defrost: compressor off, fans may run, heaters off — uses temperature differential to melt frost; only works for coolers, not freezers
+- Electric defrost: relay energizes heater circuit; dFt and dtE control duration; compressor stays off during defrost
+
+**Sensor fault codes (LCD display):**
+- **SF + OP**: Open circuit — sensor disconnected, broken lead, or loose terminal
+- **SF + SH**: Short circuit — sensor wire shorted to ground or to itself
+- Control defaults to SF relay state when fault is active; alarm output (if wired) also triggers
+
+**Critical sensor rules:**
+- Only use A99B-xxx sensors — any other sensor type causes calibration error; the A421 expects a specific resistance-temperature curve
+- Sensor leads are NOT polarity-sensitive but shield must connect to COM at the control only (isolated at sensor end)
+- Maximum sensor lead extension: use 18 AWG for runs >50 ft; 22 AWG minimum for shorter runs
+
+**Compressor control (cooling mode):**
+- Y1-R closes when temperature rises above setpoint + differential (compressor ON)
+- Y1-R opens when temperature drops to setpoint (compressor OFF)
+- ASd timer starts on compressor OFF; compressor cannot restart until ASd expires
+
+---
+
+### A28 Series — Two-Stage Temperature Controls
+
+**Overview:** Electromechanical two-stage control with two independent SPDT switches. Used for staged compressor capacity or independent zone control. Liquid-filled bulb.
+
+**Stage sequencing:**
+- Stage 1 cuts in first at the warmer (higher) setpoint
+- Stage 2 cuts in at a lower temperature (more cooling demand)
+- Interstage differential (adjustable 2–7°F) prevents both stages from running simultaneously when one stage is adequate
+- Both stages cut out at their individual setpoints minus their individual differentials
+
+**Application:** Walk-in freezer with two-speed compressor or two separate compressors; stage 2 provides capacity for high pull-down load, stage 1 maintains temperature at light load.
+
+---
+
+### P70 / P72 Series — Dual Pressure Controls
+
+**Overview:** Electromechanical bellows-type dual pressure control. Combines high-pressure cut-out and low-pressure cut-in/cut-out in a single housing. Line voltage, SPST or SPDT. Standard on rack systems, condensing units, and walk-in compressors.
+
+**High-pressure side:**
+- Scale shows CUT-OUT setting only
+- Fixed differential (~65 psi) — cut-in = cut-out minus 65 psi
+- Turn range screw clockwise to raise the cut-out setting
+- **Auto-reset models (P70AB):** Resets automatically when pressure drops below cut-in; used for low-pressure control
+- **Manual reset high-side (P70NB and similar):** Requires Trip-Free® button press after high-pressure cut-out; prevents compressor restart until fault is investigated
+
+**Low-pressure side:**
+- Scale shows CUT-IN setting
+- Separate differential adjustment (MICRO-SET models: turn diff screw clockwise = larger differential = lower cut-out)
+- CUT-OUT = CUT-IN − differential
+
+**Typical setpoints by refrigerant:**
+
+| Refrigerant | Application | Low-Side Cut-In | Low-Side Cut-Out | High-Side Cut-Out |
+|---|---|---|---|---|
+| R-404A | Walk-in cooler (35°F) | 55–60 psig | 45–50 psig | 200–220 psig |
+| R-404A | Walk-in freezer (−10°F) | 15–20 psig | 8–12 psig | 185–200 psig |
+| R-448A | Walk-in cooler (35°F) | 58–63 psig | 48–53 psig | 210–230 psig |
+| R-448A | Walk-in freezer (−10°F) | 16–21 psig | 9–13 psig | 195–215 psig |
+| R-134a | Reach-in cooler (38°F) | 25–30 psig | 18–22 psig | 130–150 psig |
+
+**Pressure tap location:**
+- High-side tap: into the discharge line downstream of compressor, upstream of condenser (or on liquid line post-receiver)
+- Low-side tap: suction line at compressor inlet
+- Always tap from the TOP of horizontal lines — prevents oil and liquid from entering bellows; oil slugging in bellows = stuck control = compressor won't restart
+
+**P72 vs P70:** P72 adds a second set of contacts for alarm or auxiliary function; otherwise identical.
+
+---
+
+### P78 Series — Compact Dual Pressure Controls
+
+**Overview:** Modern IP54-rated dual pressure control. SPDT switch action. Same function as P70 but in a smaller, weather-resistant enclosure suited for outdoor or equipment-mounted applications.
+
+**Key differences from P70:**
+- IP54 enclosure (P70 is NEMA 1 / open)
+- Compact form factor for tight equipment compartments
+- SPDT contacts allow use as alarm or auxiliary output on one side
+- Same pressure range options as P70; compatible with same refrigerants
+
+---
+
+### A99 NTC Temperature Sensors
+
+**Compatible with:** A421 series controllers only. Do NOT substitute generic NTC sensors.
+
+**Specifications:**
+- Type: Negative Temperature Coefficient (NTC) thermistor
+- Resistance at 77°F (25°C): 10 kΩ
+- Resistance at 32°F (0°C): ~32 kΩ
+- Resistance at −4°F (−20°C): ~100 kΩ
+- Not polarity-sensitive (two identical leads)
+- Operating range: −40 to +221°F (−40 to +105°C)
+
+**Model variants:**
+| Part No. | Housing | Application |
+|---|---|---|
+| A99B-200C | Bare leads, 6 ft cable | Suction line or evaporator coil clamp |
+| A99B-200D | Bare leads, 20 ft cable | Remote sensing applications |
+| A99B-GND | Grounded housing | Panel or surface mounting |
+| A99B-PHD | Pipe immersion, 3/8" well | Liquid line or pipe immersion |
+
+**Extension wiring:** Use shielded twisted pair; 22 AWG for runs up to 50 ft, 18 AWG for 50–200 ft. Connect shield drain to A421 COM terminal only; tape off shield at sensor end to prevent inadvertent grounding.
+
+---
+
+### Common Faults and Field Fixes — Penn Controls
+
+| Symptom | Likely Cause | Check / Fix |
+|---|---|---|
+| A421 display shows "SF OP" | Open sensor circuit | Check sensor lead continuity; re-seat terminals; verify sensor cable not cut |
+| A421 display shows "SF SH" | Shorted sensor or cable | Disconnect sensor; if fault clears, sensor or cable is bad; check for pinched/wet cable |
+| Compressor short cycling | ASd too short or differential too narrow | Increase ASd (minimum 3–5 min for most compressors); increase differential 1–2°F |
+| A421 reads 5–8°F off actual | Sensor not in contact with measured air/surface | Reposition sensor; add thermal grease or clamp for line-contact sensors |
+| A19 contact won't switch | Kinked capillary or lost charge | Check capillary for kinks; if bulb temp far outside setpoint range and no switching, replace control |
+| A19 cycles too fast | Differential too narrow | Increase differential adjustment; ensure bulb is not picking up case heat from nearby source |
+| P70 low-pressure lockout at startup | Low-pressure cut-out too high or system undercharged | Verify refrigerant charge; adjust cut-out down if setpoint is confirmed correct |
+| P70 high-pressure cut-out (auto-resets) | Condenser fouled, fan failure, high ambient | Clean condenser; verify all condenser fans running; check discharge pressure |
+| P70 high-pressure cut-out (manual reset keeps tripping) | Repeated overpressure condition | Find and fix root cause before resetting — condenser, fan, refrigerant overcharge, or non-condensables |
+| P70 won't cut back IN on low pressure | Differential set too wide, or bellows stuck | Check differential setting; tap housing gently while watching pressure; if bellows stuck, replace control |
+| P78 reads pressure but won't switch | SPDT contacts welded from inrush | Test with multimeter across all three contact terminals; replace if welded |
+
+---
+
+### Application Quick Reference
+
+**Walk-in cooler (35–38°F product):**
+- A421 setpoint: 37°F, differential: 2°F, ASd: 3 min
+- P70 low-side cut-in: 57 psig (R-404A), cut-out: 47 psig; high-side cut-out: 205 psig
+
+**Walk-in freezer (−10°F product):**
+- A421 setpoint: −12°F, differential: 3°F, ASd: 5 min
+- Electric defrost: dFt 30 min, dtE 55°F, dI every 6–8 hours
+- P70 low-side cut-in: 17 psig (R-404A), cut-out: 9 psig; high-side cut-out: 195 psig
+
+**Reach-in display case (34–38°F):**
+- A19 setpoint: 36°F, differential: 2–3°F (expect frequent cycling with door openings)
+- P70 low-side cut-in: 57 psig (R-404A); high-side cut-out: 210 psig
+
+**Condenser fan cycling (A19, cooling mode):**
+- Use A19DAC range (40–110°F); wire load between R and Y (fans cycle OFF when condensing pressure drops)
+- Setpoint: 110°F equivalent condensing temp; differential: 10°F (fans off at 100°F, on at 110°F)
+
+---
+
+### Parts and Support — Penn Controls
+
+- **Johnson Controls / Penn Controls:** johnsoncontrols.com/hvac-equipment/unitary-hvac/commercial-package | 1-800-861-3999
+- **Documentation:** docs.johnsoncontrols.com — search "Penn Controls" or part number (A421, A19, P70, etc.)
+- **A99 sensor compatibility note:** Only A99B-series sensors are compatible with A421 controls — confirm part number before ordering replacements`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
-  CircuitBoard, Gauge,
+  CircuitBoard, Gauge, ToggleRight,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -23,6 +23,7 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   indigo:  { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200', tag: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   purple:  { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200', tag: 'bg-purple-50 text-purple-700 border-purple-200' },
   cyan:    { bg: 'bg-cyan-100',   text: 'text-cyan-600',   border: 'border-cyan-200',   tag: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  orange:  { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200', tag: 'bg-orange-50 text-orange-700 border-orange-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Calculator:   <Calculator   size={22} />,
   CircuitBoard: <CircuitBoard size={22} />,
   Gauge:        <Gauge        size={22} />,
+  ToggleRight:  <ToggleRight  size={22} />,
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
