@@ -133,7 +133,7 @@ Most CO₂ LT cases use electric or hot-gas defrost. Hot-gas defrost in CO₂ sy
 - **Diagnosing CDS invalid on Micro Thermo:**
   1. Check the 4-wire cable from controller to valve for damage, moisture, or loose pins at both ends
   2. Verify the stepper motor driver board in the case controller has 24 VAC supply
-  3. Measure motor winding resistance at the valve connector — Sporlan spec is ~23–47 Ω phase-to-phase; open or shorted winding = failed motor assembly
+  3. Measure motor winding resistance at the valve connector — **CDS-2/-4/-7: ~100 Ω per phase; CDS-9/-16/-17: ~75 Ω per phase**; open or shorted winding = failed motor assembly
   4. Cycle power to the case controller to force valve re-initialization (audible clicking during init is normal)
   5. If the valve is not initialising, disconnect the load, run a manual init — if it clicks but still reads invalid, suspect the driver board or feedback circuit
 - **Effect of CDS invalid while valve stays open:** suction pressure rises to rack suction → case overcools (exactly the 13°F vs 27°F setpoint scenario)
@@ -369,7 +369,7 @@ Fix order: find and repair leak → recover → evacuate (500 microns) → recha
 - **R-290** — Propane; natural refrigerant; very efficient; flammable (A3 safety class); emerging in commercial reach-ins
 - **ODP** — Ozone Depletion Potential; R-744 and HFCs = 0 ODP; HCFCs (R-22) > 0
 - **GWP** — Global Warming Potential; CO₂ baseline = 1; lower is better; R-404A = 3,922, R-448A = 1,387
-- **Temperature Glide** — For zeotropic blends: difference between bubble point (liquid starts boiling) and dew point (last vapor condenses) at a given pressure; R-404A glide ≈ 7°F; R-448A ≈ 11°F
+- **Temperature Glide** — For zeotropic blends: difference between bubble point (liquid starts boiling) and dew point (last vapor condenses) at a given pressure; R-404A glide ≈ 0.5°F (near-azeotropic — negligible in practice); R-448A ≈ 11°F (significant glide — always liquid-charge and use dew point for suction side calculations)
 
 **Azeotropic vs Zeotropic:**
 - **Azeotropic** (R-410A, R-507): single boiling/condensing temperature at any pressure; behaves like a pure refrigerant; can be vapor-charged
@@ -1329,7 +1329,7 @@ export const DANFOSS_KNOWLEDGE = `
 - Inspect annually; replace after any high-pressure event even if not visibly ruptured (metal fatigue)
 
 **CO₂ Leak Detection:**
-- **AK-RP 110A** — Fixed CO₂ gas detector; 0–5,000 ppm range; alarm at 1,000 ppm (OSHA TWA) and 5,000 ppm (OSHA STEL); requires 24V; output to AK-SM or relay
+- **AK-RP 110A** — Fixed CO₂ gas detector; 0–5,000 ppm range; alarm at 1,000 ppm (early warning / action level) and 5,000 ppm (OSHA 8-hr TWA PEL — mandatory evacuation); requires 24V; output to AK-SM or relay
 - Machine rooms require ventilation interlock with CO₂ detector — verify interlock test at every PM
 
 ---
@@ -1563,7 +1563,7 @@ Arneg cases ship with third-party controllers — primarily Dixell and Carel.
 - Liquid feed issue — check TXV superheat or EEV steps; liquid line solenoid may be closing late
 
 **Defrost water on floor:**
-1. Drain pan heater failed — check continuity (~60–80Ω for 300W at 120V)
+1. Drain pan heater failed — check continuity (~48Ω for 300W at 120V; ~72Ω for 200W at 120V; open = failed element)
 2. Drain line frozen or blocked — pour warm water down drain; verify heat tape on drain line in LT cases
 3. Defrost running too long — reduce max defrost time; verify termination thermostat is clipped to coil
 
