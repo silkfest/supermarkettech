@@ -25,7 +25,7 @@ BEHAVIOURAL RULES:
 // ── Deep refrigeration knowledge base ────────────────────────────────────────
 // This is baked into every system prompt so the model has strong fundamentals
 // even when no manual chunk is retrieved for a question.
-const REFRIGERATION_KNOWLEDGE = `
+export const REFRIGERATION_KNOWLEDGE = `
 ## CO₂ (R-744) Transcritical Rack Systems — Operating Principles
 
 **The transcritical cycle:**
@@ -532,7 +532,7 @@ Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defr
 - After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min`
 
 // ── Sporlan product knowledge base ──────────────────────────────────────────
-const SPORLAN_KNOWLEDGE = `
+export const SPORLAN_KNOWLEDGE = `
 ## Sporlan Product Knowledge — Supermarket & Commercial Refrigeration
 
 ### Thermostatic Expansion Valves (TXVs)
@@ -764,7 +764,7 @@ const SPORLAN_KNOWLEDGE = `
 3. Insufficient subcooling — condenser fan failure, fouled condenser, high ambient; verify fan operation and coil cleanliness`
 
 // ── Copeland / Emerson compressor knowledge base ─────────────────────────────
-const COPELAND_KNOWLEDGE = `
+export const COPELAND_KNOWLEDGE = `
 ## Copeland / Emerson Compressor Knowledge — Supermarket & Commercial Refrigeration
 
 ---
@@ -979,7 +979,7 @@ Replaces compressor oil sight glass. Controls oil fill solenoid and signals E2 o
 - **Oil change on refrigerant retrofit** (R-22 → R-407A/C/F or R-404A → R-448A/R-449A): Full POE oil flush required; verify compressor model is approved for new refrigerant; ZF DTC valve bulb charge must be compatible with new refrigerant family`
 
 // ── Hussmann display cases and rack systems knowledge base ───────────────────
-const HUSSMANN_KNOWLEDGE = `
+export const HUSSMANN_KNOWLEDGE = `
 ## Hussmann Product Knowledge — Display Cases & Rack Systems
 
 ---
@@ -1153,6 +1153,444 @@ Protocol is Hussmann's distributed refrigeration system — smaller rack modules
 - **hussmann.com/aftermarket-parts-lists** — PDF replacement parts lists by model
 - Hussmann tech support: **1-800-922-1919** | Parts: **1-855-487-7778**
 - Third-party: Parts Town (partstown.com/hussmann), CaseParts.com`
+
+export const DANFOSS_KNOWLEDGE = `
+## Danfoss Product Knowledge — Supermarket & CO₂ Refrigeration
+
+---
+
+### Store Controller Network — AK-System Manager
+
+**AK-SM 800A / AK-SM 850A (Store Manager):**
+- Central HVAC/R monitoring and control platform for entire store
+- **AK-SM 800A** — up to 150 generic points, 8 RS-485 networks, Ethernet/IP; standard for most supermarket installations
+- **AK-SM 850A** — expanded capacity (200+ points), enhanced CO₂ pack control, dual Ethernet; required for full CO₂ transcritical stores
+- Network topology: up to 8 RS-485 bus lines (address 1–60 per bus); case controllers, pack controllers, I/O modules, and HVAC units all live on the same bus
+- Navigation: Home → System → Configuration → Controllers shows all connected nodes; check bus/address against label on controller board for any comm fault
+- Common fault: "Communication Alarm" on a node — check 24V power at the controller, verify termination resistors at both ends of the RS-485 bus (120Ω), confirm address switch matches AK-SM config
+- Remote access via AK-SM web interface (port 80 or 443); field engineers use "Service Tool" (Danfoss AK-ST 500 software) for deep configuration
+- **AK-SC 255** — older generation store controller (predecessor to 800A); still common in legacy stores; similar RS-485 architecture but limited to fewer nodes; menus differ significantly from 800A
+
+---
+
+### Pack Controllers — AK-PC Series
+
+| Model | Application | Notes |
+|---|---|---|
+| **AK-PC 781** | HFC parallel rack (basic) | Up to 4 compressors; fixed or variable capacity; step control |
+| **AK-PC 782** | HFC parallel rack (advanced) | Up to 6 compressors; VFD lead compressor; unloaders; liquid injection |
+| **AK-PC 783** | CO₂ transcritical rack | HP valve control, gas cooler fan staging, flash tank level, booster+main compressors |
+| **AK-PC 785** | CO₂ transcritical advanced | Full transcritical/subcritical mode switching; parallel compression option |
+
+**AK-PC 783/785 CO₂ specifics:**
+- **HP setpoint** — user-adjustable target high-side pressure; default ~90 bar; optimizes via gas cooler outlet temp × multiplier algorithm
+- **Flash tank level** — 4–20 mA signal from float sensor; low level alarm = starved main compressors; high level alarm = flood risk
+- **Subcritical/transcritical switchover** — automatic based on gas cooler outlet temp vs. critical point; transition can cause brief pressure hunting — normal
+- **Parallel compression solenoid** — AK-PC 785 controls parallel compressor staging to reclaim flash gas work; if parallel comp trips, rack continues in standard booster mode
+- **Emergency mode** — if pack controller loses power or communication, compressors fall back to pressure switches (safety operation only)
+
+---
+
+### Case Controllers — AK-CC Series
+
+| Model | Application | Notes |
+|---|---|---|
+| **AK-CC 55E** | Single case / small multi-deck | 1 suction group; thermostat + defrost; RS-485 |
+| **AK-CC 210A** | Multi-deck open case | Up to 4 probe inputs; EEV output (AKV/CCMT); adaptive defrost |
+| **AK-CC 250A** | Advanced multi-deck / reach-in | 2 EEV outputs; night blinds control; door alarm; data logging |
+| **AK-CC 550A** | Coordinated case group (Danfoss CRC) | Up to 10 circuits per controller; coordinates defrost across a lineup |
+
+**Common AK-CC alarm codes:**
+| Code | Meaning | Field action |
+|---|---|---|
+| **S1 alarm** | Return air probe (S1) fault — open or short | Replace probe; check wiring at screw terminal |
+| **S2 alarm** | Air off probe (S2) fault | Same as S1 |
+| **S3/S4 alarm** | Coil/liquid line probe fault | Check probe immersion in well; verify resistance ~10kΩ at 77°F |
+| **Defrost alarm** | Defrost ran to max time limit | Check heaters (electric) or hot gas flow; verify termination probe placement |
+| **EEV alarm** | EEV motor steps lost / valve not responding | Power cycle; re-initialize valve (AKV: 5V pulse; CCMT: 12V pulse); replace if recurring |
+| **Night setback alarm** | Case temp rose above setback limit during store close | Check if night blinds deployed; verify supply air temp at night setback |
+| **Door alarm** | Door open >X minutes | Magnetic switch on door; check for obstructed door or failed switch |
+
+---
+
+### Electronic Expansion Valves
+
+#### AKV — Standard HFC/HFO EEV
+- Pulse-width modulated solenoid (NOT stepper motor) — fully open or fully closed, modulated by duty cycle
+- **Rated for HFCs and HFOs only — NOT rated for CO₂ high-pressure (>45 bar); do NOT install AKV on CO₂ high-pressure circuits**
+- Coil: 24V DC; removable without losing refrigerant (coil snaps off)
+- Initialization: on power-up, AKV pulses fully open then fully closed to confirm operation
+- Common fault: AKV coil burned from 24V applied continuously (wiring error) — replace coil only; valve body typically survives
+- Sizing codes: AKV 10, AKV 15, AKV 20 — larger number = larger Cv
+
+#### CCMT — CO₂ Stepper Motor EEV
+- **The standard EEV for CO₂ transcritical and subcritical MT/LT cases**
+- Stepper motor; 480 steps (0–480); fully closed at 0 steps
+- Pressure/temperature rated to 130 bar; designed for R-744 working pressures
+- Wiring: 6-wire stepper (A+, A−, B+, B−, power, common); connect to AK-CC 210A/250A or dedicated CCMT driver
+- CCMT sizes: CCMT 2 (small), CCMT 6 (medium), CCMT 12 (large, multi-deck cases)
+- **Do not use AKV as a drop-in replacement for CCMT** — different drive signal; AKV coil will burn if driven by stepper output
+- Superheat target on CO₂ cases: 4–8°F at case; controller auto-adjusts
+- Initialization after replacement: power cycle; controller sends homing sequence (full close → defined step count); verify step count in AK-CC service menu
+
+#### ETS / ETSH — Compact Stepper EEV (HFC)
+- Stepper motor; 480 steps; smaller body than CCMT; used on smaller HFC circuits
+- **ETSH** = High-pressure version (rated to 46 bar); suitable for CO₂ **subcritical** low-side only — NOT transcritical high-side
+- Common in Danfoss Booster MWT rack circuits on LT branch
+
+---
+
+### ICM / ICMTS / ICAD Actuator — Motorized Regulating Valve
+
+- **ICM** — Large-body motorized seat valve; bodies sized 20–150 mm; used as HP gas cooler pressure valve, liquid line shutoff, or bypass valve on CO₂ racks
+- **ICMTS** — ICM body rated for transient CO₂ pressures (burst disc protection); used specifically as **gas cooler pressure control valve** in transcritical systems; replaces older HPV designs
+- **ICAD 600A / ICAD 1200A** — Electric actuator that mounts on ICM body; 24V DC; 0–10V or 4–20 mA control signal from AK-PC 783/785; 600A = 15 Nm, 1200A = 30 Nm torque
+- **HP control loop:** AK-PC sends 4–20 mA → ICAD 600A → ICM valve position; loop target = optimal HP setpoint based on gas cooler outlet temp
+- Common fault: ICAD 600A "position feedback error" — check 24V power supply, verify 0–10V control signal present; ICAD gear strip if valve body seized (corrosion or contaminated refrigerant)
+- If HP keeps hunting: check gas cooler fan staging (fans not coming on = GC outlet too warm = HP overshoots), or ICM valve body worn (leaking past seat at low flow)
+- **Removing ICAD:** loosen the two mounting screws; actuator lifts off without disturbing the valve body or losing charge — no pump-down required to replace actuator
+
+---
+
+### ICS Valves — Servo/Pilot-Operated Regulating Valves
+
+- Modulating regulating valves (pressure regulator, back-pressure, gas bypass) using a pilot valve to modulate a large-body main valve
+- **ICS body** + pilot valve insert: the body is common; pilot valve type determines function:
+  - **ICS + ICSH** — High-pressure servo; used for CO₂ HP gas bypass (flash gas bypass valve, economizer bypass)
+  - **ICS + PMLX** — Pilot-operated back-pressure regulator; maintains upstream (suction) pressure minimum
+  - **ICS + CVP** — Constant pressure regulator; used as EPR or suction group pressure setpoint holder
+- Sizes: DN25 to DN100 (1" to 4"); CO₂-rated; body withstands 130 bar
+- **Common misdiagnosis:** ICS valve stuck open looks identical to a failed compressor — system suction pressure equals discharge pressure, no capacity. Always check ICS valve position (manual override screw) before condemning compressors.
+- Manual override: clockwise = open; counterclockwise = allow pilot control; always return to auto after testing
+
+---
+
+### EVR Solenoid Valves — Standard Refrigerant Solenoids
+
+- Normally-closed (NC) pilot-operated solenoid; opens when coil energized
+- **EVR 2 / EVR 3 / EVR 6 / EVR 10 / EVR 15 / EVR 20** — sizing by Kvs flow coefficient
+- Coil: 24V AC/DC or 120V; removable without losing charge (coil and stem lift off; body stays)
+- CO₂ rating: standard EVR body rated to 45 bar; **for CO₂ high-pressure use EVRA or EVRAT series** (rated 130 bar with reinforced body and stem)
+- **EVRA** — CO₂-rated NC solenoid; most common on CO₂ liquid feed lines
+- **EVRAT** — CO₂-rated with thermal actuator; used where electrical solenoid signal unavailable
+- Common fault: EVR coil hums but valve doesn't open — minimum differential pressure required for pilot-operated opening (~0.5 bar); check system pressures. If pressure differential exists but valve won't open: core stuck, replace body.
+- Test: energize coil by hand (hold coil wire to 24V supply) and listen for click; no click = coil open circuit; click but no flow = body fault
+
+---
+
+### KVP / PM / AVTA — Pressure Regulating Valves
+
+**KVP — Evaporator Pressure Regulator (Back-Pressure Valve):**
+- Maintains upstream (suction side) pressure above setpoint; prevents case from over-cooling below design SST
+- Spring-adjustable; range typically −10 to +60 psig; set per case design suction temp
+- Common in produce/deli cases to hold SST +20 to +28°F while connected to a lower-temp suction group
+- Diagnostic: if case is too warm despite normal liquid feed, KVP may be set too high or stuck closed → measure pressure upstream vs. setpoint with manifold
+
+**PM / PM2 — Pilot-Operated Back-Pressure (High Capacity):**
+- Same function as KVP but larger body for high-flow circuits; pilot valve adjusts main disc
+- PM2 = with manual override; used as compressor suction stop valve or EPR on large lineups
+
+**AVTA — Thermostatic Back-Pressure Valve:**
+- Opens when refrigerant (suction) temperature falls below setpoint; holds SST at design minimum
+- Common in Hussmann/Hill Phoenix cases on MT suction groups with electric defrost
+
+---
+
+### Pressure/Temperature Sensors — AKS Series
+
+| Model | Type | Range | Notes |
+|---|---|---|---|
+| **AKS 32** | Pressure transmitter (HFC) | 0–300 psi | 4–20 mA; 1/4" flare; suction/discharge monitoring |
+| **AKS 33** | Pressure transmitter (CO₂) | 0–1500 psi (0–103 bar) | 4–20 mA; rated for transcritical CO₂ HP side |
+| **AKS 38** | Pressure transmitter (CO₂) | 0–2000 psi (0–138 bar) | 4–20 mA; HP gas cooler outlet; highest pressure rating |
+| **AKS 21** | Temperature sensor | −40 to +150°F | PT1000 or NTC10kΩ; used at gas cooler outlet |
+| **AKS 11** | Temperature sensor | −50 to +60°C | NTC; case air probes, coil probes |
+
+**CO₂ sensor selection rule:** Use AKS 33 on intermediate/MT side (up to 55 bar working); use AKS 38 on HP gas cooler outlet/HPV inlet (up to 100+ bar working). Using AKS 32 on CO₂ high side will result in sensor rupture — never substitute.
+
+**Wiring:** All AKS transmitters: Brown = 24V+; Blue = GND; Black = 4–20 mA signal. Verify 24V supply before condemning sensor.
+
+---
+
+### CO₂ Safety Components
+
+**SFA / SVA Relief Valves:**
+- **SFA** — Single-port safety relief; CO₂-rated; set pressures 150–165 bar (2175–2393 psi); required by code on every CO₂ pressure vessel
+- **SVA** — Stop valve (isolation); used in pairs with SFA for in-service valve replacement (one always in-service while the other is isolated)
+- ASHRAE 15 requires dual-relief arrangement on CO₂ racks — never run a CO₂ rack with only one functional relief valve
+- Relief valve discharge: must be piped outdoors (CO₂ displaces oxygen — asphyxiation hazard in machine rooms at >5,000 ppm)
+
+**Burst Disc:**
+- Second-level protection upstream of relief valve; ruptures at 160+ bar if relief valve fails to open
+- Inspect annually; replace after any high-pressure event even if not visibly ruptured (metal fatigue)
+
+**CO₂ Leak Detection:**
+- **AK-RP 110A** — Fixed CO₂ gas detector; 0–5,000 ppm range; alarm at 1,000 ppm (OSHA TWA) and 5,000 ppm (OSHA STEL); requires 24V; output to AK-SM or relay
+- Machine rooms require ventilation interlock with CO₂ detector — verify interlock test at every PM
+
+---
+
+### Danfoss Booster CO₂ System (MWT / Booster MWT)
+
+The Danfoss "Booster MWT" (Medium/Low Temperature) is a pre-packaged CO₂ transcritical rack solution for supermarkets:
+
+**Architecture:**
+- **MT compressors** (scrolls or semi-hermetics) → MT suction header → gas cooler
+- **LT booster compressors** → discharge into MT suction header (flash injection booster configuration)
+- **Flash tank (IPV)** — separates liquid/vapor after HP expansion; MT compressors take vapor from flash tank top
+- **Gas cooler + gas cooler fans** — air-cooled; outdoor unit; controlled by AK-PC 783/785
+
+**AK-PC 783/785 key parameters to verify at commissioning:**
+1. HP setpoint algorithm: enable "floating HP" (tracks gas cooler outlet temp)
+2. Flash tank level switch wired to AI input; alarms at high/low
+3. Gas cooler fan staging: verify fan steps match number of fan contactors/VFDs installed
+4. Superheat setpoint on booster inlet: −5 to 0°F (booster compressors can handle wet suction — do not target positive superheat)
+5. Subcritical/transcritical switchover threshold: ~27°C gas cooler outlet
+
+**Common Booster MWT faults:**
+| Fault | Likely cause |
+|---|---|
+| High HP alarm (>130 bar) | GC fans not staging; GC fouled; ICMTS stuck closed |
+| LP alarm on LT side | CCMT EEVs all closed; EVRA solenoid not opening; LT compressor unloaded/tripped |
+| Flash tank high level | MT compressors tripped; main EXV over-feeding flash tank |
+| Flash tank low level | Main EXV under-feeding; MT compressors starving on vapor only |
+| Frequent HP hunting | ICAD/ICM worn; floating HP setpoint too aggressive; GC fan VFD hunting |
+| Oil in flash tank (foamy sight glass) | Oil separator bypassing; return oil line blocked |
+
+---
+
+### Critical Field Mistakes — Danfoss CO₂ Equipment
+
+1. **AKV on CO₂ high side** — AKV is rated ~45 bar maximum; CO₂ HP side routinely exceeds 100 bar. This is a catastrophic failure risk. Always use CCMT for CO₂ EEV applications.
+2. **Wrong AKS sensor** — AKS 32 (HFC) installed on CO₂ HP side will rupture. Verify: AKS 33 for mid-pressure CO₂; AKS 38 for high-pressure gas cooler outlet.
+3. **Leaving ICAD manual override in open position** — HP valve stays fully open; system cannot regulate high-side pressure; HPCO trip follows. Always return ICAD override to auto (center detent) after diagnostics.
+4. **RS-485 bus missing termination** — Adding a new controller without adding/checking 120Ω termination resistors causes intermittent comm alarms across the entire bus.
+5. **CCMT replaced without re-initialization** — New CCMT won't track superheat correctly until the AK-CC controller runs its homing sequence. Power cycle after installation; confirm step count in service menu.
+6. **EVR body replacement on CO₂ liquid line** — Standard EVR body (45 bar) on CO₂ liquid line ≤45 bar is acceptable subcritical; NOT acceptable for transcritical CO₂ liquid lines where operating pressure can reach 80–100 bar. Use EVRA.
+7. **AK-CC defrost alarm ignored** — "Defrost ran to max time" is not a nuisance alarm. It means the coil did not reach termination temperature in time. In CO₂ cases with CCMT EEVs, a frozen coil from incomplete defrost will cascade — case temps rise, compressors run long, suction pressure drifts. Investigate within one defrost cycle.`
+
+
+export const ARNEG_KNOWLEDGE = `
+## Arneg Product Knowledge — Supermarket Display Cases & Refrigeration
+
+Arneg S.p.A. is an Italian refrigeration manufacturer (founded 1962, Tribano, Padova, Italy) producing display cases, cold rooms, and remote refrigeration systems for supermarkets and foodservice worldwide. Their cases are widely deployed in North America, Europe, and Latin America on both HFC and CO₂ remote rack systems.
+
+---
+
+### Display Case Product Families
+
+#### Open Multi-Deck — Medium Temperature (Dairy, Produce, Deli, Beverage)
+
+| Model | Type | Typical application |
+|---|---|---|
+| **Oslo** | Open multi-deck, 3-shelf | Dairy, yogurt, beverages; most common Arneg MT case in US stores |
+| **Oslo V** | Oslo with ventilated air curtain upgrade | High-humidity stores; improved product temps |
+| **Los Angeles** | Low-depth open multi-deck | Produce, packaged meat; wider air curtain |
+| **Ischia** | Low-height open multi-deck | Cheese, deli; shelf height ~56" vs Oslo ~72" |
+| **Darwin** | Curved-glass open multi-deck | Premium presentation; front glass panel |
+| **Darwin E** | Darwin with enhanced air curtain | Energy-efficient variant |
+
+**Oslo model code breakdown — example: OSLO 3 250 NN**
+- \`OSLO 3\` = Oslo series, 3-tier shelving
+- \`250\` = nominal case length in centimeters (250 cm ≈ 8 ft)
+- First \`N\` = Narrow (reduced installation depth)
+- Second \`N\` = No night curtain (manual blind option; omit if curtain installed)
+- Other common suffixes: \`H\` = heated front rail; \`L\` = left end section; \`R\` = right end section; \`E\` = end section; \`M\` = middle section
+
+---
+
+#### Open Multi-Deck — Low Temperature (Frozen Food)
+
+| Model | Type | Notes |
+|---|---|---|
+| **Trinidad** | Open LT multi-deck | Pull-out frozen food; 2–3 shelves; typical LT suction −20°F SST |
+| **Trinidad E** | Energy-efficient Trinidad | EC fans standard; LED lighting |
+| **Los Angeles LT** | Low-depth LT multi-deck | Smaller footprint frozen |
+
+---
+
+#### Island / Coffin Cases — Low Temperature
+
+| Model | Type | Notes |
+|---|---|---|
+| **Venice** | Open island coffin LT | Single-deck; 4–8 ft sections; common for ice cream, bulk frozen |
+| **Venice L** | Venice with sliding lid | 40–60% energy saving vs open; lid return spring must be checked annually |
+| **Bali** | Wide island LT | Double-sided access; used in club stores and high-volume frozen aisles |
+| **Alaska** | Plug-in island / coffin | Self-contained (R-290 or R-134a); no remote piping; condenser in end section |
+
+---
+
+#### Closed / Glass Door Cases — Medium & Low Temperature
+
+| Model | Type | Notes |
+|---|---|---|
+| **Quebec** | Glass door reach-in MT | Vertical doors; dairy/deli/beverages; heated door frames |
+| **Quebec LT** | Glass door reach-in LT | Frozen food reach-in; electric defrost standard |
+| **Gelo** | Glass door LT island | Sliding glass lids, horizontal access; ice cream |
+
+---
+
+#### Service / Deli Counters
+
+| Model | Type | Notes |
+|---|---|---|
+| **Dakar** | Refrigerated service counter | Curved or straight glass; open service deli; illuminated |
+| **Dakar CH** | Dakar with heated front | Cold/hot combination counter |
+| **Samoa** | Refrigerated display counter | Lower profile; deli/sushi/prepared foods |
+
+---
+
+### Defrost Types — Arneg
+
+| Code | Type | Application |
+|---|---|---|
+| **E** | Electric resistance heaters | Standard on all LT (frozen food) cases; drain pan heater separate |
+| **OFF** | Off-cycle (fan stop) | MT cases above ~28°F SST; fans stop, ambient air raises coil temp |
+| **HG** | Hot gas (3-pipe) | Optional on LT Arneg cases; faster defrost, less product temperature rise |
+| **CO₂ HG** | CO₂ hot gas / KoolGas equivalent | On CO₂-compatible Arneg cases; taps receiver vapor — same principle as Hussmann KoolGas |
+
+**Defrost termination:**
+- LT electric cases: coil thermostat at ~55°F terminates; fan delay thermostat holds fans off until ~35°F coil
+- MT off-cycle: timed termination (15–20 min typical); no heaters — just fans off
+- If defrost runs to max time (failsafe): check termination thermostat continuity (normally closed, opens at setpoint); confirm it is clipped firmly to coil — if it falls off the coil it reads ambient air and never terminates
+
+---
+
+### Controllers Used in Arneg Cases
+
+Arneg cases ship with third-party controllers — primarily Dixell and Carel.
+
+#### Dixell XR Series (most common on Arneg cases)
+- **XR20C** — Basic electronic thermostat; 1 probe (air temp); manual or timed defrost; 2-relay output
+- **XR40C** — Thermostat + defrost controller; 2 probes (air + evaporator); defrost termination by temp or time
+- **XR60C** — Full case controller; 3 probes; EEV output option; RS-485 Modbus for AK-SM or E2 integration
+- **XR75CX** — Advanced; 4 probes; digital input for door switch; Modbus + RS-485
+
+**Dixell XR parameter access:** Hold SET for 3 seconds. Key parameters:
+- St = setpoint (product/air temp)
+- dF = defrost initiation (0=timed, 1=real-time clock)
+- dP = defrost duration max (minutes)
+- dt = defrost termination temp (coil thermostat setpoint in controller)
+- Hy = hysteresis (differential above setpoint before cooling restarts)
+- FAD = fan delay after defrost (minutes fans stay off post-defrost)
+
+**Dixell alarm codes:**
+| Code | Meaning | Action |
+|---|---|---|
+| E1 | Probe 1 (air) fault — open or short | Check probe wiring; replace probe |
+| E2 | Probe 2 (evaporator) fault | Same as E1 |
+| E3 | Probe 3 fault | Same |
+| HA / LA | High/Low temperature alarm | Product temp exceeded alarm limits; check refrigeration |
+| dEF | Defrost in progress (not an error) | Normal display during active defrost |
+| EEV | EEV fault (on XR60C+) | Check EEV wiring and initialization |
+
+#### Carel IR Series (newer Arneg models)
+- **IR33** — Mid-range controller; 2 probes; Modbus; RS-485
+- **IR33+** — 3 probes; EEV support; expanded I/O
+- Parameter access: UP + DOWN held 5 seconds
+- Common Carel issue: probe terminals loosen over time due to case vibration — re-torque annually
+
+#### Eliwell IC Series (legacy Arneg cases, pre-2010)
+- **IC902** — Basic on/off thermostat; no defrost management
+- **ICHILL** — Defrost-capable; common on older Arneg LT cases
+- Limited Modbus support; replacement with Dixell XR60C is common upgrade path when AK-SM or E2 integration is needed
+
+---
+
+### Fan Motors — Arneg Cases
+
+- Older (pre-2015) cases: **shaded-pole** fan motors, 4W–8W each; run continuously except during defrost
+- Current production: **EC (electronically commutated) brushless** motors; 3W–7W; variable speed; significantly lower energy consumption
+- **EC fans cannot be swapped for shaded-pole motors** — different control signal (0–10V or PWM); replacing EC with shaded-pole requires bypassing the controller fan output and wiring direct to line voltage
+- Fan blade: press-fit on motor shaft; 8" or 10" diameter depending on case depth; rotation direction critical — verify airflow pattern before installing
+- Fan guard: clip-type; must be reinstalled to maintain air curtain integrity
+- Common failure (shaded-pole): motor run capacitor; check capacitor before replacing motor
+
+---
+
+### Refrigerants and CO₂ Compatibility
+
+| Refrigerant | Arneg application | Notes |
+|---|---|---|
+| R-404A | Legacy cases (pre-2018) | Phase-down; most cases can run R-448A/449A with TXV adjustment |
+| R-448A / R-449A | Current standard HFC | Primary HFC refrigerants; TXV may need resizing; verify oil compatibility |
+| R-744 (CO₂) | Arneg CO₂-compatible cases | CO₂-rated evaporators and EEV fittings; confirm model suffix before connecting to CO₂ rack |
+| R-290 (propane) | Self-contained Alaska plug-in | Factory-sealed; ≤150g charge; module replacement only — not field-rechargeable |
+| R-134a | Older plug-in self-contained | Some legacy models |
+
+**CO₂ case identification:** Arneg CO₂-compatible cases have a CO₂ or 744 suffix in the model number and ship with a CO₂-rated evaporator coil (copper with stainless distributor), CCMT-compatible EEV wiring, and reinforced refrigerant fittings. Do NOT connect a standard HFC Arneg case to a CO₂ rack — the evaporator coil and valve fittings are not rated for CO₂ working pressures.
+
+---
+
+### Anti-Sweat Heaters and Glass Doors
+
+- Quebec and other glass door cases: door frame heaters prevent condensation on glass and frame
+- Heater control: dedicated anti-sweat controller (humidity-based duty cycle) or simple on/off timer
+- Do NOT disconnect door frame heaters without installing humidity-based control — condensation leads to door seal failure and mold growth in frame cavities
+- Glass fogging between panes: failed IGU (insulated glass unit) seal — replace IGU; not field-repairable
+- Door hinge: Arneg uses a top-pivot + bottom-pin hinge; worn bottom pin bushing causes door to sag and not seal — replace bushing before adjusting door alignment
+
+---
+
+### Lighting
+
+- Older cases: T8 fluorescent tubes with ballast in canopy; common failure = ballast overheat; retrofit to LED is straightforward
+- Current production: LED strip lights; integrated LED driver in canopy; typical failure = driver board or LED strip connector corrosion from defrost moisture
+- LED compatibility: not all retrofit kits work with Arneg ballast wiring; use direct-wire LED tubes or replace ballast
+- Night setback: some models dim LEDs to 10% during store-close via controller output — verify LED driver supports PWM dimming before substituting driver
+
+---
+
+### Common Arneg Case Faults
+
+**Case running warm (MT open multi-deck):**
+1. Coil frosted over from incomplete defrost — inspect coil through return air grille; check defrost termination thermostat
+2. TXV hunting or underfeeding — measure superheat at suction stub; target 4–8°F
+3. Fan motor(s) failed — check each fan; shaded-pole motors fail silently (no heat signature, just stops)
+4. Night curtain not retracted — curtain motor or track jammed; curtain blocks discharge air column
+5. Store humidity high — cases above 55% RH will not hold setpoint; check HVAC dehumidification
+
+**Case running warm (LT open):**
+1. Coil fully iced — defrost not initiating (check controller clock/schedule) or not completing (termination thermostat detached from coil or open-circuit)
+2. Suction pressure high — EPR valve set too high, or hot gas solenoid leaking by
+3. Dirty evaporator coil — clean annually; rinse thoroughly (residue causes rapid re-fouling)
+
+**Excessive frost on coil bottom only:**
+- Liquid feed issue — check TXV superheat or EEV steps; liquid line solenoid may be closing late
+
+**Defrost water on floor:**
+1. Drain pan heater failed — check continuity (~60–80Ω for 300W at 120V)
+2. Drain line frozen or blocked — pour warm water down drain; verify heat tape on drain line in LT cases
+3. Defrost running too long — reduce max defrost time; verify termination thermostat is clipped to coil
+
+**Night curtain won't retract:**
+1. Motor failure — 24V or 120V AC depending on model; check voltage at motor leads
+2. Track obstruction — ice in curtain track; inspect and clear
+3. Controller output fault — check relay output signal at controller
+
+---
+
+### Parallel Rack Integration
+
+Arneg cases connect to remote rack systems the same way as any North American display case:
+
+- Suction: 7/8" or 1-1/8" OD copper (MT); 5/8" or 7/8" OD (LT) — confirm per job schedule
+- Liquid: 1/2" or 5/8" OD copper liquid line; liquid line solenoid at case is standard
+- Electrical: 120V for fans, heaters, and controller; 24V for controllers and EEV
+- Controller integration: Dixell XR60C/XR75CX and Carel IR33+ support RS-485 Modbus; wire to E2 or AK-SM RS-485 bus for centralized monitoring
+- Superheat setup with TXV: set bulb at suction outlet; target 6–10°F at case suction stub
+- Superheat setup with EEV: AK-CC or Dixell XR60C drives CCMT (CO₂) or AKV (HFC); target 4–8°F
+
+---
+
+### Parts and Resources
+
+- Arneg North America: arneg-usa.com — technical support through regional distributors
+- European parent / documentation: arneg.it (English versions available for most technical bulletins)
+- Dixell controller manuals: dixell.com — downloadable by model number
+- Carel controller manuals: carel.com — IR33 parameter guide and wiring diagrams
+- Third-party parts: Parts Town (partstown.com/arneg), CaseParts.com
+- Serial plate location: inside the case on the right-side interior wall near the top, or on data sticker inside the end panel — includes model, serial, refrigerant type, charge weight, and electrical data`
 
 function buildEquipmentContext(
   equipment: Equipment,
@@ -1339,7 +1777,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(
