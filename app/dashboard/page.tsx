@@ -141,15 +141,35 @@ export default function Dashboard() {
       return
     }
     setUploadToast({ type: 'uploading', msg: `Uploading ${file.name}…` })
-    const fd = new FormData()
-    fd.append('file', file)
-    if (selected) fd.append('equipmentId', selected.id)
-    fd.append('title', file.name.replace(/\.pdf$/i, ''))
     try {
-      const res = await fetch('/api/documents', { method: 'POST', body: fd })
+      // Step 1: get a presigned upload URL (bypasses Vercel's 4.5 MB body limit)
+      const urlRes = await fetch(`/api/documents/upload-url?filename=${encodeURIComponent(file.name)}`)
+      if (!urlRes.ok) throw new Error('Could not start upload')
+      const { uploadUrl, storagePath } = await urlRes.json()
+
+      // Step 2: PUT the file directly to Supabase Storage
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': 'application/pdf' },
+      })
+      if (!putRes.ok) throw new Error('Storage upload failed')
+
+      // Step 3: register the document and kick off processing
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          title: file.name.replace(/\.pdf$/i, ''),
+          equipmentId: selected?.id ?? null,
+          fileSize: file.size,
+        }),
+      })
       let data: { error?: string; title?: string } = {}
-      try { data = await res.json() } catch { /* non-JSON response e.g. 413 */ }
-      if (!res.ok) throw new Error(res.status === 413 ? 'File too large — please use a smaller PDF' : data.error ?? 'Upload failed')
+      try { data = await res.json() } catch { /* non-JSON response */ }
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+
       setUploadToast({ type: 'done', msg: `"${data.title}" uploaded — processing in the background.` })
       setTimeout(() => setUploadToast(null), 6000)
       loadDocuments(selected?.id)

@@ -1,6 +1,18 @@
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { ingestDocument } from '@/lib/ai/rag'
 
+export async function processDocumentByPath(documentId: string, storagePath: string) {
+  const supabase = getSupabaseServer()
+  const { data: blob, error } = await supabase.storage.from('documents').download(storagePath)
+  if (error || !blob) {
+    console.error(`[Ingest] failed to download doc=${documentId} path=${storagePath}`, error)
+    await supabase.from('documents').update({ status: 'FAILED' }).eq('id', documentId)
+    return
+  }
+  const arrayBuf = await blob.arrayBuffer()
+  await processDocumentBuffer(documentId, arrayBuf)
+}
+
 export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayBuffer) {
   const supabase = getSupabaseServer()
   try {
