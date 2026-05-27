@@ -9,6 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const supabase = getSupabaseServer()
 
+  if (topic.manualKeywords.length === 0) return NextResponse.json([])
+
   // Build OR conditions for each keyword
   const conditions = topic.manualKeywords
     .map(kw => `title.ilike.%${kw}%`)

@@ -142,8 +142,9 @@ export default function Dashboard() {
     fd.append('title', file.name.replace(/\.pdf$/i, ''))
     try {
       const res = await fetch('/api/documents', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      let data: { error?: string; title?: string } = {}
+      try { data = await res.json() } catch { /* non-JSON response e.g. 413 */ }
+      if (!res.ok) throw new Error(res.status === 413 ? 'File too large — please use a smaller PDF' : data.error ?? 'Upload failed')
       setUploadToast({ type: 'done', msg: `"${data.title}" uploaded — processing in the background.` })
       setTimeout(() => setUploadToast(null), 6000)
       loadDocuments(selected?.id)
