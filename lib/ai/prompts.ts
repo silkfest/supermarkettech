@@ -25,7 +25,7 @@ BEHAVIOURAL RULES:
 // ── Deep refrigeration knowledge base ────────────────────────────────────────
 // This is baked into every system prompt so the model has strong fundamentals
 // even when no manual chunk is retrieved for a question.
-const REFRIGERATION_KNOWLEDGE = `
+export const REFRIGERATION_KNOWLEDGE = `
 ## CO₂ (R-744) Transcritical Rack Systems — Operating Principles
 
 **The transcritical cycle:**
@@ -532,7 +532,7 @@ Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defr
 - After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min`
 
 // ── Sporlan product knowledge base ──────────────────────────────────────────
-const SPORLAN_KNOWLEDGE = `
+export const SPORLAN_KNOWLEDGE = `
 ## Sporlan Product Knowledge — Supermarket & Commercial Refrigeration
 
 ### Thermostatic Expansion Valves (TXVs)
@@ -764,7 +764,7 @@ const SPORLAN_KNOWLEDGE = `
 3. Insufficient subcooling — condenser fan failure, fouled condenser, high ambient; verify fan operation and coil cleanliness`
 
 // ── Copeland / Emerson compressor knowledge base ─────────────────────────────
-const COPELAND_KNOWLEDGE = `
+export const COPELAND_KNOWLEDGE = `
 ## Copeland / Emerson Compressor Knowledge — Supermarket & Commercial Refrigeration
 
 ---
@@ -979,7 +979,7 @@ Replaces compressor oil sight glass. Controls oil fill solenoid and signals E2 o
 - **Oil change on refrigerant retrofit** (R-22 → R-407A/C/F or R-404A → R-448A/R-449A): Full POE oil flush required; verify compressor model is approved for new refrigerant; ZF DTC valve bulb charge must be compatible with new refrigerant family`
 
 // ── Hussmann display cases and rack systems knowledge base ───────────────────
-const HUSSMANN_KNOWLEDGE = `
+export const HUSSMANN_KNOWLEDGE = `
 ## Hussmann Product Knowledge — Display Cases & Rack Systems
 
 ---
@@ -1154,7 +1154,7 @@ Protocol is Hussmann's distributed refrigeration system — smaller rack modules
 - Hussmann tech support: **1-800-922-1919** | Parts: **1-855-487-7778**
 - Third-party: Parts Town (partstown.com/hussmann), CaseParts.com`
 
-const DANFOSS_KNOWLEDGE = `
+export const DANFOSS_KNOWLEDGE = `
 ## Danfoss Product Knowledge — Supermarket & CO₂ Refrigeration
 
 ---
@@ -1370,7 +1370,7 @@ The Danfoss "Booster MWT" (Medium/Low Temperature) is a pre-packaged CO₂ trans
 7. **AK-CC defrost alarm ignored** — "Defrost ran to max time" is not a nuisance alarm. It means the coil did not reach termination temperature in time. In CO₂ cases with CCMT EEVs, a frozen coil from incomplete defrost will cascade — case temps rise, compressors run long, suction pressure drifts. Investigate within one defrost cycle.`
 
 
-const ARNEG_KNOWLEDGE = `
+export const ARNEG_KNOWLEDGE = `
 ## Arneg Product Knowledge — Supermarket Display Cases & Refrigeration
 
 Arneg S.p.A. is an Italian refrigeration manufacturer (founded 1962, Tribano, Padova, Italy) producing display cases, cold rooms, and remote refrigeration systems for supermarkets and foodservice worldwide. Their cases are widely deployed in North America, Europe, and Latin America on both HFC and CO₂ remote rack systems.
