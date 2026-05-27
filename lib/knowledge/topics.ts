@@ -6,6 +6,7 @@ import {
   DANFOSS_KNOWLEDGE,
   ARNEG_KNOWLEDGE,
   KEEPRITE_KNOWLEDGE,
+  MATH_AND_ELECTRICAL_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -105,6 +106,18 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['keeprite', 'keep-rite', 'klp', 'klv'],
     tags: ['Unit Coolers', 'Walk-In', 'Condensing Units'],
     category: 'manufacturer',
+  },
+  {
+    slug: 'math-electrical',
+    title: 'Math & Electrical Reference',
+    shortTitle: 'Math & Electrical',
+    description: "Refrigeration calculations (superheat, subcooling, compression ratio, heat load, COP), electrical formulas (Ohm's law, 3-phase power, voltage drop, capacitor testing), and how to read ladder diagrams and wiring schematics.",
+    iconName: 'Calculator',
+    colorClass: 'indigo',
+    content: MATH_AND_ELECTRICAL_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Math', 'Electrical', 'Wiring Diagrams'],
+    category: 'fundamentals',
   },
 ]
 

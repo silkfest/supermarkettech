@@ -1860,6 +1860,308 @@ Keeprite equipment is most commonly found in these supermarket walk-in configura
 - **Technical support:** 1-800-448-5872 (ICP commercial refrigeration line)
 - **Serial plate location:** Unit coolers — inside the access panel or on the side of the unit near the electrical compartment; condensing units — on the compressor compartment access panel facing the service aisle`
 
+export const MATH_AND_ELECTRICAL_KNOWLEDGE = `
+## Refrigeration & HVAC/R Math — Field Reference
+
+---
+
+### Core Refrigeration Calculations
+
+**Superheat:**
+SH = T_suction_line − SST
+- T_suction_line = measured temperature at suction line (at evaporator outlet or rack return header)
+- SST = saturation suction temperature from PT chart at measured suction pressure (use dew-point column for zeotropic blends)
+- Target: 6–12°F individual case; 10–20°F at rack return header
+
+**Subcooling:**
+SC = SCT − T_liquid_line
+- SCT = saturation condensing temperature from PT chart at measured head pressure (use bubble-point column)
+- T_liquid_line = measured liquid line temperature after condenser outlet, before expansion device
+- Target: 10–20°F; below 5°F = low charge or fan issue; above 20°F = possible overcharge
+
+**Compression Ratio (CR):**
+CR = P_discharge (psia) / P_suction (psia)
+- Convert: psia = psig + 14.7
+- Target: CR < 10:1 for scroll compressors; reciprocating can tolerate up to ~12:1
+- High CR = high discharge temps, poor efficiency, shortened compressor life
+- Example: head 220 psig, suction 25 psig → CR = (220+14.7) / (25+14.7) = 234.7 / 39.7 = **5.9:1** ✓
+
+**Sensible Heat Load:**
+Q_sensible = 1.08 × CFM × ΔT (°F)
+- 1.08 = air density constant (0.075 lb/ft³ × 0.24 BTU/lb·°F × 60 min/hr)
+- CFM = airflow; ΔT = return air temp − supply air temp (across coil)
+
+**Latent Heat Load (Dehumidification):**
+Q_latent = 0.68 × CFM × ΔW
+- ΔW = change in humidity ratio (grains per pound of dry air)
+
+**Tons of Refrigeration:**
+Tons = BTU/hr ÷ 12,000
+(1 ton = 12,000 BTU/hr = effect of melting 1 ton of ice per 24 hours)
+
+**Heat Rejection — Condenser Load:**
+Q_condenser ≈ Q_evaporator × 1.20 to 1.25 (MT); × 1.30 (LT)
+- Condenser must reject evaporator heat + heat of compression; LT systems have higher compression work
+
+**COP (Coefficient of Performance):**
+COP = Q_evap (BTU/hr) / W_compressor (BTU/hr)
+- Convert watts to BTU/hr: 1 W = 3.412 BTU/hr
+- Typical supermarket MT: COP 2.5–4.0; LT: COP 1.5–2.5
+
+**EER (Energy Efficiency Ratio):**
+EER = Cooling Capacity (BTU/hr) / Power Input (Watts)
+EER = COP × 3.412
+
+**Evaporator TD (Temperature Difference):**
+TD = T_box − SST (entering air temp minus saturation suction temperature)
+- Low TD (8–10°F): walk-in coolers → maintains high humidity
+- High TD (18–25°F): walk-in freezers, reach-ins → lower RH, faster frost buildup
+
+**Condenser Approach Temperature:**
+Approach = SCT − T_ambient
+- Target: 15–25°F; above 25°F = dirty condenser, blocked airflow, failed fans, or non-condensables
+
+**CO₂ High-Side Optimal Pressure (field approximation):**
+HP_opt ≈ 2.6 × T_gas_cooler_outlet (°C) + 7 bar
+- Optimizing this setpoint maximises COP in transcritical operation
+
+**Pressure/Temperature Unit Conversions:**
+- psia = psig + 14.7
+- 1 bar = 14.504 psi
+- 1 MPa = 145 psi = 10 bar
+- 1 kPa = 0.145 psi
+
+**Temperature Conversions:**
+- °F = (°C × 9/5) + 32
+- °C = (°F − 32) × 5/9
+- K = °C + 273.15
+
+---
+
+### Refrigeration Math Cheatsheet
+
+| Calculation | Formula | Target range |
+|---|---|---|
+| Superheat | T_suction − SST | 6–12°F case; 10–20°F rack |
+| Subcooling | SCT − T_liquid | 10–20°F |
+| Compression ratio | P_disc_abs / P_suc_abs | < 10:1 scroll; < 12:1 recip |
+| Sensible heat | 1.08 × CFM × ΔT | BTU/hr |
+| Tons | BTU/hr ÷ 12,000 | — |
+| COP | Q_evap / W_comp | 1.5–4.0 |
+| EER | BTU/hr ÷ Watts | — |
+| Condenser approach | SCT − T_ambient | 15–25°F |
+| Evaporator TD | T_box − SST | 8–25°F (app. dependent) |
+| Heater resistance | V² / P | Ω |
+
+---
+
+### Electrical Calculations
+
+**Ohm's Law (V = I × R):**
+| Find | Formula |
+|---|---|
+| Voltage | V = I × R |
+| Current | I = V / R |
+| Resistance | R = V / I |
+
+V = Volts, I = Amperes (amps), R = Ohms (Ω)
+
+**Power — Single Phase:**
+P = V × I × PF (true power, watts)
+VA = V × I (apparent power, volt-amps)
+PF (power factor): motors = 0.75–0.90; resistive heaters = 1.0
+
+**Power — Three Phase:**
+P = 1.732 × V_line × I_line × PF
+(1.732 = √3; always use this for 3-phase calculations)
+- Current from power: I = P / (1.732 × V × PF)
+- Example: 5 HP motor at 208V 3-phase, PF = 0.85:
+  I = (5 × 746) / (1.732 × 208 × 0.85) = 3,730 / 306.5 ≈ **12.2 A**
+
+**Quick Current Rules of Thumb:**
+| Voltage | Single-phase | Three-phase |
+|---|---|---|
+| 120V | ≈ 8.3 A per 1,000 W | — |
+| 240V | ≈ 4.2 A per 1,000 W | ≈ 2.4 A per 1,000 W |
+| 208V 3-ph | — | ≈ 2.8 A per 1,000 W |
+| 480V 3-ph | — | ≈ 1.2 A per 1,000 W |
+
+**Heater Resistance Check (R = V² / P):**
+| Heater rating | Expected resistance |
+|---|---|
+| 200 W at 120 V | ~72 Ω |
+| 300 W at 120 V | ~48 Ω |
+| 500 W at 240 V | ~115 Ω |
+| 750 W at 240 V | ~77 Ω |
+| 1,000 W at 240 V | ~58 Ω |
+| 1,500 W at 240 V | ~38 Ω |
+| 2,000 W at 240 V | ~29 Ω |
+Open heater (OL on meter) = burned element. Resistance significantly higher than spec = partial failure (some coils open).
+
+**Voltage Drop:**
+VD = (2 × L × R_wire × I) / 1,000
+- L = one-way run in feet; R_wire = resistance per 1,000 ft from wire table
+- Common values (copper): 14 AWG = 2.525 Ω/1,000 ft; 12 AWG = 1.588; 10 AWG = 0.999; 8 AWG = 0.628
+- Max allowable: 3% branch circuit; 5% total (feeder + branch)
+- Rule of thumb: if run > 100 ft, upsize one gauge from NEC minimum
+
+**Capacitor Sizing and Testing:**
+- Run capacitor tolerance: within ±6% of nameplate µF rating
+- Failed run capacitor: motor hums, draws locked-rotor amps, trips thermal overload
+- Common values: compressor run = 35–55 µF; condenser fan = 5–10 µF; evaporator fan = 3–7.5 µF
+- Test: capacitance meter in µF mode across terminals (discharge first!)
+- Discharge safely: short terminals through a 20 kΩ resistor before touching
+
+**Motor Winding Resistance (3-phase balance test):**
+- Measure T1–T2, T2–T3, T1–T3 with low-ohm meter
+- All three should read equal within ±5–10%
+- Open winding (OL): winding failed; grounded winding (0 Ω to shell): burnout
+- Test cold for highest sensitivity; megohm test confirms insulation integrity
+
+**Megohm Insulation Test (500V or 1,000V DC megohmmeter):**
+| Reading | Condition |
+|---|---|
+| > 100 MΩ | Good — healthy insulation |
+| 20–100 MΩ | Marginal — monitor; check for moisture |
+| < 20 MΩ | Failed — do not operate |
+| Near 0 MΩ | Grounded winding — compressor is scrap |
+Test each terminal (T1, T2, T3) to compressor shell. Warm motor should show HIGHER resistance than cold — if it drops when warm, moisture is the cause.
+
+**Locked Rotor Amperage (LRA) vs Full Load Amperage (FLA):**
+- LRA is typically 5–8× FLA at startup
+- Wiring, contactors, and fuses must tolerate LRA
+- Compressor drawing LRA without starting: check start capacitor, start relay, potential relay; or mechanical seizure (will trip overload within seconds)
+
+**Transformer Secondary Verification:**
+- Measure primary voltage (L1–L2 at transformer input terminal); if OK but no secondary output → failed transformer
+- Secondary should hold rated voltage ±10% under load (24 VAC with control circuit energized)
+- Common cause of low secondary voltage: shorted turn in secondary winding; or control circuit short drawing excess current
+
+---
+
+### Reading Wiring Diagrams
+
+**Diagram Types:**
+| Type | What it shows | Used for |
+|---|---|---|
+| **Ladder diagram** | Logic: L1 and L2 rails, horizontal rungs with contacts and loads | Troubleshooting sequence of operation |
+| **Schematic (pictorial)** | Physical components wired by appearance | Understanding component construction |
+| **Line diagram** | Terminal numbers, wire colors, connection points | Field wiring and installation |
+| **Block diagram** | Major system blocks and signal flow | System overview; no circuit detail |
+
+**Ladder Diagram Structure:**
+- Two vertical rails: **L1** (hot) and **L2 or N** (neutral) — like the rails of a ladder
+- Horizontal **rungs**: each rung is one circuit; contains contacts (switches) in series or parallel, and a load (coil or motor) at the right end
+- Read **left to right** across each rung: all series contacts must be closed for current to reach the load
+- Read **top to bottom**: the sequence of operation flows down the diagram
+
+**Essential Symbols:**
+
+| Symbol | Component | Behavior |
+|---|---|---|
+| Two vertical lines with gap | Normally Open (NO) contact | Open at rest; closes when actuated |
+| Two vertical lines with diagonal slash | Normally Closed (NC) contact | Closed at rest; opens when actuated |
+| Circle | Coil (relay, contactor, solenoid) | Energized when current flows through rung |
+| Zigzag | Resistor / heater element | Fixed resistance; converts current to heat |
+| Parallel curved lines | Capacitor | Stores charge; start or run capacitor |
+| Lines with arrow | Variable (adjustable) element | TXV, adjustable pressure switch, VFD |
+| Three parallel lines | Three-phase power supply | L1, L2, L3 from utility panel |
+| M in circle | Motor | Compressor motor, fan motor |
+
+**Normally Open vs Normally Closed — Critical Distinction:**
+
+**Normally Open (NO):** De-energized = open (no current). Closes when activated.
+- Thermostat cooling contacts: NO — close when space temp rises above setpoint
+- Pressure switch low-pressure loading: NO — closes when suction pressure rises to cut-in
+- Relay auxiliary contact: NO — closes when relay coil energizes
+
+**Normally Closed (NC):** De-energized = closed (current flows). Opens when activated.
+- High-pressure cutout (HPCO): NC — opens on overpressure to break compressor circuit
+- Low-pressure cutout (LPCO): NC — opens on low pressure to protect compressor
+- Motor overload: NC — opens on overload condition; must be reset before restarting
+- Oil pressure differential switch: NC — opens if oil pressure differential falls below minimum
+
+**Control Voltage vs Line Voltage Sections:**
+Most wiring diagrams contain two distinct voltage sections on the same page:
+- **Line voltage section** (top or left): L1–L2 or L1–L2–L3 at 120/208/240/480V; compressor contactor power contacts, condenser fan contactors, heater contactors, transformer primary
+- **Control voltage section** (lower or right): 24V AC (from transformer secondary) or 12V DC; thermostat, pressure switch contacts, relay coils, solenoid coils, EEV driver power
+- **Control transformer** appears at junction: primary wired to line voltage; secondary produces 24V
+
+Never test 24V control circuit components with a 120V test light — you will burn the secondary winding.
+
+**Reading Sequence of Operation (step-by-step method):**
+1. Find the call-for-cooling input — usually thermostat contacts at the top of the ladder (rung 1)
+2. Trace series safety contacts: HPCO, LPCO, overload — all NC contacts that must remain closed
+3. Find the compressor contactor coil at the right end of that rung — energizes when all contacts are closed
+4. Find the compressor contactor power contacts (line voltage section) — close when coil is energized; these carry the high-amperage compressor current
+5. Locate the condenser fan circuit — often interlocked through a compressor auxiliary contact (fan runs only when compressor runs)
+6. Locate the defrost circuit — a timer cam contact that opens the compressor rung and simultaneously closes the heater rung; defrost termination thermostat wired in series with heater circuit
+
+**Troubleshooting with a Ladder Diagram — Systematic Voltage Test:**
+1. Identify the load that should be energized but is not
+2. Find that load's rung in the ladder diagram
+3. With circuit energized (use extreme caution — test gloves and face shield), probe across each component from left to right
+4. A good contact reads **0V across it** (no voltage drop = closed and conducting)
+5. A failed open contact reads **line voltage across it** (voltage drops across the open gap — same as finding a blown fuse)
+6. First component with line voltage across it = the open; trace upstream to find why it opened
+
+**Wire Color Conventions (North American HVACR):**
+| Color | Typical use |
+|---|---|
+| Black | L1 — line hot (120V or 208/240V phase 1) |
+| Red | L2 — second hot leg (240V, or phase 2 on 3-phase) |
+| Blue | L3 — third hot leg (3-phase only) |
+| White | Neutral (grounded conductor) |
+| Green / Bare | Equipment ground |
+| Yellow | 24V control wiring (thermostat, safety circuits) |
+| Orange | 24V switched hot (thermostat call output) |
+Note: color codes are not universal — always verify with a meter before assuming; older installations frequently deviate.
+
+**Pressure Switch Wiring:**
+- HPCO: NC contact wired in **series** with compressor contactor coil circuit
+  - When pressure rises to trip point → contact opens → contactor coil de-energizes → compressor stops
+  - Manual-reset HPCO (common on large racks): requires physical reset button press before restart
+  - Auto-reset HPCO: resets automatically when pressure drops below reset point
+- LPCO: NC contact wired in series; opens on low pressure
+- Dual pressure switch: one body, four terminals — L1 in, HPCO NC out, LPCO NC out, common
+- Test HPCO: press manual reset button; circuit should open immediately; measure voltage at contactor coil — drops to 0V when HPCO trips
+
+**Defrost Timer Wiring (mechanical cam type — 4-terminal):**
+| Terminal | Function |
+|---|---|
+| 1 | Line voltage in (L1) |
+| 2 | Cooling circuit out (→ liquid line solenoid, compressor enable) |
+| 3 | Defrost heater circuit out |
+| 4 | Common (L2 / Neutral) |
+- Refrigeration mode: 1→2 closed, 1→3 open
+- Defrost mode: 1→2 open (compressor off), 1→3 closed (heaters on)
+- Defrost termination thermostat: NC, wired in series with terminal 3 — opens on high coil temp to end defrost before failsafe timer runs out
+- Fan delay thermostat: NC, wired in series with fan motor circuit — opens after defrost (when coil is warm) to hold fans off; closes when coil cools (~35°F)
+
+**Contactor and Relay Contact Numbering:**
+- Main power contacts: 1–2, 3–4, 5–6 (or T1/T2, T3/T4, T5/T6)
+- Auxiliary NO contact: 13–14
+- Auxiliary NC contact: 21–22
+- Coil terminals: A1, A2 (IEC) or shown as circle on ladder
+- Motor starter: same as contactor + overload relay (OL) in series with each phase
+
+**Solenoid Valve Symbols on Wiring Diagrams:**
+- Solenoid coil appears as a circle (load) at the right end of a rung
+- NC solenoid (liquid line): coil energized = valve opens; de-energized = valve closed — correct for liquid line applications
+- NO solenoid (oil return): coil de-energized = valve open; energized = valve closed — oil returns during off-cycle even with no power to coil
+- Always verify NC vs NO designation when ordering replacement coils — wiring the wrong type causes opposite behavior
+
+---
+
+### Electrical Safety Rules for Refrigeration Technicians
+
+1. **Lock out / tag out (LOTO)** before working on any energized equipment. Verify zero energy with a meter after locking out — capacitors hold charge even after disconnect.
+2. **Discharge capacitors** before touching — use a 20 kΩ discharge resistor, not a screwdriver (screwdriver discharges create dangerous arcs and may damage equipment).
+3. **Measure before touching** — always verify voltage category before probing a circuit.
+4. **Use the correct CAT-rated meter** — CAT III for panel and equipment work; CAT IV for service entrance.
+5. **Never reset a tripped breaker without finding the cause** — a breaker tripping on a refrigeration circuit usually means a ground fault, short, or overloaded motor; resetting without investigation causes equipment damage or fire.`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -2045,7 +2347,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(

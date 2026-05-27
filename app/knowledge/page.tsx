@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
-  Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer,
+  Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -19,6 +19,7 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   rose:    { bg: 'bg-rose-100',    text: 'text-rose-600',    border: 'border-rose-200',   tag: 'bg-rose-50 text-rose-700 border-rose-200' },
   amber:   { bg: 'bg-amber-100',   text: 'text-amber-600',   border: 'border-amber-200',  tag: 'bg-amber-50 text-amber-700 border-amber-200' },
   teal:    { bg: 'bg-teal-100',    text: 'text-teal-600',    border: 'border-teal-200',   tag: 'bg-teal-50 text-teal-700 border-teal-200' },
+  indigo:  { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200', tag: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Cpu:         <Cpu         size={22} />,
   Store:       <Store       size={22} />,
   Thermometer: <Thermometer size={22} />,
+  Calculator:  <Calculator  size={22} />,
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
