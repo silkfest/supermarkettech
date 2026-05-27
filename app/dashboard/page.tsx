@@ -135,6 +135,11 @@ export default function Dashboard() {
   useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
 
   async function handleUpload(file: File) {
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadToast({ type: 'error', msg: 'File too large — max 25 MB. Try compressing the PDF first.' })
+      setTimeout(() => setUploadToast(null), 6000)
+      return
+    }
     setUploadToast({ type: 'uploading', msg: `Uploading ${file.name}…` })
     const fd = new FormData()
     fd.append('file', file)

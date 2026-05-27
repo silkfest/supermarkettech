@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (file.type !== 'application/pdf') return NextResponse.json({ error: 'Only PDFs supported' }, { status: 400 })
-  if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
+  if (file.size > 25 * 1024 * 1024) return NextResponse.json({ error: 'File too large (max 25 MB)' }, { status: 400 })
 
   // Store file in Supabase Storage
   const fileName  = `${Date.now()}-${file.name}`
