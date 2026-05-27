@@ -1154,6 +1154,221 @@ Protocol is Hussmann's distributed refrigeration system — smaller rack modules
 - Hussmann tech support: **1-800-922-1919** | Parts: **1-855-487-7778**
 - Third-party: Parts Town (partstown.com/hussmann), CaseParts.com`
 
+const DANFOSS_KNOWLEDGE = `
+## Danfoss Product Knowledge — Supermarket & CO₂ Refrigeration
+
+---
+
+### Store Controller Network — AK-System Manager
+
+**AK-SM 800A / AK-SM 850A (Store Manager):**
+- Central HVAC/R monitoring and control platform for entire store
+- **AK-SM 800A** — up to 150 generic points, 8 RS-485 networks, Ethernet/IP; standard for most supermarket installations
+- **AK-SM 850A** — expanded capacity (200+ points), enhanced CO₂ pack control, dual Ethernet; required for full CO₂ transcritical stores
+- Network topology: up to 8 RS-485 bus lines (address 1–60 per bus); case controllers, pack controllers, I/O modules, and HVAC units all live on the same bus
+- Navigation: Home → System → Configuration → Controllers shows all connected nodes; check bus/address against label on controller board for any comm fault
+- Common fault: "Communication Alarm" on a node — check 24V power at the controller, verify termination resistors at both ends of the RS-485 bus (120Ω), confirm address switch matches AK-SM config
+- Remote access via AK-SM web interface (port 80 or 443); field engineers use "Service Tool" (Danfoss AK-ST 500 software) for deep configuration
+- **AK-SC 255** — older generation store controller (predecessor to 800A); still common in legacy stores; similar RS-485 architecture but limited to fewer nodes; menus differ significantly from 800A
+
+---
+
+### Pack Controllers — AK-PC Series
+
+| Model | Application | Notes |
+|---|---|---|
+| **AK-PC 781** | HFC parallel rack (basic) | Up to 4 compressors; fixed or variable capacity; step control |
+| **AK-PC 782** | HFC parallel rack (advanced) | Up to 6 compressors; VFD lead compressor; unloaders; liquid injection |
+| **AK-PC 783** | CO₂ transcritical rack | HP valve control, gas cooler fan staging, flash tank level, booster+main compressors |
+| **AK-PC 785** | CO₂ transcritical advanced | Full transcritical/subcritical mode switching; parallel compression option |
+
+**AK-PC 783/785 CO₂ specifics:**
+- **HP setpoint** — user-adjustable target high-side pressure; default ~90 bar; optimizes via gas cooler outlet temp × multiplier algorithm
+- **Flash tank level** — 4–20 mA signal from float sensor; low level alarm = starved main compressors; high level alarm = flood risk
+- **Subcritical/transcritical switchover** — automatic based on gas cooler outlet temp vs. critical point; transition can cause brief pressure hunting — normal
+- **Parallel compression solenoid** — AK-PC 785 controls parallel compressor staging to reclaim flash gas work; if parallel comp trips, rack continues in standard booster mode
+- **Emergency mode** — if pack controller loses power or communication, compressors fall back to pressure switches (safety operation only)
+
+---
+
+### Case Controllers — AK-CC Series
+
+| Model | Application | Notes |
+|---|---|---|
+| **AK-CC 55E** | Single case / small multi-deck | 1 suction group; thermostat + defrost; RS-485 |
+| **AK-CC 210A** | Multi-deck open case | Up to 4 probe inputs; EEV output (AKV/CCMT); adaptive defrost |
+| **AK-CC 250A** | Advanced multi-deck / reach-in | 2 EEV outputs; night blinds control; door alarm; data logging |
+| **AK-CC 550A** | Coordinated case group (Danfoss CRC) | Up to 10 circuits per controller; coordinates defrost across a lineup |
+
+**Common AK-CC alarm codes:**
+| Code | Meaning | Field action |
+|---|---|---|
+| **S1 alarm** | Return air probe (S1) fault — open or short | Replace probe; check wiring at screw terminal |
+| **S2 alarm** | Air off probe (S2) fault | Same as S1 |
+| **S3/S4 alarm** | Coil/liquid line probe fault | Check probe immersion in well; verify resistance ~10kΩ at 77°F |
+| **Defrost alarm** | Defrost ran to max time limit | Check heaters (electric) or hot gas flow; verify termination probe placement |
+| **EEV alarm** | EEV motor steps lost / valve not responding | Power cycle; re-initialize valve (AKV: 5V pulse; CCMT: 12V pulse); replace if recurring |
+| **Night setback alarm** | Case temp rose above setback limit during store close | Check if night blinds deployed; verify supply air temp at night setback |
+| **Door alarm** | Door open >X minutes | Magnetic switch on door; check for obstructed door or failed switch |
+
+---
+
+### Electronic Expansion Valves
+
+#### AKV — Standard HFC/HFO EEV
+- Pulse-width modulated solenoid (NOT stepper motor) — fully open or fully closed, modulated by duty cycle
+- **Rated for HFCs and HFOs only — NOT rated for CO₂ high-pressure (>45 bar); do NOT install AKV on CO₂ high-pressure circuits**
+- Coil: 24V DC; removable without losing refrigerant (coil snaps off)
+- Initialization: on power-up, AKV pulses fully open then fully closed to confirm operation
+- Common fault: AKV coil burned from 24V applied continuously (wiring error) — replace coil only; valve body typically survives
+- Sizing codes: AKV 10, AKV 15, AKV 20 — larger number = larger Cv
+
+#### CCMT — CO₂ Stepper Motor EEV
+- **The standard EEV for CO₂ transcritical and subcritical MT/LT cases**
+- Stepper motor; 480 steps (0–480); fully closed at 0 steps
+- Pressure/temperature rated to 130 bar; designed for R-744 working pressures
+- Wiring: 6-wire stepper (A+, A−, B+, B−, power, common); connect to AK-CC 210A/250A or dedicated CCMT driver
+- CCMT sizes: CCMT 2 (small), CCMT 6 (medium), CCMT 12 (large, multi-deck cases)
+- **Do not use AKV as a drop-in replacement for CCMT** — different drive signal; AKV coil will burn if driven by stepper output
+- Superheat target on CO₂ cases: 4–8°F at case; controller auto-adjusts
+- Initialization after replacement: power cycle; controller sends homing sequence (full close → defined step count); verify step count in AK-CC service menu
+
+#### ETS / ETSH — Compact Stepper EEV (HFC)
+- Stepper motor; 480 steps; smaller body than CCMT; used on smaller HFC circuits
+- **ETSH** = High-pressure version (rated to 46 bar); suitable for CO₂ **subcritical** low-side only — NOT transcritical high-side
+- Common in Danfoss Booster MWT rack circuits on LT branch
+
+---
+
+### ICM / ICMTS / ICAD Actuator — Motorized Regulating Valve
+
+- **ICM** — Large-body motorized seat valve; bodies sized 20–150 mm; used as HP gas cooler pressure valve, liquid line shutoff, or bypass valve on CO₂ racks
+- **ICMTS** — ICM body rated for transient CO₂ pressures (burst disc protection); used specifically as **gas cooler pressure control valve** in transcritical systems; replaces older HPV designs
+- **ICAD 600A / ICAD 1200A** — Electric actuator that mounts on ICM body; 24V DC; 0–10V or 4–20 mA control signal from AK-PC 783/785; 600A = 15 Nm, 1200A = 30 Nm torque
+- **HP control loop:** AK-PC sends 4–20 mA → ICAD 600A → ICM valve position; loop target = optimal HP setpoint based on gas cooler outlet temp
+- Common fault: ICAD 600A "position feedback error" — check 24V power supply, verify 0–10V control signal present; ICAD gear strip if valve body seized (corrosion or contaminated refrigerant)
+- If HP keeps hunting: check gas cooler fan staging (fans not coming on = GC outlet too warm = HP overshoots), or ICM valve body worn (leaking past seat at low flow)
+- **Removing ICAD:** loosen the two mounting screws; actuator lifts off without disturbing the valve body or losing charge — no pump-down required to replace actuator
+
+---
+
+### ICS Valves — Servo/Pilot-Operated Regulating Valves
+
+- Modulating regulating valves (pressure regulator, back-pressure, gas bypass) using a pilot valve to modulate a large-body main valve
+- **ICS body** + pilot valve insert: the body is common; pilot valve type determines function:
+  - **ICS + ICSH** — High-pressure servo; used for CO₂ HP gas bypass (flash gas bypass valve, economizer bypass)
+  - **ICS + PMLX** — Pilot-operated back-pressure regulator; maintains upstream (suction) pressure minimum
+  - **ICS + CVP** — Constant pressure regulator; used as EPR or suction group pressure setpoint holder
+- Sizes: DN25 to DN100 (1" to 4"); CO₂-rated; body withstands 130 bar
+- **Common misdiagnosis:** ICS valve stuck open looks identical to a failed compressor — system suction pressure equals discharge pressure, no capacity. Always check ICS valve position (manual override screw) before condemning compressors.
+- Manual override: clockwise = open; counterclockwise = allow pilot control; always return to auto after testing
+
+---
+
+### EVR Solenoid Valves — Standard Refrigerant Solenoids
+
+- Normally-closed (NC) pilot-operated solenoid; opens when coil energized
+- **EVR 2 / EVR 3 / EVR 6 / EVR 10 / EVR 15 / EVR 20** — sizing by Kvs flow coefficient
+- Coil: 24V AC/DC or 120V; removable without losing charge (coil and stem lift off; body stays)
+- CO₂ rating: standard EVR body rated to 45 bar; **for CO₂ high-pressure use EVRA or EVRAT series** (rated 130 bar with reinforced body and stem)
+- **EVRA** — CO₂-rated NC solenoid; most common on CO₂ liquid feed lines
+- **EVRAT** — CO₂-rated with thermal actuator; used where electrical solenoid signal unavailable
+- Common fault: EVR coil hums but valve doesn't open — minimum differential pressure required for pilot-operated opening (~0.5 bar); check system pressures. If pressure differential exists but valve won't open: core stuck, replace body.
+- Test: energize coil by hand (hold coil wire to 24V supply) and listen for click; no click = coil open circuit; click but no flow = body fault
+
+---
+
+### KVP / PM / AVTA — Pressure Regulating Valves
+
+**KVP — Evaporator Pressure Regulator (Back-Pressure Valve):**
+- Maintains upstream (suction side) pressure above setpoint; prevents case from over-cooling below design SST
+- Spring-adjustable; range typically −10 to +60 psig; set per case design suction temp
+- Common in produce/deli cases to hold SST +20 to +28°F while connected to a lower-temp suction group
+- Diagnostic: if case is too warm despite normal liquid feed, KVP may be set too high or stuck closed → measure pressure upstream vs. setpoint with manifold
+
+**PM / PM2 — Pilot-Operated Back-Pressure (High Capacity):**
+- Same function as KVP but larger body for high-flow circuits; pilot valve adjusts main disc
+- PM2 = with manual override; used as compressor suction stop valve or EPR on large lineups
+
+**AVTA — Thermostatic Back-Pressure Valve:**
+- Opens when refrigerant (suction) temperature falls below setpoint; holds SST at design minimum
+- Common in Hussmann/Hill Phoenix cases on MT suction groups with electric defrost
+
+---
+
+### Pressure/Temperature Sensors — AKS Series
+
+| Model | Type | Range | Notes |
+|---|---|---|---|
+| **AKS 32** | Pressure transmitter (HFC) | 0–300 psi | 4–20 mA; 1/4" flare; suction/discharge monitoring |
+| **AKS 33** | Pressure transmitter (CO₂) | 0–1500 psi (0–103 bar) | 4–20 mA; rated for transcritical CO₂ HP side |
+| **AKS 38** | Pressure transmitter (CO₂) | 0–2000 psi (0–138 bar) | 4–20 mA; HP gas cooler outlet; highest pressure rating |
+| **AKS 21** | Temperature sensor | −40 to +150°F | PT1000 or NTC10kΩ; used at gas cooler outlet |
+| **AKS 11** | Temperature sensor | −50 to +60°C | NTC; case air probes, coil probes |
+
+**CO₂ sensor selection rule:** Use AKS 33 on intermediate/MT side (up to 55 bar working); use AKS 38 on HP gas cooler outlet/HPV inlet (up to 100+ bar working). Using AKS 32 on CO₂ high side will result in sensor rupture — never substitute.
+
+**Wiring:** All AKS transmitters: Brown = 24V+; Blue = GND; Black = 4–20 mA signal. Verify 24V supply before condemning sensor.
+
+---
+
+### CO₂ Safety Components
+
+**SFA / SVA Relief Valves:**
+- **SFA** — Single-port safety relief; CO₂-rated; set pressures 150–165 bar (2175–2393 psi); required by code on every CO₂ pressure vessel
+- **SVA** — Stop valve (isolation); used in pairs with SFA for in-service valve replacement (one always in-service while the other is isolated)
+- ASHRAE 15 requires dual-relief arrangement on CO₂ racks — never run a CO₂ rack with only one functional relief valve
+- Relief valve discharge: must be piped outdoors (CO₂ displaces oxygen — asphyxiation hazard in machine rooms at >5,000 ppm)
+
+**Burst Disc:**
+- Second-level protection upstream of relief valve; ruptures at 160+ bar if relief valve fails to open
+- Inspect annually; replace after any high-pressure event even if not visibly ruptured (metal fatigue)
+
+**CO₂ Leak Detection:**
+- **AK-RP 110A** — Fixed CO₂ gas detector; 0–5,000 ppm range; alarm at 1,000 ppm (OSHA TWA) and 5,000 ppm (OSHA STEL); requires 24V; output to AK-SM or relay
+- Machine rooms require ventilation interlock with CO₂ detector — verify interlock test at every PM
+
+---
+
+### Danfoss Booster CO₂ System (MWT / Booster MWT)
+
+The Danfoss "Booster MWT" (Medium/Low Temperature) is a pre-packaged CO₂ transcritical rack solution for supermarkets:
+
+**Architecture:**
+- **MT compressors** (scrolls or semi-hermetics) → MT suction header → gas cooler
+- **LT booster compressors** → discharge into MT suction header (flash injection booster configuration)
+- **Flash tank (IPV)** — separates liquid/vapor after HP expansion; MT compressors take vapor from flash tank top
+- **Gas cooler + gas cooler fans** — air-cooled; outdoor unit; controlled by AK-PC 783/785
+
+**AK-PC 783/785 key parameters to verify at commissioning:**
+1. HP setpoint algorithm: enable "floating HP" (tracks gas cooler outlet temp)
+2. Flash tank level switch wired to AI input; alarms at high/low
+3. Gas cooler fan staging: verify fan steps match number of fan contactors/VFDs installed
+4. Superheat setpoint on booster inlet: −5 to 0°F (booster compressors can handle wet suction — do not target positive superheat)
+5. Subcritical/transcritical switchover threshold: ~27°C gas cooler outlet
+
+**Common Booster MWT faults:**
+| Fault | Likely cause |
+|---|---|
+| High HP alarm (>130 bar) | GC fans not staging; GC fouled; ICMTS stuck closed |
+| LP alarm on LT side | CCMT EEVs all closed; EVRA solenoid not opening; LT compressor unloaded/tripped |
+| Flash tank high level | MT compressors tripped; main EXV over-feeding flash tank |
+| Flash tank low level | Main EXV under-feeding; MT compressors starving on vapor only |
+| Frequent HP hunting | ICAD/ICM worn; floating HP setpoint too aggressive; GC fan VFD hunting |
+| Oil in flash tank (foamy sight glass) | Oil separator bypassing; return oil line blocked |
+
+---
+
+### Critical Field Mistakes — Danfoss CO₂ Equipment
+
+1. **AKV on CO₂ high side** — AKV is rated ~45 bar maximum; CO₂ HP side routinely exceeds 100 bar. This is a catastrophic failure risk. Always use CCMT for CO₂ EEV applications.
+2. **Wrong AKS sensor** — AKS 32 (HFC) installed on CO₂ HP side will rupture. Verify: AKS 33 for mid-pressure CO₂; AKS 38 for high-pressure gas cooler outlet.
+3. **Leaving ICAD manual override in open position** — HP valve stays fully open; system cannot regulate high-side pressure; HPCO trip follows. Always return ICAD override to auto (center detent) after diagnostics.
+4. **RS-485 bus missing termination** — Adding a new controller without adding/checking 120Ω termination resistors causes intermittent comm alarms across the entire bus.
+5. **CCMT replaced without re-initialization** — New CCMT won't track superheat correctly until the AK-CC controller runs its homing sequence. Power cycle after installation; confirm step count in service menu.
+6. **EVR body replacement on CO₂ liquid line** — Standard EVR body (45 bar) on CO₂ liquid line ≤45 bar is acceptable subcritical; NOT acceptable for transcritical CO₂ liquid lines where operating pressure can reach 80–100 bar. Use EVRA.
+7. **AK-CC defrost alarm ignored** — "Defrost ran to max time" is not a nuisance alarm. It means the coil did not reach termination temperature in time. In CO₂ cases with CCMT EEVs, a frozen coil from incomplete defrost will cascade — case temps rise, compressors run long, suction pressure drifts. Investigate within one defrost cycle.`
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -1339,7 +1554,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(
