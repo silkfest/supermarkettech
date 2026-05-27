@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
-  Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store,
+  Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -18,16 +18,18 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', border: 'border-emerald-200',tag: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   rose:    { bg: 'bg-rose-100',    text: 'text-rose-600',    border: 'border-rose-200',   tag: 'bg-rose-50 text-rose-700 border-rose-200' },
   amber:   { bg: 'bg-amber-100',   text: 'text-amber-600',   border: 'border-amber-200',  tag: 'bg-amber-50 text-amber-700 border-amber-200' },
+  teal:    { bg: 'bg-teal-100',    text: 'text-teal-600',    border: 'border-teal-200',   tag: 'bg-teal-50 text-teal-700 border-teal-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ReactNode> = {
-  Snowflake:  <Snowflake  size={22} />,
-  Sliders:    <Sliders    size={22} />,
-  Zap:        <Zap        size={22} />,
-  LayoutGrid: <LayoutGrid size={22} />,
-  Cpu:        <Cpu        size={22} />,
-  Store:      <Store      size={22} />,
+  Snowflake:   <Snowflake   size={22} />,
+  Sliders:     <Sliders     size={22} />,
+  Zap:         <Zap         size={22} />,
+  LayoutGrid:  <LayoutGrid  size={22} />,
+  Cpu:         <Cpu         size={22} />,
+  Store:       <Store       size={22} />,
+  Thermometer: <Thermometer size={22} />,
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
