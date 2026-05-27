@@ -7,6 +7,8 @@ import {
   ARNEG_KNOWLEDGE,
   KEEPRITE_KNOWLEDGE,
   MATH_AND_ELECTRICAL_KNOWLEDGE,
+  MICRO_THERMO_KNOWLEDGE,
+  EVAPCO_LMP_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -105,6 +107,30 @@ export const TOPICS: KnowledgeTopic[] = [
     content: KEEPRITE_KNOWLEDGE,
     manualKeywords: ['keeprite', 'keep-rite', 'klp', 'klv'],
     tags: ['Unit Coolers', 'Walk-In', 'Condensing Units'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'micro-thermo',
+    title: 'Micro Thermo (MT-Alliance)',
+    shortTitle: 'Micro Thermo',
+    description: 'MT-Alliance platform boards (MT-500/700 series), LonWorks FTT10 network wiring, Case Controller EEV/relay outputs, pressure transducer selection, and controller fault diagnosis.',
+    iconName: 'CircuitBoard',
+    colorClass: 'purple',
+    content: MICRO_THERMO_KNOWLEDGE,
+    manualKeywords: ['micro thermo', 'mt-alliance', 'mt alliance', 'mtt'],
+    tags: ['Controls', 'LonWorks', 'Case Controllers'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'evapco-lmp',
+    title: 'Evapco LMP',
+    shortTitle: 'Evapco LMP',
+    description: 'CO₂ transcritical booster rack systems: flash tank control, head pressure algorithm (sub/transcritical), hot gas defrost sequencing, MT superheat control, oil management, and CO₂ leak safety.',
+    iconName: 'Gauge',
+    colorClass: 'cyan',
+    content: EVAPCO_LMP_KNOWLEDGE,
+    manualKeywords: ['evapco', 'lmp', 'evapco lmp', 'systems lmp'],
+    tags: ['CO₂', 'Transcritical', 'Racks', 'Booster'],
     category: 'manufacturer',
   },
   {
