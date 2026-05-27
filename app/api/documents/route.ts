@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { processDocumentBuffer } from '@/lib/ai/ingest'
+import { processDocumentBuffer, processDocumentByPath } from '@/lib/ai/ingest'
 
 // Allow up to 60 s so the async ingest (pdf-parse + Jina embed) has time to finish
 export const maxDuration = 60
@@ -122,7 +122,43 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
 
-  // Parse multipart form
+  const contentType = req.headers.get('content-type') ?? ''
+
+  // ── Path A: client pre-uploaded directly to Supabase Storage ──────────────
+  if (!contentType.includes('multipart/form-data')) {
+    const body = await req.json().catch(() => null)
+    if (!body?.storagePath) return NextResponse.json({ error: 'storagePath required' }, { status: 400 })
+
+    const { storagePath, title, equipmentId, fileSize } = body as {
+      storagePath: string
+      title?: string
+      equipmentId?: string
+      fileSize?: number
+    }
+
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .insert({
+        equipment_id: equipmentId ?? null,
+        title:        title ?? storagePath.replace(/^\d+-/, '').replace(/\.pdf$/i, ''),
+        source_type:  'UPLOAD',
+        file_name:    storagePath,
+        file_size:    fileSize ?? null,
+        status:       'PROCESSING',
+      })
+      .select()
+      .single()
+
+    if (docError || !doc) return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
+
+    processDocumentByPath(doc.id, storagePath).catch(err =>
+      console.error(`[Ingest failed] doc=${doc.id}`, err)
+    )
+
+    return NextResponse.json({ id: doc.id, title: doc.title, status: 'PROCESSING' }, { status: 201 })
+  }
+
+  // ── Path B: small file sent directly (kept for API back-compat) ──────────
   const formData = await req.formData().catch(() => null)
   if (!formData) return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
 
@@ -132,7 +168,7 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (file.type !== 'application/pdf') return NextResponse.json({ error: 'Only PDFs supported' }, { status: 400 })
-  if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
+  if (file.size > 25 * 1024 * 1024) return NextResponse.json({ error: 'File too large (max 25 MB)' }, { status: 400 })
 
   // Store file in Supabase Storage
   const fileName  = `${Date.now()}-${file.name}`
