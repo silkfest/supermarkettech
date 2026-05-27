@@ -2688,6 +2688,156 @@ Penn Controls is a Johnson Controls brand. All Penn part numbers carry dual labe
 - **A99 sensor compatibility note:** Only A99B-series sensors are compatible with A421 controls — confirm part number before ordering replacements`
 
 
+export const CARNOT_KNOWLEDGE = `
+## Carnot Réfrigération (M&M Carnot / Johnson Controls) — CO₂ Transcritical Systems
+
+Carnot Réfrigération was founded in 2008 in Trois-Rivières, Quebec as the first North American manufacturer of CO₂ transcritical refrigeration systems. Acquired by M&M Refrigeration in 2019 (forming M&M Carnot), then by Johnson Controls in June 2023. All post-2023 service goes through Johnson Controls. Support email: **carnotservice@jci.com**.
+
+Carnot specializes in **CO₂ transcritical booster rack systems** for supermarkets and condensing units for walk-in and warehouse applications. They hold patents on ejector-based defrost and flash gas recovery for transcritical CO₂.
+
+---
+
+### Product Lines
+
+| Product | Type | Capacity | Application |
+|---|---|---|---|
+| CAR-090 (legacy) | Transcritical booster rack | — | Supermarket multi-temp |
+| Aquilon DS™ | Air-cooled CO₂ condensing unit | 10–75 TR | Walk-in / warehouse |
+| Aquilon Chill™ | CO₂ chiller / heat pump | — | Process cooling, DHW |
+| Aquilon Industrial™ | Large-capacity CO₂ rack | — | Cold storage warehouse |
+
+**CAR-090 (supermarket rack):** Carnot's original transcritical booster product for supermarkets. Uses Micro Thermo (MT-Alliance) as the integrated rack and case controller — see the Micro Thermo knowledge section for board, network, and controller detail. All system setpoints are documented on the startup sheet inside the electrical cabinet.
+
+---
+
+### System Architecture — Transcritical Booster
+
+Carnot supermarket systems follow the standard CO₂ booster configuration:
+
+- LT booster compressors → discharge into MT suction header (or directly into flash injection port)
+- MT compressors → gas cooler → high-pressure (HP) throttling valve → flash tank receiver
+- Flash gas bypass valve → MT suction header (recirculates flash gas to avoid liquid carryover)
+- Liquid from flash tank → LT and MT case EEVs
+
+**Transcritical operation (ambient > ~75°F / 24°C):**
+- CO₂ leaves gas cooler as supercritical fluid (no two-phase region)
+- HP throttling valve controls high-side pressure using an efficiency algorithm — target is NOT minimum pressure; higher HP reduces flash gas, improving MT capacity
+- Maximum HP limit: ~1,450 psig (100 bar); valve opens to protect system
+
+**Subcritical operation (ambient < ~75°F):**
+- CO₂ condenses in gas cooler; HP valve controls to maintain subcooling (typically 1.5–3°F)
+- Minimum HP limit: ~700 psig (48 bar); system can operate with free cooling below this
+
+**Free cooling capability:** When ambient drops below ~54°F (12°C), gas cooler fans can reject enough heat that no compression is needed on the high side — significant energy savings in Canadian winters.
+
+---
+
+### Ejector Technology (Carnot Patent)
+
+Carnot's key differentiator is an integrated ejector for flash gas recovery and defrost:
+
+**How it works:**
+- High-pressure CO₂ from the gas cooler outlet drives the ejector as the motive fluid
+- Ejector entrains lower-pressure flash gas from the flash tank, boosting it to an intermediate pressure
+- Net effect: flash gas bypass compressor work is partially replaced by ejector work (no moving parts)
+- COP improvement: 10–42% over non-ejector transcritical systems, depending on ambient
+
+**Defrost (ejector-assisted):**
+- Traditional hot gas defrost uses high-pressure discharge gas; Carnot's system routes gas cooler outlet through the ejector circuit to achieve defrost pressure without drawing from compressor discharge
+- Eliminates the energy penalty of compressor-driven defrost
+- Defrost pressure and return pressure setpoints are set per system; verify on startup sheet
+
+**Field note:** If flash tank pressure is unstable or the ejector appears to be bypassing (both motive and suction pressures equalizing), suspect a stuck or leaking ejector check valve or a fouled ejector nozzle. Contact M&M Carnot service — do not attempt ejector disassembly in the field without factory guidance.
+
+---
+
+### Gas Cooler and GC Sensor
+
+**Gas cooler type:** Air-cooled; fans are VFD-controlled and stage/modulate based on gas cooler outlet temperature and ambient.
+
+**Floating setpoint control:**
+- Gas cooler outlet target = ambient + approach ΔT (typically 1–3°F above ambient)
+- Minimum outlet setpoint: ~60°F (prevents liquid floodback at low ambient)
+- Maximum outlet setpoint: ~85°F (fans run flat out above this ambient)
+
+**GC outlet temperature sensor (E00XXX series, per Carnot install guide):**
+- Sensor must be installed on the **common header** if multiple gas cooler sections are in parallel — not on an individual circuit
+- Immersion depth: sensor tip must contact refrigerant flow, not sit in stagnant pocket
+- Shield grounded at controller end only; sensor cable must be shielded twisted pair
+- Verify reading against NIST-traceable reference thermometer at commissioning; log in startup sheet
+- Drift >1°F from reference: recalibrate offset in controller; drift >3°F with no fixable cause: replace sensor
+- **Critical:** an offset GC sensor drives incorrect HP throttling valve decisions — too cold a reading forces pressure too low (subcooling error); too warm forces pressure too high (efficiency loss and potential HP alarms)
+
+**HP throttling valve:** Sporlan GC or FGB series, stepper motor driven; controlled by rack controller (Micro Thermo or Danfoss AK-PC). Verify valve position and modulation in software after sensor calibration.
+
+---
+
+### Control Platforms
+
+Carnot racks have been built with multiple controller platforms depending on vintage and customer spec:
+
+| Platform | Typical use | Notes |
+|---|---|---|
+| Micro Thermo MT-Alliance | CAR-090 and early supermarket racks | Full case and rack control; LonWorks network; see Micro Thermo section |
+| Danfoss AK-PC 782A | Later supermarket racks | Designed specifically for transcritical CO₂; CALM and ALC algorithms |
+| Carel pRack | Some M&M Carnot builds post-2019 | CO₂-specific rack controller; dual HP valve control |
+| Parker Sporlan PSK3LX | GC and FGB valve control module | Often used alongside Micro Thermo for HP valve sequencing |
+
+**Identify the controller from the electrical panel door or startup sheet before troubleshooting.** Setpoints, alarm codes, and navigation differ entirely between platforms.
+
+---
+
+### Commissioning Checklist (CAR-090 / Carnot Supermarket Racks)
+
+The Carnot startup sheet is stored inside the electrical cabinet — all setpoints, transducer calibrations, and valve positions must be recorded there at first commissioning.
+
+**Pre-start checks:**
+1. All isolation valves open; verify no locked-out valves
+2. Pressure relief valves installed and set per nameplate; verify blow-off piping is routed to safe discharge location
+3. All sensor wiring complete; verify 5V supply to each pressure transducer
+4. CO₂ detector active; ventilation interlock tested (open damper and evacuators on alarm)
+5. Oil reservoir sight glass at least half-full
+6. Electrical panel: verify VFD drives programmed for correct fan/compressor rotation
+
+**Startup sequence:**
+1. Energize control power; allow controller to initialize and complete self-check
+2. Enable gas cooler fans; confirm VFD ramps and fan rotation is correct
+3. Enable MT compressors one at a time — allow suction pressure to stabilize (≥30 s) between additions
+4. Confirm flash tank pressure rises to setpoint (~483 psig / 31°F)
+5. Confirm HP throttling valve begins modulating; observe gas cooler outlet temperature
+6. Enable LT booster compressors; confirm LT suction pressure is stable
+7. Enable case circuits one at a time; confirm EEVs open and superheat is controlled
+8. Minimum **18°F (10°C) superheat** at compressor inlet before loading — any lower, stop and investigate EEV or sensor
+9. Record all setpoints, transducer readings, and valve positions on startup sheet
+
+---
+
+### Common Faults — Carnot CO₂ Systems
+
+| Fault | Likely cause | Check |
+|---|---|---|
+| HP alarm (>1,450 psig) | GC fans not running or VFD fault; GC coil fouled; HP valve stuck; very high ambient | VFD status; GC fan rotation; check HP valve signal vs position in controller |
+| Flash tank pressure unstable / hunting | Flash gas bypass valve fault or GC sensor offset driving wrong HP | Verify GC sensor calibration; check FGB valve position via controller |
+| Ejector bypassing (motive = suction pressure) | Ejector check valve stuck open or leaking; nozzle fouled | Contact M&M Carnot — do not disassemble ejector in field |
+| MT suction low (LP alarm) | EEVs all closed; MT compressor tripped; solenoid not opening | Check case controllers for active defrost; verify solenoid coil voltage |
+| LT suction low (LP trip) | LT booster tripped; LT EEVs all closed; LT defrost active on all circuits | Check LT case controllers; verify booster compressor status |
+| Compressor slugging / liquid in suction | Superheat <18°F; EEV overfeeding; sensor off coil | Check superheat reading; re-seat suction temperature sensor on line |
+| High discharge temperature | Low refrigerant charge; GC heat rejection poor; compressor valve wear | Verify refrigerant weight in system; GC approach temperature; discharge valve leak-by test |
+| GC sensor reading stuck/frozen | Sensor shorted or open; wiring fault | Verify sensor resistance; check 5V supply; compare to hand-held thermometer |
+| CO₂ detector alarm (no leak) | EMI from VFD near detector; self-test cycle due; detector end-of-life | Relocate detector from EMI source; check detector test/cal date |
+| Oil reservoir low | M3 solenoid stuck closed; oil regulator mis-set; separator bypass | Check Swagelok oil regulator pressure; verify M3 solenoid energization at light load |
+| Defrost incomplete / ice buildup | Defrost termination sensor off coil; defrost duration too short; return pressure too low | Reattach termination sensor; extend max defrost time 5 min increments; verify return-side setpoint |
+
+---
+
+### Parts and Support
+
+- **M&M Carnot service (Johnson Controls):** carnotservice@jci.com | 24/7 emergency: 1-866-227-2750
+- **Documentation:** mmcarnot.com | docs.johnsoncontrols.com (search "Carnot" or "Aquilon")
+- **Startup form:** Filed inside electrical cabinet at every new commissioning — request copy from M&M Carnot if missing
+- **Note on fault codes:** Specific alarm codes depend on the controller platform (Micro Thermo, Danfoss AK-PC, Carel pRack). Refer to that controller's documentation for code lookup.`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,

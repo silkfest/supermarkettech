@@ -10,6 +10,7 @@ import {
   MICRO_THERMO_KNOWLEDGE,
   EVAPCO_LMP_KNOWLEDGE,
   PENN_CONTROLS_KNOWLEDGE,
+  CARNOT_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -144,6 +145,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: PENN_CONTROLS_KNOWLEDGE,
     manualKeywords: ['penn', 'penn controls', 'a421', 'a19', 'p70', 'johnson controls'],
     tags: ['Temperature Controls', 'Pressure Controls', 'A421', 'P70'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'carnot',
+    title: 'Carnot (M&M Carnot / JCI)',
+    shortTitle: 'Carnot',
+    description: 'CO₂ transcritical booster rack systems (CAR-090, Aquilon DS), ejector-based flash gas recovery, GC outlet sensor installation, HP throttling control, commissioning checklist, and common fault diagnosis.',
+    iconName: 'Wind',
+    colorClass: 'lime',
+    content: CARNOT_KNOWLEDGE,
+    manualKeywords: ['carnot'],
+    tags: ['CO₂', 'Transcritical', 'Ejector', 'Booster'],
     category: 'manufacturer',
   },
   {
