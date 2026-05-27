@@ -2162,6 +2162,532 @@ Note: color codes are not universal — always verify with a meter before assumi
 5. **Never reset a tripped breaker without finding the cause** — a breaker tripping on a refrigeration circuit usually means a ground fault, short, or overloaded motor; resetting without investigation causes equipment damage or fire.`
 
 
+export const MICRO_THERMO_KNOWLEDGE = `
+## Micro Thermo Technologies (MT-Alliance) — Case & Rack Controllers
+
+Micro Thermo Technologies (MTT) is a Parker Hannifin / Sporlan brand. Their MT-Alliance platform is the standard controller used in Evapco LMP CO₂ transcritical rack systems and is widely deployed in Canadian and US supermarkets. The Alliance platform controls everything from individual display case EEVs through to full CO₂ rack head pressure management.
+
+---
+
+### MT-Alliance Platform Overview
+
+**Board families:**
+- **MT-500 series** (classic): MT-500Q (base node), MT-504P (4 relays/4 AO), MT-508P (8 relays), MT-512P (12 relays); require 24/32 Vac center-tap transformer; power via 3-18AWG cable
+- **MT-700 series** (modular cluster): MT-722A main controller + plug-in expansion modules; require dedicated 24 Vac transformer; do NOT share transformer with MT-500 boards or third-party loads; max cluster = 4.8 A rms / 115 VA
+- **MT-ALARM** (336A): 16–24 Vac; handles alarm relay outputs and buzzer; can share MT-700 transformer or use dedicated 16 Vac secondary
+- **Case Controller board**: 120/240 Vac input (2A fused); controls EEV (stepper), fan relay, defrost relay, lighting relay, anti-sweat SSR; 4 temperature sensor inputs + 1 pressure transducer input
+
+**MT-700 module reference (power, VA at 24Vac):**
+| Module | Description | VA (no load) |
+|---|---|---|
+| MT-722A | Main controller | 7.0 VA |
+| MT-716U | 16 universal inputs | 2.8 VA |
+| MT-784A | 8 inputs / 4 relay outputs | 4.7 VA |
+| MT-766A | 6 inputs / 2 AO / 4 RO | 5.6 VA |
+| MT-742V | 4 inputs / 2 valve (MVC) outputs | 2.4 VA + valve VA |
+| MT-708V | 8 valve (MVC) outputs | 1.9 VA + valve VA |
+
+**Power rules:**
+- MT-500: 3VA per board; 15V sensor power on the board must stay above 13Vdc or temperature readings drift — measure this (not the transformer secondary) when troubleshooting sensor accuracy
+- MT-700: never hot-swap modules with 24V power on; insert a 4A fuse in series with each MT-722A AC input (UL compliance)
+- Power cables: 18AWG minimum; use center-tap cable (3 conductors) for MT-500; do NOT use shield as the third conductor
+
+---
+
+### MT-Alliance FTT10 Network (LonWorks)
+
+**Cable:** 2-18AWG stranded twisted pair unshielded; Belden 8471 (preferred) or Belden 8461; do NOT mix cable types on the same segment
+
+**Topology (Free Topology — FTT-10 and FT-X):**
+- Maximum 64 nodes per segment (PC and routers count as nodes); design to ≤50 to allow growth
+- Maximum node-to-node distance: 1,312 ft (400 m) for Belden 8471
+- Maximum total wire length: 1,640 ft (500 m)
+- Terminator: **FT-NT-2 (MTT part 950-0035)** — place one terminator per segment, preferably near the center
+- Data link is NOT polarity-sensitive; MT-500 boards have two DATA connectors — either may be used
+
+**Network noise rules:**
+- Minimum 8" separation from cables >400 Vac; 3" from 120 Vac cables; same rules apply when crossing (at right angle is acceptable)
+- VFDs: install manufacturer-recommended EMI filters/chokes; ground loops can exist even with proper VFD grounding
+- Use LonWorks "life saver" common-mode choke (P/N 180-0028) on nodes near high-noise equipment
+- Echelon magnetic shield model 51001R or MTT 220-0044 for FTT-10A transceiver protection
+
+**Network health check (in MT-Alliance software → Network Analyzer):**
+- Score 0–10: excellent; 10–20: good; >20: marginal network — improve before commissioning
+- Resistance test at cable end (with 52Ω terminator in-circuit): <58Ω = acceptable; >65Ω = fault — check terminal screws, remove damaged segment
+- High resistance reading can also be caused by electrical noise (gives false meter readings) or blown-in insulation contacting the cable
+
+---
+
+### Case Control Board — Field Guide
+
+**Inputs:**
+- T+AIR: return air temperature — used for case temperature alarm monitoring
+- T+COIL: coil temperature — used for superheat calculation; must be located at coil outlet
+- T+DEF: defrost termination temperature — opens when coil clears; placement at coil is critical (if it falls off = defrost always runs to max time)
+- T+AUX: auxiliary temperature (optional monitoring)
+- P_evap: pressure transducer input (0.5–4.5V ratiometric, powered from 5V sensor supply) — used with coil temperature to calculate superheat without a manifold gauge
+
+**Outputs:**
+- 12V bipolar stepper motor: drives Sporlan SEI/SER/SERI/SEHI EEV directly — never exceed rated step count
+- Fan relay: 5A at 240 Vac, 4.8 FLA
+- Defrost relay: 5A at 240 Vac, 1.9A pilot duty (for contactor coil — not direct heater load above 5A)
+- Lighting relay: 5A at 240 Vac, 2.4A ballast
+- Anti-sweat output: pulsed solid-state relay (SSR), 5V/15mA max
+
+**Supported EEVs:** Sporlan SEI-0.5, -1, -2, -3.5, -6, -8.5, -11, -30; SER-1.5, -6, -11, -20; SER-AA/A/B/C/D; SERI-G/J/K — configure step count in controller to match valve (1,596 steps for all SEI/SER/SERI); wrong step count strips the drive coupling
+
+**"CDS Invalid" alarm on Micro Thermo Case Controller:**
+The Case Controller can also drive Sporlan CDS/CDST EPR valves. "Invalid" alarm means controller cannot confirm valve position. Steps:
+1. Check 4-wire cable from board to valve — moisture, loose pins, damage at case junction box
+2. Verify 24 Vac at driver board power terminals
+3. Measure valve motor resistance: CDS-2/-4/-7 = ~100Ω per phase; CDS-9/-16/-17 = ~75Ω per phase; open or short = replace motor assembly
+4. Power-cycle the Case Controller board — listen for clicking during re-initialization (10–15 clicks)
+5. Verify step count matches valve: CDS-2/-4/-7 = 2,500 steps; CDS-9/-16/-17 = 6,386 steps
+
+---
+
+### Pressure Transducers — Micro Thermo
+
+All MTT transducers: 5 Vdc regulated (±5%), 8mA current draw; output = ratiometric 0.5–4.5V (proportional to supply); shielded 3-18AWG cable (Belden 8770 or equivalent: black/red/white)
+
+**Install pointing UP** to prevent liquid from pooling in the sensing cavity. Use a siphon loop in high-temperature applications.
+
+| Part No. | Range | Kit P/N | Connection | Application |
+|---|---|---|---|---|
+| 023-0081 | 100 psig | 952-0001 | 1/8 NPT | HFC low-side |
+| 023-0148 | 200 psig | 952-0004 | 1/8 NPT | HFC suction |
+| 023-0082 | 500 psig | 952-0002 | 1/8 NPT | CO₂ LT suction (booster) |
+| 023-0331 | 600 psig | 952-0007 | 1/4 NPT | CO₂ MT suction |
+| 023-0441 | **652 psig** | 952-0018 | 1/8 NPT | **CO₂ MT/LT suction — standard on LMP racks** |
+| 023-0387 | **2,000 psig** | 952-0010 | 1/8 NPT | **CO₂ HP gas cooler outlet — standard on LMP racks** |
+
+**Critical: do not swap the 652 psi and 2,000 psi transducers.** The 652 psi unit will rupture if installed on the CO₂ high-pressure side (normal transcritical HP = 900–1,425 psig).
+
+**MT-Alliance configuration:** Physical Type = "Press Med Range" (652 psi) or "Press Med Range (4X)" (2,000 psi); set Manufacturer to "Micro Thermo" and select the part number; confirm the node input and click Diagram button to verify wiring.
+
+---
+
+### Common Faults — Micro Thermo Controllers
+
+| Fault | Likely cause | Check |
+|---|---|---|
+| Case controller "CDS invalid" | Wiring fault, driver board, wrong step count, failed motor | 4-wire cable, motor resistance, step count config |
+| Pressure transducer reading frozen/unrealistic | Wrong transducer range (652 vs 2,000 psi swapped), wiring short, failed sensor | Verify P/N on transducer body; check 5V supply at node |
+| Network comm fault (node offline) | LonWorks terminator missing, wire break, noise from VFD | Resistance test at cable end; check terminator (952-0035); rerun Network Analyzer |
+| MT-500 sensor readings drifting | 15V sensor power dropped below 13Vdc — too many boards on run | Measure 15V at affected board; shorten wire run or add new transformer |
+
+---
+
+### Parts and Support — Micro Thermo
+
+- **Micro Thermo Technologies (Parker / Sporlan):** sporlanonline.com/micro-thermo | 1-888-664-1406 (Canada) | 1-888-920-6284 (USA)
+- **MT-Alliance software:** Available from Sporlan/Parker for network configuration, commissioning, and data logging`
+
+
+export const EVAPCO_LMP_KNOWLEDGE = `
+## Evapco LMP — CO₂ Transcritical Booster Rack Systems
+
+Evapco LMP (formerly Systems LMP Inc., founded 1998) manufactures complete CO₂ booster transcritical rack systems for supermarkets. The Micro Thermo Alliance platform is the integrated rack and case controller.
+
+---
+
+### CO₂ Leak Detection
+
+**CO₂ detector (P/N 023-0388):** Install on rack ±1 ft from the ground (CO₂ is heavier than air and accumulates at floor level); do NOT install near doors, fresh air supply vents, or openings.
+
+**Manual pull station (P/N 961-0001):** Two manual pull stations wired in parallel with the CO₂ detector output; accepts up to one additional leak detector.
+- On alarm (CO₂ detector or manual pull): relay R1 signals MT-500 acquisition module (closes contact at terminals 7 & 8 → alarm active); relay R2 closes to force outside air damper open (terminals 9–10) and activate mechanical room evacuators (terminals 11–12)
+- Requires 120/208/240 to 24V CT 20VA transformer (P/N 560-0027) — dedicated to this circuit only
+- MT acquisition module input: open contact = no alarm; closed contact = alarm active
+
+**CO₂ concentration effects:**
+| Concentration | Effect |
+|---|---|
+| 1% (10,000 ppm) | Breathing increases, impaired hearing, headache |
+| 2% (20,000 ppm) | Breathing rate 50% above normal; headaches, tiredness with prolonged exposure |
+| 4–5% (40,000–50,000 ppm) | Intoxication, slight choking, breathing 4× normal |
+| >10% (>100,000 ppm) | Rapid unconsciousness; potentially fatal |
+
+OSHA PEL for CO₂: **5,000 ppm (8-hour TWA)**. Detector alarm setpoints: 1,000 ppm (early warning), 5,000 ppm (mandatory action/evacuation). Machine room ventilation interlock must be verified at every PM.
+
+---
+
+### System Architecture (Booster Configuration)
+
+- LT booster compressors → discharge into MT suction header (flash injection)
+- MT compressors → gas cooler → head pressure throttling valve → flash tank receiver
+- Flash gas bypass valve → MT suction header (recirculates flash gas)
+- Liquid from flash tank → LT/MT case EEVs
+
+### Key System Setpoints
+
+| Parameter | Setpoint | Notes |
+|---|---|---|
+| Flash tank receiver | 31°F / 483 psig | Maintained by flash gas bypass valve referencing P05 |
+| Head pressure valve — subcritical target | 1.8°F subcooling | Abandons subcooling control below 700 psig minimum |
+| Head pressure valve — transcritical | Efficiency algorithm | Abandoned at 1,425 psig maximum; considers compressor power + flash gas % |
+| Gas cooler float setpoint | Ambient + 1°F ΔT | Minimum 60°F/750 psig; maximum 85°F |
+| Hot gas defrost — supply pressure | 560 psig | V62 regulator maintains; P20 is the reference |
+| Hot gas defrost — return pressure | 510 psig | V32 hold-back valve maintains; PO4 is the reference |
+| MT superheat target | 36°F | Min 18°F; max 54°F; valve modulation proportional |
+| Liquid injection trigger | SH >48°F or discharge >264°F | L15a/b/c solenoids, staged by MT PID |
+| Oil regulator setpoint | 580–590 psig | Flash tank pressure +100 psig; Swagelok depressurization regulator |
+
+---
+
+### Flash Tank Operation
+
+- Flash tank receiver pressure held at ~31°F / 483 psig by the **flash gas bypass valve** (references P05)
+- **Head pressure valve interlock with flash tank:**
+  - Closes when flash tank saturated temp >50°F / 638 psig (prevents overfeed to MT suction)
+  - Opens when flash tank saturated temp <23°F / 427 psig (prevents starvation)
+- High flash tank level = MT compressors tripped or main EXV overfeeding → liquid carryover risk
+- Low flash tank level = EXV underfeeding or MT compressors starving on vapor only → capacity loss
+
+---
+
+### Head Pressure Control
+
+**Subcritical (gas cooler outlet below 87°F / 1,055 psig):**
+- HP throttling valve maintains 1.8°F subcooling
+- Subcooling = P08 saturated temperature − T05 gas cooler outlet temperature
+- Positive subcooling (liquid) = valve opens (reduces pressure) to maintain ≥1.8°F
+- Negative subcooling (superheated) = valve closes (increases pressure) to build subcooling
+- Minimum setpoint: 700 psig — below this, valve abandons subcooling control and closes to hold 700 psig
+
+**Transcritical (gas cooler outlet above 87°F / 1,055 psig):**
+- HP throttling valve uses efficiency algorithm: higher head pressure reduces flash gas in flash tank → MT compressors handle less flash gas → more MT capacity available
+- Maximum setpoint: **1,425 psig** — valve opens to protect system above this limit
+- Traditional "lower head pressure = better COP" does NOT apply transcritically
+
+**Gas cooler fan control (floating setpoint):**
+- Fans modulate/cycle to maintain gas cooler outlet temperature = ambient + 1°F (float set)
+- Float minimum: 60°F — fans will not reduce gas cooler outlet below 60°F regardless of ambient
+- Float maximum: 85°F — fans will not chase above 85°F regardless of ambient
+- 3.6°F deadband: fans increase speed if outlet >setpoint+1.8°F; decrease speed if <setpoint−1.8°F
+
+---
+
+### Hot Gas Defrost Operation
+
+**Valve sequencing:**
+| Valve | Refrigeration mode | Defrost mode |
+|---|---|---|
+| Hot Gas Enable Valve (M1) | Closed (spring-return — fails closed) | Opens; stays open until defrost ends |
+| Hot Gas Supply Regulator (V62) | Closed | Modulates to maintain 560 psig supply |
+| Hot Gas Return Valve (V32) | Closed | Modulates to maintain 510 psig return inlet |
+| Liquid Supply Valve | Open | Closed |
+| Suction Stop Valve | 100% open | 0% — closes; slow-opens at set increments after defrost/power outage to protect compressors |
+| Case EEV (circuit controller) | Modulates for superheat | Closed — check valve allows hot gas to bypass around EEV |
+
+**Why return pressure matters:** CO₂ must condense in the evaporator coil to release latent heat. Latent heat of CO₂ at 510 psig ≈ 120 BTU/lb. Without condensation (superheat gas only), only 0.20 BTU per 1°F temperature drop — would require ~720 lbs of CO₂ to melt 1 lb of ice. Holding 510 psig return pressure forces condensation → effective defrost.
+
+---
+
+### MT Superheat Control
+
+- MT return gas routed through or around a heat exchanger (suction/gas cooler return)
+- Valves V34a and V34b modulate based on measured superheat:
+  - 0% position: all gas through heat exchanger (maximum superheat addition)
+  - 100% position: gas bypasses heat exchanger (minimum superheat addition)
+  - Proportional modulation between min 18°F and max 54°F targets
+- LT superheat: valves V31a/V31b exchange heat between LT suction return and main liquid supply
+- MT liquid injection de-superheat (L15a, L15b, L15c): inject liquid into flash gas return header upstream of MT suction header
+  - PID >5%: L15a only
+  - PID >33%: L15a + L15c
+  - PID >66%: L15a + L15b + L15c
+
+---
+
+### Oil Management — LMP Racks
+
+**Circuit:** Compressor → oil separator → oil reservoir → compressor crankcase oil feed header
+
+**Swagelok depressurization regulator (between separator and reservoir):**
+- Set point: 580–590 psig (essentially flash tank pressure +100 psig)
+- Oil reservoir sits at flash tank pressure; separator feeds oil down continuously
+- Discharge gas bypasses toward flash tank slightly upstream of the flash gas bypass valve (prevents liquid contamination of MT suction during high-flash-gas events)
+
+**Separator to reservoir solenoid (M3):**
+- >5% combined LT+MT suction capacity → M3 CLOSED
+- <5% combined capacity → M3 OPEN (allows oil to drain to reservoir at light loads)
+
+**Oil regulator adjustment procedure:**
+1. Verify rack is active and head pressure is above 650 psig
+2. Attach gauge to oil reservoir service valve
+3. Slowly close ball valve at top of reservoir (purge line to flash tank)
+4. Slowly turn Swagelok regulator stem clockwise to increase setting
+5. Target 580–590 psig (flash tank setpoint +100 psig); adjustment is very sensitive — be patient
+6. If setting overshoots, open purge line ball valve, reduce setting, and restart
+7. Open purge line ball valve when properly set
+8. Recheck regulator setting at full rack capacity — discharge gas temperature affects the setting
+
+---
+
+### LMP Rack Stop and Restart Procedure
+
+**Stopping (from the LMP manual):**
+1. Put rack into manual mode from MT-Alliance; disable all compressors one by one
+2. Allow all circuits to complete defrost cycles (prevents ice buildup after shutdown)
+3. Close liquid line solenoids at rack level
+4. Allow suction pressure to pump down (<50 psig) before stopping final compressor
+5. Close gas cooler inlet isolation valve (prevent refrigerant migration to gas cooler overnight)
+6. De-energize all control power in correct sequence per electrical panel
+
+**Restarting:**
+1. Verify oil level in oil reservoir (sight glass at least half-full)
+2. Open gas cooler isolation valve
+3. Energize control power; allow MT-Alliance to initialize and run self-check
+4. Enable compressors one at a time — allow suction pressure to stabilize between additions
+5. Verify flash tank pressure comes up to setpoint (483 psig); verify head pressure control is active
+6. Verify CO₂ detector is active and machine room ventilation interlock is functional
+7. Check all valve positions via MT-Alliance HMI before leaving site
+
+---
+
+### Common Faults — LMP CO₂ Racks
+
+| Fault | Likely cause | Check |
+|---|---|---|
+| Flash tank pressure uncontrolled (hunting) | Flash gas bypass valve fault, P05 transducer offset | Verify P05 transducer calibration; check FGB valve position via HMI |
+| High HP alarm (>1,425 psig) | GC fans not staging; GC coil fouled; HPV stuck closed; extreme ambient | Check fan VFD status; GC approach temp; HPV actuator signal |
+| Low LT suction (LP alarm) | CCMT/EEV all closed, LT compressor tripped, EVRA solenoid not opening | Check case controllers for defrost active; verify EVRA coil energized |
+| Oil reservoir low / compressor oil alarm | M3 solenoid stuck closed; separator bypass; oil regulator over-set | Verify M3 solenoid; check Swagelok regulator pressure vs setpoint |
+| Superheat hunting on MT circuits | V34 exchanger valve calibration drift; P08 transducer offset | Recalibrate transducer; verify valve percent in MT-Alliance service screen |
+| CO₂ detector alarm with no visible leak | False trigger from VFD/motor EMI near detector; detector self-test due | Relocate detector away from EMI sources; test and recalibrate detector |
+
+---
+
+### Parts and Support — Evapco LMP
+
+- **Evapco LMP:** evapcolmp.ca | Technical support: 450-629-9864
+- **MT-Alliance software (Micro Thermo / Parker Sporlan):** sporlanonline.com/micro-thermo | 1-888-664-1406 (Canada) | 1-888-920-6284 (USA)
+- **LMP startup form:** P/N "LMP Start up form 2022-07-13" — complete at every new commissioning; records all setpoints, transducer calibrations, and valve positions as-built baseline`
+
+
+export const PENN_CONTROLS_KNOWLEDGE = `
+## Penn Controls (Johnson Controls) — Temperature & Pressure Controls
+
+Penn Controls is a Johnson Controls brand. All Penn part numbers carry dual labeling (e.g., "Johnson Controls A421" = "PENN A421"). Products are identical regardless of label; documentation uses both names interchangeably.
+
+---
+
+### A19 Series — Electromechanical Temperature Controls
+
+**Overview:** Single-pole, liquid-filled bulb-and-capillary controls. Available in SPST and SPDT versions. Line voltage rated; no external power supply required.
+
+**SPDT terminal identification:**
+- **R** (red) = Common
+- **Y** (yellow) = Closes on temperature RISE (cooling output — opens as temp drops)
+- **B** (blue) = Closes on temperature DROP (heating output — opens as temp rises)
+
+**Wiring rules:**
+- For a compressor on a COOLER: wire load between R and Y; compressor energizes when temp rises above setpoint and drops out at setpoint minus differential
+- For a defrost heater or heat call: wire between R and B
+- Never jumper Y and B together — direct short across the switch
+
+**Setpoint and differential:**
+- Setpoint is adjusted by rotating the dial to the desired cut-in temperature
+- Differential is the gap between cut-in and cut-out; fixed on some models, adjustable (1–10°F typical) on others
+- Adjustable differential knob is behind the cover; a larger differential = fewer short cycles = more temperature swing
+- Constant differential — the gap does not change with ambient or load
+
+**Manual reset models:** Trip-Free® design. After a high-limit trip, must press physical reset button. Cannot be defeated by wiring a jumper across the switch. Use for unmonitored refrigeration to prevent nuisance restarts.
+
+**Typical operating ranges by model suffix:**
+| Suffix | Range | Application |
+|---|---|---|
+| A19ABC | 20–80°F | Walk-in cooler |
+| A19BBC | –40–30°F | Walk-in freezer / low-temp |
+| A19DAC | 40–110°F | Condenser fan cycling |
+| A19EBC | 60–160°F | Defrost termination / high-limit |
+
+**Field checks:**
+1. Set dial to a temperature above or below current actual temperature to verify contact switching — use a multimeter across R-Y and R-B
+2. Check capillary for kinks (kink = control locks at fixed temperature)
+3. Verify bulb is clamped firmly to the suction line or evaporator coil where specified — loose bulb causes hunting
+
+---
+
+### A421 Series — Electronic Temperature Controls
+
+**Overview:** Digital temperature control with backlit LCD, 3-button keypad, and optional keypad lockout. SPDT relay output. Available in 24 VAC and 120/240 VAC versions. Requires A99 NTC sensor (sold separately; P/N A99B-series).
+
+**Terminal block wiring:**
+| Terminal | Function |
+|---|---|
+| C1, C2 | Control power input (24 VAC or 120/240 VAC depending on model) |
+| SEN | Sensor signal (either lead of A99 — not polarity-sensitive) |
+| COM | Sensor and low-voltage common; connect shield drain here only |
+| Y1, R, B1 | SPDT relay output (R = common; Y1 = normally open; B1 = normally closed) |
+
+**Key settings (accessed via 3-button menu):**
+
+| Parameter | Code | Range | Notes |
+|---|---|---|---|
+| Setpoint | SP | –40 to 212°F | Main cut-in / cut-out temperature |
+| Differential | dIF | 1–30°F | Distance between cut-in and cut-out |
+| Anti-Short Cycle Delay | ASd | 0–12 min | Minimum off-time; prevents rapid cycling |
+| Keypad Lockout | LOC | On/Off | Prevents unauthorized setpoint changes |
+| Sensor Offset | OFS | –10 to +10°F | Calibrates reading to match reference thermometer |
+| Sensor Failure Mode | SF | On / Off | Relay state if sensor fails or disconnects |
+| Temperature Units | °F/°C | F or C | Display units |
+| Defrost Interval | dI | 2–24 hr / 0 = disabled | Hours between defrost initiations |
+| Defrost Duration | dFt | 1–99 min | Maximum defrost run time |
+| Defrost Termination Temp | dtE | –40 to 212°F | Ends defrost early if coil reaches this temp |
+
+**Defrost modes:**
+- Off-cycle defrost: compressor off, fans may run, heaters off — uses temperature differential to melt frost; only works for coolers, not freezers
+- Electric defrost: relay energizes heater circuit; dFt and dtE control duration; compressor stays off during defrost
+
+**Sensor fault codes (LCD display):**
+- **SF + OP**: Open circuit — sensor disconnected, broken lead, or loose terminal
+- **SF + SH**: Short circuit — sensor wire shorted to ground or to itself
+- Control defaults to SF relay state when fault is active; alarm output (if wired) also triggers
+
+**Critical sensor rules:**
+- Only use A99B-xxx sensors — any other sensor type causes calibration error; the A421 expects a specific resistance-temperature curve
+- Sensor leads are NOT polarity-sensitive but shield must connect to COM at the control only (isolated at sensor end)
+- Maximum sensor lead extension: use 18 AWG for runs >50 ft; 22 AWG minimum for shorter runs
+
+**Compressor control (cooling mode):**
+- Y1-R closes when temperature rises above setpoint + differential (compressor ON)
+- Y1-R opens when temperature drops to setpoint (compressor OFF)
+- ASd timer starts on compressor OFF; compressor cannot restart until ASd expires
+
+---
+
+### A28 Series — Two-Stage Temperature Controls
+
+**Overview:** Electromechanical two-stage control with two independent SPDT switches. Used for staged compressor capacity or independent zone control. Liquid-filled bulb.
+
+**Stage sequencing:**
+- Stage 1 cuts in first at the warmer (higher) setpoint
+- Stage 2 cuts in at a lower temperature (more cooling demand)
+- Interstage differential (adjustable 2–7°F) prevents both stages from running simultaneously when one stage is adequate
+- Both stages cut out at their individual setpoints minus their individual differentials
+
+**Application:** Walk-in freezer with two-speed compressor or two separate compressors; stage 2 provides capacity for high pull-down load, stage 1 maintains temperature at light load.
+
+---
+
+### P70 / P72 Series — Dual Pressure Controls
+
+**Overview:** Electromechanical bellows-type dual pressure control. Combines high-pressure cut-out and low-pressure cut-in/cut-out in a single housing. Line voltage, SPST or SPDT. Standard on rack systems, condensing units, and walk-in compressors.
+
+**High-pressure side:**
+- Scale shows CUT-OUT setting only
+- Fixed differential (~65 psi) — cut-in = cut-out minus 65 psi
+- Turn range screw clockwise to raise the cut-out setting
+- **Auto-reset models (P70AB):** Resets automatically when pressure drops below cut-in; used for low-pressure control
+- **Manual reset high-side (P70NB and similar):** Requires Trip-Free® button press after high-pressure cut-out; prevents compressor restart until fault is investigated
+
+**Low-pressure side:**
+- Scale shows CUT-IN setting
+- Separate differential adjustment (MICRO-SET models: turn diff screw clockwise = larger differential = lower cut-out)
+- CUT-OUT = CUT-IN − differential
+
+**Typical setpoints by refrigerant:**
+
+| Refrigerant | Application | Low-Side Cut-In | Low-Side Cut-Out | High-Side Cut-Out |
+|---|---|---|---|---|
+| R-404A | Walk-in cooler (35°F) | 55–60 psig | 45–50 psig | 200–220 psig |
+| R-404A | Walk-in freezer (−10°F) | 15–20 psig | 8–12 psig | 185–200 psig |
+| R-448A | Walk-in cooler (35°F) | 58–63 psig | 48–53 psig | 210–230 psig |
+| R-448A | Walk-in freezer (−10°F) | 16–21 psig | 9–13 psig | 195–215 psig |
+| R-134a | Reach-in cooler (38°F) | 25–30 psig | 18–22 psig | 130–150 psig |
+
+**Pressure tap location:**
+- High-side tap: into the discharge line downstream of compressor, upstream of condenser (or on liquid line post-receiver)
+- Low-side tap: suction line at compressor inlet
+- Always tap from the TOP of horizontal lines — prevents oil and liquid from entering bellows; oil slugging in bellows = stuck control = compressor won't restart
+
+**P72 vs P70:** P72 adds a second set of contacts for alarm or auxiliary function; otherwise identical.
+
+---
+
+### P78 Series — Compact Dual Pressure Controls
+
+**Overview:** Modern IP54-rated dual pressure control. SPDT switch action. Same function as P70 but in a smaller, weather-resistant enclosure suited for outdoor or equipment-mounted applications.
+
+**Key differences from P70:**
+- IP54 enclosure (P70 is NEMA 1 / open)
+- Compact form factor for tight equipment compartments
+- SPDT contacts allow use as alarm or auxiliary output on one side
+- Same pressure range options as P70; compatible with same refrigerants
+
+---
+
+### A99 NTC Temperature Sensors
+
+**Compatible with:** A421 series controllers only. Do NOT substitute generic NTC sensors.
+
+**Specifications:**
+- Type: Negative Temperature Coefficient (NTC) thermistor
+- Resistance at 77°F (25°C): 10 kΩ
+- Resistance at 32°F (0°C): ~32 kΩ
+- Resistance at −4°F (−20°C): ~100 kΩ
+- Not polarity-sensitive (two identical leads)
+- Operating range: −40 to +221°F (−40 to +105°C)
+
+**Model variants:**
+| Part No. | Housing | Application |
+|---|---|---|
+| A99B-200C | Bare leads, 6 ft cable | Suction line or evaporator coil clamp |
+| A99B-200D | Bare leads, 20 ft cable | Remote sensing applications |
+| A99B-GND | Grounded housing | Panel or surface mounting |
+| A99B-PHD | Pipe immersion, 3/8" well | Liquid line or pipe immersion |
+
+**Extension wiring:** Use shielded twisted pair; 22 AWG for runs up to 50 ft, 18 AWG for 50–200 ft. Connect shield drain to A421 COM terminal only; tape off shield at sensor end to prevent inadvertent grounding.
+
+---
+
+### Common Faults and Field Fixes — Penn Controls
+
+| Symptom | Likely Cause | Check / Fix |
+|---|---|---|
+| A421 display shows "SF OP" | Open sensor circuit | Check sensor lead continuity; re-seat terminals; verify sensor cable not cut |
+| A421 display shows "SF SH" | Shorted sensor or cable | Disconnect sensor; if fault clears, sensor or cable is bad; check for pinched/wet cable |
+| Compressor short cycling | ASd too short or differential too narrow | Increase ASd (minimum 3–5 min for most compressors); increase differential 1–2°F |
+| A421 reads 5–8°F off actual | Sensor not in contact with measured air/surface | Reposition sensor; add thermal grease or clamp for line-contact sensors |
+| A19 contact won't switch | Kinked capillary or lost charge | Check capillary for kinks; if bulb temp far outside setpoint range and no switching, replace control |
+| A19 cycles too fast | Differential too narrow | Increase differential adjustment; ensure bulb is not picking up case heat from nearby source |
+| P70 low-pressure lockout at startup | Low-pressure cut-out too high or system undercharged | Verify refrigerant charge; adjust cut-out down if setpoint is confirmed correct |
+| P70 high-pressure cut-out (auto-resets) | Condenser fouled, fan failure, high ambient | Clean condenser; verify all condenser fans running; check discharge pressure |
+| P70 high-pressure cut-out (manual reset keeps tripping) | Repeated overpressure condition | Find and fix root cause before resetting — condenser, fan, refrigerant overcharge, or non-condensables |
+| P70 won't cut back IN on low pressure | Differential set too wide, or bellows stuck | Check differential setting; tap housing gently while watching pressure; if bellows stuck, replace control |
+| P78 reads pressure but won't switch | SPDT contacts welded from inrush | Test with multimeter across all three contact terminals; replace if welded |
+
+---
+
+### Application Quick Reference
+
+**Walk-in cooler (35–38°F product):**
+- A421 setpoint: 37°F, differential: 2°F, ASd: 3 min
+- P70 low-side cut-in: 57 psig (R-404A), cut-out: 47 psig; high-side cut-out: 205 psig
+
+**Walk-in freezer (−10°F product):**
+- A421 setpoint: −12°F, differential: 3°F, ASd: 5 min
+- Electric defrost: dFt 30 min, dtE 55°F, dI every 6–8 hours
+- P70 low-side cut-in: 17 psig (R-404A), cut-out: 9 psig; high-side cut-out: 195 psig
+
+**Reach-in display case (34–38°F):**
+- A19 setpoint: 36°F, differential: 2–3°F (expect frequent cycling with door openings)
+- P70 low-side cut-in: 57 psig (R-404A); high-side cut-out: 210 psig
+
+**Condenser fan cycling (A19, cooling mode):**
+- Use A19DAC range (40–110°F); wire load between R and Y (fans cycle OFF when condensing pressure drops)
+- Setpoint: 110°F equivalent condensing temp; differential: 10°F (fans off at 100°F, on at 110°F)
+
+---
+
+### Parts and Support — Penn Controls
+
+- **Johnson Controls / Penn Controls:** johnsoncontrols.com/hvac-equipment/unitary-hvac/commercial-package | 1-800-861-3999
+- **Documentation:** docs.johnsoncontrols.com — search "Penn Controls" or part number (A421, A19, P70, etc.)
+- **A99 sensor compatibility note:** Only A99B-series sensors are compatible with A421 controls — confirm part number before ordering replacements`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
