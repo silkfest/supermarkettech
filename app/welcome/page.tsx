@@ -48,7 +48,7 @@ const TECHNICIAN_FEATURES: Feature[] = [
   {
     icon: <FileText size={20} />,
     title: 'Manual Library',
-    description: 'Upload manufacturer PDFs and the system processes them automatically. The AI reads your manuals and cites them directly in chat answers. Your fleet's exact documentation, always at hand.',
+    description: "Upload manufacturer PDFs and the system processes them automatically. The AI reads your manuals and cites them directly in chat answers. Your fleet's exact documentation, always at hand.",
     href: '/library',
   },
   {
@@ -114,7 +114,7 @@ const MANAGER_FEATURES: Feature[] = [
   {
     icon: <ShieldCheck size={20} />,
     title: 'Policies & Procedures',
-    description: 'Store your company's operational procedures, safety protocols, and compliance documents in one place. Technicians can access them in the field; managers can update them instantly.',
+    description: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Technicians can access them in the field; managers can update them instantly.",
     href: '/policies',
   },
   {
@@ -283,7 +283,7 @@ export default function WelcomePage() {
               {[
                 {
                   title: 'Equipment health',
-                  body: 'Every unit's current status across all sites. Active alarms bubble to the top. Filter by store, equipment type, or alarm severity.',
+                  body: "Every unit's current status across all sites. Active alarms bubble to the top. Filter by store, equipment type, or alarm severity.",
                 },
                 {
                   title: 'Team activity',
@@ -291,7 +291,7 @@ export default function WelcomePage() {
                 },
                 {
                   title: 'Training progress',
-                  body: 'Track each apprentice's module completions and quiz scores. Know who is ready to work independently and who needs more time.',
+                  body: "Track each apprentice's module completions and quiz scores. Know who is ready to work independently and who needs more time.",
                 },
               ].map(({ title, body }) => (
                 <div key={title}>
