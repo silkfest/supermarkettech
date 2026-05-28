@@ -1,6 +1,7 @@
 import {
   REFRIGERATION_KNOWLEDGE,
   SYSTEM_DIAGNOSTICS_KNOWLEDGE,
+  DEFROST_KNOWLEDGE,
   SPORLAN_KNOWLEDGE,
   COPELAND_KNOWLEDGE,
   HUSSMANN_KNOWLEDGE,
@@ -51,6 +52,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: SYSTEM_DIAGNOSTICS_KNOWLEDGE,
     manualKeywords: [],
     tags: ['Troubleshooting', 'HFC', 'CO₂', 'Compressors'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'defrost-systems',
+    title: 'Defrost Systems',
+    shortTitle: 'Defrost',
+    description: 'Electric, hot gas (2-pipe and 3-pipe), and CO₂ off-cycle defrost: how each works, termination sensor placement, adaptive defrost, CO₂-specific considerations, and 12 common field mistakes.',
+    iconName: 'Flame',
+    colorClass: 'yellow',
+    content: DEFROST_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Defrost', 'Electric', 'Hot Gas', 'CO₂'],
     category: 'fundamentals',
   },
   {

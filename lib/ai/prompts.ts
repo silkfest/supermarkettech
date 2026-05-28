@@ -3192,7 +3192,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 
 #### Low ambient / low head pressure affecting TXV feed
 - TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
-- Install head pressure control if not present; minimum head pressure = 90 psig for R-448A, 70 psig for R-404A
+- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈72°F / 22°C sat), **175 psig for R-448A** (≈68°F / 20°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
 
 #### Over-capacity for the load
 - Too many compressors on; LP cutout set too low; suction setpoint too aggressive
@@ -3402,6 +3402,234 @@ When the problem is system-wide (all circuits affected):
 3. **Head pressure** — condenser fans all running?
 4. **Liquid line** — filter-drier pressure drop? Subcooling at condenser?
 5. **Charge verification** — subcooling + suction superheat + suction pressure pattern`
+
+
+export const DEFROST_KNOWLEDGE = `
+## Defrost Systems — Deep-Dive Troubleshooting Guide
+
+Defrost is the single most common source of service calls in supermarket refrigeration. Most temperature alarms, wet coils, high energy bills, and product loss trace back to defrost problems. This guide covers all three types used in commercial refrigeration with systematic fault diagnosis for each.
+
+---
+
+### Defrost Fundamentals
+
+**Why defrost is needed:** Every refrigerated evaporator coil operates below 32°F (0°C) on medium-temp circuits and well below freezing on low-temp. Moisture in the air that passes through the case freezes onto the coil fins. Without defrost, the coil becomes a solid block of ice, airflow stops, and the case warms.
+
+**Three types used in supermarket refrigeration:**
+| Type | Heat Source | Best For | Main Risk |
+|------|-------------|----------|-----------|
+| Electric | Resistance heaters in coil | Low-temp frozen food | Heater element failure; high energy use |
+| Hot gas | Compressor discharge refrigerant | Medium-temp; low-temp when sized right | Oil slugging; sequencing problems |
+| Off-cycle | Ambient air (no active heat) | Medium-temp only; mild climates | Frost build-up if defrost interval too short |
+
+---
+
+### Electric Defrost
+
+#### How It Works
+Electric resistance heaters are embedded in or clipped to the evaporator coil. When defrost is initiated, refrigerant solenoids close (isolating the circuit), evaporator fans stop, and heaters energize. Heat melts frost off the coil; condensate drains to a heated drain pan and out through a drain line heater. Defrost terminates when a temperature sensor on the coil reaches a setpoint, or when a time-out limit is hit.
+
+#### Defrost Initiation
+- **Time-clock (scheduled):** Fixed times per day set in the case controller or store controller
+  - Typical: 2–4 defrosts per day for medium-temp; 4–6 for low-temp
+  - Initiation at: 0200, 0800, 1400, 2000 (typical 6-hour interval for medium-temp)
+- **Adaptive / Demand:** Controller analyzes actual frost load and only defrosts when needed
+  - Saves energy significantly (up to 30% on defrost energy)
+  - Requires temperature sensors to function correctly
+  - Disable during initial 2–3 week commissioning period
+
+#### Defrost Termination
+- **Temperature termination (primary):** Sensor on coldest coil section reaches setpoint
+  - Medium-temp coils: typically **50–55°F (10–13°C)**
+  - Low-temp coils: typically **55–65°F (13–18°C)**
+  - Sensor must be clamped to the coldest area of the coil — usually the bottom or rear section
+- **Time-out fallback:** Maximum defrost duration regardless of termination sensor
+  - Typical: 30–45 min for medium-temp; 45–75 min for low-temp
+  - If time-out is consistently activating instead of temperature termination → investigate
+- **Drip time:** Delay after heaters off before fans restart; allows condensate to drain
+  - Typical: 3–5 minutes; too short = water blown onto product
+
+#### Heater Wiring and Testing
+- Most commercial coil heaters are **240 VAC**, wired in parallel sections
+- Total heater load: typically 1–3 W per cubic foot of case volume
+- **Testing a heater element:**
+  1. Disconnect power at the defrost contactor
+  2. Ohmmeter across each heater section terminals
+  3. Open circuit (OL) = failed element; typical resistance 20–100 Ω depending on wattage
+  4. Shorted to ground = element insulation failure; replace immediately
+- **Defrost contactor:** check contacts for pitting/welding; high-resistance contacts cause partial heat
+- **Drain pan heaters:** 40–60 W typically; test same way; failed drain pan heater = frozen drain = overflow
+
+#### Electric Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check First |
+|---------|-------------|-------------|
+| Coil icing up, defrost not clearing | Heater element(s) failed | Ohmmeter test on each section; check contactor |
+| Defrost times out every cycle | Termination sensor wrong location or failed | Move sensor to coldest coil section; check sensor resistance |
+| Drain overflowing onto floor | Drain pan heater failed or drain line frozen | Test drain pan heater; clear drain line with hot water |
+| Water dripping on product after defrost | Drip time too short | Increase drip time by 2 min increments |
+| Case temp rises too high during defrost | Defrost duration too long; case not isolated properly | Verify liquid solenoid closes fully; check defrost duration setting |
+| Fans restart too early (frost blowoff) | Drip time too short or fan-delay thermostat failed | Check fan-delay thermostat (if fitted); increase drip time |
+| Heaters energize but coil stays frozen | 240 V circuit open on one leg (losing 120 V) | Check both legs of 240 V supply to defrost contactor; look for open neutral or leg |
+| Heaters run but case temp alarm activates | Heaters undersized or defrost interval too short | Increase defrost frequency; check case door gaskets for air infiltration |
+
+---
+
+### Hot Gas Defrost
+
+#### How It Works
+Hot gas defrost diverts compressor discharge gas (which is very hot — typically 150–220°F / 65–105°C) into the evaporator coil. The hot refrigerant condenses in the coil, releasing heat that melts frost. Condensed liquid is returned to the system via a check valve and liquid return line.
+
+#### Two-Pipe vs Three-Pipe Systems
+
+**Two-pipe (simple hot gas):**
+- Hot gas solenoid on discharge line opens → hot gas enters coil from the inlet
+- Condensed liquid backs up and exits through the liquid line check valve
+- Simple; works for medium-temp applications
+- Risk: liquid slugging if gas cools too fast in a heavily iced coil
+
+**Three-pipe (KoolGas / pressure-actuated):**
+- Dedicated hot gas supply line (large diameter)
+- Separate liquid return (drain) line with back-pressure valve
+- Liquid return check valve prevents reverse flow
+- Smoother defrost; better for low-temp and longer runs
+- Hussmann KoolGas is the most common three-pipe system; uses a back-pressure (check) valve set at ~20–25 psig to maintain minimum pressure in the coil during defrost
+
+#### Hot Gas Defrost Sequence
+
+1. **Pre-defrost:** Liquid line solenoid closes; fans stop; system pumps down the circuit
+2. **Hot gas on:** Hot gas solenoid opens; discharge gas flows into evaporator
+3. **Defrost running:** Coil pressure rises as gas condenses; frost melts; condensate to drain pan
+4. **Termination:** Temperature sensor on drain pan or coil outlet reaches setpoint (typically 50°F / 10°C for medium-temp); or time-out
+5. **Pressure equalization:** Brief delay with hot gas solenoid still open to bleed excess pressure (prevents liquid slugging on restart)
+6. **Drip time:** Fans remain off; condensate drains
+7. **Fan restart:** Fans come on; liquid solenoid opens; circuit returns to refrigeration
+
+#### Hot Gas Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check First |
+|---------|-------------|-------------|
+| Coil not defrosting fully | Hot gas solenoid not opening fully; inadequate hot gas supply pressure | Verify solenoid coil voltage; check hot gas header pressure during defrost (minimum 150 psig R-404A) |
+| Compressor tripping on LP during defrost of adjacent circuit | Hot gas defrost pulling suction pressure on active circuits | Stagger defrost schedules; ensure pump-down before hot gas opens |
+| Oil slugging noise at compressor after defrost | Liquid carryover from coil returning to suction header | Check equalization timing; verify back-pressure valve setting on 3-pipe system |
+| Defrost terminates too quickly (frost not cleared) | Termination sensor in warm spot on coil | Relocate sensor to coldest point (near coil inlet, bottom section) |
+| Coil re-freezes immediately after defrost | Drain pan heater failed; condensate not clearing | Test drain pan heater; verify drain open |
+| Hot gas runs but no temperature rise in coil | Back-pressure valve stuck open (3-pipe) — pressure not building | Test BPV: manually restrict outlet; if coil pressure rises, valve is passing |
+| Suction pressure drops severely during hot gas | Hot gas solenoid leaking through during refrigeration mode | Test solenoid: feel hot gas line — warm when should be cold = leaking |
+| Liquid hammering in piping at defrost start | Liquid trapped in hot gas line | Verify hot gas line pitch (slope toward coil); add drip leg if needed |
+
+---
+
+### Off-Cycle (Natural) Defrost
+
+#### How It Works
+The refrigeration circuit simply shuts off — fans may continue running (using ambient store air to melt frost) or also stop. No additional heat source is used. Relies entirely on the warm air in the store to melt frost.
+
+#### When It's Applicable
+- **Medium-temperature cases only** (dairy, deli, produce) — coil operates above −5°F (−20°C); light frost accumulates
+- Ambient store temperature **above 55°F (13°C)**
+- Cases with **good door/night curtain sealing** (low frost load)
+- NOT suitable for low-temp frozen food cases — frost load too heavy; defrost time too long; product temperature risk too high
+
+#### Typical Settings
+- Defrost frequency: 2–4 times per day
+- Duration: 20–45 minutes (fans off increases effectiveness)
+- Termination: time-only (no temperature sensor needed for basic off-cycle)
+- Fan arrangement: fans-off off-cycle is more effective than fans-on; but fans-on is simpler
+
+#### Off-Cycle Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| Heavy frost build-up despite defrosts | Defrost frequency too low or duration too short; or ambient humidity very high | Increase defrost frequency; consider switching to electric or hot gas |
+| Coil never fully clears | Defrost duration too short | Extend duration; or add one more defrost per day |
+| Case temperature too high during defrost | Ambient temp high; long defrost duration | Shorten defrost or add night curtains; lower case setpoint slightly |
+| Frost concentrated on bottom of coil | Air short-cycling in case; door gaskets failed | Check gaskets; verify night curtain fit; check fan baffling |
+
+---
+
+### Defrost Termination Sensors — Placement Rules
+
+Correct sensor placement is the single most important factor in defrost performance. A sensor in the wrong location causes:
+- Premature termination → frost not fully cleared → re-icing during operation
+- Late termination → excessive heat → product temperature rise → food safety risk
+
+**Electric defrost — termination sensor must be at the coldest coil location:**
+- For horizontal coils: bottom-rear of the coil (last area to defrost)
+- For vertical coils: center of the coil (highest frost density)
+- Must be **in contact with a coil fin or tube**, not floating in air
+- Insulate the sensor mounting to prevent it reading air temperature instead of coil temperature
+
+**Hot gas defrost — termination sensor placement:**
+- **Drain pan thermostat** (most common): mounted in drain pan, not on coil; set at 50–55°F
+  - Advantage: confirms condensate is liquid (coil is above freezing)
+  - Risk: drain pan can warm up while coil still has ice at the back
+- **Coil outlet sensor**: measures temperature of refrigerant leaving coil during defrost; more accurate for full-coil clear
+- If using drain pan termination and coils consistently don't clear fully → add a second sensor at coil inlet and use the later-terminating of the two
+
+**Setpoint guide:**
+| Application | Termination Setpoint | Notes |
+|-------------|---------------------|-------|
+| Medium-temp electric | 50–55°F (10–13°C) | Lower end for dairy (humidity sensitive) |
+| Low-temp electric | 55–65°F (13–18°C) | Higher setpoint needed to clear deep frost |
+| Medium-temp hot gas | 50–55°F (10–13°C) drain pan | |
+| Low-temp hot gas | 55–60°F (13–16°C) coil outlet | |
+| CO₂ off-cycle | 45–50°F (7–10°C) | Lower setpoint acceptable; less heat available |
+
+---
+
+### CO₂ System Defrost Specifics
+
+CO₂ refrigeration uses different defrost strategies depending on the temperature level:
+
+#### Medium-Temp (MT) CO₂ — Off-Cycle or Electric
+- MT cases in CO₂ booster systems commonly use **off-cycle** defrost (light frost load; higher evaporating temps)
+- Electric defrost used for higher humidity applications (produce, fresh meat)
+- MT EEVs close during defrost; fans stop or continue at low speed
+
+#### Low-Temp (LT) CO₂ — Hot Gas or Electric
+- **Hot gas:** Uses CO₂ discharge gas from LT compressors; same principles as HFC hot gas but CO₂ pressures are much higher
+  - LT CO₂ discharge during hot gas: typically 400–600 psig — verify pipe and valve ratings
+  - Back-pressure valve on LT CO₂: set at approximately 290–435 psig (20–30 bar) depending on application
+- **Electric:** Simpler; used when hot gas routing is complex
+
+#### CO₂ Defrost Fault Patterns
+- **High discharge pressure during hot gas defrost:** Coil pressure rising excessively — back-pressure valve stuck closed or set too high
+- **LT compressors trip on high pressure during defrost:** Other LT circuits receiving hot gas pressure spike — stagger defrosts; verify isolation
+- **Flash tank pressure rise during defrost:** Condensed CO₂ from defrost returning to flash tank faster than system can handle — check liquid return check valves
+
+---
+
+### Adaptive Defrost — How Controllers Manage It
+
+**Basic adaptive algorithm (most store controllers):**
+- After each refrigeration period, the controller measures how far case temperature drifted from setpoint
+- If temperature drifted significantly → frost load was high → keep current defrost schedule
+- If temperature held stable → frost load was low → skip next defrost or extend interval
+- Over 1–2 weeks, the controller settles into the minimum defrost schedule for that load
+
+**Commissioning note:** Disable adaptive defrost for the **first 2–3 weeks** of operation. The algorithm needs a stable baseline. A store with high humidity or frequent door openings during fit-out will create an artificially high frost load that confuses the algorithm.
+
+**When adaptive defrost causes problems:**
+- Infrequent defrost leading to heavy frost → manually initiate defrost, then check adaptive log
+- Adaptive reducing defrosts too aggressively during high-humidity season → set a minimum defrost frequency floor (e.g., minimum 2 per day regardless of algorithm)
+
+---
+
+### 12 Common Defrost Mistakes
+
+1. **Termination sensor not touching the coil** — floating in air; reads ambient; terminates too early every cycle.
+2. **Termination sensor on drain pan instead of coil for electric defrost** — drain pan warms quickly; coil still partly frozen; termination is premature.
+3. **Drip time set to zero** — fans restart immediately after heaters off; water is blown onto product; case humidity rises; re-frost accelerates.
+4. **No time-out backup on electric defrost** — if termination sensor fails open, heaters run indefinitely; product is lost and heaters may burn out.
+5. **All circuits defrosting simultaneously** — suction pressure spikes dramatically; compressors may trip; product temperatures in non-defrost circuits rise; stagger defrosts by 15–30 min.
+6. **Drain line heater failed and not noticed** — slow seasonal problem; drain clogs, pan overflows, water on floor; checked only after leak complaint.
+7. **Hot gas defrost on multiple adjacent circuits simultaneously** — insufficient hot gas supply pressure; defrosts run long or fail to clear; stagger defrosts.
+8. **Adaptive defrost disabled permanently** — wastes significant energy; it was disabled at commissioning and never re-enabled after stability period.
+9. **Wrong defrost type after case or coil replacement** — replaced coil has different heater wattage or termination sensor position; original controller settings no longer valid; recalibrate.
+10. **Pump-down solenoid not closing before hot gas opens** — liquid refrigerant trapped in coil when hot gas enters; severe liquid hammer; solenoid or coil damage.
+11. **Defrost termination setpoint too low for the application** — set at 40°F for a low-temp case; coil barely clears; re-frosts within one refrigeration cycle.
+12. **Night curtain not deployed during off-cycle defrost** — enormous additional frost load from warm store air; off-cycle defrost cannot keep up; must switch to active defrost type.`
 
 
 function buildEquipmentContext(
