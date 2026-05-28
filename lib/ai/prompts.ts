@@ -3129,6 +3129,281 @@ The CCB was the distributed case controller in the pre-E2 RMCC system (discontin
 5. Re-import configuration on E3; verify sensor readings circuit by circuit before enabling setpoint control`
 
 
+export const SYSTEM_DIAGNOSTICS_KNOWLEDGE = `
+## Refrigeration System Diagnostics — Fault Finding by Symptom
+
+This guide covers systematic diagnosis for HFC multiplex parallel rack systems (R-404A, R-448A, R-449A) and CO₂ transcritical booster rack systems. Diagnose in order: take readings first, understand the pattern, then test the most likely cause.
+
+---
+
+### Step 1 — Record a Complete System Snapshot Before Touching Anything
+
+| Reading | How to Get It | Why It Matters |
+|---------|--------------|----------------|
+| Suction pressure(s) | Gauge at suction header; or store controller | Convert to saturation temp — compare to setpoint |
+| Discharge/head pressure | Gauge at discharge; or store controller | Convert to sat temp — compare to ambient |
+| Suction line temp | IR or clamp thermocouple at suction header | Calculate superheat = suction line temp − sat temp |
+| Liquid line temp | At king valve outlet or liquid header | Calculate subcooling = sat temp at condensing − liquid temp |
+| Ambient temperature | Outside + machine room | Condenser performance baseline |
+| Compressor amps | Clamp meter on each leg | Overload, voltage imbalance, capacity issues |
+| Case temperatures | Store controller alarm list or walk-in thermometer | Identifies which circuits are affected |
+| Oil level / pressure | Sight glass; oil pressure differential gauge | Floodback, oil return problems |
+
+---
+
+### High Suction Pressure
+
+**Definition:** Suction saturation temperature significantly above setpoint (e.g., setpoint −10°F, actual sat = +15°F).
+
+#### Too much heat load reaching the system
+- Multiple circuits in defrost simultaneously — check defrost schedule overlap
+- Evaporator fan motors failed — feel/listen for airflow at each case
+- Evaporator coils iced over — check defrost termination sensor location and setpoint
+- Product over-temperature on load-in day
+- Anti-sweat heaters stuck ON — measure door heater current; very common in summer
+
+#### Excess refrigerant flow (flooding)
+- TXV bulb lost charge or stuck open → superheat near 0°F, suction line frosting
+- EEV stuck open or controller fault → check EEV position feedback on controller
+- Floodback from a circuit with failed defrost termination solenoid
+
+#### Loss of compression capacity
+- Compressor suction valve failure — pull valve plates; compare compressor differential across each cylinder
+- Capacity control (unloaders) stuck unloaded — verify cylinder unloader solenoids
+- Digital Scroll solenoid failure — always in modulated/unloaded position
+
+#### CO₂ booster specific
+- MT EEVs flooding: check MT suction superheat at each circuit
+- LT compressors not running when they should: verify LT suction setpoint
+- Flash tank pressure too high: HP valve underpressure setpoint or GC outlet sensor reading high
+
+---
+
+### Low Suction Pressure
+
+**Definition:** Suction saturation temperature significantly below setpoint; compressors running but pulling pressure down.
+
+#### Insufficient refrigerant flow
+- Plugged filter-drier: measure pressure drop across drier; >5 psi drop on liquid line = replace
+- Strainer screen restricted: check after filter-drier or at TXV inlet
+- Low refrigerant charge: cross-check with **low subcooling** (< 5°F subcooling confirms low charge)
+- Liquid solenoid partially closed or stuck: verify voltage at coil; check plunger movement
+- TXV hunting or underfed: check superheat; high and unstable = TXV hunting
+
+#### Low ambient / low head pressure affecting TXV feed
+- TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
+- Install head pressure control if not present; minimum head pressure = 90 psig for R-448A, 70 psig for R-404A
+
+#### Over-capacity for the load
+- Too many compressors on; LP cutout set too low; suction setpoint too aggressive
+- Night setback too deep — setpoint drops faster than load drops
+
+#### CO₂ booster specific
+- Flash tank pressure low → check HP valve overshooting
+- LT suction too low with all LT compressors running: check LT EEV feeds
+
+---
+
+### High Discharge / Head Pressure
+
+**Definition (HFC):** Discharge saturation temperature more than 25–30°F above ambient. **Definition (CO₂):** GC outlet above floating setpoint target.
+
+#### Condenser / gas cooler issues (most common)
+- **Dirty condenser coil** — most common cause; inspect and clean coil fins; use coil cleaner and low-pressure rinse
+- Failed condenser fan motor(s) or blade — check each fan individually
+- Fan cycling controls set too tight — condenser fans short-cycling off; verify fan controller setpoints
+- Discharge air recirculation — check for missing baffles; ensure 3-foot minimum clearance on discharge side
+- High ambient temperature exceeding design limit (most HFC condensers rated to 95–105°F ambient)
+
+#### Refrigerant overcharge
+- Tell: high head pressure + **high subcooling** (>15°F)
+- Verify: check total system charge weight if records available; recover refrigerant incrementally
+
+#### Non-condensables (air in system)
+- Diagnosis: isolate receiver, let system equalize 15 min, compare pressure to refrigerant sat temp at ambient — if pressure is higher than it should be, non-condensables are present
+- Source: improper evacuation during installation or repair; nitrogen break during repair left in system
+
+#### CO₂ GC high pressure
+- GC outlet sensor drifted high → HP valve closes too early → pressure rises; verify sensor calibration (±1.5°F max)
+- GC fans all running? Check power and motor condition
+- GC coil fouled: inspect and clean
+- HP valve mechanical failure: stuck closed or slow to open; manual bypass test
+- Adiabatic system: verify water supply pressure and pad saturation
+
+---
+
+### High Superheat
+
+**Definition:** Superheat >15°F above target for medium-temp, >20°F for low-temp circuits.
+
+#### Insufficient refrigerant flow to the evaporator
+- TXV ice blockage at bulb or valve body (ice on valve body is the tell) → recover and replace, check moisture content
+- TXV undersized or adjusted too tightly → measure P-T curves; adjust stem ½ turn open at a time
+- EEV opening percentage low on controller display → check controller sensor inputs and setpoint
+- Plugged liquid line filter-drier — see high superheat + low subcooling together
+
+#### Low system charge
+- Pattern: **high superheat + low subcooling + low suction pressure** = textbook low charge
+- Verify with leak detector before adding refrigerant
+
+#### Low head pressure starving TXV
+- Follow head pressure control troubleshooting above
+- Verify head pressure control setpoint is appropriate for refrigerant type
+
+#### Mechanical restriction at evaporator
+- Evaporator coil blocked with ice — check defrost operation; manually defrost and recheck
+- Liquid solenoid stuck partially closed — measure pressure drop across solenoid body
+
+---
+
+### Low Superheat / Liquid Floodback
+
+**Definition:** Superheat < 5°F; liquid refrigerant migrating to suction header and compressor.
+
+#### Symptoms of active floodback
+- Suction line sweating or frosting back to compressor
+- Compressor crankcase sweating
+- Oil sight glass foamy or oil level dropped
+- Slugging noise from compressor
+- CoreSense (Copeland) or controller logging floodback events
+- Compressor running rough or with reduced compression ratio
+
+#### Causes
+- **TXV sensing bulb not clamped to suction line** — most common; bulb must be clean, tight, insulated, and correctly positioned (4 o'clock or 8 o'clock on horizontal suction line)
+- TXV bulb charge migrated to coldest point (liquid-charged bulb installed in freezer) → replace with cross-charged bulb
+- TXV oversized for actual load — valve always opening wide; replace with correct capacity
+- EEV controller sensor failure or control loop malfunction → force EEV to manual, verify superheat
+- Defrost termination solenoid leaking after defrost — liquid drains into suction line; replace solenoid
+
+#### Immediate action
+- Close expansion valve (or reduce EEV opening)
+- Check crankcase heater function — warm oil before restart
+- Check oil dilution: if oil is very thin/clear, run crankcase heater 4+ hours before starting
+
+---
+
+### Oil Problems
+
+#### Oil Level Low / Oil Pressure Differential Trip
+
+**HFC systems:**
+- High floodback diluting oil — address floodback first
+- Oil separator bypass: check float valve function; verify differential across separator
+- Insufficient suction line velocity to return oil (below 700 FPM in vertical risers) — check line sizing
+- Oil trapped in long horizontal runs — verify 1/4″ per 10 ft slope toward compressor
+- Multiple suction group system: verify each suction group has oil return strategy
+
+**CO₂ systems (unique challenges):**
+- CO₂ fully miscible with POE oil — oil migrates throughout system easily but can accumulate in flash tank
+- Oil separator differential pressure: if drop across separator is low, separator not working
+- Oil level controllers (Kriwan INT69, Emerson OMB, Traxoil): verify sensor signal and float operation
+- LT circuits: oil return velocity is critical at very low temperatures — check line sizing for low-temp suction
+- After extended shutdown: CO₂ absorbs deeply into oil; **never start compressor without running crankcase heater for minimum 4 hours** (or until compressor case is warm to touch)
+- Oil pulse return: some CO₂ systems use periodic EEV pulse to purge oil from evaporators; verify pulse schedule in controller
+
+---
+
+### Compressor Diagnostics
+
+#### Won't Start
+1. Check crankcase heater — cold compressor with oil foaming on start = heater failed
+2. Check all safety controls: HP cutout, LP cutout, oil pressure differential, motor protector (manual reset?)
+3. Check control circuit: 24 V at contactor coil? Contactor pulling in?
+4. CoreSense lockout (Copeland): read fault code on CoreSense module
+5. Check phase rotation on 3-phase (scrolls run backwards if phases reversed → no compression, just noise)
+
+#### Trips on High Pressure
+- Follow high discharge pressure diagnosis
+- Check HP cutout setpoint vs. manufacturer spec (Copeland ZB scroll: 450 psig R-404A, 400 psig R-448A)
+- HP cutout continuity when cool — fails open on some models; test with ohmmeter
+
+#### Trips on Low Pressure (or Runs to LP Cutout)
+- Follow low suction pressure diagnosis
+- LP cutout setpoint: verify against manufacturer minimums
+- Common cause: refrigerant charge low or solenoid closed overnight
+
+#### Discharge Temperature Too High
+- Limit: **225°F (107°C) for HFC scrolls** (Copeland ASTP activates near 280°F — that is a last resort, not a target)
+- Causes: high compression ratio (high head / low suction), high superheat at suction, inadequate cooling of motor
+- Check: suction superheat not excessive (>35°F causes motor overheating in hermetic compressors)
+
+#### Amperage Analysis (3-Phase)
+| Reading | Likely Cause |
+|---------|-------------|
+| All phases high | High head pressure, mechanical drag, overcharge |
+| All phases low | Low suction pressure, internal valve failure, unloaded |
+| Phase imbalance >2% | Utility voltage imbalance — damages windings over time; document and report to utility |
+| One phase very low | Open winding or single-phasing — shut down immediately |
+
+---
+
+### CO₂ Transcritical — System-Level Fault Patterns
+
+#### GC Pressure Uncontrolled Rise
+1. GC fan(s) failed — verify speed/direction on all fans
+2. HP valve stuck closed or slow — manual bypass test; check actuator signal
+3. GC outlet sensor drifted high — HP valve thinks GC is overcooled; calibrate sensor
+4. Ambient above design limit — reduce compressor capacity; increase fan speed
+5. GC coil severely fouled — clean immediately; refrigerant cannot reject heat
+
+#### Runs Subcritical When Ambient Demands Transcritical (>88°F / 31°C)
+- GC outlet temperature exceeding critical point (87.7°F / 31°C) but HP valve not opening enough
+- GC outlet sensor reading lower than actual → HP valve under-opening → check sensor
+
+#### Runs Transcritical at Low Ambient (Wasting Energy)
+- HP valve stuck in partially closed position — not allowing pressure to drop
+- Wrong setpoint curve for the season — verify controller configuration
+
+#### Flash Tank Level Problems
+- **Level too low:** LT load high, LT EEVs opening wide; check LT superheat — if also low, EEVs flooding
+- **Level too high:** MT load insufficient to draw down flash tank; verify MT circuit operation
+- Level sensor failure: check float or capacitive sensor output signal
+
+#### MT/LT Suction Pressure Crossover
+- LT suction should always be lower than MT suction
+- If LT suction equals MT suction: intermediate check valve failed (bi-flow check or non-return valve)
+- High-pressure gas flowing from MT side into LT side: LT compressors work against higher-than-expected pressure
+
+---
+
+### Quick Diagnosis Matrix — Reading Patterns
+
+| Suction | Head Pressure | Superheat | Subcooling | Most Likely Diagnosis |
+|---------|--------------|-----------|------------|----------------------|
+| High | High | Low | Normal/High | Overcharge + condenser problem |
+| High | Normal | Low (~0°F) | Normal | TXV/EEV stuck open — floodback |
+| High | Normal | Normal | Normal | Compressor valve failure or excess load |
+| Low | High | High | Low | **Low refrigerant charge** |
+| Low | High | High | Normal | Liquid line restriction (drier, strainer) |
+| Low | Normal | High | Low | Low charge confirmed |
+| Low | Normal | High | Normal | TXV restricted or solenoid closed |
+| Normal | High | Normal | High | Refrigerant overcharge |
+| Normal | High | Normal | Normal | Condenser fouled or fan failure |
+| Normal | Normal | High | Normal | Isolated circuit problem — not system-wide |
+| Normal | Low | Low | Low | Low ambient with no head pressure control |
+
+---
+
+### Systematic Elimination Order
+
+When you have a problem circuit but system pressures look normal:
+
+1. **Verify the refrigerant is flowing** — is the liquid solenoid energised? Is there a temperature drop across it?
+2. **Check the expansion device** — superheat at evaporator outlet; compare to target
+3. **Check the evaporator** — fan motors running? Coil iced? Airflow blocked?
+4. **Check the defrost** — was there a recent defrost? Did it terminate properly?
+5. **Check sensors** — is the thermostat/case controller reading correctly?
+6. **Check the circuit wiring** — solenoid coil resistance (typically 9–14 Ω for 24 V coils)
+
+When the problem is system-wide (all circuits affected):
+
+1. **Suction header first** — read suction sat temp vs. setpoint
+2. **Compressor deck** — all compressors running that should be?
+3. **Head pressure** — condenser fans all running?
+4. **Liquid line** — filter-drier pressure drop? Subcooling at condenser?
+5. **Charge verification** — subcooling + suction superheat + suction pressure pattern`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,

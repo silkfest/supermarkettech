@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
-  CircuitBoard, Gauge, ToggleRight, Wind, Monitor,
+  CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -26,6 +26,7 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   orange:  { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200', tag: 'bg-orange-50 text-orange-700 border-orange-200' },
   lime:    { bg: 'bg-lime-100',   text: 'text-lime-600',   border: 'border-lime-200',   tag: 'bg-lime-50 text-lime-700 border-lime-200' },
   green:   { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200', tag: 'bg-green-50 text-green-700 border-green-200' },
+  red:     { bg: 'bg-red-100',   text: 'text-red-600',   border: 'border-red-200',   tag: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   ToggleRight:  <ToggleRight  size={22} />,
   Wind:         <Wind         size={22} />,
   Monitor:      <Monitor      size={22} />,
+  Activity:     <Activity     size={22} />,
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

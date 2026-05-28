@@ -1,5 +1,6 @@
 import {
   REFRIGERATION_KNOWLEDGE,
+  SYSTEM_DIAGNOSTICS_KNOWLEDGE,
   SPORLAN_KNOWLEDGE,
   COPELAND_KNOWLEDGE,
   HUSSMANN_KNOWLEDGE,
@@ -38,6 +39,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: REFRIGERATION_KNOWLEDGE,
     manualKeywords: ['refrigeration', 'fundamentals', 'basics', 'co2'],
     tags: ['CO₂', 'HFC', 'Basics'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'system-diagnostics',
+    title: 'System Fault Diagnosis',
+    shortTitle: 'Fault Diagnosis',
+    description: 'Symptom-based fault finding for HFC multiplex racks and CO₂ transcritical boosters: high/low suction, head pressure, superheat, floodback, oil failure, compressor diagnostics, and a quick diagnosis matrix.',
+    iconName: 'Activity',
+    colorClass: 'red',
+    content: SYSTEM_DIAGNOSTICS_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Troubleshooting', 'HFC', 'CO₂', 'Compressors'],
     category: 'fundamentals',
   },
   {
