@@ -72,10 +72,11 @@ const SECTIONS: Section[] = [
     color: 'amber',
     title: 'Policies & Procedures',
     tagline: 'Company documents, always current, always accessible',
-    body: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Technicians can pull up any policy in the field from their phone. Managers can update documents instantly — no more outdated printouts in binders. Access is role-controlled so the right people see the right documents.",
+    body: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Includes store procedures (with seasonal ones pinnable to the top), an on-call schedule where trades can be requested and accepted by technicians, and a truck stock list so everyone knows what should be on each van. Managers can update documents instantly — no more outdated printouts in binders.",
     features: [
-      { title: 'Policy Library', description: 'Centralised store for SOPs, safety protocols, and compliance documents.', href: '/policies' },
-      { title: 'Field Access', description: 'Technicians can find any procedure from their phone while on site.', href: '/policies' },
+      { title: 'Store Procedures', description: 'SOPs and safety protocols — pin seasonal procedures to the top so the right info is always front and centre.', href: '/policies' },
+      { title: 'On-Call Schedule', description: 'Post the on-call roster and let technicians request or accept trades directly in the app.', href: '/policies' },
+      { title: 'Truck Stock List', description: 'Keep a standard parts list for each van so every technician knows exactly what they should be carrying.', href: '/policies' },
     ],
   },
   {
@@ -219,7 +220,7 @@ export default function WelcomePage() {
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-bold text-slate-900">Simpro Integration (Future)</h3>
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                  Planned
+                  Possible
                 </span>
               </div>
               <p className="text-sm text-slate-500 leading-relaxed max-w-2xl">
