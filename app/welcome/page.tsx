@@ -63,7 +63,6 @@ const SECTIONS: Section[] = [
     features: [
       { title: 'Service Reports', description: 'Log findings, parts, and time. Reports stored permanently under each piece of equipment.', href: '/maintenance' },
       { title: 'PM Checklists', description: 'Structured preventive maintenance checklists — completed on phone, signed off digitally.', href: '/maintenance' },
-      { title: 'Equipment Registry', description: 'Every unit tracked: model, serial, refrigerant type, installation date, full service history.', href: '/maintenance' },
     ],
   },
   {
