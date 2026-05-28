@@ -14,6 +14,8 @@ import {
   PENN_CONTROLS_KNOWLEDGE,
   CARNOT_KNOWLEDGE,
   EMERSON_E2_E3_KNOWLEDGE,
+  WALK_IN_KNOWLEDGE,
+  PARALLEL_RACK_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -208,6 +210,30 @@ export const TOPICS: KnowledgeTopic[] = [
     content: MATH_AND_ELECTRICAL_KNOWLEDGE,
     manualKeywords: [],
     tags: ['Math', 'Electrical', 'Wiring Diagrams'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'walk-in-troubleshooting',
+    title: 'Walk-In Cooler & Freezer Troubleshooting',
+    shortTitle: 'Walk-In',
+    description: 'Temperature not maintaining, unit cooler icing, drain problems, door and envelope issues, floor heater systems, airflow and fan motor diagnostics, and 10 common walk-in field mistakes.',
+    iconName: 'Warehouse',
+    colorClass: 'slate',
+    content: WALK_IN_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Walk-In', 'Cooler', 'Freezer', 'Troubleshooting'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'parallel-rack-systems',
+    title: 'Parallel Rack Systems (HFC Multiplex)',
+    shortTitle: 'Parallel Racks',
+    description: 'HFC multiplex rack architecture, suction group staging, floating suction setpoints, oil management (separator, level controllers, equalization), head pressure control, common rack faults, refrigerant charge verification, and energy management features.',
+    iconName: 'Layers',
+    colorClass: 'pink',
+    content: PARALLEL_RACK_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Racks', 'HFC', 'Multiplex', 'Oil Management'],
     category: 'fundamentals',
   },
 ]

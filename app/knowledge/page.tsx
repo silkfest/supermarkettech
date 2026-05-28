@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame,
+  Warehouse, Layers,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -28,6 +29,8 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   green:   { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200', tag: 'bg-green-50 text-green-700 border-green-200' },
   red:     { bg: 'bg-red-100',    text: 'text-red-600',    border: 'border-red-200',    tag: 'bg-red-50 text-red-700 border-red-200' },
   yellow:  { bg: 'bg-yellow-100', text: 'text-yellow-600', border: 'border-yellow-200', tag: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  slate:   { bg: 'bg-slate-100',  text: 'text-slate-600',  border: 'border-slate-200',  tag: 'bg-slate-50 text-slate-700 border-slate-200' },
+  pink:    { bg: 'bg-pink-100',   text: 'text-pink-600',   border: 'border-pink-200',   tag: 'bg-pink-50 text-pink-700 border-pink-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -47,6 +50,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Monitor:      <Monitor      size={22} />,
   Activity:     <Activity     size={22} />,
   Flame:        <Flame        size={22} />,
+  Warehouse:    <Warehouse    size={22} />,
+  Layers:       <Layers       size={22} />,
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
