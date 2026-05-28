@@ -3632,6 +3632,413 @@ CO₂ refrigeration uses different defrost strategies depending on the temperatu
 12. **Night curtain not deployed during off-cycle defrost** — enormous additional frost load from warm store air; off-cycle defrost cannot keep up; must switch to active defrost type.`
 
 
+export const WALK_IN_KNOWLEDGE = `
+## Walk-In Cooler and Freezer Troubleshooting
+
+Walk-ins are some of the most common service calls in commercial refrigeration. Most problems fall into five categories: temperature not maintaining, unit cooler icing, defrost failures, drain/water issues, and door/envelope problems.
+
+---
+
+### Walk-In System Overview
+
+**Typical system components:**
+- **Unit cooler (evaporator):** Mounted at ceiling or wall; draw-through (fan pulls air through coil) or blow-through (fan pushes air through coil)
+- **Condensing unit:** Remote (rooftop or machine room) or self-contained
+- **Thermostatic expansion valve (TXV) or EEV:** At unit cooler
+- **Liquid line solenoid:** Controlled by thermostat or case controller
+- **Defrost system:** Electric heaters in coil and drain pan; hot gas; or off-cycle
+- **Drain pan and drain line:** Drain line heated (freeze protection) in freezers
+- **Door(s):** With heater frame, gasket, auto-closer
+- **Floor heater (freezers only):** Prevents floor heaving from ground freeze
+
+**Walk-in cooler vs walk-in freezer — key differences:**
+| Feature | Walk-In Cooler | Walk-In Freezer |
+|---------|---------------|-----------------|
+| Box temp | 34–38°F (1–3°C) | −10 to 0°F (−23 to −18°C) |
+| Defrost type | Off-cycle or electric | Electric or hot gas |
+| Defrost frequency | 1–2× daily | 3–6× daily |
+| Drain line | Unheated acceptable | Must be heated (electric or steam) |
+| Floor heater | Not required | Required (concrete slab installs) |
+| Door frame heater | Optional | Required — prevents ice seal |
+| Anti-sweat heaters | Optional | Required at all cold joints |
+
+---
+
+### Temperature Not Maintaining
+
+#### Box temperature too high (cooler or freezer)
+
+**Check the condensing unit first:**
+- Is the unit running? Compressor energized? Contactor pulled in?
+- Head pressure within range? (See System Fault Diagnosis guide for high head pressure causes)
+- Suction pressure — is it at or near setpoint?
+
+**Check the unit cooler:**
+1. Evaporator fans all running? A single failed fan motor can cause a large temperature rise — feel for airflow at each fan section
+2. Coil iced over? If coil is a solid block of ice, defrost has failed — manually initiate defrost
+3. Refrigerant flowing? Feel the suction line at the unit cooler outlet — should be cold and possibly sweating; if warm and dry, refrigerant is not flowing
+4. Liquid solenoid energized? Check for voltage at solenoid coil when box calls for cooling
+5. TXV feeding? Check superheat at evaporator outlet (clamp thermocouple on suction line before TXV bulb; read suction pressure; calculate superheat)
+
+**Check the box itself:**
+- Door gaskets intact and sealing? Hold a dollar bill in the door — should resist pulling out
+- Door auto-closer working? Hinges adjusted?
+- Door heater frame on, preventing ice seal forming at gasket?
+- Large product load recently introduced? Warm product raises temperature temporarily — not a refrigeration fault
+
+#### Box temperature too cold (cooler)
+- Thermostat setpoint too low — verify setpoint; calibrate if needed
+- Thermostat bulb out of airstream or touching coil directly — reposition
+- Liquid solenoid not closing on thermostat satisfied call — check solenoid for bypass
+
+---
+
+### Unit Cooler Icing Up
+
+Evaporator coil icing is the most common walk-in service call after "temperature not maintaining." The coil builds up ice until airflow stops, then the box warms.
+
+#### Defrost not occurring
+- Defrost timer not advancing or clock lost power — check timer position; verify 24 V supply to timer
+- Defrost contactor not pulling in — check contactor coil, control voltage at terminal
+- Defrost heaters failed (all sections) — ohmmeter test; see defrost guide
+
+#### Defrost not completing (partial clearing)
+- Defrost termination thermostat in wrong location — must be on coldest coil section
+- Termination thermostat setpoint too low — reset to 50–55°F for cooler, 55–65°F for freezer
+- Heater wattage insufficient — check nameplate vs. actual load
+- Time-out too short — extend by 15-minute increments
+- Defrost frequency too low — add another defrost initiation
+
+#### Defrost completing but re-frosting immediately
+- Drain pan heater failed — condensate refreezes in drain pan and backs up onto coil
+- Drip time too short — fans start before condensate has drained; blown onto coil
+- Door left open during or after defrost — warm humid air floods box
+
+#### Defrost completing but moisture blown off coil
+- Fans restarting before drip time expires — check fan-delay thermostat (should open circuit to fans below 35°F on coil outlet)
+- No drip time configured — add minimum 3–5 minutes
+
+#### Frost on suction line back to condensing unit
+- Severe floodback — TXV/EEV overfeeding; see floodback section in system diagnostics guide
+- Suction line insulation failed at box penetration — exposed line freezes ambient moisture; replace insulation
+
+---
+
+### Drain Problems
+
+#### Water on floor inside box
+- Drain pan overflow: drain line frozen or clogged
+  - Freezer drain line heater failed — test drain line heater; clear blockage with warm water
+  - Drain line plugged with food debris — clear and sanitize
+- Condensate dripping off suction line (poorly insulated penetration)
+
+#### Water on floor outside box (under condensing unit)
+- Normal condensate from condensing unit on humid days
+- Check that condensate drain from condenser is plumbed correctly
+
+#### Drain line freezing (freezer)
+- Electric drain line heater failed — test continuity; typically 5–15 W/ft, 120 or 240 VAC
+- Drain line heater thermostat stuck open — test thermostat; some are self-regulating heat tape (no thermostat)
+- Drain line run too long without slope — standing water refreezes; recheck slope (1/4″ per foot minimum)
+
+---
+
+### Door and Envelope Problems
+
+#### Excessive frost at door frame
+- Door frame heater failed — test heater element; check wiring at hinge termination (flex wire breaks)
+- Door heater thermostat setting wrong — verify setpoint (typically maintains frame at 35–40°F)
+- Door gasket damaged — replace gasket; check door alignment
+
+#### Ice build-up on floor at door threshold
+- Threshold heater failed or never installed — add strip heater at threshold
+- Door not sealing at bottom — adjust sweep or add threshold heater
+
+#### Box sweating excessively on exterior panels
+- Anti-sweat heater failed on panel joint — test and replace
+- Insulation compromised — check for wet panels (wet insulation = severe heat gain; panel replacement needed)
+
+#### Floor heaving (freezer) — thermal expansion cracking
+- Floor heater failed — test heater circuits; restore immediately to prevent permanent structural damage
+- Floor heater thermostat setpoint wrong — typically set to maintain floor above 32°F beneath slab
+- Verify floor heater is on a separate circuit from defrost (must run continuously)
+
+---
+
+### Walk-In Freezer Specific — Floor Heater Systems
+
+Floor heaters prevent ground freeze which can heave and crack concrete slabs. Two types:
+
+**Electric floor heaters:**
+- Embedded resistance cables in a concrete slab or under the floor
+- Controlled by a thermostat sensing subfloor temperature (typically maintains 40–45°F below slab)
+- **Must run continuously** — do not disable, even when unit is not in service; thaw/refreeze cycles cause more damage than continuous freezing
+- Test: measure heater circuit resistance (typically 10–50 Ω depending on wattage and zone)
+
+**Glycol/water floor heating systems (larger installations):**
+- Circulating pump runs warm glycol through pipes embedded in slab
+- Check pump operation, glycol concentration (typically 30% propylene glycol), and heat exchanger condition
+
+**Signs of floor heater failure:**
+- Floor cracking or heaving — immediate concern; restore heating and allow slow thaw
+- Cold spots on floor surface
+- Thermostat reading below 32°F under slab
+
+---
+
+### Unit Cooler Motor and Airflow
+
+#### Evaporator fan motor failure
+- Fail on high amps: check for seized bearing (motor hot to touch); replace motor
+- Fail on open winding: no current draw; ohmmeter test at motor terminals — open circuit between any two winding leads = failed
+- Blade damaged or wrong rotation: check rotation; EC fan motors are polarity-sensitive — verify wiring
+- Fan blade hitting shroud: listen; visually inspect; realign or replace blade
+
+#### Airflow distribution
+- Baffles missing or damaged: cold air short-circuits back to unit cooler without covering box
+- Product stacked too high: blocking airflow paths; re-stack leaving 6-inch minimum clearance to ceiling
+- Walk-in too warm at back wall: typical sign of inadequate airflow — check fan delivery, add circulation fan if needed
+
+---
+
+### Walk-In Electrical System
+
+| Component | Test | Typical Values |
+|-----------|------|----------------|
+| Electric defrost heaters | Ohmmeter, disconnected | 15–80 Ω depending on wattage |
+| Drain pan heater | Ohmmeter | 50–200 Ω typically |
+| Drain line heater | Ohmmeter | Varies with length; 10–100 Ω |
+| Door frame heater | Ohmmeter + heat check | 50–300 Ω; should be warm when energized |
+| Floor heater | Ohmmeter by zone | 10–50 Ω per zone |
+| Defrost contactor | Contactor coil resistance | 20–100 Ω typical; check contacts for pitting |
+| Fan motor winding | Ohmmeter | Should read similar resistance on all three phases (3-phase) |
+
+---
+
+### 10 Common Walk-In Mistakes
+
+1. **Defrost timer not set to correct time** — timer clock wrong after power failure; defrosts run at wrong time; temperature swings confuse staff.
+2. **Drain line heater on same circuit as defrost contactor** — heater de-energizes during defrost; drain freezes from condensate; drain overflows.
+3. **Floor heater disabled to "save energy"** — floor heaving begins within one season; very expensive repair.
+4. **TXV bulb not insulated** — bulb reads ambient air temperature instead of suction line; superheat control lost; floodback or starvation results.
+5. **Oversized condensing unit running short cycles** — never runs long enough to pull humidity; box stays at temperature but product frosts from humidity; downsize or add hot gas bypass.
+6. **Evaporator fan delay thermostat bypassed** — fans start immediately after defrost; frost blown onto product; box humidity rises.
+7. **Door left open during manual defrost** — humid air enters, dramatically increases frost load, extends future defrost times.
+8. **Using off-cycle defrost on a freezer** — ambient air cannot supply enough heat to fully clear a low-temp coil; must use electric or hot gas.
+9. **Anti-sweat heaters on a timer to save energy** — during high-humidity periods the timer is never enough; panels sweat, drip, promote mold.
+10. **Replacing condensing unit without checking refrigerant charge** — unit swapped, refrigerant weight not verified; over or undercharge from day one.`
+
+
+export const PARALLEL_RACK_KNOWLEDGE = `
+## Parallel Rack Systems — HFC Multiplex Troubleshooting
+
+A parallel rack (multiplex rack) is a central refrigeration system where multiple compressors share a common suction manifold, serving multiple refrigerated circuits throughout the store. The rack is the heart of the supermarket refrigeration system; a fault at the rack affects every case on that suction group.
+
+---
+
+### Rack System Architecture
+
+**Core components:**
+- **Compressor bank:** 2–8 compressors (scroll, reciprocating, or semi-hermetic) piped to a common suction and discharge header
+- **Suction groups:** Separate suction headers for different temperature levels (typically MT = medium-temp, LT = low-temp; some stores have 3 groups)
+- **Discharge header → oil separator → condenser → receiver → liquid header → to all circuits**
+- **Oil management:** Oil separator, oil level controllers, oil return lines to each compressor crankcase
+- **Liquid injection:** On scroll compressors — cools discharge; activated by discharge temperature
+- **Head pressure control:** Fan cycling or variable-speed condenser fans
+- **Rack controller:** (Emerson E2/E3, Danfoss AK-PC, Micro Thermo) manages staging, setpoints, alarms
+
+**Suction group terminology:**
+| Term | Meaning |
+|------|---------|
+| Suction group / circuit group | Set of circuits that share a suction header and setpoint |
+| MT (medium-temp) | Typically −15°F to +25°F suction sat temp; dairy, deli, produce |
+| LT (low-temp) | Typically −30°F to −20°F suction sat temp; frozen food, ice cream |
+| Setpoint | Target suction saturation temperature for the group |
+| Floating suction | Controller raises suction setpoint when load is low — saves energy |
+
+---
+
+### Compressor Staging and Sequencing
+
+**How staging works:**
+1. Rack controller monitors suction pressure vs. setpoint
+2. If suction pressure rises above setpoint + deadband → stage on (add compressor capacity)
+3. If suction pressure drops below setpoint − deadband → stage off (reduce compressor capacity)
+4. Staging: scroll compressors typically start in sequence; variable-speed compressors modulate continuously
+
+**Lead/lag assignment:**
+- Lead compressor: starts first, stops last — highest run hours
+- Lag compressors: come on as load increases
+- Rotation: modern rack controllers rotate lead/lag assignment to equalize run hours across compressors
+
+**Capacity modulation:**
+- Reciprocating compressors: cylinder unloaders (solenoid-controlled)
+- Scroll compressors: Digital Scroll solenoid or variable speed
+- Hot gas bypass: used at very low loads to prevent compressor short-cycling (not common on modern systems)
+
+**Staging deadband:**
+- Too narrow (< 2 psig): compressors cycle rapidly; excessive starts (scrolls have 10-min restart timer)
+- Too wide (> 8 psig): suction pressure oscillates; case temperatures vary
+
+---
+
+### Suction Group Management
+
+#### Floating Suction Setpoint
+Modern rack controllers raise the suction setpoint when case temperatures are stable and well below alarm thresholds. This is the single biggest energy-saving feature on a rack.
+
+- **How it works:** Controller checks all circuit temperatures in the group; if all are within X°F of setpoint, suction is raised by Y°F
+- **Typical float range:** 2–8°F above base setpoint
+- **Benefit:** Higher suction pressure = less compression ratio = significant energy savings
+- **Common issue:** Float disabled after a service call and never re-enabled — verify floating is active in rack controller
+
+#### Setpoint Scheduling
+- Night setback: raise suction setpoint by 2–5°F during closed-store hours (less traffic = less case load)
+- Ensure setback doesn't trigger temperature alarms — verify with case controller alarm thresholds
+
+---
+
+### Oil Management
+
+Oil management is the most common cause of compressor failures on parallel racks. Each compressor must receive adequate oil return continuously.
+
+#### Oil System Components
+| Component | Function |
+|-----------|----------|
+| Oil separator | Removes oil from discharge gas before it enters condenser and circuits; oil returns to crankcase(s) |
+| Oil level controller | Maintains correct oil level in crankcase; opens to admit oil from separator when level drops |
+| Oil equalization line | Connects crankcases at same height; equalizes oil level passively across all compressors |
+| Oil reservoir (sump) | Central oil storage that feeds level controllers |
+| Oil heater (crankcase) | Boils off refrigerant absorbed into oil before startup |
+
+#### Oil Fault Diagnosis
+**Compressor tripping on low oil pressure:**
+1. Check oil sight glass — low or foamy oil = oil return problem or floodback
+2. Check oil separator bypass: if separator is bypassing, oil goes straight to system circuits
+3. Check oil level controller: sticky float or failed solenoid = oil not feeding crankcase
+4. Check equalization lines: blocked = oil level unequal across compressors; only some units get oil
+5. Check for refrigerant floodback: oil diluted with liquid refrigerant foams on startup
+
+**Oil foaming on startup:**
+- Crankcase heater failed — refrigerant has absorbed into oil overnight; oil becomes frothy when pressure drops on start
+- Solution: always verify crankcase heater is warm before starting; add warm-up delay if heater is marginal
+
+**Oil accumulating in circuits (not returning):**
+- Suction line velocity too low (common at low-load periods): oil pools in horizontal lines
+- Risers too large: oil travels up in the annular film, insufficient gas velocity at low load
+- Add suction line accumulator if severe flooding/slugging occurs at startup
+
+---
+
+### Head Pressure Control on Racks
+
+**Fan cycling (simplest):**
+- Condenser fans stage on/off based on head pressure or ambient
+- Common problem: fans cycling too frequently → head pressure oscillates → suction pressure oscillates → case temps vary
+
+**Variable-speed fans (most common on modern racks):**
+- VFD-controlled fans modulate continuously
+- VFD fault: fans stop or run at fixed speed; check VFD fault codes
+- VFD parameter loss after power failure: head pressure runs uncontrolled; reprogram from backup
+
+**Head pressure setpoint (floating):**
+- Modern racks float head pressure as low as practical (saves condenser fan energy)
+- Minimum head pressure: ~200 psig for R-404A, ~175 psig for R-448A
+- Head pressure too low in cold weather: liquid line subcooling drops → flash gas → TXVs starve → high superheat on multiple circuits simultaneously
+
+---
+
+### Common Rack Fault Diagnosis
+
+#### All circuits on a suction group high temperature simultaneously
+This is a rack-level problem, not a case-level problem.
+1. **Suction pressure**: Is it at setpoint? If high → not enough compressor capacity → check staging
+2. **All compressors running that should be?** Check rack controller status screen
+3. **Any compressor locked out?** Check fault log; HP/LP/oil/motor protector trips
+4. **Head pressure OK?** If very high, staging may be limited by discharge temperature protection
+5. **Liquid line**: Subcooling at rack? If near zero → flash gas → all TXVs starving simultaneously (this mimics refrigerant charge loss)
+
+#### Suction pressure hunting (oscillating ±5 psig)
+- Staging deadband too narrow → compressors cycling on/off rapidly
+- Floating suction setpoint chasing a moving target → disable float temporarily to diagnose
+- One compressor with failed suction valve running but not pumping: capacity is lower than rack controller thinks → widens oscillation
+
+#### Suction pressure too low (running below setpoint)
+- Too many compressors on for the load → check minimum run time settings
+- Hot gas bypass stuck open → extra capacity being added to suction
+- One suction group pulling down another through failed check valve → verify check valves between groups
+
+#### Compressor short-cycling
+- Scroll compressor minimum OFF time: typically **3 minutes** (prevents liquid slugging on restart)
+- Minimum ON time: typically **30 seconds**; prevents thermal overload
+- Rack controller staging minimum times are parameters — verify they are set correctly
+- Short-cycling cause: too many compressors relative to load; reduce staging steps or add hot gas bypass
+
+#### Discharge temperature high on one compressor
+- Liquid injection solenoid failed (scroll): no liquid injection cooling → discharge rises
+- High suction superheat entering compressor → motor not cooled adequately
+- Suction valve failure → low compression → heat builds from re-expansion
+- High compression ratio → check head pressure; check suction setpoint
+
+#### Compressor not staging on when needed
+- LP cutout tripped and manual-reset required
+- Contactor failed or control fuse blown
+- Rack controller minimum off-time not expired (scroll restart timer)
+- Capacity at 100% but suction still rising → undersized rack for load; evaluate compressor sizing
+
+---
+
+### Refrigerant Charge Verification on a Rack
+
+A parallel rack with improper charge exhibits symptoms that can be confused with many other faults.
+
+**Low charge indicators:**
+- Low subcooling at liquid header (< 5°F)
+- High superheat on multiple circuits simultaneously
+- Low suction pressure despite low case temperatures
+- Liquid line sight glass showing bubbles consistently
+
+**High charge indicators:**
+- High subcooling (> 20°F) with normal or elevated head pressure
+- Elevated suction pressure
+- Oil dilution (refrigerant dissolving into oil in receiver)
+
+**Charge verification procedure:**
+1. Stabilize system: all compressors running in steady state, all circuits in refrigeration
+2. Measure subcooling at liquid header outlet
+3. Target subcooling: **10–15°F** for most HFC rack systems
+4. Adjust charge in small increments (1–2 lb at a time); allow 15 minutes to stabilize between additions
+5. Record final weight added and update system charge record
+
+---
+
+### Rack Energy Management Features
+
+| Feature | How It Works | Common Issue |
+|---------|-------------|-------------|
+| Floating suction | Raises suction setpoint when case temps are comfortable | Disabled after service call; not re-enabled |
+| Floating head pressure | Lowers head pressure as ambient drops | Set too aggressively → TXV starvation in cold weather |
+| Night setback | Raises suction setpoint during off-hours | Set too aggressively → morning temperature alarms |
+| Demand defrost | Only defrosts circuits that need it | Disabled at commissioning; never re-enabled |
+| Compressor rotation | Equalizes run hours across all compressors | Not configured; one compressor always lead → early failure |
+| Anti-sweat heater control | Dims heaters based on dew point | Dew point sensor failed; heaters run at full power always |
+
+---
+
+### 10 Common Parallel Rack Mistakes
+
+1. **Staging deadband too narrow** — compressors rapid-cycle; scroll restart timers trip; capacity gaps cause temperature swings across all circuits.
+2. **Crankcase heaters not verified after power restoration** — first startup after outage causes oil foaming and potential compressor failure.
+3. **Oil equalization lines blocked or valved off** — oil level varies across compressors; some trip on low oil while others are over-filled.
+4. **Floating head pressure too low in winter** — subcooling drops below 5°F; flash gas in liquid line; high superheat alarms on multiple circuits simultaneously misdiagnosed as refrigerant leak.
+5. **Compressor rotation not enabled** — lead compressor accumulates 3× the run hours; fails first; owner surprised.
+6. **Night setback too aggressive** — suction raises 8–10°F overnight; case temperatures drift above 40°F on medium-temp; health code concern; reduce setback to 3–5°F maximum.
+7. **Liquid injection solenoid coil failed and not caught** — discharge temperature slowly rises over weeks; compressor fails from heat; no alarm was set on discharge temperature.
+8. **Discharge check valve failed on one compressor** — hot discharge gas flows back through idle compressor; compressor heats up; contaminates oil; causes oil breakdown.
+9. **Refrigerant added without rechecking subcooling** — technician adds refrigerant by sight glass (bubbles disappear) but overcharges; high subcooling, elevated head pressure, oil dilution.
+10. **Suction accumulators not drained after servicing** — liquid refrigerant trapped in accumulator flashes on restart; liquid slug reaches compressor; catastrophic valve failure.`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
