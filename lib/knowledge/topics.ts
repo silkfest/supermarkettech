@@ -11,6 +11,7 @@ import {
   EVAPCO_LMP_KNOWLEDGE,
   PENN_CONTROLS_KNOWLEDGE,
   CARNOT_KNOWLEDGE,
+  EMERSON_E2_E3_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -59,7 +60,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Zap',
     colorClass: 'violet',
     content: COPELAND_KNOWLEDGE,
-    manualKeywords: ['copeland', 'emerson', 'coresense'],
+    manualKeywords: ['copeland', 'coresense'],
     tags: ['Compressors', 'Scroll', 'Discus'],
     category: 'manufacturer',
   },
@@ -157,6 +158,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: CARNOT_KNOWLEDGE,
     manualKeywords: ['carnot'],
     tags: ['CO₂', 'Transcritical', 'Ejector', 'Booster'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'emerson-e2-e3',
+    title: 'Emerson E2 / E3 Controllers',
+    shortTitle: 'Emerson E2/E3',
+    description: 'E2 and E3 supervisory store controllers: hardware architecture, circuit configuration, defrost scheduling, LonWorks/Modbus networking, alarm diagnostics, sensor wiring, and 12 common field mistakes.',
+    iconName: 'Monitor',
+    colorClass: 'green',
+    content: EMERSON_E2_E3_KNOWLEDGE,
+    manualKeywords: ['emerson e2', 'emerson e3', 'emerson supervisory', 'supervisory control e'],
+    tags: ['Store Controller', 'E2', 'E3', 'LonWorks'],
     category: 'manufacturer',
   },
   {

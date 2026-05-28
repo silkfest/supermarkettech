@@ -2838,6 +2838,166 @@ The Carnot startup sheet is stored inside the electrical cabinet — all setpoin
 - **Note on fault codes:** Specific alarm codes depend on the controller platform (Micro Thermo, Danfoss AK-PC, Carel pRack). Refer to that controller's documentation for code lookup.`
 
 
+export const EMERSON_E2_E3_KNOWLEDGE = `
+## Emerson E2 / E3 Supervisory Store Controllers
+
+### Product Overview
+| Controller | Generation | Display | OS | Key Use Case |
+|------------|-----------|---------|-----|--------------|
+| E2 | Legacy (still widely installed) | Resistive colour touchscreen | Embedded Linux | Full-store refrigeration + HVAC + lighting |
+| E3 | Current (replacement for E2) | Capacitive colour touchscreen | Android-based | Full-store + cloud connectivity + analytics |
+
+Both are **site controllers**: one unit manages all refrigeration circuits, HVAC units, and lighting schedules for an entire store. They talk down to individual case controllers and rack controllers via LonWorks (FTT-10) or Modbus RS-485; they talk up to enterprise software (Emerson CoolTerm / Site Supervisor) via TCP/IP.
+
+---
+
+### E2 Architecture
+
+#### Hardware
+- **CPU board** — runs the application; has RJ-45 Ethernet + two COM ports
+- **I/O boards** (16AI, 8RO, 8DO, 8AO) — expand to handle sensors and relays
+- **E-Link bus** — RS-485 chain connecting I/O expansion boards to the CPU
+- **COM1/COM2** — serial ports used for LonWorks adapter (LON-RS485 gateway) or direct Modbus to rack controllers
+- Power: 24 VAC; internal battery backs RTC and alarm memory for ~72 h
+
+#### Versions / Firmware
+- **E2 RX** — original retail controller
+- **E2 BX** — HVAC/building-only variant
+- **E2 XM** — expanded I/O version (more circuits)
+- Firmware versions: **2.x, 3.x, 4.x** — check via *Main Menu → System → About*
+- 4.x firmware required for R-448A/R-449A refrigerant property tables
+
+#### Circuit Types
+| Type | What it controls |
+|------|-----------------|
+| Refrigeration Circuit | One case section — setpoint, defrost, alarms, sensor inputs |
+| CC (Case Controller) | Groups circuits from a connected case controller (Emerson EC2, EC3, Retail Solutions CC) |
+| Rack | Condensing unit or parallel rack — suction setpoint, capacity steps |
+| HVAC | Rooftop unit — heating/cooling stages, economizer |
+| Lighting | Relay-based on/off schedule |
+
+---
+
+### E3 Architecture
+
+#### Key Differences from E2
+- **Android OS** with capacitive touchscreen — navigation uses swipe/tap gestures
+- **Built-in Wi-Fi + Ethernet** — native cloud/remote access without separate modem
+- **I/O boards** are same E-Link protocol as E2 but physically different connectors on some models
+- Supports **BACnet/IP** and **OPC-UA** in addition to Modbus and LonWorks
+- Configuration via built-in web interface (Chrome/Edge on LAN) or on-screen
+- Remote access via **Emerson Site Supervisor** (cloud) or **CoolTerm** (local PC software)
+
+#### E3 Supervisor Reference Card — Key Shortcuts
+- **Home screen → swipe left** — live alarm list
+- **Home screen → swipe right** — circuit overview grid
+- **Top-right menu → Setpoints** — quick setpoint access without full navigation
+- **Top-right menu → Reports** — energy, alarm history, defrost log exports
+- Factory reset: hold power + home buttons for 10 s (only use as last resort — wipes all programming)
+
+---
+
+### Common Configuration Tasks
+
+#### Adding a New Refrigeration Circuit (E2 and E3)
+1. Main Menu → Configuration → Circuits → Add
+2. Select circuit type (Refrigeration)
+3. Assign input sensors: supply air (SA), return air (RA), defrost termination (DT), liquid line (LL)
+4. Set setpoints: *Setpoint*, *Setpoint High Limit*, *Setpoint Low Limit*
+5. Configure defrost: type (electric/hot gas), initiation (time clock or adaptive), termination (temperature or time-out), drip time
+6. Assign to a display group for UI organisation
+7. Save and verify circuit appears in live view with sensor readings
+
+#### Defrost Schedule
+- Up to **8 defrost initiations per day** per circuit
+- Adaptive defrost: controller tracks actual defrost frequency and dynamically adjusts — requires *Adaptive Defrost* option licence on E2; built-in on E3
+- Defrost termination temperature: typically **50–55°F (10–13°C)** for medium-temp cases; **65°F (18°C)** for low-temp
+- Failed defrosts (time-out) generate a **Defrost Fail** alarm — check termination sensor calibration first
+
+#### Setpoint Schedules (Night Setback)
+- E2: *Setpoint Scheduling* — assign AM/PM setpoints + schedule periods
+- E3: *Setpoint Profiles* — more flexible multi-period scheduling
+- Night setback raises case temperature setpoint (e.g. +3°F) during closed-store hours to save energy
+
+#### Alarm Configuration
+- Priority 1 (Critical) — activates dial-out / email notification immediately
+- Priority 2 (Standard) — logged; notification after configurable delay
+- Priority 3 (Informational) — logged only
+- **Deadband**: always set a return-to-normal deadband to prevent chattering alarms (e.g., high temp alarm at +10°F with 2°F deadband returns at +8°F)
+
+---
+
+### Networking & Communications
+
+#### LonWorks to Case Controllers
+- FTT-10 twisted-pair network (no polarity) — max segment length **500 m (1640 ft)**
+- Termination resistors **105 Ω** at each end of the bus
+- Each case controller node has a **Neuron ID** — recorded during commissioning; used for replacement
+- Max 127 nodes per LonWorks segment; use a **LonWorks repeater** for longer stores
+- Common fault: node goes offline → check terminators, then check 24 VAC power at the case controller, then re-bind the node in the E2/E3 network configuration
+
+#### Modbus to Rack Controllers
+- RS-485 half-duplex, typically **9600 or 19200 baud, 8N1**
+- Each rack controller has a unique **Modbus address** (1–247)
+- Verify address on the rack controller itself before troubleshooting in E2/E3
+- Common fault: all racks show comms error → check RS-485 wiring polarity (A+/B−), termination resistor (120 Ω) at far end, and baud rate match
+
+#### TCP/IP Remote Access
+- E2: requires static IP or DHCP reservation — set in *Main Menu → Network Setup*
+- E3: configure in *Settings → Network*; supports both Ethernet and Wi-Fi
+- **CoolTerm** (PC software): connects over LAN, provides full configuration, alarm acknowledgement, data trending
+- **Site Supervisor** (cloud): Emerson's CMMS integration; requires active subscription and outbound port 443
+
+---
+
+### Alarm Diagnostics — Common Issues
+
+| Alarm | Likely Cause | First Check |
+|-------|-------------|-------------|
+| Circuit High Temp | Case load high, defrost fail, sensor offset | Check defrost log; verify return air sensor |
+| Circuit Low Temp | Setpoint too low, valve stuck open, sensor offset | Check supply air sensor and TXV superheat |
+| Defrost Fail | Termination sensor not reaching setpoint | Sensor location; faulty heater (electric defrost); check hot gas solenoid |
+| Comms Loss (LON node) | Wiring fault, power loss at case, node lockup | 24 V at case controller; terminators; rebind node |
+| Comms Loss (Modbus) | Address conflict, baud rate mismatch, wiring | Verify address on rack controller; check A/B polarity |
+| Sensor Out of Range | Sensor open/short or wiring fault | Measure sensor resistance at terminal block; compare to temp/resistance table |
+| Low Battery | Internal RTC battery below threshold | Replace CR2032 (E2) or Li-ion pack (E3) — log a maintenance record |
+| Rack Suction High | Suction setpoint not being maintained | Check compressor capacity; verify rack controller communications |
+
+---
+
+### Sensor Wiring & Input Types
+
+#### E2 Analogue Inputs (16AI board)
+- **0–5 V** — most pressure transducers (output 0.5–4.5 V)
+- **4–20 mA** — alternative pressure transducer wiring; requires 250 Ω shunt resistor at board
+- **NTC 10kΩ @ 77°F** — Emerson standard temperature sensors (same table as A99 series)
+- **0–10 V** — humidity or CO sensors
+
+Input type is set per channel in board configuration — mismatch is the single most common sensor reading error.
+
+#### Sensor Replacement
+- NTC sensors: measure resistance with a DMM — compare to published temp/resistance table
+- At **32°F (0°C)** → ~32 kΩ; at **77°F (25°C)** → ~10 kΩ; at **104°F (40°C)** → ~5 kΩ
+- Pressure transducers: verify supply voltage (typically 5 VDC) before condemning transducer
+
+---
+
+### 12 Common Field Mistakes
+
+1. **Input type not configured** — NTC sensor on a 0–5 V input reads garbage; always set input type per channel after wiring.
+2. **Defrost termination sensor in wrong location** — sensor must be on the coldest coil section; placing on drain pan gives premature termination and wet coils.
+3. **Adaptive defrost left enabled during initial commissioning** — adaptive algorithm needs 2–3 weeks of stable data; disable until store is running normally.
+4. **Night setback too aggressive** — raising setpoint >5°F during pull-down period causes temperature excursions; test in small increments.
+5. **LonWorks terminators missing** — network appears to work at first, but intermittent node dropouts occur; always verify both end terminators.
+6. **Modbus address 0 assigned to rack controller** — address 0 is the broadcast address; assign 1 or above.
+7. **Time clock not synced after power failure** — E2 battery keeps RTC, but verify time/date after any extended outage; defrost at wrong times causes temperature problems.
+8. **Alarm deadbands set to zero** — causes chattering alarms and floods the alarm log; minimum 2°F deadband on temperature alarms.
+9. **Replacing E2 CPU board without exporting configuration** — always back up configuration to USB/PC via CoolTerm before any board replacement; factory defaults lose all circuit programming.
+10. **Forgetting to set correct refrigerant in rack circuit** — pressure-temperature conversions in alarm thresholds depend on the refrigerant selected; R-448A vs R-404A pressures differ significantly.
+11. **Using telnet/HTTP to configure E3 without disabling the on-screen lock** — screen lock on E3 does not lock out web interface; a padlock icon on screen means screen only, not full lock.
+12. **LON node replacement without Neuron ID** — when replacing a case controller board, the new Neuron ID must be re-commissioned in the E2/E3; node does not auto-register.`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
