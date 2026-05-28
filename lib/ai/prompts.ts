@@ -4163,6 +4163,529 @@ Before touching gauges or tools, always work through these three layers in order
 - Never replace a part without confirming it is the cause
 - One change at a time — rushing creates new problems`
 
+export const VFD_KNOWLEDGE = `
+## VFDs (Variable Frequency Drives) — Supermarket Refrigeration
+
+A VFD converts fixed-frequency AC to variable-frequency output, allowing motors to run at adjustable speeds. In commercial refrigeration: condenser fan arrays (head pressure floating), evaporator fans (energy/noise), and compressor motors on some systems.
+
+---
+
+### Power Section Basics
+Three stages: Rectifier (AC→DC) → DC Bus (filter/capacitors) → Inverter (DC→AC via PWM).
+DC bus voltage ≈ 1.35× line voltage. 480V system = ~650V DC bus.
+Output is PWM at a carrier frequency (2–16 kHz); motor sees variable V/Hz ratio.
+V/Hz ratio held constant below base speed to maintain motor flux.
+
+---
+
+### Common VFD Brands in Refrigeration
+| Brand | Model | Typical Use |
+|---|---|---|
+| Danfoss | FC102 (HVAC Drive), FC103 (Refrigeration Drive) | Condenser fans, CO₂ rack fans |
+| ABB | ACS550, ACS880 | Condenser fan arrays, pumps |
+| Yaskawa | GA800, A1000 | Compressor motors, fans |
+| Emerson/Control Techniques | Commander C300 | Condenser fans |
+| Rockwell | PowerFlex 40/525 | Fan arrays |
+| Schneider | Altivar ATV610 | Fan and pump |
+
+---
+
+### Key Parameters — First Commissioning
+| Parameter | Typical Setting | Notes |
+|---|---|---|
+| Motor rated current (FLA) | Nameplate FLA | Enables correct overload protection |
+| Motor rated voltage | Nameplate V | Must match motor |
+| Base frequency | 60 Hz (NA) | |
+| Max frequency | 60–70 Hz | Never exceed motor design |
+| Min frequency | 15–20 Hz | Below 10 Hz = motor overheating risk |
+| Accel time | 10–30 s (fans) | Longer = less inrush |
+| Decel time | 10–30 s | Fast decel → OV trip |
+| Carrier frequency | 4–8 kHz | Higher = quieter motor; more VFD heat |
+| Motor thermal protection | ETR or PTC | Always enable |
+
+---
+
+### Condenser Fan VFD — Head Pressure Control
+- Discharge or condensing pressure transducer → store controller PID → 0–10V or 4–20mA analog → VFD speed reference
+- Set minimum speed: 20–30 Hz minimum prevents motor overheating on PSC/NEMA motors
+- ECM/BLDC motors handle lower speeds than induction motors — check motor spec before setting min Hz
+- R-448A condensing target example: 175–200 psig (~88–95°F condensing) at design ambient
+- Fan arrays with multiple VFDs: stage fans on in sequence; running one at 60 Hz is more efficient than two at 30 Hz
+
+---
+
+### Fault Codes — Universal Types
+| Code | Meaning | Common Cause |
+|---|---|---|
+| OC / OCP | Overcurrent | Locked rotor, short circuit, accel too fast |
+| OV / OVP | DC bus overvoltage | Decel too fast; add braking resistor for high inertia loads |
+| UV / LV | Undervoltage | Low line voltage, blown input fuse, phase loss |
+| OH / OHT | Drive overtemperature | Blocked cooling, dirty heatsink, high ambient in panel |
+| GF | Ground fault | Motor winding to ground, cable insulation damaged |
+| OP / OLP | Motor overload | Wrong FLA set, motor overloaded |
+| PH / PHL | Phase loss / imbalance | Input phase open, blown fuse, loose terminal |
+| COM | Communication fault | Network cable loss, wrong baud/address |
+
+---
+
+### Parameter Backup — Never Skip
+Before any VFD replacement:
+1. Upload parameters to PC via drive software (Danfoss MCT10, ABB Drive Composer, Yaskawa DriveWizard)
+2. Or: use LCP/HIM keypad copy function (Danfoss: LCP copy; ABB: control panel upload)
+3. Fallback: photograph or transcribe parameter list manually
+After swapping VFD: upload saved parameters → commissioning time drops from hours to minutes.
+Write motor nameplate data on a label inside the panel door.
+
+---
+
+### Wiring Checklist
+- Input: L1/L2/L3 correct rotation (compressors — rotation matters; fans — usually not)
+- Output: U/T1, V/T2, W/T3 to motor (swap any two to reverse rotation)
+- Control: analog input (0–10V or 4–20mA); digital inputs (enable, run/stop, fault reset)
+- Shielded cable for all control wiring; ground shield at one end only
+- VFD output must NOT share a breaker with capacitive loads (PF correction banks) — PWM destroys capacitors
+
+---
+
+### Short-Cycling Prevention
+VFDs allow capacity modulation instead of on/off cycling.
+Fan motors on VFD: controlled soft-start eliminates relay chatter.
+If a fan short-cycles on VFD: check if controller is toggling analog output (use PID mode, not on/off logic).
+Minimum run timer parameter available in most drives — use it.
+
+---
+
+### 10 Common Field Mistakes
+1. High carrier frequency in a hot mechanical room → VFD overheats
+2. Forgetting to set motor FLA → factory default overload won't protect correctly
+3. Running induction motor below 15 Hz continuously → motor overheating
+4. No braking resistor on large high-inertia fans → OV trip on decel
+5. Control wiring in same conduit as power → EMI causes erratic speed/faults
+6. No parameter backup before swap → hours of re-commissioning
+7. Wrong V/Hz curve (square-law vs linear) — use square-law for centrifugal fans
+8. Wrong fuse type upstream (need semiconductor fuses with some VFDs)
+9. Motor thermal protection not enabled in drive
+10. Min frequency too low → motor hunts, runs rough, or fails to start`
+
+export const REFRIGERANT_RETROFIT_KNOWLEDGE = `
+## R-404A → R-448A / R-449A Retrofit Guide — Supermarket Refrigeration
+
+### Why R-404A Is Being Phased Out
+R-404A GWP = 3922. Canadian, EU, and major retailer policies mandate phase-down.
+R-448A (Honeywell Solstice N-40) GWP = 1387; R-449A (Chemours Opteon XP40) GWP = 1397.
+Both are HFO/HFC blends designed as functional R-404A replacements in existing systems.
+
+---
+
+### R-448A vs R-449A — Which to Use
+| Property | R-448A (Solstice N-40) | R-449A (Opteon XP40) |
+|---|---|---|
+| Manufacturer | Honeywell | Chemours |
+| GWP | 1387 | 1397 |
+| Capacity vs R-404A | ~97–100% | ~97–100% |
+| Efficiency vs R-404A | +5–8% COP improvement | +5–8% COP improvement |
+| Discharge temp vs R-404A | +5–15°F higher | +5–15°F higher |
+| Oil compatibility | Existing POE acceptable | Existing POE acceptable |
+Both are functionally equivalent. Choose based on local supplier availability and refrigerant cost.
+
+---
+
+### Step-by-Step Retrofit Procedure
+1. **Recover R-404A** — full charge; label recovery cylinder; do not mix with R-448A
+2. **Oil check** — R-404A systems on POE: test with acid kit (Sporlan or equivalent); if acid-free, existing POE can stay. Mineral oil or AB oil: drain and replace with POE ISO 32 (MT) or ISO 68 (LT)
+3. **Replace filter-drier** — mandatory; change to XH-7 or XH-9 molecular sieve (rated for HFO blends)
+4. **TXV assessment** — TXVs with R-404A bulb charge need replacement bulb assembly with R-407C or R-448A charge; EEVs are unaffected (just adjust superheat setpoint)
+5. **Update pressure control setpoints** — HP cutout, LP cutout (see table below)
+6. **Charge as liquid** — R-448A and R-449A are zeotropic blends; must enter system as liquid to maintain composition; use liquid port or invert cylinder
+7. **Target charge weight** — typically within 5% of original R-404A charge by weight
+8. **Set and verify superheat** — 8–12°F suction superheat at evaporator outlet
+9. **Update controller setpoints** — suction pressure setpoint, discharge/condensing pressure setpoint, fan staging pressures
+10. **Apply labels** — mark all service ports and rack label with new refrigerant type and charge weight
+11. **Document** — record refrigerant brand, charge weight, oil type/brand, date, technician
+
+---
+
+### Pressure / Temperature Reference
+**Medium-temp suction (~25°F evaporating):**
+| Refrigerant | Approx. Suction |
+|---|---|
+| R-404A | 27 psig |
+| R-448A | 27 psig (near identical) |
+
+**Low-temp suction (−20°F evaporating):**
+| Refrigerant | Approx. Suction |
+|---|---|
+| R-404A | 3.8 psig |
+| R-448A | 4.0 psig |
+
+**Condensing pressure at 90°F condensing temp:**
+| Refrigerant | Condensing Pressure |
+|---|---|
+| R-404A | ~213 psig |
+| R-448A | ~200 psig |
+| R-449A | ~203 psig |
+
+Note: R-448A/R-449A condense at slightly lower pressure than R-404A at the same temperature.
+
+---
+
+### Critical: Discharge Temperature Is Higher
+R-448A and R-449A compressors run 5–15°F hotter discharge temperature than R-404A.
+- Copeland: verify ASTP setpoint; default ASTP shutoff is 225°F (107°C) — usually adequate
+- Bitzer: verify INT69 VS is properly set and functional; check published envelope for R-448A
+- If compressor has a discharge temp sensor: confirm setpoint is 225°F or higher
+- Monitor discharge temp closely for first 24 h post-retrofit
+
+---
+
+### TXV Considerations
+- TXV with R-404A bulb charge will misfeed with R-448A — replace bulb assembly with R-407C or R-448A charge
+- Sporlan: CX series can be recharged in field; ANG/ANGE valves — replace bulb/element
+- Danfoss TUA/TUAE: check charge type from model number (charge type suffix); replace if R-404A charged
+- EEV (Sporlan SER/SERI, Danfoss AKV): no bulb charge issue; minor superheat setpoint adjustment may be needed (+1–2°F)
+
+---
+
+### Oil Requirements
+- POE in good condition (clean, acid-free): keep existing oil
+- Acid test positive or oil discoloured: flush system with fresh POE
+- Recommended POE: ISO 32 for MT systems; ISO 68 for LT compressors running at low ambient
+- Never mix POE with mineral oil or alkylbenzene — causes sludge
+
+---
+
+### 8 Common Field Mistakes
+1. Charging as vapour — must be liquid; blend fractionation ruins composition
+2. Not changing filter-drier — XH-6 (R-404A rated) not adequate for HFO blends
+3. Leaving R-404A TXV bulb charge — causes erratic superheat
+4. Not checking discharge temp after startup — R-448A runs hotter; potential ASTP/INT69 trip
+5. Mixing leftover R-404A into the charge — contaminates blend, invalidates warranty
+6. Not updating refrigerant labels on service ports and rack data plate
+7. Skipping acid test on oil — contaminated POE will fail compressor after retrofit
+8. Not documenting charge weight — critical for future leak tests and recharges`
+
+export const TYLER_HILL_PHOENIX_KNOWLEDGE = `
+## Tyler Display Cases & Hill Phoenix — Supermarket Refrigeration
+
+---
+
+## TYLER (CARRIER COMMERCIAL REFRIGERATION)
+Tyler is a Carrier/Watsco brand. Tyler cases are among the most widely installed open multideck and reach-in cases in North American supermarkets.
+
+### Tyler Case Families
+| Series | Type | Common Application |
+|---|---|---|
+| T-Series Multideck | Open multideck | Produce, dairy, deli |
+| Tyler Reach-In | Glass-door reach-in | Frozen, dairy, beverages |
+| Tyler Island / Coffin | Open top chest / island | Frozen bulk, ice cream |
+| Tyler Service Deli | Service cases | Fresh meat, deli counter service |
+| Tyler Specialty | Grab-and-go, floral | Variable |
+
+### Tyler Controllers & Temperature Setpoints
+- Dixell XR75CX, XR06CX: most common Tyler case controller; digital display, relay outputs for fan, defrost, alarm
+- Some Tyler systems use Carrier CaseMaster or remote supervisory controller
+- Medium-temp setpoint: typically 28–35°F (−2 to +2°C)
+- Low-temp setpoint: typically 0°F (−18°C) or −5°F for hard-frozen
+- Differential: 4–6°F typical (controller cycles compressor or case solenoid)
+
+### Tyler Defrost
+- **Electric resistance**: Standard on low-temp; Chromalox tubular or fin-wound heaters
+- **Hot gas**: On some Tyler medium-temp and deli cases; 2-pipe system
+- **Off-cycle**: Medium-temp cases with glass doors; fans off, ambient melts frost
+- Termination thermostat: 47–55°F typical; check continuity with ohmmeter
+- Defrost frequency: 2–4× per day on low-temp; 1–2× on medium-temp
+- Drain pan heater: 25W line voltage on low-temp; verify energized during defrost and standby
+- **Hi-limit thermostat**: 70–85°F; manual-reset type on some models — check this after any defrost complaint
+
+### Tyler Fan Motors
+- Shaded pole (small coolers): 2–5W; match CW/CCW rotation — reversed rotation = 50% airflow loss
+- PSC: 1/30–1/4 HP; match capacitor µF rating; capacitor failure is the #1 fan motor fault
+- ECM (newer Tyler): smart fan module; non-repairable; replace module assembly
+
+### Tyler Common Faults
+| Symptom | Likely Cause |
+|---|---|
+| Case warm, fans running | Low refrigerant, TXV malfunction, blocked evaporator |
+| Excessive frost on evap | Defrost not completing, bad termination sensor, drain blocked |
+| Fan cycling on thermal | Motor bearing failure, high ambient, blocked return air |
+| Case icing at door | Door gasket failure, door out of alignment, high store humidity |
+| Evap ices from top | Distributor nozzle blocked or refrigerant distributor issue |
+| No defrost heat | Failed heater element, open hi-limit thermostat, timer/controller fault |
+| Case temp spiking at night | Night curtain not dropping; check curtain mechanism and schedule |
+
+---
+
+## HILL PHOENIX (DOVER REFRIGERATION & FOOD EQUIPMENT)
+Hill Phoenix manufactures display cases and the Advansor CO₂ transcritical booster rack system — one of the most widely deployed CO₂ platforms in North American supermarkets.
+
+### Hill Phoenix Case Families
+| Series | Type | Application |
+|---|---|---|
+| Evolution | Open multideck MT | Produce, dairy, deli |
+| Impact | Reach-in MT/LT | Dairy, frozen |
+| Apex | Open or glass door | Produce, floral |
+| Fusion | Service case | Fresh meat, prepared foods |
+| G Series | Island / coffin | Frozen bulk |
+| Element CO₂ | CO₂-compatible cases | CO₂ DX or pumped secondary |
+
+Hill Phoenix case controllers: Carel IR33 / IR33+ (most common); Dixell XR75 on older models; Carel pCO mini for EEV on CO₂ cases.
+
+### Hill Phoenix Advansor CO₂ Transcritical Booster Rack
+The Advansor rack is a complete CO₂ transcritical booster system manufactured by Hill Phoenix (via Advansor acquisition from Denmark).
+
+**Architecture:**
+- MT compressors (medium temp suction): typically Bitzer BSK reciprocating CO₂
+- LT compressors (low temp booster): Bitzer BSK
+- Flash tank: intermediate pressure vessel separating MT and LT circuits
+- Gas cooler: air-cooled with VFD fan control; pressure-optimized by Carel controller
+- Defrost: Hot gas from MT discharge circuit piped to LT evaporators
+- Controls: Carel pCO5+ rack controller with Carel Boss or BEMS supervisor
+
+**Advansor Alarm / Fault Reference:**
+| Fault | Meaning | First Check |
+|---|---|---|
+| HP Cutout (High Pressure) | Discharge pressure > safety setpoint | Gas cooler fans, ambient temp, charge level |
+| LP Cutout (Low Pressure) | Suction below safety setpoint | Evaporator load, TXV/EEV, refrigerant charge |
+| Oil Level Low | Compressor oil level below sensor | Bitzer IQ module LED, oil return lines |
+| Carel E0 / probe alarm | Sensor/probe fault | Probe wiring at pCO5 analogue input, probe resistance |
+| Defrost Timeout | Defrost not completed in allotted time | Hot gas valve operation, termination sensor |
+| Fan Fault | VFD fault on gas cooler fan | Check VFD fault code (OC, OH, COM typical) |
+| Flash Tank Level | Flash tank level out of range | Flash tank level sensor, liquid line solenoid |
+
+**Advansor Commissioning Key Points:**
+- Gas cooler approach temp target: 1–3°C above ambient in transcritical mode
+- Setpoints: Flash tank pressure, HP float setpoint, MT/LT suction setpoints
+- Oil management: Bitzer IQ module per compressor; sight glass check at startup and after 2h operation
+- Safety relief valve: Test date and set pressure must be recorded; 130 bar (1885 psi)
+- Refrigerant: CO₂ grade 99.99% purity; dedicated CO₂ recovery cylinder required
+
+---
+
+### 8 Common Field Mistakes
+1. Confusing Tyler and Hill Phoenix case parts when ordering — case dimensions similar but all parts differ
+2. Not checking termination thermostat continuity after a defrost complaint — stuck-open = case runs warm
+3. Replacing Tyler controller without recording parameter settings — must document first
+4. Not resetting manual-reset hi-limit after a defrost problem — unit stays in alarm
+5. Overlooking night curtain motor failure on Tyler cases — single largest cause of night-time temp spike
+6. Advansor: ignoring Carel probe alarm while diagnosing a refrigeration symptom — probe faults mask real data
+7. Advansor: recovering CO₂ with HFC recovery equipment — requires CO₂-rated recovery unit
+8. Running Advansor in subcritical mode above critical point — check ambient; controller handles automatically but understand the switchover`
+
+export const HEATCRAFT_BOHN_KNOWLEDGE = `
+## Heatcraft Refrigeration Products — Bohn / Larkin / Climate Control
+
+Heatcraft Refrigeration Products (HRP) is the commercial refrigeration division of Lennox International, manufacturing unit coolers, condensing units, and remote condensers under four brand names:
+- **Bohn** — widest product range; dominant in North America
+- **Larkin** — walk-in cooler/freezer, industrial
+- **Climate Control** — walk-in focused, often OEM for store builders
+- **Chandler** — packaged condensing units
+
+Product literature: heatcraftrpd.com/resources/literature
+
+---
+
+### Unit Cooler Families (Bohn / Larkin Designations)
+
+**Model prefix decoding (Bohn example — BHF024A6B):**
+- **B** = Bohn brand
+- **H** = Hot gas defrost / **L** = Electric / **A** = Air (off-cycle)
+- **F** = Freezer / **C** = Cooler (medium temp)
+- **024** = nominal capacity (BTU/h × 100)
+- **A** = coil circuit configuration
+- **6** = number of fans
+- **B** = voltage code
+
+| Series | Defrost Type | Application |
+|---|---|---|
+| BHF / LHF | Electric | Low-temp walk-in freezer |
+| BAC / LAC | Air (off-cycle) | Medium-temp walk-in cooler |
+| BHH / LHH | Hot gas | Low-temp freezer, hot gas defrost |
+| BHC / LHC | Electric | Low-temp cooler |
+| BHFC | Electric | Combination low-temp |
+| SDB | Steam | Food processing / blast freeze |
+
+---
+
+### Fan Motors
+- **Shaded pole** (small coolers, <1/30 HP): 2–5W; must match CW or CCW rotation; reversed motor = 50–60% airflow loss
+- **PSC (Permanent Split Capacitor)** (1/30–1/4 HP): capacitor failure is #1 fault; match µF and voltage rating exactly; run capacitor separate from start capacitor
+- **ECM (Electronically Commutated)** (newer units, up to 1/3 HP): variable speed; smart module; not field-repairable — replace full motor/module assembly
+- Fan blade pitch: Low-temp units have steeper pitch (more CFM for defrost air distribution and tighter evaporating temp)
+- Fan guard: Replace corroded guards — 15–25% airflow penalty from heavily corroded mesh
+
+---
+
+### Electric Defrost — Detail
+- **Heater types**: Chromalox tubular (cal-rod); fin-wound wire-in-sheath; glass tube on glass-door units
+- **Termination thermostat** (ET): opens at 47–55°F (8–13°C) — ohm-test for continuity; if open at room temp → replace
+- **High-limit thermostat** (HLT): safety at 70–85°F; some models are **manual-reset** — must be manually reset after overcooling or heater fault
+- **Drain pan heater**: tape or strip heater on drain pan bottom; verify continuity and that it is energized during defrost and often continuously on freezer units
+- Defrost time: 20–40 min typical; if frost remains at end of cycle, increase time or check heater continuity
+- Wiring path: L1 → defrost timer contact → defrost relay → evaporator heaters → drain pan heater (in parallel with evap heaters on most models) → N
+
+### Hot Gas Defrost — Detail (BHH / LHH Series)
+- Hot gas enters evaporator through a dedicated inlet port (not through suction)
+- Suction check valve: prevents hot gas from reversing into suction header
+- Defrost solenoid valve: NC; opens on defrost command
+- Fan delay thermostat (FDT): Prevents fans from restarting until coil < 35°F — never bypass; hot air redistribution will damage motor windings
+- Drain: ensure drain is heated (or heat tape on drain line) — hot gas produces more condensate than electric
+
+### Off-Cycle / Air Defrost (Medium-Temp BAC/LAC)
+- Fans stop when thermostat satisfied; frost melts from ambient air
+- Effective only when case temperature is at or above 28–32°F
+- Drain pan unheated on most models — if application is near 32°F, add drain pan heater to prevent freezing
+
+---
+
+### Condensing Units (Bohn / Larkin / Heatcraft)
+- Models: BHT, LHT (remote condensing, no compressor), HCM, HCD series (with compressor)
+- Match condensing unit capacity to unit cooler at design TD and saturated suction temp
+- **TD (temperature differential)**: Design TD = room setpoint minus evaporating temp; coolers typically 10°F TD; freezers 10–15°F TD
+- Refrigerant: R-404A, R-448A, R-507, R-22 (legacy)
+- Suction line sizing: 1500 FPM minimum in vertical up-risers for oil return; 700 FPM in horizontal
+
+---
+
+### Heatcraft Product Literature Navigation
+- heatcraftrpd.com/resources/literature — search by model number or category
+- Categories available: Installation & Operation Manuals, Engineering Data, Wiring Diagrams, Specification Sheets
+- Always download the specific IOM for the exact model — defrost wiring and termination thermostat locations vary by unit
+- Warranty: units are serial-number tracked; always record unit SN before beginning service
+
+---
+
+### 10 Common Field Mistakes
+1. Reversing shaded-pole fan motor rotation — severe airflow loss, no visible damage
+2. Wrong capacitor µF on PSC motor replacement — motor runs hot, shorts winding
+3. Termination thermostat clipped too close to heater → premature termination → frost remains on evap
+4. Using wrong heater wattage — too high a watt density burns fin coating; always match OEM
+5. Not resetting manual-reset high-limit thermostat after defrost issue — unit stays warm indefinitely
+6. Fans running during hot gas defrost (FDT bypassed or failed) — motor overheating failure
+7. Frozen drain line on first cold start — most freezer callbacks are clogged drains; check heater on every startup
+8. Selecting unit by BTU/h only without matching TD — two units same BTU/h at different TD have completely different room temperature results
+9. Using R-404A TXV on an R-448A retrofit — replace bulb charge; see Retrofit section
+10. Not recording unit serial number before service — blocks warranty claims and parts lookup`
+
+export const BITZER_KNOWLEDGE = `
+## Bitzer Compressors — Supermarket Refrigeration
+
+---
+
+### Product Families
+| Family | Type | Application |
+|---|---|---|
+| Ecoline (2K/4K/4N/6H/6J/8G) | Semi-hermetic reciprocating | HFC/HFO multiplex racks, walk-in |
+| ORBIT (2KES–8GES) | Hermetic scroll | Small to medium refrigeration |
+| CSH / CSS | Semi-hermetic screw | Large racks, industrial |
+| BSK / BSH | Semi-hermetic reciprocating — CO₂ | CO₂ transcritical & subcritical racks |
+| CSVH | Semi-hermetic screw — CO₂ | CO₂ industrial |
+
+---
+
+### Model Number — Ecoline (4NES-20(Y))
+- **4** = number of cylinders
+- **N** = Ecoline design (high efficiency N series)
+- **ES** = refrigerant group (S = R-404A/R-448A/R-507; E = R-134a/HFO/R-448A range)
+- **20** = displacement class
+- **(Y)** = intermediate injection port (economizer / sub-cooling)
+
+**CO₂ model (2KES-05):** 2K = 2-cylinder CO₂; ES = CO₂ refrigerant; 05 = displacement class.
+
+---
+
+### INT69 VS Protection Relay — Critical Safety Device
+The INT69 VS (Kriwan) is Bitzer's compressor motor protection module. It is MANDATORY on all Bitzer semi-hermetic compressors.
+
+- Three PTC thermistors embedded in motor windings (one per phase)
+- Trips when any winding exceeds ~230°F (110°C), regardless of current draw
+- **Reset procedure**: Manual reset button on INT69 module; push to reset after motor cools
+- **Diagnosing INT69 fault**: Measure PTC thermistor resistance at INT69 terminals S1–S4
+  - Normal (room temp): < 250 Ω
+  - Trip threshold: ~3000 Ω
+  - Open/failed: > 10 kΩ (OL on meter) → replace PTC thermistor string or compressor motor
+- INT69 wired in series with compressor contactor coil — open INT69 = no contactor energization
+- **Always check INT69 before condemning a compressor that won't start**
+- CO₂ version: INT69 G (different trip point for CO₂ application) — do not substitute standard INT69 on CO₂ compressor
+
+---
+
+### Bitzer IQ Module — Oil Level Management
+- Infrared sensor in oil sight glass; detects oil level optically
+- Output relay: closes (OK); opens (low oil level) → alarm or shutdown
+- Power: 24V AC/DC
+- LED indicator: Green = OK; Amber = borderline; Red = low
+- **Foamy oil during startup**: Normal for first 15–20 min; wait before interpreting IQ alarm
+- **Refrigerant migration**: If compressor sat in cold room overnight, refrigerant dissolved in oil → oil level appears high, IQ may show low alarm until refrigerant boils off; use crankcase heater
+- Crankcase heater: energize 2–4 h before starting compressor after long off period
+
+---
+
+### BITZER BEST Software
+Free download at bitzer.de — compressor selection and performance calculation tool.
+- Input: refrigerant, suction/discharge conditions, ambient
+- Output: capacity (kW/BTU), power input (kW), COP, discharge temperature, required motor size, envelope check
+- Generates operating envelope diagram — verify that actual operating point falls inside the envelope
+- Critical for verifying replacement compressor is correct before installation
+
+---
+
+### Operating Envelope
+- **Max discharge temperature**: 120°C (248°F) — INT69 provides primary protection; discharge sensor as backup
+- **Min suction superheat at compressor inlet**: 11°K (20°F)
+- **Max compression ratio**: Depends on model; Ecoline 4-cyl LT ≈ 12:1; MT ≈ 8:1 — exceeding damages valves
+- **Liquid refrigerant risk**: Suction temp below −10°F with R-404A/R-448A → liquid in oil → monitor oil level and use liquid line solenoid to prevent floodback on shutdown
+
+---
+
+### Cylinder Unloaders (4-Cyl and 6-Cyl Models)
+- Solenoid-operated pin lifts suction valve plate → cylinder pumps nothing
+- Full load: all cylinders active; part load: 2 of 4 unloaded (50% capacity)
+- Unloader solenoid: 24V DC; energize = unload cylinder
+- Verify with clamp meter: full-load current vs. part-load current shows ~50% reduction when unloaded correctly
+- Stuck unloader: remove solenoid, clean plunger; verify 24V signal during unload command
+
+---
+
+### Tandem / Trio Configurations
+- Shared suction/discharge manifolds; shared oil equalization line (3/8" copper between crankcases)
+- **Oil equalization**: Check sight glass on both/all compressors; oil should be at same level
+- **Start stagger**: Controller must stagger starts by minimum 30 s — prevents simultaneous inrush from tripping circuit breaker
+- Common fault: Oil migrates to one compressor (equalization line restricted or check valve stuck) → running compressor starves for oil
+
+---
+
+### CO₂ Compressors (BSK / BSH Series)
+- Design pressures: Discharge up to 130 bar (1885 psi); suction up to 50 bar (725 psi) at MT booster stage
+- Oil: **BITZER BVC68** polyol ester — CO₂-specific; do NOT use standard HFC POE (different additive package for CO₂)
+- Valve plates: Heavier duty for CO₂ pressure differential
+- HP safety relief valve: set at 130 bar mechanical + HP electrical cutout at 125 bar
+- Discharge temp in transcritical: 140–200°F typical — higher than HFC systems; INT69 G essential
+- Oil separation: Return oil separator in discharge line; verify oil level in separator sight glass
+- **INT69 G**: CO₂ version of protection relay — must use G version, not standard INT69
+
+---
+
+### Service Valve Positions
+Bitzer semi-hermetic service valves (suction and discharge): 3-position stem.
+- **Back-seated (fully out)**: Normal running position — valve fully open, access port closed
+- **Mid-position**: Open valve and access port — use only for service measurements; never leave here
+- **Front-seated (fully in)**: Isolates compressor — use for pump-down or compressor replacement
+Always back-seat after service.
+
+---
+
+### 10 Common Field Mistakes
+1. Not checking INT69 first when compressor won't start — most "dead compressor" calls are INT69 trips
+2. Wrong oil — Bitzer requires BSE 32/BSE 55 for HFC; BVC68 for CO₂; mixing causes sludge/seal failure
+3. Ignoring IQ module foamy-oil alarm during startup — wait 20 min; if alarm persists after warmup, oil is genuinely low
+4. Operating outside published envelope — verify with BITZER BEST before commissioning
+5. CO₂ compressor with HFC POE oil — catastrophic long-term damage to seals and valves
+6. Not using BITZER BEST to verify replacement model — wrong capacity or refrigerant group
+7. Leaving service valve in mid-position after service — pressurizes access port fitting
+8. Forcing INT69 reset without diagnosing cause — motor at 230°F means a real problem
+9. Using standard INT69 on CO₂ compressor — wrong trip point, compressor unprotected
+10. Tandem oil equalization line reversed — oil pools in one crankcase, other compressor fails`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
@@ -4224,7 +4747,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, MICRO_THERMO_KNOWLEDGE, EVAPCO_LMP_KNOWLEDGE, PENN_CONTROLS_KNOWLEDGE, CARNOT_KNOWLEDGE, EMERSON_E2_E3_KNOWLEDGE, WALK_IN_KNOWLEDGE, PARALLEL_RACK_KNOWLEDGE, VFD_KNOWLEDGE, REFRIGERANT_RETROFIT_KNOWLEDGE, TYLER_HILL_PHOENIX_KNOWLEDGE, HEATCRAFT_BOHN_KNOWLEDGE, BITZER_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(

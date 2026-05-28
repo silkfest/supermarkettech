@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const { data } = await supabase
     .from('documents')
-    .select('id, title, created_at')
+    .select('id, title, created_at, source_type, source_url')
     .or(conditions)
     .order('created_at', { ascending: false })
 
