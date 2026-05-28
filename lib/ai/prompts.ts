@@ -3192,7 +3192,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 
 #### Low ambient / low head pressure affecting TXV feed
 - TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
-- Install head pressure control if not present; minimum head pressure = 90 psig for R-448A, 70 psig for R-404A
+- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈72°F / 22°C sat), **175 psig for R-448A** (≈68°F / 20°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
 
 #### Over-capacity for the load
 - Too many compressors on; LP cutout set too low; suction setpoint too aggressive
