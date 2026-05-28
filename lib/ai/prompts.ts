@@ -2688,6 +2688,1357 @@ Penn Controls is a Johnson Controls brand. All Penn part numbers carry dual labe
 - **A99 sensor compatibility note:** Only A99B-series sensors are compatible with A421 controls — confirm part number before ordering replacements`
 
 
+export const CARNOT_KNOWLEDGE = `
+## Carnot Réfrigération (M&M Carnot / Johnson Controls) — CO₂ Transcritical Systems
+
+Carnot Réfrigération was founded in 2008 in Trois-Rivières, Quebec as the first North American manufacturer of CO₂ transcritical refrigeration systems. Acquired by M&M Refrigeration in 2019 (forming M&M Carnot), then by Johnson Controls in June 2023. All post-2023 service goes through Johnson Controls. Support email: **carnotservice@jci.com**.
+
+Carnot specializes in **CO₂ transcritical booster rack systems** for supermarkets and condensing units for walk-in and warehouse applications. They hold patents on ejector-based defrost and flash gas recovery for transcritical CO₂.
+
+---
+
+### Product Lines
+
+| Product | Type | Capacity | Application |
+|---|---|---|---|
+| CAR-090 (legacy) | Transcritical booster rack | — | Supermarket multi-temp |
+| Aquilon DS™ | Air-cooled CO₂ condensing unit | 10–75 TR | Walk-in / warehouse |
+| Aquilon Chill™ | CO₂ chiller / heat pump | — | Process cooling, DHW |
+| Aquilon Industrial™ | Large-capacity CO₂ rack | — | Cold storage warehouse |
+
+**CAR-090 (supermarket rack):** Carnot's original transcritical booster product for supermarkets. Uses Micro Thermo (MT-Alliance) as the integrated rack and case controller — see the Micro Thermo knowledge section for board, network, and controller detail. All system setpoints are documented on the startup sheet inside the electrical cabinet.
+
+---
+
+### System Architecture — Transcritical Booster
+
+Carnot supermarket systems follow the standard CO₂ booster configuration:
+
+- LT booster compressors → discharge into MT suction header (or directly into flash injection port)
+- MT compressors → gas cooler → high-pressure (HP) throttling valve → flash tank receiver
+- Flash gas bypass valve → MT suction header (recirculates flash gas to avoid liquid carryover)
+- Liquid from flash tank → LT and MT case EEVs
+
+**Transcritical operation (ambient > ~75°F / 24°C):**
+- CO₂ leaves gas cooler as supercritical fluid (no two-phase region)
+- HP throttling valve controls high-side pressure using an efficiency algorithm — target is NOT minimum pressure; higher HP reduces flash gas, improving MT capacity
+- Maximum HP limit: ~1,450 psig (100 bar); valve opens to protect system
+
+**Subcritical operation (ambient < ~75°F):**
+- CO₂ condenses in gas cooler; HP valve controls to maintain subcooling (typically 1.5–3°F)
+- Minimum HP limit: ~700 psig (48 bar); system can operate with free cooling below this
+
+**Free cooling capability:** When ambient drops below ~54°F (12°C), gas cooler fans can reject enough heat that no compression is needed on the high side — significant energy savings in Canadian winters.
+
+---
+
+### Ejector Technology (Carnot Patent)
+
+Carnot's key differentiator is an integrated ejector for flash gas recovery and defrost:
+
+**How it works:**
+- High-pressure CO₂ from the gas cooler outlet drives the ejector as the motive fluid
+- Ejector entrains lower-pressure flash gas from the flash tank, boosting it to an intermediate pressure
+- Net effect: flash gas bypass compressor work is partially replaced by ejector work (no moving parts)
+- COP improvement: 10–42% over non-ejector transcritical systems, depending on ambient
+
+**Defrost (ejector-assisted):**
+- Traditional hot gas defrost uses high-pressure discharge gas; Carnot's system routes gas cooler outlet through the ejector circuit to achieve defrost pressure without drawing from compressor discharge
+- Eliminates the energy penalty of compressor-driven defrost
+- Defrost pressure and return pressure setpoints are set per system; verify on startup sheet
+
+**Field note:** If flash tank pressure is unstable or the ejector appears to be bypassing (both motive and suction pressures equalizing), suspect a stuck or leaking ejector check valve or a fouled ejector nozzle. Contact M&M Carnot service — do not attempt ejector disassembly in the field without factory guidance.
+
+---
+
+### Gas Cooler and GC Sensor
+
+**Gas cooler type:** Air-cooled; fans are VFD-controlled and stage/modulate based on gas cooler outlet temperature and ambient.
+
+**Floating setpoint control:**
+- Gas cooler outlet target = ambient + approach ΔT (typically 1–3°F above ambient)
+- Minimum outlet setpoint: ~60°F (prevents liquid floodback at low ambient)
+- Maximum outlet setpoint: ~85°F (fans run flat out above this ambient)
+
+**GC outlet temperature sensor (E00XXX series, per Carnot install guide):**
+- Sensor must be installed on the **common header** if multiple gas cooler sections are in parallel — not on an individual circuit
+- Immersion depth: sensor tip must contact refrigerant flow, not sit in stagnant pocket
+- Shield grounded at controller end only; sensor cable must be shielded twisted pair
+- Verify reading against NIST-traceable reference thermometer at commissioning; log in startup sheet
+- Drift >1°F from reference: recalibrate offset in controller; drift >3°F with no fixable cause: replace sensor
+- **Critical:** an offset GC sensor drives incorrect HP throttling valve decisions — too cold a reading forces pressure too low (subcooling error); too warm forces pressure too high (efficiency loss and potential HP alarms)
+
+**HP throttling valve:** Sporlan GC or FGB series, stepper motor driven; controlled by rack controller (Micro Thermo or Danfoss AK-PC). Verify valve position and modulation in software after sensor calibration.
+
+---
+
+### Control Platforms
+
+Carnot racks have been built with multiple controller platforms depending on vintage and customer spec:
+
+| Platform | Typical use | Notes |
+|---|---|---|
+| Micro Thermo MT-Alliance | CAR-090 and early supermarket racks | Full case and rack control; LonWorks network; see Micro Thermo section |
+| Danfoss AK-PC 782A | Later supermarket racks | Designed specifically for transcritical CO₂; CALM and ALC algorithms |
+| Carel pRack | Some M&M Carnot builds post-2019 | CO₂-specific rack controller; dual HP valve control |
+| Parker Sporlan PSK3LX | GC and FGB valve control module | Often used alongside Micro Thermo for HP valve sequencing |
+
+**Identify the controller from the electrical panel door or startup sheet before troubleshooting.** Setpoints, alarm codes, and navigation differ entirely between platforms.
+
+---
+
+### Commissioning Checklist (CAR-090 / Carnot Supermarket Racks)
+
+The Carnot startup sheet is stored inside the electrical cabinet — all setpoints, transducer calibrations, and valve positions must be recorded there at first commissioning.
+
+**Pre-start checks:**
+1. All isolation valves open; verify no locked-out valves
+2. Pressure relief valves installed and set per nameplate; verify blow-off piping is routed to safe discharge location
+3. All sensor wiring complete; verify 5V supply to each pressure transducer
+4. CO₂ detector active; ventilation interlock tested (open damper and evacuators on alarm)
+5. Oil reservoir sight glass at least half-full
+6. Electrical panel: verify VFD drives programmed for correct fan/compressor rotation
+
+**Startup sequence:**
+1. Energize control power; allow controller to initialize and complete self-check
+2. Enable gas cooler fans; confirm VFD ramps and fan rotation is correct
+3. Enable MT compressors one at a time — allow suction pressure to stabilize (≥30 s) between additions
+4. Confirm flash tank pressure rises to setpoint (~483 psig / 31°F)
+5. Confirm HP throttling valve begins modulating; observe gas cooler outlet temperature
+6. Enable LT booster compressors; confirm LT suction pressure is stable
+7. Enable case circuits one at a time; confirm EEVs open and superheat is controlled
+8. Minimum **18°F (10°C) superheat** at compressor inlet before loading — any lower, stop and investigate EEV or sensor
+9. Record all setpoints, transducer readings, and valve positions on startup sheet
+
+---
+
+### Common Faults — Carnot CO₂ Systems
+
+| Fault | Likely cause | Check |
+|---|---|---|
+| HP alarm (>1,450 psig) | GC fans not running or VFD fault; GC coil fouled; HP valve stuck; very high ambient | VFD status; GC fan rotation; check HP valve signal vs position in controller |
+| Flash tank pressure unstable / hunting | Flash gas bypass valve fault or GC sensor offset driving wrong HP | Verify GC sensor calibration; check FGB valve position via controller |
+| Ejector bypassing (motive = suction pressure) | Ejector check valve stuck open or leaking; nozzle fouled | Contact M&M Carnot — do not disassemble ejector in field |
+| MT suction low (LP alarm) | EEVs all closed; MT compressor tripped; solenoid not opening | Check case controllers for active defrost; verify solenoid coil voltage |
+| LT suction low (LP trip) | LT booster tripped; LT EEVs all closed; LT defrost active on all circuits | Check LT case controllers; verify booster compressor status |
+| Compressor slugging / liquid in suction | Superheat <18°F; EEV overfeeding; sensor off coil | Check superheat reading; re-seat suction temperature sensor on line |
+| High discharge temperature | Low refrigerant charge; GC heat rejection poor; compressor valve wear | Verify refrigerant weight in system; GC approach temperature; discharge valve leak-by test |
+| GC sensor reading stuck/frozen | Sensor shorted or open; wiring fault | Verify sensor resistance; check 5V supply; compare to hand-held thermometer |
+| CO₂ detector alarm (no leak) | EMI from VFD near detector; self-test cycle due; detector end-of-life | Relocate detector from EMI source; check detector test/cal date |
+| Oil reservoir low | M3 solenoid stuck closed; oil regulator mis-set; separator bypass | Check Swagelok oil regulator pressure; verify M3 solenoid energization at light load |
+| Defrost incomplete / ice buildup | Defrost termination sensor off coil; defrost duration too short; return pressure too low | Reattach termination sensor; extend max defrost time 5 min increments; verify return-side setpoint |
+
+---
+
+### Parts and Support
+
+- **M&M Carnot service (Johnson Controls):** carnotservice@jci.com | 24/7 emergency: 1-866-227-2750
+- **Documentation:** mmcarnot.com | docs.johnsoncontrols.com (search "Carnot" or "Aquilon")
+- **Startup form:** Filed inside electrical cabinet at every new commissioning — request copy from M&M Carnot if missing
+- **Note on fault codes:** Specific alarm codes depend on the controller platform (Micro Thermo, Danfoss AK-PC, Carel pRack). Refer to that controller's documentation for code lookup.`
+
+
+export const EMERSON_E2_E3_KNOWLEDGE = `
+## Emerson E2 / E3 Supervisory Store Controllers
+
+### Product Overview
+| Controller | Generation | Display | OS | Key Use Case |
+|------------|-----------|---------|-----|--------------|
+| E2 | Legacy (still widely installed) | Resistive colour touchscreen | Embedded Linux | Full-store refrigeration + HVAC + lighting |
+| E3 | Current (replacement for E2) | Capacitive colour touchscreen | Android-based | Full-store + cloud connectivity + analytics |
+
+Both are **site controllers**: one unit manages all refrigeration circuits, HVAC units, and lighting schedules for an entire store. They talk down to individual case controllers and rack controllers via LonWorks (FTT-10) or Modbus RS-485; they talk up to enterprise software (Emerson CoolTerm / Site Supervisor) via TCP/IP.
+
+---
+
+### E2 Architecture
+
+#### Hardware
+- **CPU board** — runs the application; has RJ-45 Ethernet + two COM ports
+- **I/O boards** (16AI, 8RO, 8DO, 8AO) — expand to handle sensors and relays
+- **E-Link bus** — RS-485 chain connecting I/O expansion boards to the CPU
+- **COM1/COM2** — serial ports used for LonWorks adapter (LON-RS485 gateway) or direct Modbus to rack controllers
+- Power: 24 VAC; internal battery backs RTC and alarm memory for ~72 h
+
+#### Versions / Firmware
+- **E2 RX** — original retail controller
+- **E2 BX** — HVAC/building-only variant
+- **E2 XM** — expanded I/O version (more circuits)
+- Firmware versions: **2.x, 3.x, 4.x** — check via *Main Menu → System → About*
+- 4.x firmware required for R-448A/R-449A refrigerant property tables
+
+#### Circuit Types
+| Type | What it controls |
+|------|-----------------|
+| Refrigeration Circuit | One case section — setpoint, defrost, alarms, sensor inputs |
+| CC (Case Controller) | Groups circuits from a connected case controller (Emerson EC2, EC3, Retail Solutions CC) |
+| Rack | Condensing unit or parallel rack — suction setpoint, capacity steps |
+| HVAC | Rooftop unit — heating/cooling stages, economizer |
+| Lighting | Relay-based on/off schedule |
+
+---
+
+### E3 Architecture
+
+#### Key Differences from E2
+- **Android OS** with capacitive touchscreen — navigation uses swipe/tap gestures
+- **Built-in Wi-Fi + Ethernet** — native cloud/remote access without separate modem
+- **I/O boards** are same E-Link protocol as E2 but physically different connectors on some models
+- Supports **BACnet/IP** and **OPC-UA** in addition to Modbus and LonWorks
+- Configuration via built-in web interface (Chrome/Edge on LAN) or on-screen
+- Remote access via **Emerson Site Supervisor** (cloud) or **CoolTerm** (local PC software)
+
+#### E3 Supervisor Reference Card — Key Shortcuts
+- **Home screen → swipe left** — live alarm list
+- **Home screen → swipe right** — circuit overview grid
+- **Top-right menu → Setpoints** — quick setpoint access without full navigation
+- **Top-right menu → Reports** — energy, alarm history, defrost log exports
+- Factory reset: hold power + home buttons for 10 s (only use as last resort — wipes all programming)
+
+---
+
+### Common Configuration Tasks
+
+#### Adding a New Refrigeration Circuit (E2 and E3)
+1. Main Menu → Configuration → Circuits → Add
+2. Select circuit type (Refrigeration)
+3. Assign input sensors: supply air (SA), return air (RA), defrost termination (DT), liquid line (LL)
+4. Set setpoints: *Setpoint*, *Setpoint High Limit*, *Setpoint Low Limit*
+5. Configure defrost: type (electric/hot gas), initiation (time clock or adaptive), termination (temperature or time-out), drip time
+6. Assign to a display group for UI organisation
+7. Save and verify circuit appears in live view with sensor readings
+
+#### Defrost Schedule
+- Up to **8 defrost initiations per day** per circuit
+- Adaptive defrost: controller tracks actual defrost frequency and dynamically adjusts — requires *Adaptive Defrost* option licence on E2; built-in on E3
+- Defrost termination temperature: typically **50–55°F (10–13°C)** for medium-temp cases; **65°F (18°C)** for low-temp
+- Failed defrosts (time-out) generate a **Defrost Fail** alarm — check termination sensor calibration first
+
+#### Setpoint Schedules (Night Setback)
+- E2: *Setpoint Scheduling* — assign AM/PM setpoints + schedule periods
+- E3: *Setpoint Profiles* — more flexible multi-period scheduling
+- Night setback raises case temperature setpoint (e.g. +3°F) during closed-store hours to save energy
+
+#### Alarm Configuration
+- Priority 1 (Critical) — activates dial-out / email notification immediately
+- Priority 2 (Standard) — logged; notification after configurable delay
+- Priority 3 (Informational) — logged only
+- **Deadband**: always set a return-to-normal deadband to prevent chattering alarms (e.g., high temp alarm at +10°F with 2°F deadband returns at +8°F)
+
+---
+
+### Networking & Communications
+
+#### LonWorks to Case Controllers
+- FTT-10 twisted-pair network (no polarity) — max segment length **500 m (1640 ft)**
+- Termination resistors **105 Ω** at each end of the bus
+- Each case controller node has a **Neuron ID** — recorded during commissioning; used for replacement
+- Max 127 nodes per LonWorks segment; use a **LonWorks repeater** for longer stores
+- Common fault: node goes offline → check terminators, then check 24 VAC power at the case controller, then re-bind the node in the E2/E3 network configuration
+
+#### Modbus to Rack Controllers
+- RS-485 half-duplex, typically **9600 or 19200 baud, 8N1**
+- Each rack controller has a unique **Modbus address** (1–247)
+- Verify address on the rack controller itself before troubleshooting in E2/E3
+- Common fault: all racks show comms error → check RS-485 wiring polarity (A+/B−), termination resistor (120 Ω) at far end, and baud rate match
+
+#### TCP/IP Remote Access
+- E2: requires static IP or DHCP reservation — set in *Main Menu → Network Setup*
+- E3: configure in *Settings → Network*; supports both Ethernet and Wi-Fi
+- **CoolTerm** (PC software): connects over LAN, provides full configuration, alarm acknowledgement, data trending
+- **Site Supervisor** (cloud): Emerson's CMMS integration; requires active subscription and outbound port 443
+
+---
+
+### Alarm Diagnostics — Common Issues
+
+| Alarm | Likely Cause | First Check |
+|-------|-------------|-------------|
+| Circuit High Temp | Case load high, defrost fail, sensor offset | Check defrost log; verify return air sensor |
+| Circuit Low Temp | Setpoint too low, valve stuck open, sensor offset | Check supply air sensor and TXV superheat |
+| Defrost Fail | Termination sensor not reaching setpoint | Sensor location; faulty heater (electric defrost); check hot gas solenoid |
+| Comms Loss (LON node) | Wiring fault, power loss at case, node lockup | 24 V at case controller; terminators; rebind node |
+| Comms Loss (Modbus) | Address conflict, baud rate mismatch, wiring | Verify address on rack controller; check A/B polarity |
+| Sensor Out of Range | Sensor open/short or wiring fault | Measure sensor resistance at terminal block; compare to temp/resistance table |
+| Low Battery | Internal RTC battery below threshold | Replace CR2032 (E2) or Li-ion pack (E3) — log a maintenance record |
+| Rack Suction High | Suction setpoint not being maintained | Check compressor capacity; verify rack controller communications |
+
+---
+
+### Sensor Wiring & Input Types
+
+#### E2 Analogue Inputs (16AI board)
+- **0–5 V** — most pressure transducers (output 0.5–4.5 V)
+- **4–20 mA** — alternative pressure transducer wiring; requires 250 Ω shunt resistor at board
+- **NTC 10kΩ @ 77°F** — Emerson standard temperature sensors (same table as A99 series)
+- **0–10 V** — humidity or CO sensors
+
+Input type is set per channel in board configuration — mismatch is the single most common sensor reading error.
+
+#### Sensor Replacement
+- NTC sensors: measure resistance with a DMM — compare to published temp/resistance table
+- At **32°F (0°C)** → ~32 kΩ; at **77°F (25°C)** → ~10 kΩ; at **104°F (40°C)** → ~5 kΩ
+- Pressure transducers: verify supply voltage (typically 5 VDC) before condemning transducer
+
+---
+
+### 12 Common Field Mistakes
+
+1. **Input type not configured** — NTC sensor on a 0–5 V input reads garbage; always set input type per channel after wiring.
+2. **Defrost termination sensor in wrong location** — sensor must be on the coldest coil section; placing on drain pan gives premature termination and wet coils.
+3. **Adaptive defrost left enabled during initial commissioning** — adaptive algorithm needs 2–3 weeks of stable data; disable until store is running normally.
+4. **Night setback too aggressive** — raising setpoint >5°F during pull-down period causes temperature excursions; test in small increments.
+5. **LonWorks terminators missing** — network appears to work at first, but intermittent node dropouts occur; always verify both end terminators.
+6. **Modbus address 0 assigned to rack controller** — address 0 is the broadcast address; assign 1 or above.
+7. **Time clock not synced after power failure** — E2 battery keeps RTC, but verify time/date after any extended outage; defrost at wrong times causes temperature problems.
+8. **Alarm deadbands set to zero** — causes chattering alarms and floods the alarm log; minimum 2°F deadband on temperature alarms.
+9. **Replacing E2 CPU board without exporting configuration** — always back up configuration to USB/PC via CoolTerm before any board replacement; factory defaults lose all circuit programming.
+10. **Forgetting to set correct refrigerant in rack circuit** — pressure-temperature conversions in alarm thresholds depend on the refrigerant selected; R-448A vs R-404A pressures differ significantly.
+11. **Using telnet/HTTP to configure E3 without disabling the on-screen lock** — screen lock on E3 does not lock out web interface; a padlock icon on screen means screen only, not full lock.
+12. **LON node replacement without Neuron ID** — when replacing a case controller board, the new Neuron ID must be re-commissioned in the E2/E3; node does not auto-register.
+
+---
+
+## CPC (Computer Process Controls) — Brand Context & Peripheral Hardware
+
+### What "CPC" Means in the Field
+**CPC = Computer Process Controls, Inc.** — a Kennesaw, Georgia company founded 1984 that designed the entire E2/E3 product family. Emerson Climate Technologies acquired CPC; the brand is now under **Copeland** (Emerson spun off its climate division in 2023).
+
+When a technician says "the CPC board" they can mean any of:
+- The **E2 or E3 store controller** itself
+- A **MultiFlex I/O board** (the RS485 expansion boards)
+- A **CC-100 / CS-100 case controller** (Echelon-networked, E2 only)
+- A **legacy CCB** (Case Control Board from the RMCC era)
+- A **Gateway board** (protocol translator on the RS485 network)
+
+CPC document numbers follow the **026-XXXX** pattern (e.g., 026-1610 = E2 standard manual, 026-1701 = peripherals I/O manual, 026-1704 = MultiFlex board manual).
+
+---
+
+### E2 Controller Model Variants
+
+| Series | Application | Models | Max Circuits |
+|--------|-------------|--------|-------------|
+| **RX** | Refrigeration (supermarkets) | RX-100, RX-300, RX-400, RX-500 | 48–128 |
+| **BX** | Building / HVAC only | BX-300, BX-400 | — |
+| **CX** | Convenience store (HVAC + refrigeration) | CX-100, CX-300, CX-400, CX-500 | 48–128 |
+
+**RX-300 vs RX-400:**
+- RX-300: 1 condensing system, 4 suction groups, up to 48 standard circuits
+- RX-400: 2 condensing systems, 4 suction groups, up to 64 standard circuits — used in larger stores with two independent refrigeration systems
+
+Part numbers follow **845-XYYY** (e.g., 845-1300 = RX-300, 845-1400 = RX-400, 845-3400 = CX-400).
+
+---
+
+### RS485 I/O Network — MultiFlex Boards
+
+The primary expansion network inside the store connects the E2/E3 to distributed I/O via **RS485 at 9600 baud** (default; configurable). Up to **127 devices** per COM port. Standard wiring: Belden 9493 or equivalent 3-conductor shielded cable, daisy-chain topology, termination jumpers at both ends.
+
+#### Board Types
+
+| Board | Channels | Function |
+|-------|----------|----------|
+| **16AI** | 16 analog inputs | Temperature, pressure, humidity sensors |
+| **8RO** | 8 relay outputs | Compressor stages, solenoids, fans |
+| **8DO** | 8 digital outputs | Low-current switching |
+| **4AO** | 4 analog outputs | 0–10 V or 4–20 mA control signals |
+| **MultiFlex Combo** | Mixed | Presents to E2 as 16AI + 8RO + 4AO + 8DO simultaneously |
+| **8ROSMT** | 8 relay outputs | Surface-mount relay board; activates/deactivates 8 loads |
+| **MultiFlex ESR** | Expanded | Used for distributed refrigeration case control on larger systems |
+| **Gateway Board** | — | Protocol translator; connects RS485 network to third-party systems; mounts on 3″ snap track |
+
+#### DIP Switch Addressing (RS485 Network)
+
+Each board must have a unique **Network ID** of the same board type on the same COM port segment.
+
+- Boards are numbered **starting from 1** per type (e.g., four 16AI boards = IDs 1, 2, 3, 4; three 8RO boards = IDs 1, 2, 3)
+- On **MultiFlex Combo boards**, addressing is split across two DIP switch banks:
+  - **S3, switches 1–5**: 16AI (input) network address
+  - **S4, switches 1–5**: 8RO (relay output) address
+  - **S4, switches 6–8**: 4AO (analog output) address
+- 5-bit switch = addresses 1–31 per board type per segment
+- **Baud rate switch**: one dedicated switch; must match E2 COM port configuration (default 9600)
+- **Address 0 is invalid** — board will not communicate; common cause of "board not found" on initial setup
+
+#### Input Types on 16AI (must match wiring)
+
+| Input Type | Range | Typical Use |
+|-----------|-------|-------------|
+| 0–5 V | 0.5–4.5 V active | Pressure transducers (most common) |
+| 4–20 mA | — | Pressure transducers (needs 250 Ω shunt at board) |
+| NTC 10 kΩ | — | Temperature sensors (Emerson standard) |
+| 0–10 V | — | CO₂ / humidity sensors |
+| Digital (dry contact) | Open/closed | Door switches, pressure switches |
+
+**Input type must be set per channel in the E2/E3 software** — mismatch is the single most common cause of bad sensor readings after board installation.
+
+---
+
+### Echelon / LonWorks Case Controllers (E2 Only — NOT available on E3)
+
+The E2 supports Echelon (LonWorks FTT-10) for smart distributed case controllers, added via a plug-in card (P/N 638-4860). **E3 has no Echelon support** — Echelon devices must be replaced with BACnet/Modbus equivalents during an E3 upgrade.
+
+| Device | Function |
+|--------|----------|
+| **CC-100** | Case Controller — controls lights, fans, defrost, and refrigeration for a single display case section |
+| **CS-100** | Case Circuit Controller — controls a single refrigeration circuit |
+| **16AIe** | 16 analog input board (Echelon version) — discontinued |
+| **8ROe** | 8 relay output board (Echelon version) — discontinued |
+
+**Echelon wiring rules:**
+- FTT-10 twisted-pair, no polarity, max segment **500 m (1640 ft)**
+- Termination resistors **105 Ω** at each physical end of the bus
+- Max **127 nodes per segment**; use a repeater for long stores
+- Each node has a unique **Neuron ID** — record it at commissioning and stick label on the board
+- Node replacement: new board's Neuron ID must be manually re-commissioned in the E2 network screen
+
+---
+
+### Legacy CCB (Case Control Board) — RMCC Era Hardware
+
+The CCB was the distributed case controller in the pre-E2 RMCC system (discontinued 1998). E2 added CCB support in **firmware version 2.30** — RX-300 and RX-400 only (RX-100, BX, CX do not support CCB).
+
+**Critical CCB integration notes (from CPC Tech Bulletin 026-4119):**
+- CCBs communicate at a **fixed 19200 baud** (non-negotiable, hard-coded)
+- E2 default I/O baud rate is 9600 — you **must change the COM2 port baud rate to 19200** when using CCBs
+- Best practice: dedicate one COM port exclusively to CCBs; put all other I/O boards on the other COM port
+- CCBs are added in the E2's "Configured I/O" screen; circuits are mapped in "Case Control Associations"
+- Original RMCC COM A/D network supported up to **31 devices per segment** — same limit applies on E2
+
+---
+
+### E2 → E3 Upgrade Hardware Notes
+
+| Feature | E2 / E2E | E3 (Lumity) |
+|---------|----------|-------------|
+| Echelon support | Yes (plug-in card) | **No** — CC-100/CS-100 not supported |
+| BACnet/Modbus | Yes | Yes |
+| COM ports | COM 1–4 | COM 1–4 + COM 7 (additional, electrically isolated) |
+| COM 2 isolation | Not isolated | Electrically isolated |
+| Mounting | E2E mounting points | **Same** mounting points — drop-in physical replacement |
+| I/O wiring | COM 1–4 connectors | Direct plug-in from E2 — **no rewiring needed** |
+| CPU speed | Baseline | 12× faster |
+| RAM | Baseline | 16× more |
+
+**Upgrade checklist:**
+1. Export full E2 configuration to USB via CoolTerm before shutdown
+2. Document all Echelon node Neuron IDs — these devices will need replacement
+3. Verify all case controllers on the RS485 I/O network are BACnet or Modbus (not Echelon-only)
+4. E3 mounts on same panel cutout — connector pinout is compatible for COM 1–4 I/O boards
+5. Re-import configuration on E3; verify sensor readings circuit by circuit before enabling setpoint control`
+
+
+export const SYSTEM_DIAGNOSTICS_KNOWLEDGE = `
+## Refrigeration System Diagnostics — Fault Finding by Symptom
+
+This guide covers systematic diagnosis for HFC multiplex parallel rack systems (R-404A, R-448A, R-449A) and CO₂ transcritical booster rack systems. Diagnose in order: take readings first, understand the pattern, then test the most likely cause.
+
+---
+
+### Step 1 — Record a Complete System Snapshot Before Touching Anything
+
+| Reading | How to Get It | Why It Matters |
+|---------|--------------|----------------|
+| Suction pressure(s) | Gauge at suction header; or store controller | Convert to saturation temp — compare to setpoint |
+| Discharge/head pressure | Gauge at discharge; or store controller | Convert to sat temp — compare to ambient |
+| Suction line temp | IR or clamp thermocouple at suction header | Calculate superheat = suction line temp − sat temp |
+| Liquid line temp | At king valve outlet or liquid header | Calculate subcooling = sat temp at condensing − liquid temp |
+| Ambient temperature | Outside + machine room | Condenser performance baseline |
+| Compressor amps | Clamp meter on each leg | Overload, voltage imbalance, capacity issues |
+| Case temperatures | Store controller alarm list or walk-in thermometer | Identifies which circuits are affected |
+| Oil level / pressure | Sight glass; oil pressure differential gauge | Floodback, oil return problems |
+
+---
+
+### High Suction Pressure
+
+**Definition:** Suction saturation temperature significantly above setpoint (e.g., setpoint −10°F, actual sat = +15°F).
+
+#### Too much heat load reaching the system
+- Multiple circuits in defrost simultaneously — check defrost schedule overlap
+- Evaporator fan motors failed — feel/listen for airflow at each case
+- Evaporator coils iced over — check defrost termination sensor location and setpoint
+- Product over-temperature on load-in day
+- Anti-sweat heaters stuck ON — measure door heater current; very common in summer
+
+#### Excess refrigerant flow (flooding)
+- TXV bulb lost charge or stuck open → superheat near 0°F, suction line frosting
+- EEV stuck open or controller fault → check EEV position feedback on controller
+- Floodback from a circuit with failed defrost termination solenoid
+
+#### Loss of compression capacity
+- Compressor suction valve failure — pull valve plates; compare compressor differential across each cylinder
+- Capacity control (unloaders) stuck unloaded — verify cylinder unloader solenoids
+- Digital Scroll solenoid failure — always in modulated/unloaded position
+
+#### CO₂ booster specific
+- MT EEVs flooding: check MT suction superheat at each circuit
+- LT compressors not running when they should: verify LT suction setpoint
+- Flash tank pressure too high: HP valve underpressure setpoint or GC outlet sensor reading high
+
+---
+
+### Low Suction Pressure
+
+**Definition:** Suction saturation temperature significantly below setpoint; compressors running but pulling pressure down.
+
+#### Insufficient refrigerant flow
+- Plugged filter-drier: measure pressure drop across drier; >2–3 psi drop on liquid line = replace
+- Strainer screen restricted: check after filter-drier or at TXV inlet
+- Low refrigerant charge: cross-check with **low subcooling** (< 5°F subcooling confirms low charge)
+- Liquid solenoid partially closed or stuck: verify voltage at coil; check plunger movement
+- TXV hunting or underfed: check superheat; high and unstable = TXV hunting
+
+#### Low ambient / low head pressure affecting TXV feed
+- TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
+- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈72°F / 22°C sat), **175 psig for R-448A** (≈68°F / 20°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
+
+#### Over-capacity for the load
+- Too many compressors on; LP cutout set too low; suction setpoint too aggressive
+- Night setback too deep — setpoint drops faster than load drops
+
+#### CO₂ booster specific
+- Flash tank pressure low → check HP valve overshooting
+- LT suction too low with all LT compressors running: check LT EEV feeds
+
+---
+
+### High Discharge / Head Pressure
+
+**Definition (HFC):** Discharge saturation temperature more than 25–30°F above ambient. **Definition (CO₂):** GC outlet above floating setpoint target.
+
+#### Condenser / gas cooler issues (most common)
+- **Dirty condenser coil** — most common cause; inspect and clean coil fins; use coil cleaner and low-pressure rinse
+- Failed condenser fan motor(s) or blade — check each fan individually
+- Fan cycling controls set too tight — condenser fans short-cycling off; verify fan controller setpoints
+- Discharge air recirculation — check for missing baffles; ensure 3-foot minimum clearance on discharge side
+- High ambient temperature exceeding design limit (most HFC condensers rated to 95–105°F ambient)
+
+#### Refrigerant overcharge
+- Tell: high head pressure + **high subcooling** (>15°F)
+- Verify: check total system charge weight if records available; recover refrigerant incrementally
+
+#### Non-condensables (air in system)
+- Diagnosis: isolate receiver, let system equalize 15 min, compare pressure to refrigerant sat temp at ambient — if pressure is higher than it should be, non-condensables are present
+- Source: improper evacuation during installation or repair; nitrogen break during repair left in system
+
+#### CO₂ GC high pressure
+- GC outlet sensor drifted high → HP valve closes too early → pressure rises; verify sensor calibration (±1.5°F max)
+- GC fans all running? Check power and motor condition
+- GC coil fouled: inspect and clean
+- HP valve mechanical failure: stuck closed or slow to open; manual bypass test
+- Adiabatic system: verify water supply pressure and pad saturation
+
+---
+
+### High Superheat
+
+**Definition:** Superheat >15°F above target for medium-temp, >20°F for low-temp circuits.
+
+#### Insufficient refrigerant flow to the evaporator
+- TXV ice blockage at bulb or valve body (ice on valve body is the tell) → recover and replace, check moisture content
+- TXV undersized or adjusted too tightly → measure P-T curves; adjust stem ½ turn open at a time
+- EEV opening percentage low on controller display → check controller sensor inputs and setpoint
+- Plugged liquid line filter-drier — see high superheat + low subcooling together
+
+#### Low system charge
+- Pattern: **high superheat + low subcooling + low suction pressure** = textbook low charge
+- Verify with leak detector before adding refrigerant
+
+#### Low head pressure starving TXV
+- Follow head pressure control troubleshooting above
+- Verify head pressure control setpoint is appropriate for refrigerant type
+
+#### Mechanical restriction at evaporator
+- Evaporator coil blocked with ice — check defrost operation; manually defrost and recheck
+- Liquid solenoid stuck partially closed — measure pressure drop across solenoid body
+
+---
+
+### Low Superheat / Liquid Floodback
+
+**Definition:** Superheat < 5°F; liquid refrigerant migrating to suction header and compressor.
+
+#### Symptoms of active floodback
+- Suction line sweating or frosting back to compressor
+- Compressor crankcase sweating
+- Oil sight glass foamy or oil level dropped
+- Slugging noise from compressor
+- CoreSense (Copeland) or controller logging floodback events
+- Compressor running rough or with reduced compression ratio
+
+#### Causes
+- **TXV sensing bulb not clamped to suction line** — most common; bulb must be clean, tight, insulated, and correctly positioned (4 o'clock or 8 o'clock on horizontal suction line)
+- TXV bulb charge migrated to coldest point (liquid-charged bulb installed in freezer) → replace with cross-charged bulb
+- TXV oversized for actual load — valve always opening wide; replace with correct capacity
+- EEV controller sensor failure or control loop malfunction → force EEV to manual, verify superheat
+- Defrost termination solenoid leaking after defrost — liquid drains into suction line; replace solenoid
+
+#### Immediate action
+- Close expansion valve (or reduce EEV opening)
+- Check crankcase heater function — warm oil before restart
+- Check oil dilution: if oil is very thin/clear, run crankcase heater 4+ hours before starting
+
+---
+
+### Oil Problems
+
+#### Oil Level Low / Oil Pressure Differential Trip
+
+**HFC systems:**
+- High floodback diluting oil — address floodback first
+- Oil separator bypass: check float valve function; verify differential across separator
+- Insufficient suction line velocity to return oil (below 1,500 FPM in vertical up-risers; below 700 FPM in horizontal runs) — check line sizing
+- Oil trapped in long horizontal runs — verify 1/4″ per 10 ft slope toward compressor
+- Multiple suction group system: verify each suction group has oil return strategy
+
+**CO₂ systems (unique challenges):**
+- CO₂ fully miscible with POE oil — oil migrates throughout system easily but can accumulate in flash tank
+- Oil separator differential pressure: if drop across separator is low, separator not working
+- Oil level controllers (Kriwan INT69, Emerson OMB, Traxoil): verify sensor signal and float operation
+- LT circuits: oil return velocity is critical at very low temperatures — check line sizing for low-temp suction
+- After extended shutdown: CO₂ absorbs deeply into oil; **never start compressor without running crankcase heater for minimum 4 hours** (or until compressor case is warm to touch)
+- Oil pulse return: some CO₂ systems use periodic EEV pulse to purge oil from evaporators; verify pulse schedule in controller
+
+---
+
+### Compressor Diagnostics
+
+#### Won't Start
+1. Check crankcase heater — cold compressor with oil foaming on start = heater failed
+2. Check all safety controls: HP cutout, LP cutout, oil pressure differential, motor protector (manual reset?)
+3. Check control circuit: 24 V at contactor coil? Contactor pulling in?
+4. CoreSense lockout (Copeland): read fault code on CoreSense module
+5. Check phase rotation on 3-phase (scrolls run backwards if phases reversed → no compression, just noise)
+
+#### Trips on High Pressure
+- Follow high discharge pressure diagnosis
+- Check HP cutout setpoint vs. manufacturer spec (Copeland ZB scroll: 450 psig R-404A, 400 psig R-448A)
+- HP cutout continuity when cool — fails open on some models; test with ohmmeter
+
+#### Trips on Low Pressure (or Runs to LP Cutout)
+- Follow low suction pressure diagnosis
+- LP cutout setpoint: verify against manufacturer minimums
+- Common cause: refrigerant charge low or solenoid closed overnight
+
+#### Discharge Temperature Too High
+- Limit: **225°F (107°C) for HFC scrolls** (Copeland ASTP activates near 280°F — that is a last resort, not a target)
+- Causes: high compression ratio (high head / low suction), high superheat at suction, inadequate cooling of motor
+- Check: suction superheat not excessive (>35°F causes motor overheating in hermetic compressors)
+
+#### Amperage Analysis (3-Phase)
+| Reading | Likely Cause |
+|---------|-------------|
+| All phases high | High head pressure, mechanical drag, overcharge |
+| All phases low | Low suction pressure, internal valve failure, unloaded |
+| Phase imbalance >2% | Utility voltage imbalance — damages windings over time; document and report to utility |
+| One phase very low | Open winding or single-phasing — shut down immediately |
+
+---
+
+### CO₂ Transcritical — System-Level Fault Patterns
+
+#### GC Pressure Uncontrolled Rise
+1. GC fan(s) failed — verify speed/direction on all fans
+2. HP valve stuck closed or slow — manual bypass test; check actuator signal
+3. GC outlet sensor drifted high — HP valve thinks GC is overcooled; calibrate sensor
+4. Ambient above design limit — reduce compressor capacity; increase fan speed
+5. GC coil severely fouled — clean immediately; refrigerant cannot reject heat
+
+#### Runs Subcritical When Ambient Demands Transcritical (>88°F / 31°C)
+- GC outlet temperature exceeding critical point (87.7°F / 31°C) but HP valve not opening enough
+- GC outlet sensor reading lower than actual → HP valve under-opening → check sensor
+
+#### Runs Transcritical at Low Ambient (Wasting Energy)
+- HP valve stuck in partially closed position — not allowing pressure to drop
+- Wrong setpoint curve for the season — verify controller configuration
+
+#### Flash Tank Level Problems
+- **Level too low:** LT load high, LT EEVs opening wide; check LT superheat — if also low, EEVs flooding
+- **Level too high:** MT load insufficient to draw down flash tank; verify MT circuit operation
+- Level sensor failure: check float or capacitive sensor output signal
+
+#### MT/LT Suction Pressure Crossover
+- LT suction should always be lower than MT suction
+- If LT suction equals MT suction: intermediate check valve failed (bi-flow check or non-return valve)
+- High-pressure gas flowing from MT side into LT side: LT compressors work against higher-than-expected pressure
+
+---
+
+### Quick Diagnosis Matrix — Reading Patterns
+
+| Suction | Head Pressure | Superheat | Subcooling | Most Likely Diagnosis |
+|---------|--------------|-----------|------------|----------------------|
+| High | High | Low | Normal/High | Overcharge + condenser problem |
+| High | Normal | Low (~0°F) | Normal | TXV/EEV stuck open — floodback |
+| High | Normal | Normal | Normal | Compressor valve failure or excess load |
+| Low | High | High | Low | **Low refrigerant charge** |
+| Low | High | High | Normal | Liquid line restriction (drier, strainer) |
+| Low | Normal | High | Low | Low charge confirmed |
+| Low | Normal | High | Normal | TXV restricted or solenoid closed |
+| Normal | High | Normal | High | Refrigerant overcharge |
+| Normal | High | Normal | Normal | Condenser fouled or fan failure |
+| Normal | Normal | High | Normal | Isolated circuit problem — not system-wide |
+| Normal | Low | Low | Low | Low ambient with no head pressure control |
+
+---
+
+### Systematic Elimination Order
+
+When you have a problem circuit but system pressures look normal:
+
+1. **Verify the refrigerant is flowing** — is the liquid solenoid energised? Is there a temperature drop across it?
+2. **Check the expansion device** — superheat at evaporator outlet; compare to target
+3. **Check the evaporator** — fan motors running? Coil iced? Airflow blocked?
+4. **Check the defrost** — was there a recent defrost? Did it terminate properly?
+5. **Check sensors** — is the thermostat/case controller reading correctly?
+6. **Check the circuit wiring** — solenoid coil resistance (typically 200–400 Ω for 24 VAC coils; open coil = OL on meter)
+
+When the problem is system-wide (all circuits affected):
+
+1. **Suction header first** — read suction sat temp vs. setpoint
+2. **Compressor deck** — all compressors running that should be?
+3. **Head pressure** — condenser fans all running?
+4. **Liquid line** — filter-drier pressure drop? Subcooling at condenser?
+5. **Charge verification** — subcooling + suction superheat + suction pressure pattern`
+
+
+export const DEFROST_KNOWLEDGE = `
+## Defrost Systems — Deep-Dive Troubleshooting Guide
+
+Defrost is the single most common source of service calls in supermarket refrigeration. Most temperature alarms, wet coils, high energy bills, and product loss trace back to defrost problems. This guide covers all three types used in commercial refrigeration with systematic fault diagnosis for each.
+
+---
+
+### Defrost Fundamentals
+
+**Why defrost is needed:** Every refrigerated evaporator coil operates below 32°F (0°C) on medium-temp circuits and well below freezing on low-temp. Moisture in the air that passes through the case freezes onto the coil fins. Without defrost, the coil becomes a solid block of ice, airflow stops, and the case warms.
+
+**Three types used in supermarket refrigeration:**
+| Type | Heat Source | Best For | Main Risk |
+|------|-------------|----------|-----------|
+| Electric | Resistance heaters in coil | Low-temp frozen food | Heater element failure; high energy use |
+| Hot gas | Compressor discharge refrigerant | Medium-temp; low-temp when sized right | Oil slugging; sequencing problems |
+| Off-cycle | Ambient air (no active heat) | Medium-temp only; mild climates | Frost build-up if defrost interval too short |
+
+---
+
+### Electric Defrost
+
+#### How It Works
+Electric resistance heaters are embedded in or clipped to the evaporator coil. When defrost is initiated, refrigerant solenoids close (isolating the circuit), evaporator fans stop, and heaters energize. Heat melts frost off the coil; condensate drains to a heated drain pan and out through a drain line heater. Defrost terminates when a temperature sensor on the coil reaches a setpoint, or when a time-out limit is hit.
+
+#### Defrost Initiation
+- **Time-clock (scheduled):** Fixed times per day set in the case controller or store controller
+  - Typical: 2–4 defrosts per day for medium-temp; 4–6 for low-temp
+  - Initiation at: 0200, 0800, 1400, 2000 (typical 6-hour interval for medium-temp)
+- **Adaptive / Demand:** Controller analyzes actual frost load and only defrosts when needed
+  - Saves energy significantly (up to 30% on defrost energy)
+  - Requires temperature sensors to function correctly
+  - Disable during initial 2–3 week commissioning period
+
+#### Defrost Termination
+- **Temperature termination (primary):** Sensor on coldest coil section reaches setpoint
+  - Medium-temp coils: typically **50–55°F (10–13°C)**
+  - Low-temp coils: typically **55–65°F (13–18°C)**
+  - Sensor must be clamped to the coldest area of the coil — usually the bottom or rear section
+- **Time-out fallback:** Maximum defrost duration regardless of termination sensor
+  - Typical: 30–45 min for medium-temp; 45–75 min for low-temp
+  - If time-out is consistently activating instead of temperature termination → investigate
+- **Drip time:** Delay after heaters off before fans restart; allows condensate to drain
+  - Typical: 3–5 minutes; too short = water blown onto product
+
+#### Heater Wiring and Testing
+- Most commercial coil heaters are **240 VAC**, wired in parallel sections
+- Total heater load: typically 1–3 W per cubic foot of case volume
+- **Testing a heater element:**
+  1. Disconnect power at the defrost contactor
+  2. Ohmmeter across each heater section terminals
+  3. Open circuit (OL) = failed element; typical resistance 20–100 Ω depending on wattage
+  4. Shorted to ground = element insulation failure; replace immediately
+- **Defrost contactor:** check contacts for pitting/welding; high-resistance contacts cause partial heat
+- **Drain pan heaters:** 40–60 W typically; test same way; failed drain pan heater = frozen drain = overflow
+
+#### Electric Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check First |
+|---------|-------------|-------------|
+| Coil icing up, defrost not clearing | Heater element(s) failed | Ohmmeter test on each section; check contactor |
+| Defrost times out every cycle | Termination sensor wrong location or failed | Move sensor to coldest coil section; check sensor resistance |
+| Drain overflowing onto floor | Drain pan heater failed or drain line frozen | Test drain pan heater; clear drain line with hot water |
+| Water dripping on product after defrost | Drip time too short | Increase drip time by 2 min increments |
+| Case temp rises too high during defrost | Defrost duration too long; case not isolated properly | Verify liquid solenoid closes fully; check defrost duration setting |
+| Fans restart too early (frost blowoff) | Drip time too short or fan-delay thermostat failed | Check fan-delay thermostat (if fitted); increase drip time |
+| Heaters energize but coil stays frozen | 240 V circuit open on one leg (losing 120 V) | Check both legs of 240 V supply to defrost contactor; look for open neutral or leg |
+| Heaters run but case temp alarm activates | Heaters undersized or defrost interval too short | Increase defrost frequency; check case door gaskets for air infiltration |
+
+---
+
+### Hot Gas Defrost
+
+#### How It Works
+Hot gas defrost diverts compressor discharge gas (which is very hot — typically 150–220°F / 65–105°C) into the evaporator coil. The hot refrigerant condenses in the coil, releasing heat that melts frost. Condensed liquid is returned to the system via a check valve and liquid return line.
+
+#### Two-Pipe vs Three-Pipe Systems
+
+**Two-pipe (simple hot gas):**
+- Hot gas solenoid on discharge line opens → hot gas enters coil from the inlet
+- Condensed liquid backs up and exits through the liquid line check valve
+- Simple; works for medium-temp applications
+- Risk: liquid slugging if gas cools too fast in a heavily iced coil
+
+**Three-pipe (KoolGas / pressure-actuated):**
+- Dedicated hot gas supply line (large diameter)
+- Separate liquid return (drain) line with back-pressure valve
+- Liquid return check valve prevents reverse flow
+- Smoother defrost; better for low-temp and longer runs
+- Hussmann KoolGas is the most common three-pipe system; uses a back-pressure (check) valve set at ~20–25 psig to maintain minimum pressure in the coil during defrost
+
+#### Hot Gas Defrost Sequence
+
+1. **Pre-defrost:** Liquid line solenoid closes; fans stop; system pumps down the circuit
+2. **Hot gas on:** Hot gas solenoid opens; discharge gas flows into evaporator
+3. **Defrost running:** Coil pressure rises as gas condenses; frost melts; condensate to drain pan
+4. **Termination:** Temperature sensor on drain pan or coil outlet reaches setpoint (typically 50°F / 10°C for medium-temp); or time-out
+5. **Pressure equalization:** Brief delay with hot gas solenoid still open to bleed excess pressure (prevents liquid slugging on restart)
+6. **Drip time:** Fans remain off; condensate drains
+7. **Fan restart:** Fans come on; liquid solenoid opens; circuit returns to refrigeration
+
+#### Hot Gas Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check First |
+|---------|-------------|-------------|
+| Coil not defrosting fully | Hot gas solenoid not opening fully; inadequate hot gas supply pressure | Verify solenoid coil voltage; check hot gas header pressure during defrost (minimum 150 psig R-404A) |
+| Compressor tripping on LP during defrost of adjacent circuit | Hot gas defrost pulling suction pressure on active circuits | Stagger defrost schedules; ensure pump-down before hot gas opens |
+| Oil slugging noise at compressor after defrost | Liquid carryover from coil returning to suction header | Check equalization timing; verify back-pressure valve setting on 3-pipe system |
+| Defrost terminates too quickly (frost not cleared) | Termination sensor in warm spot on coil | Relocate sensor to coldest point (near coil inlet, bottom section) |
+| Coil re-freezes immediately after defrost | Drain pan heater failed; condensate not clearing | Test drain pan heater; verify drain open |
+| Hot gas runs but no temperature rise in coil | Back-pressure valve stuck open (3-pipe) — pressure not building | Test BPV: manually restrict outlet; if coil pressure rises, valve is passing |
+| Suction pressure drops severely during hot gas | Hot gas solenoid leaking through during refrigeration mode | Test solenoid: feel hot gas line — warm when should be cold = leaking |
+| Liquid hammering in piping at defrost start | Liquid trapped in hot gas line | Verify hot gas line pitch (slope toward coil); add drip leg if needed |
+
+---
+
+### Off-Cycle (Natural) Defrost
+
+#### How It Works
+The refrigeration circuit simply shuts off — fans may continue running (using ambient store air to melt frost) or also stop. No additional heat source is used. Relies entirely on the warm air in the store to melt frost.
+
+#### When It's Applicable
+- **Medium-temperature cases only** (dairy, deli, produce) — coil operates above −5°F (−20°C); light frost accumulates
+- Ambient store temperature **above 55°F (13°C)**
+- Cases with **good door/night curtain sealing** (low frost load)
+- NOT suitable for low-temp frozen food cases — frost load too heavy; defrost time too long; product temperature risk too high
+
+#### Typical Settings
+- Defrost frequency: 2–4 times per day
+- Duration: 20–45 minutes (fans off increases effectiveness)
+- Termination: time-only (no temperature sensor needed for basic off-cycle)
+- Fan arrangement: fans-off off-cycle is more effective than fans-on; but fans-on is simpler
+
+#### Off-Cycle Defrost Fault Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| Heavy frost build-up despite defrosts | Defrost frequency too low or duration too short; or ambient humidity very high | Increase defrost frequency; consider switching to electric or hot gas |
+| Coil never fully clears | Defrost duration too short | Extend duration; or add one more defrost per day |
+| Case temperature too high during defrost | Ambient temp high; long defrost duration | Shorten defrost or add night curtains; lower case setpoint slightly |
+| Frost concentrated on bottom of coil | Air short-cycling in case; door gaskets failed | Check gaskets; verify night curtain fit; check fan baffling |
+
+---
+
+### Defrost Termination Sensors — Placement Rules
+
+Correct sensor placement is the single most important factor in defrost performance. A sensor in the wrong location causes:
+- Premature termination → frost not fully cleared → re-icing during operation
+- Late termination → excessive heat → product temperature rise → food safety risk
+
+**Electric defrost — termination sensor must be at the coldest coil location:**
+- For horizontal coils: bottom-rear of the coil (last area to defrost)
+- For vertical coils: center of the coil (highest frost density)
+- Must be **in contact with a coil fin or tube**, not floating in air
+- Insulate the sensor mounting to prevent it reading air temperature instead of coil temperature
+
+**Hot gas defrost — termination sensor placement:**
+- **Drain pan thermostat** (most common): mounted in drain pan, not on coil; set at 50–55°F
+  - Advantage: confirms condensate is liquid (coil is above freezing)
+  - Risk: drain pan can warm up while coil still has ice at the back
+- **Coil outlet sensor**: measures temperature of refrigerant leaving coil during defrost; more accurate for full-coil clear
+- If using drain pan termination and coils consistently don't clear fully → add a second sensor at coil inlet and use the later-terminating of the two
+
+**Setpoint guide:**
+| Application | Termination Setpoint | Notes |
+|-------------|---------------------|-------|
+| Medium-temp electric | 50–55°F (10–13°C) | Lower end for dairy (humidity sensitive) |
+| Low-temp electric | 55–65°F (13–18°C) | Higher setpoint needed to clear deep frost |
+| Medium-temp hot gas | 50–55°F (10–13°C) drain pan | |
+| Low-temp hot gas | 55–60°F (13–16°C) coil outlet | |
+| CO₂ off-cycle | 45–50°F (7–10°C) | Lower setpoint acceptable; less heat available |
+
+---
+
+### CO₂ System Defrost Specifics
+
+CO₂ refrigeration uses different defrost strategies depending on the temperature level:
+
+#### Medium-Temp (MT) CO₂ — Off-Cycle or Electric
+- MT cases in CO₂ booster systems commonly use **off-cycle** defrost (light frost load; higher evaporating temps)
+- Electric defrost used for higher humidity applications (produce, fresh meat)
+- MT EEVs close during defrost; fans stop or continue at low speed
+
+#### Low-Temp (LT) CO₂ — Hot Gas or Electric
+- **Hot gas:** Uses CO₂ discharge gas from LT compressors; same principles as HFC hot gas but CO₂ pressures are much higher
+  - LT CO₂ discharge during hot gas: typically 400–600 psig — verify pipe and valve ratings
+  - Back-pressure valve on LT CO₂: set at approximately 290–435 psig (20–30 bar) depending on application
+- **Electric:** Simpler; used when hot gas routing is complex
+
+#### CO₂ Defrost Fault Patterns
+- **High discharge pressure during hot gas defrost:** Coil pressure rising excessively — back-pressure valve stuck closed or set too high
+- **LT compressors trip on high pressure during defrost:** Other LT circuits receiving hot gas pressure spike — stagger defrosts; verify isolation
+- **Flash tank pressure rise during defrost:** Condensed CO₂ from defrost returning to flash tank faster than system can handle — check liquid return check valves
+
+---
+
+### Adaptive Defrost — How Controllers Manage It
+
+**Basic adaptive algorithm (most store controllers):**
+- After each refrigeration period, the controller measures how far case temperature drifted from setpoint
+- If temperature drifted significantly → frost load was high → keep current defrost schedule
+- If temperature held stable → frost load was low → skip next defrost or extend interval
+- Over 1–2 weeks, the controller settles into the minimum defrost schedule for that load
+
+**Commissioning note:** Disable adaptive defrost for the **first 2–3 weeks** of operation. The algorithm needs a stable baseline. A store with high humidity or frequent door openings during fit-out will create an artificially high frost load that confuses the algorithm.
+
+**When adaptive defrost causes problems:**
+- Infrequent defrost leading to heavy frost → manually initiate defrost, then check adaptive log
+- Adaptive reducing defrosts too aggressively during high-humidity season → set a minimum defrost frequency floor (e.g., minimum 2 per day regardless of algorithm)
+
+---
+
+### 12 Common Defrost Mistakes
+
+1. **Termination sensor not touching the coil** — floating in air; reads ambient; terminates too early every cycle.
+2. **Termination sensor on drain pan instead of coil for electric defrost** — drain pan warms quickly; coil still partly frozen; termination is premature.
+3. **Drip time set to zero** — fans restart immediately after heaters off; water is blown onto product; case humidity rises; re-frost accelerates.
+4. **No time-out backup on electric defrost** — if termination sensor fails open, heaters run indefinitely; product is lost and heaters may burn out.
+5. **All circuits defrosting simultaneously** — suction pressure spikes dramatically; compressors may trip; product temperatures in non-defrost circuits rise; stagger defrosts by 15–30 min.
+6. **Drain line heater failed and not noticed** — slow seasonal problem; drain clogs, pan overflows, water on floor; checked only after leak complaint.
+7. **Hot gas defrost on multiple adjacent circuits simultaneously** — insufficient hot gas supply pressure; defrosts run long or fail to clear; stagger defrosts.
+8. **Adaptive defrost disabled permanently** — wastes significant energy; it was disabled at commissioning and never re-enabled after stability period.
+9. **Wrong defrost type after case or coil replacement** — replaced coil has different heater wattage or termination sensor position; original controller settings no longer valid; recalibrate.
+10. **Pump-down solenoid not closing before hot gas opens** — liquid refrigerant trapped in coil when hot gas enters; severe liquid hammer; solenoid or coil damage.
+11. **Defrost termination setpoint too low for the application** — set at 40°F for a low-temp case; coil barely clears; re-frosts within one refrigeration cycle.
+12. **Night curtain not deployed during off-cycle defrost** — enormous additional frost load from warm store air; off-cycle defrost cannot keep up; must switch to active defrost type.`
+
+
+export const WALK_IN_KNOWLEDGE = `
+## Walk-In Cooler and Freezer Troubleshooting
+
+Walk-ins are some of the most common service calls in commercial refrigeration. Most problems fall into five categories: temperature not maintaining, unit cooler icing, defrost failures, drain/water issues, and door/envelope problems.
+
+---
+
+### Walk-In System Overview
+
+**Typical system components:**
+- **Unit cooler (evaporator):** Mounted at ceiling or wall; draw-through (fan pulls air through coil) or blow-through (fan pushes air through coil)
+- **Condensing unit:** Remote (rooftop or machine room) or self-contained
+- **Thermostatic expansion valve (TXV) or EEV:** At unit cooler
+- **Liquid line solenoid:** Controlled by thermostat or case controller
+- **Defrost system:** Electric heaters in coil and drain pan; hot gas; or off-cycle
+- **Drain pan and drain line:** Drain line heated (freeze protection) in freezers
+- **Door(s):** With heater frame, gasket, auto-closer
+- **Floor heater (freezers only):** Prevents floor heaving from ground freeze
+
+**Walk-in cooler vs walk-in freezer — key differences:**
+| Feature | Walk-In Cooler | Walk-In Freezer |
+|---------|---------------|-----------------|
+| Box temp | 34–38°F (1–3°C) | −10 to 0°F (−23 to −18°C) |
+| Defrost type | Off-cycle or electric | Electric or hot gas |
+| Defrost frequency | 1–2× daily | 3–6× daily |
+| Drain line | Unheated acceptable | Must be heated (electric or steam) |
+| Floor heater | Not required | Required (concrete slab installs) |
+| Door frame heater | Optional | Required — prevents ice seal |
+| Anti-sweat heaters | Optional | Required at all cold joints |
+
+---
+
+### Temperature Not Maintaining
+
+#### Box temperature too high (cooler or freezer)
+
+**Check the condensing unit first:**
+- Is the unit running? Compressor energized? Contactor pulled in?
+- Head pressure within range? (See System Fault Diagnosis guide for high head pressure causes)
+- Suction pressure — is it at or near setpoint?
+
+**Check the unit cooler:**
+1. Evaporator fans all running? A single failed fan motor can cause a large temperature rise — feel for airflow at each fan section
+2. Coil iced over? If coil is a solid block of ice, defrost has failed — manually initiate defrost
+3. Refrigerant flowing? Feel the suction line at the unit cooler outlet — should be cold and possibly sweating; if warm and dry, refrigerant is not flowing
+4. Liquid solenoid energized? Check for voltage at solenoid coil when box calls for cooling
+5. TXV feeding? Check superheat at evaporator outlet (clamp thermocouple on suction line before TXV bulb; read suction pressure; calculate superheat)
+
+**Check the box itself:**
+- Door gaskets intact and sealing? Hold a dollar bill in the door — should resist pulling out
+- Door auto-closer working? Hinges adjusted?
+- Door heater frame on, preventing ice seal forming at gasket?
+- Large product load recently introduced? Warm product raises temperature temporarily — not a refrigeration fault
+
+#### Box temperature too cold (cooler)
+- Thermostat setpoint too low — verify setpoint; calibrate if needed
+- Thermostat bulb out of airstream or touching coil directly — reposition
+- Liquid solenoid not closing on thermostat satisfied call — check solenoid for bypass
+
+---
+
+### Unit Cooler Icing Up
+
+Evaporator coil icing is the most common walk-in service call after "temperature not maintaining." The coil builds up ice until airflow stops, then the box warms.
+
+#### Defrost not occurring
+- Defrost timer not advancing or clock lost power — check timer position; verify 24 V supply to timer
+- Defrost contactor not pulling in — check contactor coil, control voltage at terminal
+- Defrost heaters failed (all sections) — ohmmeter test; see defrost guide
+
+#### Defrost not completing (partial clearing)
+- Defrost termination thermostat in wrong location — must be on coldest coil section
+- Termination thermostat setpoint too low — reset to 50–55°F for cooler, 55–65°F for freezer
+- Heater wattage insufficient — check nameplate vs. actual load
+- Time-out too short — extend by 15-minute increments
+- Defrost frequency too low — add another defrost initiation
+
+#### Defrost completing but re-frosting immediately
+- Drain pan heater failed — condensate refreezes in drain pan and backs up onto coil
+- Drip time too short — fans start before condensate has drained; blown onto coil
+- Door left open during or after defrost — warm humid air floods box
+
+#### Defrost completing but moisture blown off coil
+- Fans restarting before drip time expires — check fan-delay thermostat (should open circuit to fans below 35°F on coil outlet)
+- No drip time configured — add minimum 3–5 minutes
+
+#### Frost on suction line back to condensing unit
+- Severe floodback — TXV/EEV overfeeding; see floodback section in system diagnostics guide
+- Suction line insulation failed at box penetration — exposed line freezes ambient moisture; replace insulation
+
+---
+
+### Drain Problems
+
+#### Water on floor inside box
+- Drain pan overflow: drain line frozen or clogged
+  - Freezer drain line heater failed — test drain line heater; clear blockage with warm water
+  - Drain line plugged with food debris — clear and sanitize
+- Condensate dripping off suction line (poorly insulated penetration)
+
+#### Water on floor outside box (under condensing unit)
+- Normal condensate from condensing unit on humid days
+- Check that condensate drain from condenser is plumbed correctly
+
+#### Drain line freezing (freezer)
+- Electric drain line heater failed — test continuity; typically 5–15 W/ft, 120 or 240 VAC
+- Drain line heater thermostat stuck open — test thermostat; some are self-regulating heat tape (no thermostat)
+- Drain line run too long without slope — standing water refreezes; recheck slope (1/4″ per foot minimum)
+
+---
+
+### Door and Envelope Problems
+
+#### Excessive frost at door frame
+- Door frame heater failed — test heater element; check wiring at hinge termination (flex wire breaks)
+- Door heater thermostat setting wrong — verify setpoint (typically maintains frame at 35–40°F)
+- Door gasket damaged — replace gasket; check door alignment
+
+#### Ice build-up on floor at door threshold
+- Threshold heater failed or never installed — add strip heater at threshold
+- Door not sealing at bottom — adjust sweep or add threshold heater
+
+#### Box sweating excessively on exterior panels
+- Anti-sweat heater failed on panel joint — test and replace
+- Insulation compromised — check for wet panels (wet insulation = severe heat gain; panel replacement needed)
+
+#### Floor heaving (freezer) — thermal expansion cracking
+- Floor heater failed — test heater circuits; restore immediately to prevent permanent structural damage
+- Floor heater thermostat setpoint wrong — typically set to maintain floor above 32°F beneath slab
+- Verify floor heater is on a separate circuit from defrost (must run continuously)
+
+---
+
+### Walk-In Freezer Specific — Floor Heater Systems
+
+Floor heaters prevent ground freeze which can heave and crack concrete slabs. Two types:
+
+**Electric floor heaters:**
+- Embedded resistance cables in a concrete slab or under the floor
+- Controlled by a thermostat sensing subfloor temperature (typically maintains 40–45°F below slab)
+- **Must run continuously** — do not disable, even when unit is not in service; thaw/refreeze cycles cause more damage than continuous freezing
+- Test: measure heater circuit resistance (typically 10–50 Ω depending on wattage and zone)
+
+**Glycol/water floor heating systems (larger installations):**
+- Circulating pump runs warm glycol through pipes embedded in slab
+- Check pump operation, glycol concentration (typically 30% propylene glycol), and heat exchanger condition
+
+**Signs of floor heater failure:**
+- Floor cracking or heaving — immediate concern; restore heating and allow slow thaw
+- Cold spots on floor surface
+- Thermostat reading below 32°F under slab
+
+---
+
+### Unit Cooler Motor and Airflow
+
+#### Evaporator fan motor failure
+- Fail on high amps: check for seized bearing (motor hot to touch); replace motor
+- Fail on open winding: no current draw; ohmmeter test at motor terminals — open circuit between any two winding leads = failed
+- Blade damaged or wrong rotation: check rotation; EC fan motors are polarity-sensitive — verify wiring
+- Fan blade hitting shroud: listen; visually inspect; realign or replace blade
+
+#### Airflow distribution
+- Baffles missing or damaged: cold air short-circuits back to unit cooler without covering box
+- Product stacked too high: blocking airflow paths; re-stack leaving 6-inch minimum clearance to ceiling
+- Walk-in too warm at back wall: typical sign of inadequate airflow — check fan delivery, add circulation fan if needed
+
+---
+
+### Walk-In Electrical System
+
+| Component | Test | Typical Values |
+|-----------|------|----------------|
+| Electric defrost heaters | Ohmmeter, disconnected | 15–80 Ω depending on wattage |
+| Drain pan heater | Ohmmeter | 50–200 Ω typically |
+| Drain line heater | Ohmmeter | Varies with length; 10–100 Ω |
+| Door frame heater | Ohmmeter + heat check | 50–300 Ω; should be warm when energized |
+| Floor heater | Ohmmeter by zone | 10–50 Ω per zone |
+| Defrost contactor | Contactor coil resistance | 20–100 Ω typical; check contacts for pitting |
+| Fan motor winding | Ohmmeter | Should read similar resistance on all three phases (3-phase) |
+
+---
+
+### 10 Common Walk-In Mistakes
+
+1. **Defrost timer not set to correct time** — timer clock wrong after power failure; defrosts run at wrong time; temperature swings confuse staff.
+2. **Drain line heater on same circuit as defrost contactor** — heater de-energizes during defrost; drain freezes from condensate; drain overflows.
+3. **Floor heater disabled to "save energy"** — floor heaving begins within one season; very expensive repair.
+4. **TXV bulb not insulated** — bulb reads ambient air temperature instead of suction line; superheat control lost; floodback or starvation results.
+5. **Oversized condensing unit running short cycles** — never runs long enough to pull humidity; box stays at temperature but product frosts from humidity; downsize or add hot gas bypass.
+6. **Evaporator fan delay thermostat bypassed** — fans start immediately after defrost; frost blown onto product; box humidity rises.
+7. **Door left open during manual defrost** — humid air enters, dramatically increases frost load, extends future defrost times.
+8. **Using off-cycle defrost on a freezer** — ambient air cannot supply enough heat to fully clear a low-temp coil; must use electric or hot gas.
+9. **Anti-sweat heaters on a timer to save energy** — during high-humidity periods the timer is never enough; panels sweat, drip, promote mold.
+10. **Replacing condensing unit without checking refrigerant charge** — unit swapped, refrigerant weight not verified; over or undercharge from day one.`
+
+
+export const PARALLEL_RACK_KNOWLEDGE = `
+## Parallel Rack Systems — HFC Multiplex Troubleshooting
+
+A parallel rack (multiplex rack) is a central refrigeration system where multiple compressors share a common suction manifold, serving multiple refrigerated circuits throughout the store. The rack is the heart of the supermarket refrigeration system; a fault at the rack affects every case on that suction group.
+
+---
+
+### Rack System Architecture
+
+**Core components:**
+- **Compressor bank:** 2–8 compressors (scroll, reciprocating, or semi-hermetic) piped to a common suction and discharge header
+- **Suction groups:** Separate suction headers for different temperature levels (typically MT = medium-temp, LT = low-temp; some stores have 3 groups)
+- **Discharge header → oil separator → condenser → receiver → liquid header → to all circuits**
+- **Oil management:** Oil separator, oil level controllers, oil return lines to each compressor crankcase
+- **Liquid injection:** On scroll compressors — cools discharge; activated by discharge temperature
+- **Head pressure control:** Fan cycling or variable-speed condenser fans
+- **Rack controller:** (Emerson E2/E3, Danfoss AK-PC, Micro Thermo) manages staging, setpoints, alarms
+
+**Suction group terminology:**
+| Term | Meaning |
+|------|---------|
+| Suction group / circuit group | Set of circuits that share a suction header and setpoint |
+| MT (medium-temp) | Typically −15°F to +25°F suction sat temp; dairy, deli, produce |
+| LT (low-temp) | Typically −30°F to −20°F suction sat temp; frozen food, ice cream |
+| Setpoint | Target suction saturation temperature for the group |
+| Floating suction | Controller raises suction setpoint when load is low — saves energy |
+
+---
+
+### Compressor Staging and Sequencing
+
+**How staging works:**
+1. Rack controller monitors suction pressure vs. setpoint
+2. If suction pressure rises above setpoint + deadband → stage on (add compressor capacity)
+3. If suction pressure drops below setpoint − deadband → stage off (reduce compressor capacity)
+4. Staging: scroll compressors typically start in sequence; variable-speed compressors modulate continuously
+
+**Lead/lag assignment:**
+- Lead compressor: starts first, stops last — highest run hours
+- Lag compressors: come on as load increases
+- Rotation: modern rack controllers rotate lead/lag assignment to equalize run hours across compressors
+
+**Capacity modulation:**
+- Reciprocating compressors: cylinder unloaders (solenoid-controlled)
+- Scroll compressors: Digital Scroll solenoid or variable speed
+- Hot gas bypass: used at very low loads to prevent compressor short-cycling (not common on modern systems)
+
+**Staging deadband:**
+- Too narrow (< 2 psig): compressors cycle rapidly; excessive starts (scrolls have 10-min restart timer)
+- Too wide (> 8 psig): suction pressure oscillates; case temperatures vary
+
+---
+
+### Suction Group Management
+
+#### Floating Suction Setpoint
+Modern rack controllers raise the suction setpoint when case temperatures are stable and well below alarm thresholds. This is the single biggest energy-saving feature on a rack.
+
+- **How it works:** Controller checks all circuit temperatures in the group; if all are within X°F of setpoint, suction is raised by Y°F
+- **Typical float range:** 2–8°F above base setpoint
+- **Benefit:** Higher suction pressure = less compression ratio = significant energy savings
+- **Common issue:** Float disabled after a service call and never re-enabled — verify floating is active in rack controller
+
+#### Setpoint Scheduling
+- Night setback: raise suction setpoint by 2–5°F during closed-store hours (less traffic = less case load)
+- Ensure setback doesn't trigger temperature alarms — verify with case controller alarm thresholds
+
+---
+
+### Oil Management
+
+Oil management is the most common cause of compressor failures on parallel racks. Each compressor must receive adequate oil return continuously.
+
+#### Oil System Components
+| Component | Function |
+|-----------|----------|
+| Oil separator | Removes oil from discharge gas before it enters condenser and circuits; oil returns to crankcase(s) |
+| Oil level controller | Maintains correct oil level in crankcase; opens to admit oil from separator when level drops |
+| Oil equalization line | Connects crankcases at same height; equalizes oil level passively across all compressors |
+| Oil reservoir (sump) | Central oil storage that feeds level controllers |
+| Oil heater (crankcase) | Boils off refrigerant absorbed into oil before startup |
+
+#### Oil Fault Diagnosis
+**Compressor tripping on low oil pressure:**
+1. Check oil sight glass — low or foamy oil = oil return problem or floodback
+2. Check oil separator bypass: if separator is bypassing, oil goes straight to system circuits
+3. Check oil level controller: sticky float or failed solenoid = oil not feeding crankcase
+4. Check equalization lines: blocked = oil level unequal across compressors; only some units get oil
+5. Check for refrigerant floodback: oil diluted with liquid refrigerant foams on startup
+
+**Oil foaming on startup:**
+- Crankcase heater failed — refrigerant has absorbed into oil overnight; oil becomes frothy when pressure drops on start
+- Solution: always verify crankcase heater is warm before starting; add warm-up delay if heater is marginal
+
+**Oil accumulating in circuits (not returning):**
+- Suction line velocity too low (common at low-load periods): oil pools in horizontal lines
+- Risers too large: oil travels up in the annular film, insufficient gas velocity at low load
+- Add suction line accumulator if severe flooding/slugging occurs at startup
+
+---
+
+### Head Pressure Control on Racks
+
+**Fan cycling (simplest):**
+- Condenser fans stage on/off based on head pressure or ambient
+- Common problem: fans cycling too frequently → head pressure oscillates → suction pressure oscillates → case temps vary
+
+**Variable-speed fans (most common on modern racks):**
+- VFD-controlled fans modulate continuously
+- VFD fault: fans stop or run at fixed speed; check VFD fault codes
+- VFD parameter loss after power failure: head pressure runs uncontrolled; reprogram from backup
+
+**Head pressure setpoint (floating):**
+- Modern racks float head pressure as low as practical (saves condenser fan energy)
+- Minimum head pressure: ~200 psig for R-404A, ~175 psig for R-448A
+- Head pressure too low in cold weather: liquid line subcooling drops → flash gas → TXVs starve → high superheat on multiple circuits simultaneously
+
+---
+
+### Common Rack Fault Diagnosis
+
+#### All circuits on a suction group high temperature simultaneously
+This is a rack-level problem, not a case-level problem.
+1. **Suction pressure**: Is it at setpoint? If high → not enough compressor capacity → check staging
+2. **All compressors running that should be?** Check rack controller status screen
+3. **Any compressor locked out?** Check fault log; HP/LP/oil/motor protector trips
+4. **Head pressure OK?** If very high, staging may be limited by discharge temperature protection
+5. **Liquid line**: Subcooling at rack? If near zero → flash gas → all TXVs starving simultaneously (this mimics refrigerant charge loss)
+
+#### Suction pressure hunting (oscillating ±5 psig)
+- Staging deadband too narrow → compressors cycling on/off rapidly
+- Floating suction setpoint chasing a moving target → disable float temporarily to diagnose
+- One compressor with failed suction valve running but not pumping: capacity is lower than rack controller thinks → widens oscillation
+
+#### Suction pressure too low (running below setpoint)
+- Too many compressors on for the load → check minimum run time settings
+- Hot gas bypass stuck open → extra capacity being added to suction
+- One suction group pulling down another through failed check valve → verify check valves between groups
+
+#### Compressor short-cycling
+- Scroll compressor minimum OFF time: typically **3 minutes** (prevents liquid slugging on restart)
+- Minimum ON time: typically **30 seconds**; prevents thermal overload
+- Rack controller staging minimum times are parameters — verify they are set correctly
+- Short-cycling cause: too many compressors relative to load; reduce staging steps or add hot gas bypass
+
+#### Discharge temperature high on one compressor
+- Liquid injection solenoid failed (scroll): no liquid injection cooling → discharge rises
+- High suction superheat entering compressor → motor not cooled adequately
+- Suction valve failure → low compression → heat builds from re-expansion
+- High compression ratio → check head pressure; check suction setpoint
+
+#### Compressor not staging on when needed
+- LP cutout tripped and manual-reset required
+- Contactor failed or control fuse blown
+- Rack controller minimum off-time not expired (scroll restart timer)
+- Capacity at 100% but suction still rising → undersized rack for load; evaluate compressor sizing
+
+---
+
+### Refrigerant Charge Verification on a Rack
+
+A parallel rack with improper charge exhibits symptoms that can be confused with many other faults.
+
+**Low charge indicators:**
+- Low subcooling at liquid header (< 5°F)
+- High superheat on multiple circuits simultaneously
+- Low suction pressure despite low case temperatures
+- Liquid line sight glass showing bubbles consistently
+
+**High charge indicators:**
+- High subcooling (> 20°F) with normal or elevated head pressure
+- Elevated suction pressure
+- Oil dilution (refrigerant dissolving into oil in receiver)
+
+**Charge verification procedure:**
+1. Stabilize system: all compressors running in steady state, all circuits in refrigeration
+2. Measure subcooling at liquid header outlet
+3. Target subcooling: **10–15°F** for most HFC rack systems
+4. Adjust charge in small increments (1–2 lb at a time); allow 15 minutes to stabilize between additions
+5. Record final weight added and update system charge record
+
+---
+
+### Rack Energy Management Features
+
+| Feature | How It Works | Common Issue |
+|---------|-------------|-------------|
+| Floating suction | Raises suction setpoint when case temps are comfortable | Disabled after service call; not re-enabled |
+| Floating head pressure | Lowers head pressure as ambient drops | Set too aggressively → TXV starvation in cold weather |
+| Night setback | Raises suction setpoint during off-hours | Set too aggressively → morning temperature alarms |
+| Demand defrost | Only defrosts circuits that need it | Disabled at commissioning; never re-enabled |
+| Compressor rotation | Equalizes run hours across all compressors | Not configured; one compressor always lead → early failure |
+| Anti-sweat heater control | Dims heaters based on dew point | Dew point sensor failed; heaters run at full power always |
+
+---
+
+### 10 Common Parallel Rack Mistakes
+
+1. **Staging deadband too narrow** — compressors rapid-cycle; scroll restart timers trip; capacity gaps cause temperature swings across all circuits.
+2. **Crankcase heaters not verified after power restoration** — first startup after outage causes oil foaming and potential compressor failure.
+3. **Oil equalization lines blocked or valved off** — oil level varies across compressors; some trip on low oil while others are over-filled.
+4. **Floating head pressure too low in winter** — subcooling drops below 5°F; flash gas in liquid line; high superheat alarms on multiple circuits simultaneously misdiagnosed as refrigerant leak.
+5. **Compressor rotation not enabled** — lead compressor accumulates 3× the run hours; fails first; owner surprised.
+6. **Night setback too aggressive** — suction raises 8–10°F overnight; case temperatures drift above 40°F on medium-temp; health code concern; reduce setback to 3–5°F maximum.
+7. **Liquid injection solenoid coil failed and not caught** — discharge temperature slowly rises over weeks; compressor fails from heat; no alarm was set on discharge temperature.
+8. **Discharge check valve failed on one compressor** — hot discharge gas flows back through idle compressor; compressor heats up; contaminates oil; causes oil breakdown.
+9. **Refrigerant added without rechecking subcooling** — technician adds refrigerant by sight glass (bubbles disappear) but overcharges; high subcooling, elevated head pressure, oil dilution.
+10. **Suction accumulators not drained after servicing** — liquid refrigerant trapped in accumulator flashes on restart; liquid slug reaches compressor; catastrophic valve failure.`
+
+
 function buildEquipmentContext(
   equipment: Equipment,
   readings?: SensorSnapshot,
@@ -3396,7 +4747,7 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, MICRO_THERMO_KNOWLEDGE, EVAPCO_LMP_KNOWLEDGE, PENN_CONTROLS_KNOWLEDGE, VFD_KNOWLEDGE, REFRIGERANT_RETROFIT_KNOWLEDGE, TYLER_HILL_PHOENIX_KNOWLEDGE, HEATCRAFT_BOHN_KNOWLEDGE, BITZER_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, MICRO_THERMO_KNOWLEDGE, EVAPCO_LMP_KNOWLEDGE, PENN_CONTROLS_KNOWLEDGE, CARNOT_KNOWLEDGE, EMERSON_E2_E3_KNOWLEDGE, WALK_IN_KNOWLEDGE, PARALLEL_RACK_KNOWLEDGE, VFD_KNOWLEDGE, REFRIGERANT_RETROFIT_KNOWLEDGE, TYLER_HILL_PHOENIX_KNOWLEDGE, HEATCRAFT_BOHN_KNOWLEDGE, BITZER_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
 
   if (opts.equipment) {
     parts.push(buildEquipmentContext(

@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
-  CircuitBoard, Gauge, ToggleRight,
-  ShoppingBag, Warehouse, Settings2, Activity, RefreshCcw,
+  CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
+  ShoppingBag, Settings2, RefreshCcw,
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
@@ -25,11 +25,12 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag:
   purple:  { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200', tag: 'bg-purple-50 text-purple-700 border-purple-200' },
   cyan:    { bg: 'bg-cyan-100',   text: 'text-cyan-600',   border: 'border-cyan-200',   tag: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   orange:  { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200', tag: 'bg-orange-50 text-orange-700 border-orange-200' },
+  lime:    { bg: 'bg-lime-100',   text: 'text-lime-600',   border: 'border-lime-200',   tag: 'bg-lime-50 text-lime-700 border-lime-200' },
   green:   { bg: 'bg-green-100',  text: 'text-green-600',  border: 'border-green-200',  tag: 'bg-green-50 text-green-700 border-green-200' },
+  red:     { bg: 'bg-red-100',    text: 'text-red-600',    border: 'border-red-200',    tag: 'bg-red-50 text-red-700 border-red-200' },
   yellow:  { bg: 'bg-yellow-100', text: 'text-yellow-600', border: 'border-yellow-200', tag: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   slate:   { bg: 'bg-slate-100',  text: 'text-slate-600',  border: 'border-slate-200',  tag: 'bg-slate-50 text-slate-700 border-slate-200' },
   pink:    { bg: 'bg-pink-100',   text: 'text-pink-600',   border: 'border-pink-200',   tag: 'bg-pink-50 text-pink-700 border-pink-200' },
-  lime:    { bg: 'bg-lime-100',   text: 'text-lime-600',   border: 'border-lime-200',   tag: 'bg-lime-50 text-lime-700 border-lime-200' },
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -45,10 +46,14 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   CircuitBoard: <CircuitBoard size={22} />,
   Gauge:        <Gauge        size={22} />,
   ToggleRight:  <ToggleRight  size={22} />,
-  ShoppingBag:  <ShoppingBag  size={22} />,
-  Warehouse:    <Warehouse    size={22} />,
-  Settings2:    <Settings2    size={22} />,
+  Wind:         <Wind         size={22} />,
+  Monitor:      <Monitor      size={22} />,
   Activity:     <Activity     size={22} />,
+  Flame:        <Flame        size={22} />,
+  Warehouse:    <Warehouse    size={22} />,
+  Layers:       <Layers       size={22} />,
+  ShoppingBag:  <ShoppingBag  size={22} />,
+  Settings2:    <Settings2    size={22} />,
   RefreshCcw:   <RefreshCcw   size={22} />,
 }
 
