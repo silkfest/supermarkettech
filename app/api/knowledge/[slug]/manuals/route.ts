@@ -9,6 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const supabase = getSupabaseServer()
 
+  if (topic.manualKeywords.length === 0) return NextResponse.json([])
+
   // Build OR conditions for each keyword
   const conditions = topic.manualKeywords
     .map(kw => `title.ilike.%${kw}%`)
@@ -16,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const { data } = await supabase
     .from('documents')
-    .select('id, title, created_at')
+    .select('id, title, created_at, source_type, source_url')
     .or(conditions)
     .order('created_at', { ascending: false })
 

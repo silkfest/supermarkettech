@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  Globe,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
@@ -18,6 +19,8 @@ interface RelatedManual {
   id: string
   title: string
   created_at: string
+  source_type: string
+  source_url: string | null
 }
 
 export default function KnowledgeTopicPage() {
@@ -149,18 +152,25 @@ export default function KnowledgeTopicPage() {
                   <p className="text-xs text-slate-400 px-2">Loading...</p>
                 ) : (
                   <div className="space-y-1">
-                    {manuals.map(manual => (
-                      <a
-                        key={manual.id}
-                        href={`/api/pdf?docId=${manual.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group"
-                      >
-                        <FileText size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
-                        <span className="leading-snug line-clamp-2">{manual.title}</span>
-                      </a>
-                    ))}
+                    {manuals.map(manual => {
+                      const isWeb = manual.source_type === 'WEB' && manual.source_url
+                      const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
+                      return (
+                        <a
+                          key={manual.id}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group"
+                        >
+                          {isWeb
+                            ? <Globe size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
+                            : <FileText size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
+                          }
+                          <span className="leading-snug line-clamp-2">{manual.title}</span>
+                        </a>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -181,21 +191,28 @@ export default function KnowledgeTopicPage() {
                 Related Manuals
               </p>
               <div className="space-y-2">
-                {manuals.map(manual => (
-                  <a
-                    key={manual.id}
-                    href={`/api/pdf?docId=${manual.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <BookOpen size={14} className="text-slate-400 flex-shrink-0" />
-                      <span className="text-xs text-slate-700 truncate">{manual.title}</span>
-                    </div>
-                    <ExternalLink size={12} className="text-slate-400 flex-shrink-0 group-hover:text-blue-500" />
-                  </a>
-                ))}
+                {manuals.map(manual => {
+                  const isWeb = manual.source_type === 'WEB' && manual.source_url
+                  const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
+                  return (
+                    <a
+                      key={manual.id}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isWeb
+                          ? <Globe size={14} className="text-slate-400 flex-shrink-0" />
+                          : <BookOpen size={14} className="text-slate-400 flex-shrink-0" />
+                        }
+                        <span className="text-xs text-slate-700 truncate">{manual.title}</span>
+                      </div>
+                      <ExternalLink size={12} className="text-slate-400 flex-shrink-0 group-hover:text-blue-500" />
+                    </a>
+                  )
+                })}
               </div>
             </div>
           )}
