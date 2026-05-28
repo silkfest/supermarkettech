@@ -2995,7 +2995,138 @@ Input type is set per channel in board configuration — mismatch is the single 
 9. **Replacing E2 CPU board without exporting configuration** — always back up configuration to USB/PC via CoolTerm before any board replacement; factory defaults lose all circuit programming.
 10. **Forgetting to set correct refrigerant in rack circuit** — pressure-temperature conversions in alarm thresholds depend on the refrigerant selected; R-448A vs R-404A pressures differ significantly.
 11. **Using telnet/HTTP to configure E3 without disabling the on-screen lock** — screen lock on E3 does not lock out web interface; a padlock icon on screen means screen only, not full lock.
-12. **LON node replacement without Neuron ID** — when replacing a case controller board, the new Neuron ID must be re-commissioned in the E2/E3; node does not auto-register.`
+12. **LON node replacement without Neuron ID** — when replacing a case controller board, the new Neuron ID must be re-commissioned in the E2/E3; node does not auto-register.
+
+---
+
+## CPC (Computer Process Controls) — Brand Context & Peripheral Hardware
+
+### What "CPC" Means in the Field
+**CPC = Computer Process Controls, Inc.** — a Kennesaw, Georgia company founded 1984 that designed the entire E2/E3 product family. Emerson Climate Technologies acquired CPC; the brand is now under **Copeland** (Emerson spun off its climate division in 2023).
+
+When a technician says "the CPC board" they can mean any of:
+- The **E2 or E3 store controller** itself
+- A **MultiFlex I/O board** (the RS485 expansion boards)
+- A **CC-100 / CS-100 case controller** (Echelon-networked, E2 only)
+- A **legacy CCB** (Case Control Board from the RMCC era)
+- A **Gateway board** (protocol translator on the RS485 network)
+
+CPC document numbers follow the **026-XXXX** pattern (e.g., 026-1610 = E2 standard manual, 026-1701 = peripherals I/O manual, 026-1704 = MultiFlex board manual).
+
+---
+
+### E2 Controller Model Variants
+
+| Series | Application | Models | Max Circuits |
+|--------|-------------|--------|-------------|
+| **RX** | Refrigeration (supermarkets) | RX-100, RX-300, RX-400, RX-500 | 48–128 |
+| **BX** | Building / HVAC only | BX-300, BX-400 | — |
+| **CX** | Convenience store (HVAC + refrigeration) | CX-100, CX-300, CX-400, CX-500 | 48–128 |
+
+**RX-300 vs RX-400:**
+- RX-300: 1 condensing system, 4 suction groups, up to 48 standard circuits
+- RX-400: 2 condensing systems, 4 suction groups, up to 64 standard circuits — used in larger stores with two independent refrigeration systems
+
+Part numbers follow **845-XYYY** (e.g., 845-1300 = RX-300, 845-1400 = RX-400, 845-3400 = CX-400).
+
+---
+
+### RS485 I/O Network — MultiFlex Boards
+
+The primary expansion network inside the store connects the E2/E3 to distributed I/O via **RS485 at 9600 baud** (default; configurable). Up to **127 devices** per COM port. Standard wiring: Belden 9493 or equivalent 3-conductor shielded cable, daisy-chain topology, termination jumpers at both ends.
+
+#### Board Types
+
+| Board | Channels | Function |
+|-------|----------|----------|
+| **16AI** | 16 analog inputs | Temperature, pressure, humidity sensors |
+| **8RO** | 8 relay outputs | Compressor stages, solenoids, fans |
+| **8DO** | 8 digital outputs | Low-current switching |
+| **4AO** | 4 analog outputs | 0–10 V or 4–20 mA control signals |
+| **MultiFlex Combo** | Mixed | Presents to E2 as 16AI + 8RO + 4AO + 8DO simultaneously |
+| **8ROSMT** | 8 relay outputs | Surface-mount relay board; activates/deactivates 8 loads |
+| **MultiFlex ESR** | Expanded | Used for distributed refrigeration case control on larger systems |
+| **Gateway Board** | — | Protocol translator; connects RS485 network to third-party systems; mounts on 3″ snap track |
+
+#### DIP Switch Addressing (RS485 Network)
+
+Each board must have a unique **Network ID** of the same board type on the same COM port segment.
+
+- Boards are numbered **starting from 1** per type (e.g., four 16AI boards = IDs 1, 2, 3, 4; three 8RO boards = IDs 1, 2, 3)
+- On **MultiFlex Combo boards**, addressing is split across two DIP switch banks:
+  - **S3, switches 1–5**: 16AI (input) network address
+  - **S4, switches 1–5**: 8RO (relay output) address
+  - **S4, switches 6–8**: 4AO (analog output) address
+- 5-bit switch = addresses 1–31 per board type per segment
+- **Baud rate switch**: one dedicated switch; must match E2 COM port configuration (default 9600)
+- **Address 0 is invalid** — board will not communicate; common cause of "board not found" on initial setup
+
+#### Input Types on 16AI (must match wiring)
+
+| Input Type | Range | Typical Use |
+|-----------|-------|-------------|
+| 0–5 V | 0.5–4.5 V active | Pressure transducers (most common) |
+| 4–20 mA | — | Pressure transducers (needs 250 Ω shunt at board) |
+| NTC 10 kΩ | — | Temperature sensors (Emerson standard) |
+| 0–10 V | — | CO₂ / humidity sensors |
+| Digital (dry contact) | Open/closed | Door switches, pressure switches |
+
+**Input type must be set per channel in the E2/E3 software** — mismatch is the single most common cause of bad sensor readings after board installation.
+
+---
+
+### Echelon / LonWorks Case Controllers (E2 Only — NOT available on E3)
+
+The E2 supports Echelon (LonWorks FTT-10) for smart distributed case controllers, added via a plug-in card (P/N 638-4860). **E3 has no Echelon support** — Echelon devices must be replaced with BACnet/Modbus equivalents during an E3 upgrade.
+
+| Device | Function |
+|--------|----------|
+| **CC-100** | Case Controller — controls lights, fans, defrost, and refrigeration for a single display case section |
+| **CS-100** | Case Circuit Controller — controls a single refrigeration circuit |
+| **16AIe** | 16 analog input board (Echelon version) — discontinued |
+| **8ROe** | 8 relay output board (Echelon version) — discontinued |
+
+**Echelon wiring rules:**
+- FTT-10 twisted-pair, no polarity, max segment **500 m (1640 ft)**
+- Termination resistors **105 Ω** at each physical end of the bus
+- Max **127 nodes per segment**; use a repeater for long stores
+- Each node has a unique **Neuron ID** — record it at commissioning and stick label on the board
+- Node replacement: new board's Neuron ID must be manually re-commissioned in the E2 network screen
+
+---
+
+### Legacy CCB (Case Control Board) — RMCC Era Hardware
+
+The CCB was the distributed case controller in the pre-E2 RMCC system (discontinued 1998). E2 added CCB support in **firmware version 2.30** — RX-300 and RX-400 only (RX-100, BX, CX do not support CCB).
+
+**Critical CCB integration notes (from CPC Tech Bulletin 026-4119):**
+- CCBs communicate at a **fixed 19200 baud** (non-negotiable, hard-coded)
+- E2 default I/O baud rate is 9600 — you **must change the COM2 port baud rate to 19200** when using CCBs
+- Best practice: dedicate one COM port exclusively to CCBs; put all other I/O boards on the other COM port
+- CCBs are added in the E2's "Configured I/O" screen; circuits are mapped in "Case Control Associations"
+- Original RMCC COM A/D network supported up to **31 devices per segment** — same limit applies on E2
+
+---
+
+### E2 → E3 Upgrade Hardware Notes
+
+| Feature | E2 / E2E | E3 (Lumity) |
+|---------|----------|-------------|
+| Echelon support | Yes (plug-in card) | **No** — CC-100/CS-100 not supported |
+| BACnet/Modbus | Yes | Yes |
+| COM ports | COM 1–4 | COM 1–4 + COM 7 (additional, electrically isolated) |
+| COM 2 isolation | Not isolated | Electrically isolated |
+| Mounting | E2E mounting points | **Same** mounting points — drop-in physical replacement |
+| I/O wiring | COM 1–4 connectors | Direct plug-in from E2 — **no rewiring needed** |
+| CPU speed | Baseline | 12× faster |
+| RAM | Baseline | 16× more |
+
+**Upgrade checklist:**
+1. Export full E2 configuration to USB via CoolTerm before shutdown
+2. Document all Echelon node Neuron IDs — these devices will need replacement
+3. Verify all case controllers on the RS485 I/O network are BACnet or Modbus (not Echelon-only)
+4. E3 mounts on same panel cutout — connector pinout is compatible for COM 1–4 I/O boards
+5. Re-import configuration on E3; verify sensor readings circuit by circuit before enabling setpoint control`
 
 
 function buildEquipmentContext(
