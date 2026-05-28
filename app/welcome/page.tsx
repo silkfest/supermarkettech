@@ -3,309 +3,235 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  MessageSquare, Bell, ClipboardList, BookOpen, FileText, Cpu,
-  History, Building2, Wrench, GraduationCap, Users, ShieldCheck,
-  BarChart3, ArrowRight, Thermometer, Zap, CheckCircle2,
-  ChevronRight, HardHat, Briefcase, Star,
+  MessageSquare, BookOpen, FileText, Cpu, ClipboardList, ShieldCheck,
+  GraduationCap, ChevronRight, ArrowRight, Thermometer, CheckCircle2,
+  Library, Brain, Wrench, Users, Zap,
 } from 'lucide-react'
 
-type Role = 'technician' | 'manager'
+// ── Section data ──────────────────────────────────────────────────────────────
 
-interface Feature {
-  icon: React.ReactNode
+interface SubFeature {
   title: string
   description: string
-  href?: string
-  badge?: string
+  href: string
 }
 
-const TECHNICIAN_FEATURES: Feature[] = [
-  {
-    icon: <MessageSquare size={20} />,
-    title: 'AI Expert Chat',
-    description: 'Ask anything about a fault, alarm code, or system behaviour. The AI knows every manufacturer in your fleet — Copeland, Hussmann, Danfoss, Bitzer, and more. Get ranked causes, confirmation tests, and fix steps instantly.',
-    href: '/dashboard',
-    badge: 'Most used',
-  },
-  {
-    icon: <Bell size={20} />,
-    title: 'Live Equipment Alarms',
-    description: 'Real-time ALARM and WARNING alerts streamed directly to your dashboard. See which unit is faulting, what sensor triggered it, and current readings — before you even walk the floor.',
-    href: '/dashboard',
-  },
-  {
-    icon: <ClipboardList size={20} />,
-    title: 'Maintenance Reports',
-    description: 'Document every service call digitally in minutes. Record findings, parts used, labour time, and photos. Reports are stored permanently and searchable by equipment, date, or fault type.',
-    href: '/maintenance',
-  },
-  {
-    icon: <BookOpen size={20} />,
-    title: 'Knowledge Base',
-    description: '22 in-depth technical topics — valve theory, refrigerant retrofit guides, VFD fault codes, CO₂ transcritical systems, defrost wiring, walk-in troubleshooting — all searchable and linked to manufacturer manuals.',
-    href: '/knowledge',
-  },
-  {
-    icon: <FileText size={20} />,
-    title: 'Manual Library',
-    description: "Upload manufacturer PDFs and the system processes them automatically. The AI reads your manuals and cites them directly in chat answers. Your fleet's exact documentation, always at hand.",
-    href: '/library',
-  },
-  {
-    icon: <Cpu size={20} />,
-    title: 'Rack Simulator',
-    description: 'Practice diagnosing faults on a simulated rack system without touching live equipment. Build fault-finding skills and run through scenarios before going on-site.',
-    href: '/simulation',
-    badge: 'Training',
-  },
-  {
-    icon: <History size={20} />,
-    title: 'Chat History',
-    description: 'Every AI conversation is saved. Look back at how a fault was diagnosed last time, share a thread with a colleague, or review a difficult job for training purposes.',
-    href: '/chat-history',
-  },
-  {
-    icon: <Thermometer size={20} />,
-    title: 'Equipment Status',
-    description: 'See the live state of every unit — temperature, pressure, run status, and recent alarms — all in one view. Select a unit before chatting and the AI receives its current readings automatically.',
-    href: '/dashboard',
-  },
-]
+interface Section {
+  id: string
+  icon: React.ReactNode
+  color: string          // tailwind color token, e.g. 'blue'
+  title: string
+  tagline: string
+  body: string
+  features: SubFeature[]
+}
 
-const MANAGER_FEATURES: Feature[] = [
+const SECTIONS: Section[] = [
   {
-    icon: <Building2 size={20} />,
-    title: 'Multi-Site Management',
-    description: 'Manage all your store locations from a single account. Each site has its own equipment registry, alarm feed, and maintenance history. Roll up across all sites or drill into a single store.',
-    href: '/stores',
-    badge: 'Operations',
+    id: 'diagnostic',
+    icon: <MessageSquare size={22} />,
+    color: 'blue',
+    title: 'Diagnostic Help',
+    tagline: 'AI-powered fault finding with your own manuals',
+    body: 'The AI assistant draws on a structured knowledge base covering every major manufacturer — Copeland, Hussmann, Danfoss, Sporlan, Bitzer, Arneg, and more. Upload your own manufacturer PDFs and the system reads them automatically; when you ask a question it cites the exact manual and section. Chat history is saved so you can revisit how a fault was diagnosed or share a thread with a colleague.',
+    features: [
+      { title: 'AI Expert Chat', description: 'Describe the fault — get ranked causes, confirmation tests, and step-by-step fixes.', href: '/dashboard' },
+      { title: 'Knowledge Base', description: '22 in-depth topics: valve theory, VFD fault codes, CO₂ transcritical, refrigerant retrofit, defrost wiring, and more.', href: '/knowledge' },
+      { title: 'Manual Library', description: 'Upload manufacturer PDFs. The AI reads them and cites them directly in answers.', href: '/library' },
+      { title: 'Chat History', description: 'Every conversation saved — search by date, equipment, or topic.', href: '/chat-history' },
+    ],
   },
   {
-    icon: <BarChart3 size={20} />,
-    title: 'Equipment Registry',
-    description: 'Every piece of refrigeration and HVAC equipment tracked in one place. Model, serial number, refrigerant type, installation date, service history — a complete asset register for every site.',
-    href: '/maintenance/components',
+    id: 'training',
+    icon: <GraduationCap size={22} />,
+    color: 'violet',
+    title: 'Training',
+    tagline: 'Hands-on practice and structured learning',
+    body: 'Technicians can build fault-finding skills on a simulated rack before touching live equipment. The rack simulator presents realistic fault scenarios — high suction, head pressure issues, compressor faults — and walks through diagnosis interactively. The knowledge base doubles as a structured reference library for apprentices working through refrigeration fundamentals, electrical, and system-specific topics.',
+    features: [
+      { title: 'Rack Simulator', description: 'Practice diagnosing faults on a simulated system. No live equipment, no risk.', href: '/simulation' },
+      { title: 'Knowledge Base', description: 'Structured technical content across 22 topics — usable as training modules for apprentices.', href: '/knowledge' },
+    ],
   },
   {
-    icon: <Wrench size={20} />,
-    title: 'Preventive Maintenance',
-    description: 'Structured PM checklists for refrigeration and HVAC. Technicians complete them on their phone, sign off digitally, and the completed reports are stored automatically. Never miss a scheduled PM.',
-    href: '/maintenance',
+    id: 'maintenance',
+    icon: <ClipboardList size={22} />,
+    color: 'emerald',
+    title: 'Maintenance Forms',
+    tagline: 'Digital service records, always searchable',
+    body: 'Every service call and preventive maintenance visit is documented digitally. Technicians record findings, parts used, labour time, and photos on their phone. Reports are stored permanently and searchable by equipment, date, or fault type. Managers get a complete audit trail for warranty claims, insurance, and compliance — without chasing paper forms.',
+    features: [
+      { title: 'Service Reports', description: 'Log findings, parts, and time. Reports stored permanently under each piece of equipment.', href: '/maintenance' },
+      { title: 'PM Checklists', description: 'Structured preventive maintenance checklists — completed on phone, signed off digitally.', href: '/maintenance' },
+      { title: 'Equipment Registry', description: 'Every unit tracked: model, serial, refrigerant type, installation date, full service history.', href: '/maintenance' },
+    ],
   },
   {
-    icon: <ClipboardList size={20} />,
-    title: 'Reports & Audit Trail',
-    description: 'Every service call, PM, and inspection generates a permanent digital record. Filter by site, equipment, technician, or date range. Export for warranty claims, insurance, or compliance audits.',
-    href: '/maintenance',
-  },
-  {
-    icon: <GraduationCap size={20} />,
-    title: 'Apprentice Training',
-    description: 'Assign structured training modules to new technicians. Track completion, quiz scores, and progress in real time. Apprentices work through refrigeration fundamentals, electrical, and system-specific courses.',
-    href: '/admin/apprentices',
-    badge: 'New',
-  },
-  {
-    icon: <Users size={20} />,
-    title: 'Team Management',
-    description: 'Add technicians, assign roles (journeyman, apprentice, manager), approve new accounts, and deactivate leavers. Control who can access which sites and which features.',
-    href: '/admin/users',
-  },
-  {
-    icon: <ShieldCheck size={20} />,
+    id: 'policies',
+    icon: <ShieldCheck size={22} />,
+    color: 'amber',
     title: 'Policies & Procedures',
-    description: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Technicians can access them in the field; managers can update them instantly.",
-    href: '/policies',
+    tagline: 'Company documents, always current, always accessible',
+    body: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Technicians can pull up any policy in the field from their phone. Managers can update documents instantly — no more outdated printouts in binders. Access is role-controlled so the right people see the right documents.",
+    features: [
+      { title: 'Policy Library', description: 'Centralised store for SOPs, safety protocols, and compliance documents.', href: '/policies' },
+      { title: 'Field Access', description: 'Technicians can find any procedure from their phone while on site.', href: '/policies' },
+    ],
   },
   {
-    icon: <FileText size={20} />,
-    title: 'Manual Library',
-    description: 'Centrally manage all manufacturer documentation. Upload PDFs and they become searchable by every technician across every site. The AI references your manuals when answering questions.',
-    href: '/library',
+    id: 'apprentices',
+    icon: <Users size={22} />,
+    color: 'rose',
+    title: 'Apprentice & Journeyman Tracking',
+    tagline: 'Structured development from day one',
+    body: 'The apprentice section gives managers visibility into where each technician is in their development. Track hours logged, skill assessments, certificates earned, and leave space for structured manager feedback. Apprentices can see their own progress and know exactly what they need to work toward to reach journeyman level. This section is actively being developed — the foundation is in place and capabilities are expanding.',
+    features: [
+      { title: 'Apprentice Profiles', description: 'Per-technician view of hours, skills, and certificates — all in one place.', href: '/admin/apprentices' },
+      { title: 'Team Management', description: 'Add technicians, assign roles (apprentice, journeyman, manager), and control access.', href: '/admin/users' },
+      { title: 'Technician Records', description: 'Individual technician profiles with service history and notes.', href: '/admin/technicians' },
+    ],
   },
 ]
 
-const HIGHLIGHTS = [
-  { icon: <Zap size={16} />, text: 'Answers in seconds, not phone calls' },
-  { icon: <CheckCircle2 size={16} />, text: 'Every job documented automatically' },
-  { icon: <Star size={16} />, text: 'Built specifically for supermarket refrigeration' },
-]
+const COLOR_STYLES: Record<string, { bg: string; text: string; lightBg: string; border: string; pill: string }> = {
+  blue:   { bg: 'bg-blue-600',   text: 'text-blue-600',   lightBg: 'bg-blue-50',   border: 'border-blue-200',   pill: 'bg-blue-100 text-blue-700' },
+  violet: { bg: 'bg-violet-600', text: 'text-violet-600', lightBg: 'bg-violet-50', border: 'border-violet-200', pill: 'bg-violet-100 text-violet-700' },
+  emerald:{ bg: 'bg-emerald-600',text: 'text-emerald-600',lightBg: 'bg-emerald-50',border: 'border-emerald-200',pill: 'bg-emerald-100 text-emerald-700' },
+  amber:  { bg: 'bg-amber-500',  text: 'text-amber-600',  lightBg: 'bg-amber-50',  border: 'border-amber-200',  pill: 'bg-amber-100 text-amber-700' },
+  rose:   { bg: 'bg-rose-600',   text: 'text-rose-600',   lightBg: 'bg-rose-50',   border: 'border-rose-200',   pill: 'bg-rose-100 text-rose-700' },
+}
 
-function FeatureCard({ feature }: { feature: Feature }) {
+// ── Sub-feature card ──────────────────────────────────────────────────────────
+
+function FeatureCard({ feature, color }: { feature: SubFeature; color: string }) {
   const router = useRouter()
+  const c = COLOR_STYLES[color]
   return (
-    <div
-      onClick={() => feature.href && router.push(feature.href)}
-      className={`bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-blue-200 transition-all group ${feature.href ? 'cursor-pointer' : ''}`}
+    <button
+      onClick={() => router.push(feature.href)}
+      className="w-full text-left bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all group"
     >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-          {feature.icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-slate-900 text-sm">{feature.title}</h3>
-            {feature.badge && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                {feature.badge}
-              </span>
-            )}
-          </div>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className={`text-sm font-semibold text-slate-900 group-hover:${c.text} transition-colors mb-1`}>{feature.title}</p>
           <p className="text-xs text-slate-500 leading-relaxed">{feature.description}</p>
         </div>
-        {feature.href && (
-          <ChevronRight size={14} className="flex-shrink-0 text-slate-300 group-hover:text-blue-400 mt-0.5 transition-colors" />
-        )}
+        <ChevronRight size={14} className="flex-shrink-0 text-slate-300 group-hover:text-slate-500 mt-0.5 transition-colors" />
+      </div>
+    </button>
+  )
+}
+
+// ── Section block ─────────────────────────────────────────────────────────────
+
+function SectionBlock({ section, index }: { section: Section; index: number }) {
+  const router = useRouter()
+  const c = COLOR_STYLES[section.color]
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header bar */}
+      <div className={`${c.bg} px-6 py-4`}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
+            {section.icon}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest">0{index + 1}</span>
+            </div>
+            <h2 className="text-base font-bold text-white leading-tight">{section.title}</h2>
+          </div>
+        </div>
+        <p className="text-sm text-white/80 mt-2 leading-relaxed">{section.tagline}</p>
+      </div>
+
+      {/* Body */}
+      <div className="px-6 py-5">
+        <p className="text-sm text-slate-600 leading-relaxed mb-5">{section.body}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {section.features.map(f => (
+            <FeatureCard key={f.title} feature={f} color={section.color} />
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function WelcomePage() {
   const router = useRouter()
-  const [activeRole, setActiveRole] = useState<Role>('technician')
-
-  const features = activeRole === 'technician' ? TECHNICIAN_FEATURES : MANAGER_FEATURES
 
   return (
     <div className="min-h-screen bg-slate-50">
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white">
-        <div className="max-w-5xl mx-auto px-6 py-14 md:py-20">
-          <div className="flex items-center gap-2 mb-6">
-            <Thermometer size={20} className="opacity-80" />
-            <span className="text-sm font-medium opacity-80 tracking-wide uppercase">ColdIQ</span>
+      <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-white">
+        <div className="max-w-4xl mx-auto px-6 py-12 md:py-16">
+          <div className="flex items-center gap-2 mb-5">
+            <Thermometer size={18} className="opacity-60" />
+            <span className="text-xs font-semibold opacity-60 tracking-widest uppercase">ColdIQ</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-4">
-            Your AI-powered refrigeration<br className="hidden md:block" /> expert system
+          <h1 className="text-3xl md:text-4xl font-bold leading-tight mb-3">
+            Your refrigeration team's<br className="hidden md:block" /> digital toolkit
           </h1>
-          <p className="text-blue-100 text-base md:text-lg max-w-2xl leading-relaxed mb-8">
-            ColdIQ gives your team instant access to expert troubleshooting, live equipment monitoring, digital maintenance records, and structured training — built specifically for supermarket refrigeration.
+          <p className="text-slate-300 text-base md:text-lg max-w-2xl leading-relaxed mb-8">
+            ColdIQ brings together the tools your team uses every day — AI-assisted fault finding, training, digital maintenance records, and company procedures — in one place built specifically for supermarket refrigeration.
           </p>
-
-          {/* Highlights */}
-          <div className="flex flex-wrap gap-3 mb-10">
-            {HIGHLIGHTS.map((h, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm text-white">
-                <span className="opacity-80">{h.icon}</span>
+          <div className="flex flex-wrap gap-3 mb-8">
+            {[
+              { icon: <Brain size={14} />, text: 'AI that knows your manuals' },
+              { icon: <CheckCircle2 size={14} />, text: 'Every job documented automatically' },
+              { icon: <Zap size={14} />, text: 'Works on any device, on any site' },
+            ].map((h, i) => (
+              <div key={i} className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-sm text-white">
+                <span className="opacity-70">{h.icon}</span>
                 {h.text}
               </div>
             ))}
           </div>
-
           <button
             onClick={() => router.push('/dashboard')}
-            className="inline-flex items-center gap-2 bg-white text-blue-700 font-semibold px-6 py-3 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 bg-white text-slate-800 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-100 transition-colors text-sm shadow-sm"
           >
-            Go to Dashboard
-            <ArrowRight size={16} />
+            Open Dashboard
+            <ArrowRight size={15} />
           </button>
         </div>
       </div>
 
-      {/* Role toggle */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex gap-0">
-            <button
-              onClick={() => setActiveRole('technician')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 transition-colors ${
-                activeRole === 'technician'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <HardHat size={16} />
-              For Technicians
-            </button>
-            <button
-              onClick={() => setActiveRole('manager')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 transition-colors ${
-                activeRole === 'manager'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Briefcase size={16} />
-              For Managers
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Sections */}
+      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+        {SECTIONS.map((section, i) => (
+          <SectionBlock key={section.id} section={section} index={i} />
+        ))}
 
-      {/* Feature content */}
-      <div className="max-w-5xl mx-auto px-6 py-8 md:py-12">
-
-        {activeRole === 'technician' ? (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-1">Tools that keep you moving on the floor</h2>
-            <p className="text-slate-500 text-sm">Every tool a refrigeration technician needs — from the first alarm to the signed-off report.</p>
-          </div>
-        ) : (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-1">Full visibility across your team and equipment</h2>
-            <p className="text-slate-500 text-sm">Oversight tools for managers who need to know what's happening across every site, every shift.</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {features.map((feature, i) => (
-            <FeatureCard key={i} feature={feature} />
-          ))}
-        </div>
-
-        {/* How it works section */}
-        {activeRole === 'technician' && (
-          <div className="mt-12 bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-            <h3 className="text-base font-bold text-slate-900 mb-6">How a typical service call works</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[
-                { step: '01', title: 'Alarm fires', body: 'You see the alert in ColdIQ with the unit name, sensor, and current reading.' },
-                { step: '02', title: 'Select the unit', body: 'Tap the equipment — the AI receives live readings and equipment history automatically.' },
-                { step: '03', title: 'Ask the AI', body: 'Describe what you see. Get ranked likely causes, tests to confirm, and fix steps — citing your manuals.' },
-                { step: '04', title: 'File the report', body: 'Log findings, parts used, and time. Report is stored permanently under that unit.' },
-              ].map(({ step, title, body }) => (
-                <div key={step} className="relative">
-                  <div className="text-3xl font-bold text-slate-100 mb-2 leading-none">{step}</div>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-1">{title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
-                </div>
-              ))}
+        {/* Simpro integration callout */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+              <Wrench size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-bold text-slate-900">Simpro Integration (Future)</h3>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                  Planned
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 leading-relaxed max-w-2xl">
+                ColdIQ is designed to connect to Simpro, the job management platform many refrigeration companies already use. A future integration would let maintenance reports created in ColdIQ flow directly into Simpro job cards — eliminating double entry — and pull asset data and scheduled work orders back into ColdIQ. This is a planned capability as the platform grows.
+              </p>
             </div>
           </div>
-        )}
-
-        {activeRole === 'manager' && (
-          <div className="mt-12 bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-            <h3 className="text-base font-bold text-slate-900 mb-6">What managers see at a glance</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  title: 'Equipment health',
-                  body: "Every unit's current status across all sites. Active alarms bubble to the top. Filter by store, equipment type, or alarm severity.",
-                },
-                {
-                  title: 'Team activity',
-                  body: 'See which technicians are active, what reports have been filed today, and which PMs are overdue — without making a single phone call.',
-                },
-                {
-                  title: 'Training progress',
-                  body: "Track each apprentice's module completions and quiz scores. Know who is ready to work independently and who needs more time.",
-                },
-              ].map(({ title, body }) => (
-                <div key={title}>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-2">{title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* CTA */}
-        <div className="mt-10 text-center py-10 border-t border-slate-200">
-          <p className="text-slate-500 text-sm mb-4">Ready to explore ColdIQ?</p>
+        <div className="text-center py-8 border-t border-slate-200">
+          <p className="text-slate-500 text-sm mb-4">Ready to start?</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={() => router.push('/dashboard')}
