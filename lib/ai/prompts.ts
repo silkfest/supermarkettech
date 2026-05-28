@@ -3184,7 +3184,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 **Definition:** Suction saturation temperature significantly below setpoint; compressors running but pulling pressure down.
 
 #### Insufficient refrigerant flow
-- Plugged filter-drier: measure pressure drop across drier; >5 psi drop on liquid line = replace
+- Plugged filter-drier: measure pressure drop across drier; >2–3 psi drop on liquid line = replace
 - Strainer screen restricted: check after filter-drier or at TXV inlet
 - Low refrigerant charge: cross-check with **low subcooling** (< 5°F subcooling confirms low charge)
 - Liquid solenoid partially closed or stuck: verify voltage at coil; check plunger movement
@@ -3289,7 +3289,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 **HFC systems:**
 - High floodback diluting oil — address floodback first
 - Oil separator bypass: check float valve function; verify differential across separator
-- Insufficient suction line velocity to return oil (below 700 FPM in vertical risers) — check line sizing
+- Insufficient suction line velocity to return oil (below 1,500 FPM in vertical up-risers; below 700 FPM in horizontal runs) — check line sizing
 - Oil trapped in long horizontal runs — verify 1/4″ per 10 ft slope toward compressor
 - Multiple suction group system: verify each suction group has oil return strategy
 
@@ -3393,7 +3393,7 @@ When you have a problem circuit but system pressures look normal:
 3. **Check the evaporator** — fan motors running? Coil iced? Airflow blocked?
 4. **Check the defrost** — was there a recent defrost? Did it terminate properly?
 5. **Check sensors** — is the thermostat/case controller reading correctly?
-6. **Check the circuit wiring** — solenoid coil resistance (typically 9–14 Ω for 24 V coils)
+6. **Check the circuit wiring** — solenoid coil resistance (typically 200–400 Ω for 24 VAC coils; open coil = OL on meter)
 
 When the problem is system-wide (all circuits affected):
 
