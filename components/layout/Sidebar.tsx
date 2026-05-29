@@ -68,11 +68,11 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Logo + close button */}
-      <div className="px-4 py-4 border-b border-slate-200 flex items-start justify-between">
+      <div className="px-4 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
         <div>
           <div className="flex items-baseline gap-0.5">
             <span className="text-[17px] font-bold tracking-tight text-blue-600">Cold</span>
-            <span className="text-[17px] font-bold tracking-tight text-slate-800">IQ</span>
+            <span className="text-[17px] font-bold tracking-tight text-slate-800 dark:text-slate-100">IQ</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">Refrigeration expert</p>
           {(alarmCount > 0 || warningCount > 0) && (
@@ -100,8 +100,8 @@ function SidebarContent({
             className={cn(
               'w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all mb-0.5',
               mode === m.id
-                ? 'bg-white border border-slate-200 shadow-sm text-slate-900 font-medium'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100 font-medium'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
             )}
           >
             <span className="opacity-60">{m.icon}</span>
@@ -116,14 +116,14 @@ function SidebarContent({
           <>
             <button
               onClick={() => { router.push('/stores'); onMobileClose?.() }}
-              className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <span className="opacity-60"><Building2 size={13}/></span>
               Sites
             </button>
             <button
               onClick={() => { router.push('/maintenance/components'); onMobileClose?.() }}
-              className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <span className="opacity-60"><Database size={13}/></span>
               Components
@@ -132,14 +132,14 @@ function SidebarContent({
         )}
         <button
           onClick={() => { router.push('/maintenance'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><WrenchIcon size={13}/></span>
           Maintenance
         </button>
         <button
           onClick={() => { router.push('/knowledge'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><Layers size={13}/></span>
           Knowledge base
@@ -147,7 +147,7 @@ function SidebarContent({
         {currentUser?.role === 'admin' && (
           <button
             onClick={() => { router.push('/library'); onMobileClose?.() }}
-            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
           >
             <span className="opacity-60"><BookOpen size={13}/></span>
             Manual library
@@ -155,21 +155,21 @@ function SidebarContent({
         )}
         <button
           onClick={() => { router.push('/simulation'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><FlaskConical size={13}/></span>
           Rack simulator
         </button>
         <button
           onClick={() => { router.push('/profile'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><UserCircle size={13}/></span>
           My profile
         </button>
         <button
           onClick={() => { router.push('/policies'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><Shield size={13}/></span>
           Policies &amp; procedures
@@ -185,7 +185,7 @@ function SidebarContent({
               onClick={() => handleSelect(null)}
               className={cn(
                 'w-full text-left px-2 py-2.5 md:py-1.5 rounded-lg mb-1 text-xs transition-all',
-                !selected ? 'bg-white border border-slate-200 shadow-sm text-slate-900 font-medium' : 'text-slate-500 hover:bg-slate-100'
+                !selected ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
               )}
             >
               General (no unit)
@@ -204,14 +204,14 @@ function SidebarContent({
                   className={cn(
                     'w-full text-left px-2.5 py-2.5 md:py-2 rounded-lg mb-0.5 transition-all',
                     selected?.id === eq.id
-                      ? 'bg-white border border-slate-200 shadow-sm'
-                      : 'hover:bg-slate-100'
+                      ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                   )}
                 >
                   <div className="flex items-start gap-2">
                     <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0', statusDot(eq.status))} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-800 truncate leading-tight">{eq.name}</p>
+                      <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate leading-tight">{eq.name}</p>
                       <p className="text-[10px] text-slate-400 truncate mt-0.5">{eq.manufacturer} {eq.model}</p>
                       {alarms.length > 0 && (
                         <p className="text-[10px] text-red-500 font-medium mt-0.5">
@@ -230,10 +230,10 @@ function SidebarContent({
             })}
           </div>
 
-          <div className="px-2 pt-1 pb-1 border-t border-slate-200">
+          <div className="px-2 pt-1 pb-1 border-t border-slate-200 dark:border-slate-800">
             <button
               onClick={() => { onAdd(); onMobileClose?.() }}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-2 rounded-lg border border-dashed border-slate-300 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
             >
               <Plus size={12}/> Add equipment
             </button>
@@ -248,7 +248,7 @@ function SidebarContent({
         <div className="px-2 pb-1">
           <button
             onClick={() => { router.push('/admin/apprentices'); onMobileClose?.() }}
-            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-all"
           >
             <GraduationCap size={13} className="opacity-60"/>
             Apprentices
@@ -261,7 +261,7 @@ function SidebarContent({
         <div className="px-2 pb-1">
           <button
             onClick={() => { router.push('/admin/users'); onMobileClose?.() }}
-            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all"
+            className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-all"
           >
             <Users size={13} className="opacity-60"/>
             Manage users
@@ -275,11 +275,11 @@ function SidebarContent({
       )}
 
       {/* User footer */}
-      <div className="px-3 py-3 border-t border-slate-200">
+      <div className="px-3 py-3 border-t border-slate-200 dark:border-slate-800">
         {currentUser && (
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-700 truncate">{currentUser.name || currentUser.email}</p>
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{currentUser.name || currentUser.email}</p>
               <p className="text-[10px] text-slate-400">{roleLabel[currentUser.role] ?? currentUser.role}</p>
             </div>
             <div className="flex items-center gap-1">
@@ -310,7 +310,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, ...props }: Props) 
   return (
     <>
       {/* ── Desktop sidebar (always visible on md+) ── */}
-      <aside className="hidden md:flex w-52 flex-shrink-0 flex-col bg-slate-50 border-r border-slate-200 overflow-hidden">
+      <aside className="hidden md:flex w-52 flex-shrink-0 flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-hidden">
         <SidebarContent {...props} />
       </aside>
 
@@ -324,7 +324,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, ...props }: Props) 
 
       {/* ── Mobile drawer ── */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-slate-50 border-r border-slate-200 overflow-hidden transition-transform duration-300 ease-in-out md:hidden',
+        'fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-hidden transition-transform duration-300 ease-in-out md:hidden',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <SidebarContent {...props} onMobileClose={onMobileClose} />
