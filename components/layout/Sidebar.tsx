@@ -251,7 +251,7 @@ function SidebarContent({
             className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-all"
           >
             <GraduationCap size={13} className="opacity-60"/>
-            Apprentices
+            Team
           </button>
         </div>
       )}
