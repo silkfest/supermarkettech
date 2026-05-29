@@ -19,6 +19,8 @@ interface Props {
   onSelect: (e: Equipment | null) => void
   onMode:   (m: ChatMode) => void
   onAdd:    () => void
+  /** Hides mode selector and equipment list — used on non-dashboard pages */
+  minimal?: boolean
   /** Mobile: whether the drawer is open */
   mobileOpen?: boolean
   /** Mobile: close the drawer */
@@ -26,7 +28,7 @@ interface Props {
 }
 
 function SidebarContent({
-  equipment, selected, mode, currentUser, onSelect, onMode, onAdd, onMobileClose,
+  equipment, selected, mode, currentUser, onSelect, onMode, onAdd, onMobileClose, minimal,
 }: Omit<Props, 'mobileOpen'>) {
   const router = useRouter()
   const [loggingOut,    setLoggingOut]    = useState(false)
@@ -91,24 +93,26 @@ function SidebarContent({
       </div>
 
       {/* Modes */}
-      <div className="px-2 pt-3 pb-1">
-        <p className="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Mode</p>
-        {MODES.map(m => (
-          <button
-            key={m.id}
-            onClick={() => handleMode(m.id)}
-            className={cn(
-              'w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all mb-0.5',
-              mode === m.id
-                ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100 font-medium'
-                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
-            )}
-          >
-            <span className="opacity-60">{m.icon}</span>
-            {m.label}
-          </button>
-        ))}
-      </div>
+      {!minimal && (
+        <div className="px-2 pt-3 pb-1">
+          <p className="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Mode</p>
+          {MODES.map(m => (
+            <button
+              key={m.id}
+              onClick={() => handleMode(m.id)}
+              className={cn(
+                'w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all mb-0.5',
+                mode === m.id
+                  ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-900 dark:text-slate-100 font-medium'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              )}
+            >
+              <span className="opacity-60">{m.icon}</span>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Nav links */}
       <div className="px-2 pb-2 flex flex-col gap-0.5">
@@ -177,7 +181,7 @@ function SidebarContent({
       </div>
 
       {/* Equipment list — admin only until live integration is ready */}
-      {currentUser?.role === 'admin' ? (
+      {!minimal && currentUser?.role === 'admin' ? (
         <>
           <div className="flex-1 overflow-y-auto px-2 pt-2 min-h-0">
             <p className="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Equipment</p>

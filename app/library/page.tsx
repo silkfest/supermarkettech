@@ -7,6 +7,7 @@ import {
   Home, ArrowLeft, BookOpen, Search, X, ExternalLink,
   FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw,
 } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
 
@@ -153,6 +154,7 @@ export default function LibraryPage() {
   }
 
   return (
+    <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
@@ -416,5 +418,6 @@ export default function LibraryPage() {
         )}
       </div>
     </div>
+    </PageShell>
   )
 }

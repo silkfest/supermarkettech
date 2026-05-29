@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { ArrowLeft, Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap, MessageCircle } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 
 interface TechRow {
   id: string; name: string; email: string; role: string
@@ -200,6 +201,7 @@ export default function AdminApprenticesPage() {
   }
 
   return (
+    <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
@@ -261,5 +263,6 @@ export default function AdminApprenticesPage() {
 
       </div>
     </div>
+    </PageShell>
   )
 }

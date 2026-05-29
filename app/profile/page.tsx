@@ -9,6 +9,7 @@ import {
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
   FileText, Settings, MessageCircle, Send,
 } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CERT_TYPES = [
@@ -757,8 +758,10 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-blue-500"/></div>}>
-      <ProfileContent/>
-    </Suspense>
+    <PageShell>
+      <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-blue-500"/></div>}>
+        <ProfileContent/>
+      </Suspense>
+    </PageShell>
   )
 }
