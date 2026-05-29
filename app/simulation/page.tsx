@@ -1159,7 +1159,7 @@ export default function SimulationPage() {
     <div className="min-h-[100dvh] bg-slate-900 flex flex-col">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center gap-2 flex-wrap z-10">
+      <div className="safe-top flex-shrink-0 bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center gap-2 flex-wrap z-10">
         <button onClick={() => router.push('/')} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
           <Home size={16}/>
         </button>

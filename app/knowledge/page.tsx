@@ -149,7 +149,7 @@ export default function KnowledgePage() {
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8">
         <div className="max-w-5xl mx-auto">
           <button
             onClick={() => router.push('/dashboard')}

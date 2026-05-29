@@ -169,7 +169,7 @@ export default function WelcomePage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-white">
+      <div className="safe-top bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-white">
         <div className="max-w-4xl mx-auto px-6 py-12 md:py-16">
           <div className="flex items-center gap-2 mb-5">
             <Thermometer size={18} className="opacity-60" />

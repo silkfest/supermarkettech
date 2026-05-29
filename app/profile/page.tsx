@@ -269,7 +269,7 @@ function ProfileContent() {
       )}
 
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><Home size={18}/></button>
         <button onClick={() => router.back()}             className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><ArrowLeft size={18}/></button>
         <div className="flex items-baseline gap-0.5">

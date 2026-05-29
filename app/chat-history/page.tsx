@@ -241,7 +241,7 @@ export default function ChatHistoryPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
           <Home size={18} />
         </button>

@@ -73,7 +73,7 @@ export default function KnowledgeTopicPage() {
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 flex-wrap">
             <button
