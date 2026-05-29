@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   MessageSquare, BookOpen, FileText, Cpu, ClipboardList, ShieldCheck,
   GraduationCap, ChevronRight, ArrowRight, Thermometer, CheckCircle2,
-  Library, Brain, Wrench, Users, Zap,
+  Library, Brain, Wrench, Users, Zap, Lock,
 } from 'lucide-react'
 
 // ── Section data ──────────────────────────────────────────────────────────────
@@ -188,6 +188,7 @@ export default function WelcomePage() {
               { icon: <Brain size={14} />, text: 'AI that knows your manuals' },
               { icon: <CheckCircle2 size={14} />, text: 'Every job documented automatically' },
               { icon: <Zap size={14} />, text: 'Works on any device, on any site' },
+              { icon: <Lock size={14} />, text: 'Company email required · encrypted' },
             ].map((h, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-sm text-white">
                 <span className="opacity-70">{h.icon}</span>
@@ -210,6 +211,58 @@ export default function WelcomePage() {
         {SECTIONS.map((section, i) => (
           <SectionBlock key={section.id} section={section} index={i} />
         ))}
+
+        {/* Security & Privacy trust block */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-900/50 overflow-hidden">
+          {/* Header */}
+          <div className="bg-emerald-600 px-6 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
+              <Lock size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white leading-tight">Security & Privacy</h2>
+              <p className="text-sm text-white/80 mt-0.5">Built for companies — not public sign-ups</p>
+            </div>
+          </div>
+          {/* Body */}
+          <div className="px-6 py-5">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-5">
+              ColdIQ handles sensitive company documents, service records, and proprietary procedures. Access is tightly controlled and every piece of data is encrypted — because your trade secrets shouldn't be anyone else's business.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                {
+                  icon: <ShieldCheck size={15} className="text-emerald-600" />,
+                  title: 'Encrypted in transit & at rest',
+                  body: 'All data travels over HTTPS/TLS and is stored with AES-256 encryption. Your manuals, records, and chat history never travel unprotected.',
+                },
+                {
+                  icon: <Lock size={15} className="text-emerald-600" />,
+                  title: 'Company email required',
+                  body: 'No public sign-up. Every new account must use a company email address and be explicitly approved by your admin before access is granted.',
+                },
+                {
+                  icon: <Users size={15} className="text-emerald-600" />,
+                  title: 'Your data, fully isolated',
+                  body: "Each company's equipment, documents, maintenance records, and chat history are completely isolated. No other organisation can see your data.",
+                },
+                {
+                  icon: <CheckCircle2 size={15} className="text-emerald-600" />,
+                  title: 'Role-based access control',
+                  body: 'Admins, managers, journeymen, and apprentices each get the level of access appropriate to their role — nothing more.',
+                },
+              ].map(item => (
+                <div key={item.title} className="bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {item.icon}
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{item.title}</p>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Simpro integration callout */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
