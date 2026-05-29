@@ -11,8 +11,9 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, WrenchIcon, Database, Lightbulb, AlertTriangle,
+  Menu, MessageSquare, WrenchIcon, Database, AlertTriangle, BookOpen, UserCircle, Moon, Sun,
 } from 'lucide-react'
+import { useTheme } from '@/components/ThemeProvider'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User } from '@/types'
 
@@ -23,13 +24,13 @@ const MODE_LABELS: Record<ChatMode, string> = {
 
 type NavItem =
   | { id: ChatMode; icon: React.ReactNode; label: string; href?: never }
-  | { id: 'REGISTRY' | 'TIPS'; icon: React.ReactNode; label: string; href: string }
+  | { id: 'KNOWLEDGE' | 'PROFILE'; icon: React.ReactNode; label: string; href: string }
 
 const BOTTOM_NAV_ITEMS: NavItem[] = [
   { id: 'EXPERT',      icon: <MessageSquare size={20}/>, label: 'Expert' },
   { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
-  { id: 'REGISTRY',    icon: <Database      size={20}/>, label: 'Registry', href: '/maintenance/components' },
-  { id: 'TIPS',        icon: <Lightbulb     size={20}/>, label: 'Tips', href: '/tips' },
+  { id: 'KNOWLEDGE',   icon: <BookOpen      size={20}/>, label: 'Knowledge', href: '/knowledge' },
+  { id: 'PROFILE',     icon: <UserCircle    size={20}/>, label: 'Profile', href: '/profile' },
 ]
 
 
@@ -48,6 +49,7 @@ export default function Dashboard() {
   const autoSelectedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const { theme, toggle: toggleTheme } = useTheme()
 
   // Auth gate
   useEffect(() => {
@@ -193,7 +195,7 @@ export default function Dashboard() {
 
   return (
     // On mobile: flex-col fills the viewport, bottom nav fixed at bottom
-    <div className="flex h-[100dvh] overflow-hidden">
+    <div className="flex h-[100dvh] overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Sidebar (desktop: always visible; mobile: controlled drawer) ── */}
       <Sidebar
         equipment={equipment}
@@ -211,7 +213,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
         {/* ─── Top bar ─── */}
-        <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 border-b border-slate-200 bg-white flex-shrink-0">
+        <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
 
           {/* Hamburger — mobile only */}
           <button
@@ -224,8 +226,8 @@ export default function Dashboard() {
 
           {/* Logo — mobile only (desktop shows it in sidebar) */}
           <div className="md:hidden flex items-baseline gap-0.5 flex-shrink-0">
-            <span className="text-base font-bold text-blue-600">Cold</span>
-            <span className="text-base font-bold text-slate-800">IQ</span>
+            <span className="text-base font-bold text-blue-500">Cold</span>
+            <span className="text-base font-bold text-slate-800 dark:text-slate-200">IQ</span>
           </div>
 
           {/* Mode tabs — desktop */}
@@ -255,9 +257,18 @@ export default function Dashboard() {
           </div>
 
           {/* Current mode label — mobile only */}
-          <span className="md:hidden flex-1 text-sm font-medium text-slate-700">
+          <span className="md:hidden flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
             {MODE_LABELS[mode]}
           </span>
+
+          {/* Dark mode toggle — mobile only */}
+          <button
+            onClick={toggleTheme}
+            className="md:hidden flex-shrink-0 p-2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}
+          </button>
 
           {/* Active unit badge */}
           {selected ? (
@@ -333,7 +344,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 flex items-stretch">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
         {BOTTOM_NAV_ITEMS.map(item => {
           const isActive = !item.href && mode === (item.id as ChatMode)
           return (
@@ -342,10 +353,10 @@ export default function Dashboard() {
               onClick={() => item.href ? router.push(item.href) : setMode(item.id as ChatMode)}
               className={[
                 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
-                isActive ? 'text-blue-600' : 'text-slate-400',
+                isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500',
               ].join(' ')}
             >
-              <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{item.icon}</span>
+              <span className={isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}>{item.icon}</span>
               {item.label}
             </button>
           )

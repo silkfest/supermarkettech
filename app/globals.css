@@ -31,3 +31,10 @@
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* Dark mode chat prose */
+.dark .chat-prose code { background: rgba(255,255,255,0.1); }
+.dark .chat-prose th { background: #1e293b; }
+.dark .chat-prose th, .dark .chat-prose td { border-color: #334155; }
+.dark .chat-prose blockquote { border-color: #334155; color: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }

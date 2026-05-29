@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, FlaskConical, UserCircle, Shield, Layers } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, FlaskConical, UserCircle, Shield, Layers, Moon, Sun } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
 import type { Equipment, ChatMode, User } from '@/types'
 
 const MODES: { id: ChatMode; label: string; icon: React.ReactNode }[] = [
@@ -30,6 +31,7 @@ function SidebarContent({
   const router = useRouter()
   const [loggingOut,    setLoggingOut]    = useState(false)
   const [pendingCount,  setPendingCount]  = useState(0)
+  const { theme, toggle: toggleTheme } = useTheme()
   const alarmCount   = equipment.filter(e => e.status === 'ALARM').length
   const warningCount = equipment.filter(e => e.status === 'WARNING').length
 
@@ -271,14 +273,23 @@ function SidebarContent({
               <p className="text-xs font-medium text-slate-700 truncate">{currentUser.name || currentUser.email}</p>
               <p className="text-[10px] text-slate-400">{roleLabel[currentUser.role] ?? currentUser.role}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              title="Sign out"
-              className="flex-shrink-0 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
-            >
-              <LogOut size={13}/>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="flex-shrink-0 p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                {theme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                title="Sign out"
+                className="flex-shrink-0 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+              >
+                <LogOut size={13}/>
+              </button>
+            </div>
           </div>
         )}
       </div>
