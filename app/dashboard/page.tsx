@@ -213,7 +213,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
         {/* ─── Top bar ─── */}
-        <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
+        <div className="safe-top flex items-center gap-2 px-3 md:px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
 
           {/* Hamburger — mobile only */}
           <button
@@ -270,24 +270,23 @@ export default function Dashboard() {
             {theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}
           </button>
 
-          {/* Active unit badge */}
+          {/* Active unit badge — desktop only until live equipment integration is ready */}
           {selected ? (
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs min-w-0 max-w-[140px] md:max-w-none"
+              className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs min-w-0 max-w-none"
             >
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"/>
               <span className="font-medium text-slate-700 truncate">{selected.name}</span>
-              <span className="text-slate-400 hidden md:inline truncate">· {selected.manufacturer} {selected.model}</span>
+              <span className="text-slate-400 truncate">· {selected.manufacturer} {selected.model}</span>
             </button>
           ) : (
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400"
+              className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400"
             >
               <div className="w-1.5 h-1.5 rounded-full bg-slate-300"/>
-              <span className="hidden sm:inline">No unit selected</span>
-              <span className="sm:hidden">Select unit</span>
+              No unit selected
             </button>
           )}
         </div>
@@ -344,7 +343,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
+      <nav className="safe-bottom md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
         {BOTTOM_NAV_ITEMS.map(item => {
           const isActive = !item.href && mode === (item.id as ChatMode)
           return (

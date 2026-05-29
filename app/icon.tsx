@@ -7,25 +7,32 @@ export default function Icon() {
   return new ImageResponse(
     <div
       style={{
-        background: '#2563eb',
+        background: 'linear-gradient(135deg, #1d4ed8, #4338ca)',
         width: '100%',
         height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: '6px',
+        borderRadius: '7px',
       }}
     >
-      <div
-        style={{
-          color: 'white',
-          fontSize: '13px',
-          fontWeight: '900',
-          letterSpacing: '-0.5px',
-          fontFamily: 'system-ui, sans-serif',
-        }}
-      >
-        CI
+      {/* Snowflake — 3 crossing bars */}
+      <div style={{ position: 'relative', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {([0, 60, 120] as number[]).map(r => (
+          <div
+            key={r}
+            style={{
+              position: 'absolute',
+              width: 2.5,
+              height: 18,
+              background: 'white',
+              borderRadius: 2,
+              transform: `rotate(${r}deg)`,
+            }}
+          />
+        ))}
+        {/* Centre dot */}
+        <div style={{ position: 'absolute', width: 4, height: 4, background: 'white', borderRadius: '50%' }} />
       </div>
     </div>,
     { ...size },

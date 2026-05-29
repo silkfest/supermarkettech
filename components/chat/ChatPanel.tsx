@@ -211,7 +211,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: ChatMode }) {
   const modeHints: Record<ChatMode, string> = {
-    EXPERT:      'Ask anything — general refrigeration questions, fault symptoms, alarm codes, or specifics about the selected unit. No need to switch modes.',
+    EXPERT:      'Ask about a fault, alarm code, or refrigeration system. The AI draws on 22 technical topics covering Copeland, Hussmann, Danfoss, Sporlan, Bitzer, and more — or from manuals you\'ve uploaded.',
     MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done and I\'ll help document it.',
   }
 
@@ -220,29 +220,12 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
       <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center mb-3 shadow-sm">
         <MessageSquare size={18} className="text-white" />
       </div>
-      <p className="text-sm font-semibold text-slate-800 mb-1.5">
-        {equipment ? equipment.name : 'ColdIQ Expert'}
+      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+        ColdIQ Expert
       </p>
-      {equipment && (
-        <p className="text-[11px] text-slate-400 mb-3">
-          {equipment.manufacturer} {equipment.model}
-          {equipment.refrigerant ? ` · ${equipment.refrigerant}` : ''}
-        </p>
-      )}
       <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
         {modeHints[mode]}
       </p>
-      {!equipment && (
-        <p className="text-[11px] text-slate-300 mt-3 max-w-xs leading-relaxed">
-          Select a unit from the sidebar to include live sensor data and alarm context in your conversation.
-        </p>
-      )}
-      {equipment?.status === 'ALARM' && (
-        <div className="mt-4 flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-          <AlertTriangle size={12} />
-          Active alarms detected — switch to Alarm mode for targeted help
-        </div>
-      )}
     </div>
   )
 }
@@ -667,11 +650,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
 
           <div className="flex items-center justify-between mt-1.5 px-0.5">
             <span className="text-[10px] text-slate-400 select-none">
-              {equipment
-                ? <><span className="font-medium text-slate-500">{equipment.name}</span> · </>
-                : null
-              }
-              {config.label} mode · Enter to send, Shift+Enter for new line
+              Enter to send, Shift+Enter for new line
             </span>
             <div className="flex items-center gap-3">
               <button
