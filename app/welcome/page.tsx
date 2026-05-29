@@ -215,14 +215,19 @@ export default function WelcomePage() {
         {/* Security & Privacy trust block */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-900/50 overflow-hidden">
           {/* Header */}
-          <div className="bg-emerald-600 px-6 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
-              <Lock size={20} />
+          <div className="bg-emerald-600 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                <Lock size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest">06</span>
+                </div>
+                <h2 className="text-base font-bold text-white leading-tight">Security & Privacy</h2>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white leading-tight">Security & Privacy</h2>
-              <p className="text-sm text-white/80 mt-0.5">Built for companies — not public sign-ups</p>
-            </div>
+            <p className="text-sm text-white/80 mt-2 leading-relaxed">Built for companies — not public sign-ups</p>
           </div>
           {/* Body */}
           <div className="px-6 py-5">
@@ -260,15 +265,6 @@ export default function WelcomePage() {
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{item.body}</p>
                 </div>
               ))}
-            </div>
-            {/* SOC 2 certification badge */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-              <ShieldCheck size={14} className="text-emerald-500 flex-shrink-0" />
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Hosted on <span className="font-semibold text-slate-700 dark:text-slate-300">Supabase</span> infrastructure —
-                {' '}<span className="font-semibold text-emerald-600">SOC 2 Type II certified</span>.
-                Your data is stored and managed to the same standard required by enterprise and regulated industries.
-              </p>
             </div>
           </div>
         </div>
