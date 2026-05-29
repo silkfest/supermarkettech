@@ -136,25 +136,25 @@ function FeatureCard({ feature }: { feature: Feature }) {
   return (
     <div
       onClick={() => feature.href && router.push(feature.href)}
-      className={`bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-blue-200 transition-all group ${feature.href ? 'cursor-pointer' : ''}`}
+      className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all group ${feature.href ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
           {feature.icon}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-slate-900 text-sm">{feature.title}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{feature.title}</h3>
             {feature.badge && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400">
                 {feature.badge}
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 leading-relaxed">{feature.description}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{feature.description}</p>
         </div>
         {feature.href && (
-          <ChevronRight size={14} className="flex-shrink-0 text-slate-300 group-hover:text-blue-400 mt-0.5 transition-colors" />
+          <ChevronRight size={14} className="flex-shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-blue-400 mt-0.5 transition-colors" />
         )}
       </div>
     </div>
@@ -168,7 +168,7 @@ export default function WelcomePage() {
   const features = activeRole === 'technician' ? TECHNICIAN_FEATURES : MANAGER_FEATURES
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white">
@@ -205,7 +205,7 @@ export default function WelcomePage() {
       </div>
 
       {/* Role toggle */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex gap-0">
             <button
@@ -213,7 +213,7 @@ export default function WelcomePage() {
               className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 transition-colors ${
                 activeRole === 'technician'
                   ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               <HardHat size={16} />
@@ -224,7 +224,7 @@ export default function WelcomePage() {
               className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 transition-colors ${
                 activeRole === 'manager'
                   ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               <Briefcase size={16} />
@@ -239,13 +239,13 @@ export default function WelcomePage() {
 
         {activeRole === 'technician' ? (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-1">Tools that keep you moving on the floor</h2>
-            <p className="text-slate-500 text-sm">Every tool a refrigeration technician needs — from the first alarm to the signed-off report.</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Tools that keep you moving on the floor</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Every tool a refrigeration technician needs — from the first alarm to the signed-off report.</p>
           </div>
         ) : (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-1">Full visibility across your team and equipment</h2>
-            <p className="text-slate-500 text-sm">Oversight tools for managers who need to know what's happening across every site, every shift.</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Full visibility across your team and equipment</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Oversight tools for managers who need to know what's happening across every site, every shift.</p>
           </div>
         )}
 
@@ -257,8 +257,8 @@ export default function WelcomePage() {
 
         {/* How it works section */}
         {activeRole === 'technician' && (
-          <div className="mt-12 bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-            <h3 className="text-base font-bold text-slate-900 mb-6">How a typical service call works</h3>
+          <div className="mt-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 md:p-8">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-6">How a typical service call works</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
                 { step: '01', title: 'Alarm fires', body: 'You see the alert in ColdIQ with the unit name, sensor, and current reading.' },
@@ -267,9 +267,9 @@ export default function WelcomePage() {
                 { step: '04', title: 'File the report', body: 'Log findings, parts used, and time. Report is stored permanently under that unit.' },
               ].map(({ step, title, body }) => (
                 <div key={step} className="relative">
-                  <div className="text-3xl font-bold text-slate-100 mb-2 leading-none">{step}</div>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-1">{title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                  <div className="text-3xl font-bold text-slate-100 dark:text-slate-700 mb-2 leading-none">{step}</div>
+                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">{title}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{body}</p>
                 </div>
               ))}
             </div>
@@ -277,8 +277,8 @@ export default function WelcomePage() {
         )}
 
         {activeRole === 'manager' && (
-          <div className="mt-12 bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-            <h3 className="text-base font-bold text-slate-900 mb-6">What managers see at a glance</h3>
+          <div className="mt-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 md:p-8">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-6">What managers see at a glance</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
@@ -295,8 +295,8 @@ export default function WelcomePage() {
                 },
               ].map(({ title, body }) => (
                 <div key={title}>
-                  <h4 className="text-sm font-semibold text-slate-800 mb-2">{title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">{title}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{body}</p>
                 </div>
               ))}
             </div>
@@ -304,8 +304,8 @@ export default function WelcomePage() {
         )}
 
         {/* CTA */}
-        <div className="mt-10 text-center py-10 border-t border-slate-200">
-          <p className="text-slate-500 text-sm mb-4">Ready to explore ColdIQ?</p>
+        <div className="mt-10 text-center py-10 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Ready to explore ColdIQ?</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={() => router.push('/dashboard')}
@@ -316,7 +316,7 @@ export default function WelcomePage() {
             </button>
             <button
               onClick={() => router.push('/knowledge')}
-              className="inline-flex items-center gap-2 bg-white text-slate-700 font-semibold px-6 py-2.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors text-sm"
+              className="inline-flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 transition-colors text-sm"
             >
               Browse Knowledge Base
             </button>

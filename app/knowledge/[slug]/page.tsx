@@ -46,9 +46,9 @@ export default function KnowledgeTopicPage() {
 
   if (!topic) {
     return (
-      <div className="bg-slate-50 min-h-screen flex items-center justify-center">
+      <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-500 text-sm mb-3">Topic not found</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">Topic not found</p>
           <button
             onClick={() => router.push('/knowledge')}
             className="text-xs text-blue-600 hover:text-blue-800"
@@ -71,25 +71,25 @@ export default function KnowledgeTopicPage() {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 md:px-8 sticky top-0 z-10">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => router.push('/knowledge')}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors flex-shrink-0"
             >
               <ArrowLeft size={13} />
               Knowledge Base
             </button>
-            <span className="text-slate-300 text-xs">/</span>
-            <span className="text-sm font-semibold text-slate-900">{topic.title}</span>
+            <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{topic.title}</span>
             <div className="flex gap-1.5 ml-auto flex-wrap">
               {topic.tags.map(tag => (
                 <span
                   key={tag}
-                  className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-slate-100 text-slate-600 border-slate-200"
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                 >
                   {tag}
                 </span>
@@ -100,10 +100,10 @@ export default function KnowledgeTopicPage() {
       </div>
 
       {/* Mobile TOC toggle */}
-      <div className="md:hidden bg-white border-b border-slate-200 px-4">
+      <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4">
         <button
           onClick={() => setTocOpen(!tocOpen)}
-          className="w-full flex items-center justify-between py-3 text-xs text-slate-600 hover:text-slate-900"
+          className="w-full flex items-center justify-between py-3 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
         >
           <span className="font-medium">Contents ({sections.length} sections)</span>
           {tocOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -114,7 +114,7 @@ export default function KnowledgeTopicPage() {
               <button
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
-                className="block w-full text-left text-xs text-blue-600 hover:text-blue-800 py-1 px-2 rounded hover:bg-blue-50 transition-colors"
+                className="block w-full text-left text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
               >
                 {section.title}
               </button>
@@ -129,14 +129,14 @@ export default function KnowledgeTopicPage() {
         {/* Sticky TOC — desktop only */}
         <aside className="hidden md:block w-56 flex-shrink-0">
           <div className="sticky top-20 space-y-1">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-2">
+            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-2">
               Contents
             </p>
             {sections.map(section => (
               <button
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
-                className="block w-full text-left text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 py-1.5 px-2 rounded transition-colors leading-snug"
+                className="block w-full text-left text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 py-1.5 px-2 rounded transition-colors leading-snug"
               >
                 {section.title}
               </button>
@@ -144,8 +144,8 @@ export default function KnowledgeTopicPage() {
 
             {/* Related manuals in TOC panel */}
             {(manualsLoading || manuals.length > 0) && (
-              <div className="mt-6 pt-4 border-t border-slate-200">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-2">
+              <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-2">
                   Related Manuals
                 </p>
                 {manualsLoading ? (

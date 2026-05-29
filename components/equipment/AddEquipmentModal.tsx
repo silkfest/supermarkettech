@@ -70,19 +70,19 @@ export default function AddEquipmentModal({ onClose, onCreated, storeId: presetS
     }
   }
 
-  const inp = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-  const lbl = 'block text-xs font-medium text-slate-600 mb-1'
+  const inp = 'w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800'
+  const lbl = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white">
-          <h2 className="text-sm font-semibold text-slate-800">Add equipment</h2>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X size={16}/></button>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add equipment</h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"><X size={16}/></button>
         </div>
 
         <form onSubmit={submit} className="px-5 py-4 space-y-3">
-          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>}
 
           {/* Site selector — hidden if storeId was pre-set */}
           {!presetStoreId && (
@@ -98,7 +98,7 @@ export default function AddEquipmentModal({ onClose, onCreated, storeId: presetS
                 {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {stores.length === 0 && (
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                   No sites found — <a href="/stores" className="underline text-blue-500">create a site first</a>.
                 </p>
               )}
@@ -141,7 +141,7 @@ export default function AddEquipmentModal({ onClose, onCreated, storeId: presetS
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               Cancel
             </button>
             <button type="submit" disabled={saving} className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">

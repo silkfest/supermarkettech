@@ -73,29 +73,29 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
           <MessageSquare size={14} className="text-blue-500" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 leading-snug">{session.title || 'Untitled session'}</p>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug">{session.title || 'Untitled session'}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
             {session.equipment && (
-              <span className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Wrench size={10} />
                 {session.equipment.name} · {session.equipment.manufacturer} {session.equipment.model}
               </span>
             )}
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${session.mode === 'EXPERT' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${session.mode === 'EXPERT' ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400' : 'bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400'}`}>
               {MODE_LABEL[session.mode] ?? session.mode}
             </span>
-            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
               <Clock size={10} />
               {timeAgo(session.created_at)}
             </span>
-            <span className="text-[11px] text-slate-400">{userMsgCount} message{userMsgCount !== 1 ? 's' : ''}</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">{userMsgCount} message{userMsgCount !== 1 ? 's' : ''}</span>
             {tipSaved && (
               <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
                 <Star size={9} className="fill-amber-500 text-amber-500" /> Saved as tip
@@ -107,7 +107,7 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
           {!tipSaved && !showInput && messages.length >= 2 && (
             <button
               onClick={() => setShowInput(true)}
-              className="text-[11px] text-slate-400 hover:text-amber-600 transition-colors px-2 py-1 rounded-lg hover:bg-amber-50"
+              className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50"
             >
               Save as tip
             </button>
@@ -116,13 +116,13 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
             onClick={handleDelete}
             disabled={deleting}
             title="Delete conversation"
-            className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+            className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 disabled:opacity-50"
           >
             {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
           </button>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50"
+            className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -138,7 +138,7 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
             onChange={e => setTipTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveAsTip(); if (e.key === 'Escape') setShowInput(false) }}
             placeholder="Give this tip a title…"
-            className="flex-1 text-xs px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="flex-1 text-xs px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
           />
           <button
             onClick={handleSaveAsTip}
@@ -148,15 +148,15 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
             {savingTip ? <Loader2 size={11} className="animate-spin" /> : null}
             Save
           </button>
-          <button onClick={() => setShowInput(false)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5">Cancel</button>
+          <button onClick={() => setShowInput(false)} className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-1.5">Cancel</button>
         </div>
       )}
 
       {/* Expanded conversation */}
       {expanded && (
-        <div className="border-t border-slate-100 px-5 py-4 space-y-3 bg-slate-50">
+        <div className="border-t border-slate-100 dark:border-slate-700 px-5 py-4 space-y-3 bg-slate-50 dark:bg-slate-950/50">
           {messages.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No messages in this session.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 italic">No messages in this session.</p>
           ) : (
             messages
               .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -166,7 +166,7 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
                     'max-w-[85%] px-3.5 py-2.5 rounded-xl text-sm leading-relaxed',
                     msg.role === 'user'
                       ? 'bg-blue-600 text-white rounded-br-sm'
-                      : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm shadow-sm',
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm',
                   ].join(' ')}>
                     {msg.role === 'user' ? (
                       <span className="whitespace-pre-wrap break-words">{msg.content}</span>
@@ -179,7 +179,7 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
                           ol: ({ children }) => <ol className="list-decimal list-outside pl-4 mb-2 space-y-0.5">{children}</ol>,
                           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
                           strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                          code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 rounded text-xs font-mono">{children}</code>,
+                          code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-xs font-mono">{children}</code>,
                         }}
                       >
                         {msg.content}
@@ -239,46 +239,46 @@ export default function ChatHistoryPage() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
+        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
           <Home size={18} />
         </button>
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">
+        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-400">/</span>
-        <span className="text-sm font-medium text-slate-700">Chat History</span>
+        <span className="text-slate-400 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Chat History</span>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + filters */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <MessageSquare size={20} className="text-blue-500" />
               Chat History
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">All team conversations — expand to view, save as a tip, or delete</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">All team conversations — expand to view, save as a tip, or delete</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white flex-1 sm:w-36 sm:flex-none min-w-0"
+              className="px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 flex-1 sm:w-36 sm:flex-none min-w-0"
             />
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-xs">
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 text-xs">
               {(['all', 'EXPERT', 'MAINTENANCE'] as const).map(m => (
                 <button
                   key={m}
                   onClick={() => setFilterMode(m)}
-                  className={`px-2.5 py-1.5 font-medium transition-colors ${filterMode === m ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  className={`px-2.5 py-1.5 font-medium transition-colors ${filterMode === m ? 'bg-slate-800 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
                 >
                   {m === 'all' ? 'All' : m === 'EXPERT' ? 'Expert' : 'Maint.'}
                 </button>
@@ -288,7 +288,7 @@ export default function ChatHistoryPage() {
               <button
                 onClick={handleClearAll}
                 disabled={clearingAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 disabled:opacity-50 transition-colors"
               >
                 {clearingAll ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                 Clear all
@@ -298,13 +298,13 @@ export default function ChatHistoryPage() {
         </div>
 
         {loading && (
-          <div className="flex justify-center py-16 text-slate-400 text-sm">Loading history…</div>
+          <div className="flex justify-center py-16 text-slate-400 dark:text-slate-500 text-sm">Loading history…</div>
         )}
 
         {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageSquare size={32} className="text-slate-200 mb-3" />
-            <p className="text-sm text-slate-400">
+            <MessageSquare size={32} className="text-slate-200 dark:text-slate-700 mb-3" />
+            <p className="text-sm text-slate-400 dark:text-slate-500">
               {search || filterMode !== 'all' ? 'No sessions match your filters.' : 'No chat sessions yet. Start a conversation on the dashboard.'}
             </p>
           </div>

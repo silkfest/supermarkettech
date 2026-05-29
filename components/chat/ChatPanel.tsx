@@ -48,16 +48,16 @@ function Citations({ sources }: { sources: CitationSource[] }) {
       {sources.map((s) => {
         const inner = (
           <>
-            <span className="flex-shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full">
+            <span className="flex-shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-full">
               {s.citationNumber}
             </span>
-            <BookOpen size={9} className="flex-shrink-0 text-slate-400" />
+            <BookOpen size={9} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
             <span className="font-medium truncate max-w-[140px]">{s.title}</span>
-            {s.pageNumber != null && <span className="text-slate-400 flex-shrink-0">p.{s.pageNumber}</span>}
+            {s.pageNumber != null && <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">p.{s.pageNumber}</span>}
             {s.signedUrl && <ExternalLink size={9} className="flex-shrink-0 text-slate-400" />}
           </>
         )
-        const baseClass = 'flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-500'
+        const baseClass = 'flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400'
         return s.signedUrl ? (
           <a
             key={s.chunkId}
@@ -65,7 +65,7 @@ function Citations({ sources }: { sources: CitationSource[] }) {
             target="_blank"
             rel="noopener noreferrer"
             title={`Open ${s.title}${s.pageNumber != null ? `, p.${s.pageNumber}` : ''}`}
-            className={`${baseClass} hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer`}
+            className={`${baseClass} hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer`}
           >
             {inner}
           </a>
@@ -84,7 +84,7 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
   if (!links.length) return null
   return (
     <div className="mt-2">
-      <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1">
         <Wrench size={9} />
         View in components registry
       </p>
@@ -93,7 +93,7 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
           <button
             key={link.catalogId}
             onClick={() => router.push(`/maintenance/components?highlight=${encodeURIComponent(link.catalogId)}`)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group"
             title={link.manualTitle}
           >
             <Wrench size={10} className="text-blue-400 flex-shrink-0" />
@@ -130,7 +130,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
             <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
               <span className="text-[8px] text-white font-bold tracking-tight">CQ</span>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">ColdIQ</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">ColdIQ</span>
           </div>
         )}
 
@@ -140,7 +140,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
             'px-4 py-2.5 text-sm leading-relaxed',
             isUser
               ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
-              : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-sm shadow-sm',
+              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm shadow-sm',
           ].join(' ')}
         >
           {/* Show typing dots while waiting for first token */}
@@ -161,9 +161,9 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
                     strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                     em: ({ children }) => <em className="italic">{children}</em>,
-                    code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 rounded text-xs font-mono">{children}</code>,
-                    pre: ({ children }) => <pre className="bg-slate-100 rounded-lg p-3 overflow-x-auto text-xs font-mono mb-2">{children}</pre>,
-                    hr:  () => <hr className="my-2 border-slate-200" />,
+                    code: ({ children }) => <code className="px-1 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-xs font-mono">{children}</code>,
+                    pre: ({ children }) => <pre className="bg-slate-100 dark:bg-slate-700 rounded-lg p-3 overflow-x-auto text-xs font-mono mb-2">{children}</pre>,
+                    hr:  () => <hr className="my-2 border-slate-200 dark:border-slate-600" />,
                     a: ({ href, children }) => {
                       const citeMatch = href?.match(/^#cite-(\d+)$/)
                       if (citeMatch) {
@@ -172,7 +172,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                         const tooltip = source
                           ? `${source.title}${source.pageNumber != null ? `, p.${source.pageNumber}` : ''}`
                           : `Source ${n}`
-                        const badgeClass = 'inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded-full mx-0.5 leading-none'
+                        const badgeClass = 'inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-full mx-0.5 leading-none'
                         return source?.signedUrl ? (
                           <a href={pdfUrl(source.signedUrl, source.pageNumber)} target="_blank" rel="noopener noreferrer" title={tooltip} className="no-underline hover:opacity-75 transition-opacity">
                             <sup className={badgeClass}>{n}</sup>
@@ -223,7 +223,7 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
         ColdIQ Expert
       </p>
-      <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+      <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed">
         {modeHints[mode]}
       </p>
     </div>
@@ -520,7 +520,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
 
       {/* ── Message list ── */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
@@ -534,7 +534,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
 
             {/* Error banner */}
             {error && (
-              <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+              <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
                 <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
                 <span className="flex-1">{error}</span>
                 {lastSentMsgRef.current && (
@@ -555,10 +555,10 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
 
       {/* ── Save conversation bar ── shown after any completed exchange */}
       {!streaming && messages.length >= 2 && (
-        <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 py-2">
+        <div className="flex-shrink-0 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2">
           <div className="max-w-2xl mx-auto w-full">
             {chatSaved ? (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 py-1">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 py-1">
                 <Check size={13} /> Conversation saved
               </div>
             ) : showSavePrompt ? (
@@ -569,7 +569,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                   onChange={e => setSaveTitle(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSaveChat(); if (e.key === 'Escape') setShowSavePrompt(false) }}
                   placeholder="Name this conversation…"
-                  className="flex-1 text-xs px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="flex-1 text-xs px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
                 />
                 <button
                   onClick={handleSaveChat}
@@ -579,7 +579,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                   {savingChat ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
                   Save
                 </button>
-                <button onClick={() => setShowSavePrompt(false)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setShowSavePrompt(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                   <X size={14} />
                 </button>
                 {saveError && <span className="text-xs text-red-500 ml-1">{saveError}</span>}
@@ -587,7 +587,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
             ) : (
               <button
                 onClick={() => { setShowSavePrompt(true); setSaveTitle(messages[0]?.content?.slice(0, 80) ?? '') }}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 transition-colors py-1"
+                className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1"
               >
                 <MessageSquare size={12} />
                 Save this conversation
@@ -600,7 +600,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       {/* Error shown in empty state */}
       {!hasMessages && error && (
         <div className="mx-4 mb-2 max-w-2xl mx-auto">
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
             <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
             <span className="flex-1">{error}</span>
             {lastSentMsgRef.current && (
@@ -616,9 +616,9 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       )}
 
       {/* ── Input bar ── */}
-      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 py-3">
+      <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
         <div className="max-w-2xl mx-auto w-full">
-          <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition-all">
+          <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-900/50 transition-all">
             <textarea
               ref={textareaRef}
               value={input}
@@ -627,7 +627,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               placeholder={config.placeholder}
               rows={1}
               disabled={streaming}
-              className="flex-1 min-w-0 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 resize-none outline-none leading-relaxed disabled:opacity-50 py-0.5"
+              className="flex-1 min-w-0 bg-transparent text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none outline-none leading-relaxed disabled:opacity-50 py-0.5"
               style={{ maxHeight: 140 }}
             />
             <button
@@ -638,7 +638,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                 'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all mb-0.5',
                 input.trim() && !streaming
                   ? 'bg-blue-600 hover:bg-blue-700 shadow-sm'
-                  : 'bg-slate-200 cursor-not-allowed',
+                  : 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed',
               ].join(' ')}
             >
               {streaming
@@ -649,13 +649,13 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
           </div>
 
           <div className="flex items-center justify-between mt-1.5 px-0.5">
-            <span className="text-[10px] text-slate-400 select-none">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 select-none">
               Enter to send, Shift+Enter for new line
             </span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push('/chat-history')}
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 title="View saved conversations"
               >
                 <History size={9} />
@@ -663,7 +663,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
               </button>
               <button
                 onClick={onUpload}
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 title="Upload a PDF manual for this unit"
               >
                 <Upload size={9} />

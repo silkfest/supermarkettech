@@ -108,8 +108,8 @@ export default function MaintenancePanel({ equipmentId }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-        <h2 className="text-sm font-semibold text-slate-800">Maintenance</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Maintenance</h2>
         <button
           onClick={() => { resetForm(); setShowModal(true) }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
@@ -122,24 +122,24 @@ export default function MaintenancePanel({ equipmentId }: Props) {
       </div>
 
       {/* PM Form shortcuts */}
-      <div className="px-3 py-2.5 border-b border-slate-200 grid grid-cols-3 gap-1.5">
+      <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-700 grid grid-cols-3 gap-1.5">
         <Link
           href={`/maintenance/refrigeration-pm${equipmentId ? `?equipmentId=${equipmentId}` : ''}`}
-          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-center"
+          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-center"
         >
           <Snowflake size={14}/>
           <span className="text-[10px] font-medium leading-tight">Refrigeration PM</span>
         </Link>
         <Link
           href={`/maintenance/hvac-pm${equipmentId ? `?equipmentId=${equipmentId}` : ''}`}
-          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-center"
+          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-center"
         >
           <Wind size={14}/>
           <span className="text-[10px] font-medium leading-tight">HVAC PM</span>
         </Link>
         <Link
           href={`/maintenance/individual-report${equipmentId ? `?equipmentId=${equipmentId}` : ''}`}
-          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-center"
+          className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors text-center"
         >
           <ClipboardList size={14}/>
           <span className="text-[10px] font-medium leading-tight">Service Report</span>
@@ -149,46 +149,46 @@ export default function MaintenancePanel({ equipmentId }: Props) {
       {/* Log list */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
-          <div className="text-center text-sm text-slate-400 py-8">Loading…</div>
+          <div className="text-center text-sm text-slate-400 dark:text-slate-500 py-8">Loading…</div>
         ) : fetchError ? (
-          <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <div className="flex items-center justify-between px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-400">
             <span>{fetchError}</span>
             <button onClick={fetchLogs} className="ml-3 font-medium underline hover:no-underline">Retry</button>
           </div>
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-3xl mb-2">🔧</div>
-            <p className="text-sm text-slate-500">No maintenance logs yet.</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400">No maintenance logs yet.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
               {equipmentId ? 'Log the first entry for this equipment.' : 'Select equipment or log an entry.'}
             </p>
           </div>
         ) : (
           logs.map(log => (
-            <div key={log.id} className="bg-white rounded-lg border border-slate-200 p-4">
+            <div key={log.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="text-sm font-medium text-slate-800">{log.title}</h3>
-                <span className="text-xs text-slate-400 whitespace-nowrap">{formatDate(log.performed_at)}</span>
+                <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">{log.title}</h3>
+                <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">{formatDate(log.performed_at)}</span>
               </div>
               {log.users && (
-                <p className="text-xs text-slate-500 mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
                   By <span className="font-medium">{log.users.name}</span>
-                  <span className="ml-1 text-slate-400">({log.users.role})</span>
+                  <span className="ml-1 text-slate-400 dark:text-slate-500">({log.users.role})</span>
                 </p>
               )}
               {log.notes && (
-                <p className="text-xs text-slate-600 mb-2">{log.notes}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">{log.notes}</p>
               )}
               {log.work_done && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-slate-500 mb-0.5">Work done</p>
-                  <p className="text-xs text-slate-700">{log.work_done}</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Work done</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">{log.work_done}</p>
                 </div>
               )}
               {log.next_action && (
-                <div className="mt-2 pt-2 border-t border-slate-100">
-                  <p className="text-xs font-medium text-amber-600 mb-0.5">Next action</p>
-                  <p className="text-xs text-slate-700">{log.next_action}</p>
+                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-0.5">Next action</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">{log.next_action}</p>
                 </div>
               )}
             </div>
@@ -199,10 +199,10 @@ export default function MaintenancePanel({ equipmentId }: Props) {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800">Log maintenance entry</h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Log maintenance entry</h3>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -210,61 +210,61 @@ export default function MaintenancePanel({ equipmentId }: Props) {
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Title *</label>
                 <input
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   required
                   placeholder="e.g. Compressor inspection"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Date & time</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Date & time</label>
                 <input
                   type="datetime-local"
                   value={performedAt}
                   onChange={e => setPerformedAt(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   rows={2}
                   placeholder="Observations, readings, conditions…"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Work done</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Work done</label>
                 <textarea
                   value={workDone}
                   onChange={e => setWorkDone(e.target.value)}
                   rows={2}
                   placeholder="Parts replaced, repairs made…"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Next action</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Next action</label>
                 <input
                   type="text"
                   value={nextAction}
                   onChange={e => setNextAction(e.target.value)}
                   placeholder="Follow-up task or scheduled check…"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
-              {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+              {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</p>}
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+                  className="flex-1 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
                 >
                   Cancel
                 </button>

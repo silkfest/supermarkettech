@@ -96,28 +96,28 @@ function MaintenanceHubContent() {
   const hasFilters = filterStoreId || filterType !== 'all'
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => router.push('/dashboard')}
-          className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+          className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-700 truncate">
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
           {equipmentName ? equipmentName : 'Maintenance Forms'}
         </span>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 pb-10 space-y-6">
         {storeError && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-400">
             <AlertTriangle size={13} className="flex-shrink-0" />
             <span className="flex-1">{storeError}</span>
             <button onClick={() => setStoreError(null)} className="text-red-400 hover:text-red-600 ml-2 leading-none">×</button>
@@ -125,7 +125,7 @@ function MaintenanceHubContent() {
         )}
         {/* Create new */}
         <div>
-          <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+          <h2 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
             Create New Report
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -133,12 +133,12 @@ function MaintenanceHubContent() {
               <button
                 key={rt.path}
                 onClick={() => router.push(rt.path)}
-                className={`bg-white border border-slate-200 rounded-xl p-5 text-left transition-all active:scale-[0.98] hover:shadow-md ${rt.color} flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0`}
+                className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 text-left transition-all active:scale-[0.98] hover:shadow-md ${rt.color} flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0`}
               >
                 <div className="flex-shrink-0 sm:mb-3">{rt.icon}</div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-800 text-sm mb-0.5">{rt.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">{rt.desc}</p>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-0.5">{rt.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{rt.desc}</p>
                 </div>
                 <ChevronRight size={16} className="text-slate-300 flex-shrink-0 sm:hidden" />
               </button>
@@ -148,7 +148,7 @@ function MaintenanceHubContent() {
 
         {/* Recent reports */}
         <div>
-          <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <h2 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
             <Clock size={12} /> Recent Reports
           </h2>
 
@@ -160,7 +160,7 @@ function MaintenanceHubContent() {
                 <select
                   value={filterStoreId}
                   onChange={e => setFilterStoreId(e.target.value)}
-                  className="pl-7 pr-8 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                  className="pl-7 pr-8 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
                 >
                   <option value="">All stores</option>
                   {stores.map(s => (
@@ -170,7 +170,7 @@ function MaintenanceHubContent() {
               </div>
             )}
 
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-xs">
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 text-xs">
               {(['all', 'pm', 'individual'] as const).map(t => (
                 <button
                   key={t}
@@ -178,7 +178,7 @@ function MaintenanceHubContent() {
                   className={`px-3 py-1.5 font-medium transition-colors ${
                     filterType === t
                       ? 'bg-slate-800 text-white'
-                      : 'text-slate-500 hover:bg-slate-50'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
                   }`}
                 >
                   {t === 'all' ? 'All' : t === 'pm' ? 'PM' : <><span className="sm:hidden">Service</span><span className="hidden sm:inline">Service calls</span></>}
@@ -189,7 +189,7 @@ function MaintenanceHubContent() {
             {hasFilters && (
               <button
                 onClick={() => { setFilterStoreId(''); setFilterType('all') }}
-                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
+                className="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
               >
                 Clear
               </button>
@@ -216,7 +216,7 @@ function MaintenanceHubContent() {
                   <button
                     key={r.id}
                     onClick={() => router.push(`/maintenance/report/${r.id}?type=${r.kind}&report_type=${r.report_type ?? ''}`)}
-                    className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:border-slate-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col gap-2.5 group"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-left hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md active:scale-[0.98] transition-all flex flex-col gap-2.5 group"
                   >
                     {/* Top row: icon + badge + date */}
                     <div className="flex items-center justify-between gap-2">
@@ -226,26 +226,26 @@ function MaintenanceHubContent() {
                           {typeLabel}
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
                         {new Date(r.performed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
 
                     {/* Store name */}
-                    <p className="text-sm font-semibold text-slate-800 truncate leading-snug">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
                       {r.store_name}
                     </p>
 
                     {/* Issue snippet (individual reports only) */}
                     {isIndividual && r.issue_explanation && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {r.issue_explanation}
                       </p>
                     )}
 
                     {/* Footer: technician + chevron */}
                     <div className="flex items-center justify-between mt-auto pt-1">
-                      <span className="text-[11px] text-slate-400 truncate">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
                         {r.technician?.name ?? ''}
                       </span>
                       <ChevronRight size={13} className="text-slate-300 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
@@ -255,7 +255,7 @@ function MaintenanceHubContent() {
               })}
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-xl px-4 py-10 text-center text-sm text-slate-400">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
               {hasFilters ? 'No reports match the current filters.' : 'No reports yet — create your first one above.'}
             </div>
           )}
@@ -267,7 +267,7 @@ function MaintenanceHubContent() {
 
 export default function MaintenanceHubPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Loading…</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading…</div>}>
       <MaintenanceHubContent />
     </Suspense>
   )

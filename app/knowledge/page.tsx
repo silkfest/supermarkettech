@@ -75,7 +75,7 @@ function TopicCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all group"
+      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
     >
       {/* Icon + title row */}
       <div className="flex items-start gap-3 mb-2">
@@ -83,11 +83,11 @@ function TopicCard({
           {ICON_MAP[topic.iconName] ?? <BookOpen size={22} />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+          <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {topic.title}
           </p>
           {manualCount > 0 && (
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
               {manualCount} manual{manualCount !== 1 ? 's' : ''}
             </p>
           )}
@@ -95,7 +95,7 @@ function TopicCard({
       </div>
 
       {/* Description */}
-      <p className="text-xs text-slate-500 leading-relaxed mb-3 line-clamp-3">
+      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3 line-clamp-3">
         {topic.description}
       </p>
 
@@ -147,21 +147,21 @@ export default function KnowledgePage() {
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 md:px-8">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8">
         <div className="max-w-5xl mx-auto">
           <button
             onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 mb-3 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 mb-3 transition-colors"
           >
             <ArrowLeft size={13} />
             Dashboard
           </button>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Knowledge Base</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Knowledge Base</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 Technical reference from the AI system prompt — manufacturer specs, diagnostic procedures, and field rules.
               </p>
             </div>
@@ -174,7 +174,7 @@ export default function KnowledgePage() {
 
         {/* Manufacturer Reference */}
         <section>
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
             Manufacturer Reference
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -191,7 +191,7 @@ export default function KnowledgePage() {
 
         {/* Fundamentals */}
         <section>
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
             Fundamentals
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

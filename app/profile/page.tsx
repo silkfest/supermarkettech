@@ -107,18 +107,18 @@ function AddCertModal({ userId, onSave, onClose }: { userId: string; onSave: (c:
     onSave(await res.json())
   }
 
-  const inp = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-  const lbl = 'block text-xs font-medium text-slate-700 mb-1'
+  const inp = 'w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const lbl = 'block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-800">Add Certificate / Ticket</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add Certificate / Ticket</h2>
+          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><X size={18}/></button>
         </div>
         <div className="p-5 space-y-3">
-          {error && <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">{error}</div>}
+          {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Category</label>
@@ -152,8 +152,8 @@ function AddCertModal({ userId, onSave, onClose }: { userId: string; onSave: (c:
             <input value={notes} onChange={e => setNotes(e.target.value)} className={inp} placeholder="Issuing body, location, etc." />
           </div>
         </div>
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 rounded-lg">Cancel</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-lg">Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">
             {saving && <Loader2 size={13} className="animate-spin"/>}
@@ -246,7 +246,7 @@ function ProfileContent() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
       <Loader2 size={24} className="animate-spin text-blue-500"/>
     </div>
   )
@@ -259,7 +259,7 @@ function ProfileContent() {
   const showApprSection = isApprentice || (isAdmin && profile.role === 'apprentice')
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {showAddCert && (
         <AddCertModal
           userId={profile.id}
@@ -269,28 +269,28 @@ function ProfileContent() {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600"><Home size={18}/></button>
-        <button onClick={() => router.back()}             className="text-slate-400 hover:text-slate-600"><ArrowLeft size={18}/></button>
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><Home size={18}/></button>
+        <button onClick={() => router.back()}             className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><ArrowLeft size={18}/></button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-400">/</span>
-        <span className="text-sm font-medium text-slate-700">Profile</span>
+        <span className="text-slate-400 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Profile</span>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5">
 
         {/* ── Identity card ──────────────────────────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <User size={26} className="text-blue-600"/>
+            <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+              <User size={26} className="text-blue-600 dark:text-blue-400"/>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-slate-800 truncate">{profile.name || profile.email}</h1>
-              <p className="text-sm text-slate-500 truncate">{profile.email}</p>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 truncate">{profile.name || profile.email}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{profile.email}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ROLE_COLOURS[profile.role] ?? 'bg-slate-100 text-slate-600'}`}>
                   {ROLE_LABELS[profile.role] ?? profile.role}
@@ -298,7 +298,7 @@ function ProfileContent() {
                 {profile.status === 'inactive' && (
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700">Inactive</span>
                 )}
-                <span className="text-xs text-slate-400">Member since {fmt(profile.created_at)}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">Member since {fmt(profile.created_at)}</span>
               </div>
             </div>
           </div>
@@ -306,21 +306,21 @@ function ProfileContent() {
 
         {/* ── Apprenticeship tracker ─────────────────────────────────────────── */}
         {(isApprentice || isAdmin) && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <GraduationCap size={16} className="text-blue-500"/>
                 Apprenticeship
               </h2>
               {canEdit && !editingAppr && (
                 <button onClick={() => setEditingAppr(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                   <Pencil size={12}/> Edit
                 </button>
               )}
               {editingAppr && (
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => setEditingAppr(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"><X size={14}/></button>
+                  <button onClick={() => setEditingAppr(false)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg"><X size={14}/></button>
                   <button onClick={saveApprenticeshipInfo} disabled={saving}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium">
                     {saving ? <Loader2 size={12} className="animate-spin"/> : <Check size={12}/>}
@@ -333,23 +333,23 @@ function ProfileContent() {
             {editingAppr ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Start Date</label>
                   <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100"/>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Apprenticeship Year</label>
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Apprenticeship Year</label>
                     <select value={editYear} onChange={e => setEditYear(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100">
                       {[1,2,3,4,5].map(y => <option key={y} value={y}>Year {y}</option>)}
                       <option value={6}>Journeyman</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Hours Logged</label>
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Hours Logged</label>
                     <input type="number" min={0} value={editHours} onChange={e => setEditHours(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
                       placeholder="Total hours"/>
                   </div>
                 </div>
@@ -362,20 +362,20 @@ function ProfileContent() {
                     <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-0.5">Current Year</p>
                     <p className="text-2xl font-bold text-blue-700">{YEAR_LABELS[profile.apprenticeship_year] ?? 'Year 1'}</p>
                   </div>
-                  <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-0.5">Hours Logged</p>
-                    <p className="text-2xl font-bold text-slate-800">{profile.apprenticeship_hours.toLocaleString()}</p>
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide mb-0.5">Hours Logged</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{profile.apprenticeship_hours.toLocaleString()}</p>
                   </div>
                 </div>
 
                 {/* Hours progress bar (9000 hrs total for 313A) */}
                 {profile.apprenticeship_hours > 0 && (
                   <div>
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
                       <span>{profile.apprenticeship_hours.toLocaleString()} hrs</span>
                       <span>9,000 hrs total</span>
                     </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all"
                         style={{ width: `${Math.min(100, (profile.apprenticeship_hours / 9000) * 100)}%` }}/>
                     </div>
@@ -388,18 +388,18 @@ function ProfileContent() {
                     <div className="flex items-start gap-2">
                       <Calendar size={14} className="text-slate-400 mt-0.5 flex-shrink-0"/>
                       <div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wide">Start Date</p>
-                        <p className="text-sm font-medium text-slate-700">{fmt(profile.apprenticeship_start_date)}</p>
-                        {tenure && <p className="text-xs text-slate-400">{tenure} ago</p>}
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Start Date</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{fmt(profile.apprenticeship_start_date)}</p>
+                        {tenure && <p className="text-xs text-slate-400 dark:text-slate-500">{tenure} ago</p>}
                       </div>
                     </div>
                     {annDate && (
                       <div className="flex items-start gap-2">
-                        <Clock size={14} className={`mt-0.5 flex-shrink-0 ${annDays !== null && annDays <= 30 ? 'text-amber-500' : 'text-slate-400'}`}/>
+                        <Clock size={14} className={`mt-0.5 flex-shrink-0 ${annDays !== null && annDays <= 30 ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`}/>
                         <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Anniversary</p>
-                          <p className="text-sm font-medium text-slate-700">{fmt(annDate)}</p>
-                          <p className={`text-xs font-medium ${annDays !== null && annDays <= 30 ? 'text-amber-600' : 'text-slate-400'}`}>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Anniversary</p>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{fmt(annDate)}</p>
+                          <p className={`text-xs font-medium ${annDays !== null && annDays <= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
                             {annDays === 0 ? '🎉 Today!' : annDays !== null && annDays <= 30 ? `${annDays} days away` : `in ${annDays} days`}
                           </p>
                         </div>
@@ -407,7 +407,7 @@ function ProfileContent() {
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No start date set — click Edit to add one.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No start date set — click Edit to add one.</p>
                 )}
               </div>
             )}
@@ -415,47 +415,47 @@ function ProfileContent() {
         )}
 
         {/* ── Certificates & Tickets ─────────────────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <Award size={16} className="text-amber-500"/>
               Certificates &amp; Tickets
             </h2>
             {canEdit && (
               <button onClick={() => setShowAddCert(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 font-medium">
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800 font-medium">
                 <Plus size={12}/> Add
               </button>
             )}
           </div>
 
           {certs.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-4">No certificates added yet.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">No certificates added yet.</p>
           ) : (
             <div className="space-y-2">
               {certs.map(cert => {
                 const expired = cert.expiry_date && new Date(cert.expiry_date) < new Date()
                 const expiringSoon = cert.expiry_date && !expired && daysUntil(cert.expiry_date) <= 60
                 return (
-                  <div key={cert.id} className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div key={cert.id} className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
                     <Award size={16} className={expired ? 'text-red-400' : expiringSoon ? 'text-amber-400' : 'text-emerald-500'}/>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-slate-800">{cert.cert_subtype}</span>
-                        <span className="text-xs text-slate-500">{cert.cert_type}</span>
-                        {cert.cert_number && <span className="text-xs text-slate-400">#{cert.cert_number}</span>}
-                        {expired && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Expired</span>}
-                        {expiringSoon && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Expiring soon</span>}
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{cert.cert_subtype}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{cert.cert_type}</span>
+                        {cert.cert_number && <span className="text-xs text-slate-400 dark:text-slate-500">#{cert.cert_number}</span>}
+                        {expired && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 font-semibold">Expired</span>}
+                        {expiringSoon && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-semibold">Expiring soon</span>}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
-                        {cert.issued_date && <span className="text-[10px] text-slate-400">Issued {fmt(cert.issued_date)}</span>}
-                        {cert.expiry_date && <span className={`text-[10px] ${expired ? 'text-red-500' : expiringSoon ? 'text-amber-600' : 'text-slate-400'}`}>Expires {fmt(cert.expiry_date)}</span>}
-                        {cert.notes && <span className="text-[10px] text-slate-400">{cert.notes}</span>}
+                        {cert.issued_date && <span className="text-[10px] text-slate-400 dark:text-slate-500">Issued {fmt(cert.issued_date)}</span>}
+                        {cert.expiry_date && <span className={`text-[10px] ${expired ? 'text-red-500 dark:text-red-400' : expiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>Expires {fmt(cert.expiry_date)}</span>}
+                        {cert.notes && <span className="text-[10px] text-slate-400 dark:text-slate-500">{cert.notes}</span>}
                       </div>
                     </div>
                     {canEdit && (
                       <button onClick={() => deleteCert(cert.id)} disabled={deletingCert === cert.id}
-                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 flex-shrink-0">
+                        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors disabled:opacity-40 flex-shrink-0">
                         {deletingCert === cert.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
                       </button>
                     )}
@@ -469,32 +469,32 @@ function ProfileContent() {
         {/* ── Policies & Procedures quick link ──────────────────────────────── */}
         <button
           onClick={() => router.push('/policies')}
-          className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-left"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
         >
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-            <FileText size={18} className="text-indigo-600"/>
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+            <FileText size={18} className="text-indigo-600 dark:text-indigo-400"/>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-800">Policies &amp; Procedures</p>
-            <p className="text-xs text-slate-500">Company policies, store procedures, on-call schedule, truck stock</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Policies &amp; Procedures</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Company policies, store procedures, on-call schedule, truck stock</p>
           </div>
-          <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
+          <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
         </button>
 
         {/* ── My Training quick link — apprentices only ─────────────────────── */}
         {isOwnProfile && profile.role === 'apprentice' && (
           <button
             onClick={() => router.push('/apprentice/training')}
-            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-left"
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-              <GraduationCap size={18} className="text-amber-600"/>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+              <GraduationCap size={18} className="text-amber-600 dark:text-amber-400"/>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800">My Training</p>
-              <p className="text-xs text-slate-500">View your training modules, progress, and assigned tasks</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">My Training</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">View your training modules, progress, and assigned tasks</p>
             </div>
-            <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
+            <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
           </button>
         )}
 
@@ -502,16 +502,16 @@ function ProfileContent() {
         {isOwnProfile && (
           <button
             onClick={() => router.push('/settings')}
-            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-left"
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-              <Settings size={18} className="text-slate-500"/>
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <Settings size={18} className="text-slate-500 dark:text-slate-400"/>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800">Settings</p>
-              <p className="text-xs text-slate-500">Update your display name and change your password</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Settings</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Update your display name and change your password</p>
             </div>
-            <ChevronRight size={16} className="text-slate-400 flex-shrink-0"/>
+            <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
           </button>
         )}
 
@@ -522,7 +522,7 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-blue-500"/></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-blue-500"/></div>}>
       <ProfileContent/>
     </Suspense>
   )

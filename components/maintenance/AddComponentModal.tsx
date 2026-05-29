@@ -7,8 +7,8 @@ const COMPONENT_TYPES = [
   'Oil Separator', 'Receiver', 'Head Pressure Controller', 'Defrost Board', 'Other',
 ]
 
-const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
+const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500'
+const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1'
 
 interface Props {
   onClose: () => void
@@ -53,11 +53,11 @@ export default function AddComponentModal({ onClose, onAdded }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <h3 className="text-sm font-semibold text-slate-800">Add Component</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add Component</h3>
+          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
             <X size={16} />
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function AddComponentModal({ onClose, onAdded }: Props) {
 
           {/* Rack label */}
           <div>
-            <label className={labelCls}>Rack / Location <span className="text-slate-400 font-normal">(optional)</span></label>
+            <label className={labelCls}>Rack / Location <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span></label>
             <input
               value={form.rackLabel}
               onChange={e => set('rackLabel', e.target.value)}
@@ -132,7 +132,7 @@ export default function AddComponentModal({ onClose, onAdded }: Props) {
           </div>
 
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</p>
           )}
 
           <div className="flex gap-2 pt-1">
@@ -146,7 +146,7 @@ export default function AddComponentModal({ onClose, onAdded }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+              className="px-4 py-2.5 text-sm bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
             >
               Cancel
             </button>

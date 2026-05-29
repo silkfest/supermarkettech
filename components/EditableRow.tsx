@@ -24,9 +24,9 @@ export default function EditableRow({
   const isEditing = editField === fieldKey
   return (
     <div className="flex items-center gap-3 px-4 py-2.5">
-      <span className="text-slate-400 flex-shrink-0">{icon}</span>
+      <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
         {isEditing ? (
           <div className="flex items-center gap-2 mt-0.5">
             <input
@@ -34,25 +34,25 @@ export default function EditableRow({
               onChange={e => onEditValChange(e.target.value)}
               placeholder={placeholder}
               autoFocus
-              className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
             />
             <button onClick={() => onSave(fieldKey, editVal)} disabled={saving}
               className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
               <Check size={12}/>
             </button>
-            <button onClick={onCancel} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg">
+            <button onClick={onCancel} className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
               <X size={12}/>
             </button>
           </div>
         ) : (
-          <p className="text-sm text-slate-800 truncate">
-            {value || <span className="text-slate-400 italic">Not set</span>}
+          <p className="text-sm text-slate-800 dark:text-slate-200 truncate">
+            {value || <span className="text-slate-400 dark:text-slate-500 italic">Not set</span>}
           </p>
         )}
       </div>
       {isAdmin && !isEditing && (
         <button onClick={() => onEdit(fieldKey, value ?? '')}
-          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg flex-shrink-0">
+          className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex-shrink-0">
           <Pencil size={12}/>
         </button>
       )}

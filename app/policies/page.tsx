@@ -78,18 +78,18 @@ function PolicyModal({ initial, onSave, onClose }: {
     onSave(await res.json())
   }
 
-  const inp = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-  const lbl = 'block text-xs font-medium text-slate-700 mb-1'
+  const inp = 'w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const lbl = 'block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-800">{initial ? 'Edit Policy' : 'Add Policy / Document'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{initial ? 'Edit Policy' : 'Add Policy / Document'}</h2>
+          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><X size={18}/></button>
         </div>
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-          {error && <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">{error}</div>}
+          {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-lg">{error}</div>}
           <div>
             <label className={lbl}>Title *</label>
             <input value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="e.g. Sobeys Refrigeration Lockout Procedure" />
@@ -126,8 +126,8 @@ function PolicyModal({ initial, onSave, onClose }: {
             <input value={url} onChange={e => setUrl(e.target.value)} className={inp} placeholder="https://… (Google Doc, SharePoint, PDF link…)" />
           </div>
         </div>
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 rounded-lg">Cancel</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-lg">Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">
             {saving && <Loader2 size={13} className="animate-spin"/>}
@@ -209,7 +209,7 @@ export default function PoliciesPage() {
   const activeCat = CATEGORIES.find(c => c.key === activeTab)!
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {(showModal || editingPolicy) && (
         <PolicyModal
           initial={editingPolicy}
@@ -219,15 +219,15 @@ export default function PoliciesPage() {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600"><Home size={18}/></button>
-        <button onClick={() => router.back()}             className="text-slate-400 hover:text-slate-600"><ArrowLeft size={18}/></button>
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><Home size={18}/></button>
+        <button onClick={() => router.back()}             className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><ArrowLeft size={18}/></button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-400">/</span>
-        <span className="text-sm font-medium text-slate-700">Policies &amp; Procedures</span>
+        <span className="text-slate-400 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Policies &amp; Procedures</span>
         {isAdmin && (
           <button
             onClick={() => { setEditingPolicy(null); setShowModal(true) }}
@@ -248,14 +248,14 @@ export default function PoliciesPage() {
             return (
               <button key={cat.key} onClick={() => { setActiveTab(cat.key); setStoreFilter(''); setTradeFilter('') }}
                 className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all ${
-                  active ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                  active ? 'bg-slate-800 text-white border-slate-800' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="text-lg">{cat.icon}</span>
-                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{count}</span>
+                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{count}</span>
                 </div>
-                <p className={`text-xs font-semibold leading-tight ${active ? 'text-white' : 'text-slate-700'}`}>{cat.label}</p>
+                <p className={`text-xs font-semibold leading-tight ${active ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}>{cat.label}</p>
               </button>
             )
           })}
@@ -266,12 +266,12 @@ export default function PoliciesPage() {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => setStoreFilter('')}
-                className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${!storeFilter ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>
+                className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${!storeFilter ? 'bg-slate-800 text-white border-slate-800' : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}>
                 All Stores
               </button>
               {STORES.map(s => (
                 <button key={s} onClick={() => setStoreFilter(storeFilter === s ? '' : s)}
-                  className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${storeFilter === s ? `${STORE_COLOURS[s]} border` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>
+                  className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${storeFilter === s ? `${STORE_COLOURS[s]} border` : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}>
                   {s}
                 </button>
               ))}
@@ -280,7 +280,7 @@ export default function PoliciesPage() {
               {TRADES.map(t => (
                 <button key={t.key} onClick={() => setTradeFilter(tradeFilter === t.key ? '' : t.key)}
                   className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
-                    tradeFilter === t.key ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                    tradeFilter === t.key ? 'bg-slate-600 text-white border-slate-600' : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
                   }`}>
                   {t.label}
                 </button>
@@ -291,7 +291,7 @@ export default function PoliciesPage() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
             <AlertTriangle size={15} className="flex-shrink-0"/>
             <span className="flex-1">{error}</span>
             <button onClick={loadPolicies} className="font-medium underline hover:no-underline flex-shrink-0">Retry</button>
@@ -300,7 +300,7 @@ export default function PoliciesPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
+          <div className="flex justify-center py-12 text-slate-400 dark:text-slate-500 text-sm gap-2">
             <Loader2 size={16} className="animate-spin"/> Loading…
           </div>
         )}
@@ -310,18 +310,18 @@ export default function PoliciesPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl">{activeCat.icon}</span>
             <div>
-              <h2 className="text-base font-bold text-slate-800">{activeCat.label}</h2>
-              <p className="text-xs text-slate-500">{activeCat.desc}</p>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">{activeCat.label}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{activeCat.desc}</p>
             </div>
           </div>
         )}
 
         {/* Empty state */}
         {!loading && !error && tabPolicies.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-14 text-center bg-white border border-slate-200 rounded-2xl">
+          <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
             <span className="text-4xl mb-3">{activeCat.icon}</span>
-            <p className="text-sm text-slate-500">No documents in this section yet.</p>
-            {isAdmin && <p className="text-xs text-slate-400 mt-1">Click &ldquo;+ Add&rdquo; in the header to add the first one.</p>}
+            <p className="text-sm text-slate-500 dark:text-slate-400">No documents in this section yet.</p>
+            {isAdmin && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;+ Add&rdquo; in the header to add the first one.</p>}
           </div>
         )}
 
@@ -329,16 +329,16 @@ export default function PoliciesPage() {
         {!loading && tabPolicies.length > 0 && (
           <div className="space-y-2">
             {tabPolicies.map(policy => (
-              <div key={policy.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <div key={policy.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-start gap-3">
                 {/* Icon */}
-                <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <FileText size={16} className="text-slate-500"/>
+                <div className="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FileText size={16} className="text-slate-500 dark:text-slate-400"/>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <p className="text-sm font-semibold text-slate-800">{policy.title}</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{policy.title}</p>
                     {policy.store && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${STORE_COLOURS[policy.store] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                         {policy.store}
@@ -350,25 +350,25 @@ export default function PoliciesPage() {
                       </span>
                     )}
                   </div>
-                  {policy.description && <p className="text-xs text-slate-500 leading-relaxed">{policy.description}</p>}
+                  {policy.description && <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{policy.description}</p>}
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {policy.url && (
                     <a href={policy.url} target="_blank" rel="noopener noreferrer"
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Open document">
+                      className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors" title="Open document">
                       <ExternalLink size={15}/>
                     </a>
                   )}
                   {isAdmin && (
                     <>
                       <button onClick={() => { setEditingPolicy(policy); setShowModal(true) }}
-                        className="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
+                        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Edit">
                         <Pencil size={13}/>
                       </button>
                       <button onClick={() => deletePolicy(policy.id)} disabled={deletingId === policy.id}
-                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40" title="Delete">
+                        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors disabled:opacity-40" title="Delete">
                         {deletingId === policy.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
                       </button>
                     </>

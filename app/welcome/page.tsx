@@ -109,14 +109,14 @@ function FeatureCard({ feature, color }: { feature: SubFeature; color: string })
   return (
     <button
       onClick={() => router.push(feature.href)}
-      className="w-full text-left bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all group"
+      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className={`text-sm font-semibold text-slate-900 group-hover:${c.text} transition-colors mb-1`}>{feature.title}</p>
-          <p className="text-xs text-slate-500 leading-relaxed">{feature.description}</p>
+          <p className={`text-sm font-semibold text-slate-900 dark:text-slate-100 group-hover:${c.text} transition-colors mb-1`}>{feature.title}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{feature.description}</p>
         </div>
-        <ChevronRight size={14} className="flex-shrink-0 text-slate-300 group-hover:text-slate-500 mt-0.5 transition-colors" />
+        <ChevronRight size={14} className="flex-shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 mt-0.5 transition-colors" />
       </div>
     </button>
   )
@@ -129,7 +129,7 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
   const c = COLOR_STYLES[section.color]
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Header bar */}
       <div className={`${c.bg} px-6 py-4`}>
         <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
 
       {/* Body */}
       <div className="px-6 py-5">
-        <p className="text-sm text-slate-600 leading-relaxed mb-5">{section.body}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-5">{section.body}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {section.features.map(f => (
@@ -166,7 +166,7 @@ export default function WelcomePage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-white">
@@ -210,19 +210,19 @@ export default function WelcomePage() {
         ))}
 
         {/* Simpro integration callout */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
           <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center">
               <Wrench size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-bold text-slate-900">Simpro Integration (Future)</h3>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Simpro Integration (Future)</h3>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                   Possible
                 </span>
               </div>
-              <p className="text-sm text-slate-500 leading-relaxed max-w-2xl">
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">
                 ColdIQ is designed to connect to Simpro, the job management platform many refrigeration companies already use. A future integration would let maintenance reports created in ColdIQ flow directly into Simpro job cards — eliminating double entry — and pull asset data and scheduled work orders back into ColdIQ. This is a planned capability as the platform grows.
               </p>
             </div>
@@ -230,8 +230,8 @@ export default function WelcomePage() {
         </div>
 
         {/* CTA */}
-        <div className="text-center py-8 border-t border-slate-200">
-          <p className="text-slate-500 text-sm mb-4">Ready to start?</p>
+        <div className="text-center py-8 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Ready to start?</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={() => router.push('/dashboard')}
@@ -242,7 +242,7 @@ export default function WelcomePage() {
             </button>
             <button
               onClick={() => router.push('/knowledge')}
-              className="inline-flex items-center gap-2 bg-white text-slate-700 font-semibold px-6 py-2.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors text-sm"
+              className="inline-flex items-center gap-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors text-sm"
             >
               Browse Knowledge Base
             </button>

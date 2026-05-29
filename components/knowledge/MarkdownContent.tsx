@@ -19,14 +19,14 @@ function parseInline(text: string): React.ReactNode {
 
     if (match[0].startsWith('**')) {
       parts.push(
-        <strong key={match.index} className="font-semibold text-slate-900">
+        <strong key={match.index} className="font-semibold text-slate-900 dark:text-slate-100">
           {match[2]}
         </strong>
       )
     } else {
       // backtick
       parts.push(
-        <code key={match.index} className="font-mono text-xs bg-slate-100 text-slate-800 px-1 py-0.5 rounded">
+        <code key={match.index} className="font-mono text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1 py-0.5 rounded">
           {match[3]}
         </code>
       )
@@ -68,11 +68,11 @@ function renderTable(rows: string[], key: number): React.ReactNode {
     <div key={key} className="overflow-x-auto my-4">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-slate-100">
+          <tr className="bg-slate-100 dark:bg-slate-800">
             {headerCells.map((cell, ci) => (
               <th
                 key={ci}
-                className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700 whitespace-nowrap"
+                className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap"
               >
                 {parseInline(cell)}
               </th>
@@ -83,9 +83,9 @@ function renderTable(rows: string[], key: number): React.ReactNode {
           {dataRows.map((row, ri) => {
             const cells = parseRow(row)
             return (
-              <tr key={ri} className={ri % 2 === 1 ? 'bg-slate-50' : ''}>
+              <tr key={ri} className={ri % 2 === 1 ? 'bg-slate-50 dark:bg-slate-900/50' : ''}>
                 {cells.map((cell, ci) => (
-                  <td key={ci} className="border border-slate-200 px-2 py-1.5 text-slate-700 align-top">
+                  <td key={ci} className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-slate-700 dark:text-slate-300 align-top">
                     {parseInline(cell)}
                   </td>
                 ))}
@@ -113,7 +113,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
     const key = nodes.length
     if (type === 'ul') {
       nodes.push(
-        <ul key={key} className="space-y-1 ml-4 list-disc list-outside text-sm text-slate-700 my-2">
+        <ul key={key} className="space-y-1 ml-4 list-disc list-outside text-sm text-slate-700 dark:text-slate-300 my-2">
           {items.map((item, ii) => (
             <li key={ii}>{parseInline(item)}</li>
           ))}
@@ -121,7 +121,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
       )
     } else {
       nodes.push(
-        <ol key={key} className="space-y-1 ml-4 list-decimal list-outside text-sm text-slate-700 my-2">
+        <ol key={key} className="space-y-1 ml-4 list-decimal list-outside text-sm text-slate-700 dark:text-slate-300 my-2">
           {items.map((item, ii) => (
             <li key={ii}>{parseInline(item)}</li>
           ))}
@@ -165,7 +165,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
     // ── Horizontal rule ──
     if (trimmed === '---') {
       flushList()
-      nodes.push(<div key={nodes.length} className="border-t border-slate-200 my-6" />)
+      nodes.push(<div key={nodes.length} className="border-t border-slate-200 dark:border-slate-700 my-6" />)
       i++
       continue
     }
@@ -176,7 +176,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
       const title = trimmed.slice(3).trim()
       if (isFirstH2) {
         nodes.push(
-          <h2 key={nodes.length} className="text-lg font-bold text-slate-900 mt-0 mb-4">
+          <h2 key={nodes.length} className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-0 mb-4">
             {parseInline(title)}
           </h2>
         )
@@ -194,7 +194,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
       const id = slugify(title)
       nodes.push(
         <div key={nodes.length} id={id} className="scroll-mt-20">
-          <h3 className="text-base font-semibold text-slate-900 mt-6 mb-2">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">
             {parseInline(title)}
           </h3>
         </div>
@@ -208,7 +208,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
       flushList()
       const title = trimmed.slice(5).trim()
       nodes.push(
-        <h4 key={nodes.length} className="text-sm font-semibold text-slate-700 mt-4 mb-1">
+        <h4 key={nodes.length} className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-4 mb-1">
           {parseInline(title)}
         </h4>
       )
@@ -245,7 +245,7 @@ export function renderMarkdown(content: string): React.ReactNode[] {
     // ── Regular paragraph ──
     flushList()
     nodes.push(
-      <p key={nodes.length} className="text-sm text-slate-700 leading-relaxed my-2">
+      <p key={nodes.length} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed my-2">
         {parseInline(trimmed)}
       </p>
     )

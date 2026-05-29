@@ -45,20 +45,20 @@ export default function RegisterPage() {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 w-full max-w-sm text-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-8 w-full max-w-sm text-center">
           <div className="flex items-baseline gap-0.5 justify-center mb-6">
             <span className="text-xl font-bold text-blue-600">Cold</span>
-            <span className="text-xl font-bold text-slate-800">IQ</span>
+            <span className="text-xl font-bold text-slate-800 dark:text-slate-200">IQ</span>
           </div>
           <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-4 text-2xl">
             ✉️
           </div>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">Check your email</h2>
-          <p className="text-sm text-slate-500 mb-1">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">Check your email</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
             We sent a confirmation link to <span className="font-medium">{email}</span>.
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             Click the link to confirm your address — your access request will then be sent to an administrator for approval.
           </p>
         </div>
@@ -67,43 +67,43 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-8 w-full max-w-sm">
         <div className="mb-6">
           <div className="flex items-baseline gap-0.5 mb-1">
             <span className="text-xl font-bold text-blue-600">Cold</span>
-            <span className="text-xl font-bold text-slate-800">IQ</span>
+            <span className="text-xl font-bold text-slate-800 dark:text-slate-200">IQ</span>
           </div>
-          <p className="text-sm text-slate-500">Request access to ColdIQ</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Request access to ColdIQ</p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Full name</label>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Full name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="Jane Smith" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Work email</label>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Work email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="you@company.com" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="Min 8 characters" />
           </div>
-          {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</p>}
           <button type="submit" disabled={loading}
             className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
             {loading ? 'Creating account…' : 'Request access'}
           </button>
         </form>
-        <p className="mt-4 text-xs text-center text-slate-500">
+        <p className="mt-4 text-xs text-center text-slate-500 dark:text-slate-400">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">Sign in</a>
+          <a href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">Sign in</a>
         </p>
       </div>
     </div>

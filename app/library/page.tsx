@@ -153,32 +153,32 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
           <Home size={18}/>
         </button>
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">
+        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
           <ArrowLeft size={18}/>
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-400">/</span>
-        <span className="text-sm font-medium text-slate-700">Manual Library</span>
+        <span className="text-slate-400 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Manual Library</span>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + search */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <BookOpen size={20} className="text-blue-600"/>
               Manual Library
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">All manuals and documents across your stores</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">All manuals and documents across your stores</p>
           </div>
           {isAdmin && (
             <div className="flex flex-col items-end gap-1">
@@ -200,7 +200,7 @@ export default function LibraryPage() {
                   }
                 }}
                 disabled={reindexing}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-50 transition-colors"
                 title="Re-process all manuals to update page-level citation links"
               >
                 {reindexing
@@ -220,7 +220,7 @@ export default function LibraryPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="pl-8 pr-8 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full sm:w-48"
+              className="pl-8 pr-8 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 w-full sm:w-48"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -238,7 +238,7 @@ export default function LibraryPage() {
               className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
                 !activeCategory
                   ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                  : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
               }`}
             >
               All
@@ -250,7 +250,7 @@ export default function LibraryPage() {
                 className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
                   activeCategory === cat
                     ? categoryColour(cat)
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
                 }`}
               >
                 {cat}
@@ -261,7 +261,7 @@ export default function LibraryPage() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-sm text-red-700">
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl mb-4 text-sm text-red-700 dark:text-red-400">
             <AlertTriangle size={15} className="flex-shrink-0"/>
             <span className="flex-1">{error}</span>
             <button onClick={loadDocs} className="font-medium underline hover:no-underline flex-shrink-0">Retry</button>
@@ -270,7 +270,7 @@ export default function LibraryPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex justify-center py-16 text-slate-400 text-sm gap-2">
+          <div className="flex justify-center py-16 text-slate-400 dark:text-slate-500 text-sm gap-2">
             <Loader2 size={16} className="animate-spin"/> Loading library…
           </div>
         )}
@@ -279,7 +279,7 @@ export default function LibraryPage() {
         {!loading && !error && docs.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <BookOpen size={32} className="text-slate-200 mb-3"/>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-400 dark:text-slate-500">
               {search || activeCategory ? 'No documents match your filters.' : 'No documents in the library yet.'}
             </p>
           </div>
@@ -291,10 +291,10 @@ export default function LibraryPage() {
             {docs.map(doc => (
               <div
                 key={doc.id}
-                className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 group"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 group"
               >
                 {/* Icon */}
-                <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0">
                   {doc.source_type === 'WEB'
                     ? <Globe size={16} className="text-blue-500"/>
                     : <FileText size={16} className="text-red-400"/>
@@ -313,7 +313,7 @@ export default function LibraryPage() {
                           if (e.key === 'Enter') saveTitle(doc.id)
                           if (e.key === 'Escape') setEditingId(null)
                         }}
-                        className="flex-1 text-sm px-2 py-1 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0"
+                        className="flex-1 text-sm px-2 py-1 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 bg-white dark:bg-slate-800 dark:text-slate-100 dark:border-blue-500"
                       />
                       <button
                         onClick={() => saveTitle(doc.id)}
@@ -333,7 +333,7 @@ export default function LibraryPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{doc.title}</p>
                       {doc.category && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 ${categoryColour(doc.category)}`}>
                           {doc.category}
@@ -342,10 +342,10 @@ export default function LibraryPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {doc.page_count && <span className="text-xs text-slate-400">{doc.page_count}p</span>}
-                    {doc.file_size  && <span className="text-xs text-slate-400">{formatBytes(doc.file_size)}</span>}
+                    {doc.page_count && <span className="text-xs text-slate-400 dark:text-slate-500">{doc.page_count}p</span>}
+                    {doc.file_size  && <span className="text-xs text-slate-400 dark:text-slate-500">{formatBytes(doc.file_size)}</span>}
                     {!isAdmin && (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         {doc.equipment_name ? `📎 ${doc.equipment_name}` : 'Unassigned'}
                       </span>
                     )}
@@ -361,7 +361,7 @@ export default function LibraryPage() {
                         <select
                           value={doc.equipment_id ?? ''}
                           onChange={e => assignEquipment(doc.id, e.target.value || null)}
-                          className="text-xs px-2 py-1 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-44"
+                          className="text-xs px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-44"
                           title="Assign to equipment"
                         >
                           <option value="">Unassigned</option>
