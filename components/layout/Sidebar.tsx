@@ -172,67 +172,72 @@ function SidebarContent({
         </button>
       </div>
 
-      {/* Equipment list */}
-      <div className="flex-1 overflow-y-auto px-2 pt-2 min-h-0">
-        <p className="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Equipment</p>
-        <button
-          onClick={() => handleSelect(null)}
-          className={cn(
-            'w-full text-left px-2 py-2.5 md:py-1.5 rounded-lg mb-1 text-xs transition-all',
-            !selected ? 'bg-white border border-slate-200 shadow-sm text-slate-900 font-medium' : 'text-slate-500 hover:bg-slate-100'
-          )}
-        >
-          General (no unit)
-        </button>
-
-        {equipment.map(eq => {
-          const alarms = (eq.active_alarms ?? []).filter((a: any) => !a.resolved_at)
-          const daysSincePm = eq.last_pm_date
-            ? Math.floor((Date.now() - new Date(eq.last_pm_date).getTime()) / 86400000)
-            : null
-          const pmOverdue = daysSincePm === null || daysSincePm > 90
-          return (
+      {/* Equipment list — admin only until live integration is ready */}
+      {currentUser?.role === 'admin' ? (
+        <>
+          <div className="flex-1 overflow-y-auto px-2 pt-2 min-h-0">
+            <p className="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Equipment</p>
             <button
-              key={eq.id}
-              onClick={() => handleSelect(eq)}
+              onClick={() => handleSelect(null)}
               className={cn(
-                'w-full text-left px-2.5 py-2.5 md:py-2 rounded-lg mb-0.5 transition-all',
-                selected?.id === eq.id
-                  ? 'bg-white border border-slate-200 shadow-sm'
-                  : 'hover:bg-slate-100'
+                'w-full text-left px-2 py-2.5 md:py-1.5 rounded-lg mb-1 text-xs transition-all',
+                !selected ? 'bg-white border border-slate-200 shadow-sm text-slate-900 font-medium' : 'text-slate-500 hover:bg-slate-100'
               )}
             >
-              <div className="flex items-start gap-2">
-                <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0', statusDot(eq.status))} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-slate-800 truncate leading-tight">{eq.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{eq.manufacturer} {eq.model}</p>
-                  {alarms.length > 0 && (
-                    <p className="text-[10px] text-red-500 font-medium mt-0.5">
-                      ⚠ {alarms.length} alarm{alarms.length>1?'s':''}
-                    </p>
-                  )}
-                  {pmOverdue && alarms.length === 0 && (
-                    <p className="text-[10px] text-amber-500 font-medium mt-0.5">
-                      {daysSincePm === null ? '⚑ No PM on record' : `⚑ PM overdue (${daysSincePm}d)`}
-                    </p>
-                  )}
-                </div>
-              </div>
+              General (no unit)
             </button>
-          )
-        })}
-      </div>
 
-      {/* Add equipment */}
-      <div className="px-2 pt-1 pb-1 border-t border-slate-200">
-        <button
-          onClick={() => { onAdd(); onMobileClose?.() }}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-2 rounded-lg border border-dashed border-slate-300 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-        >
-          <Plus size={12}/> Add equipment
-        </button>
-      </div>
+            {equipment.map(eq => {
+              const alarms = (eq.active_alarms ?? []).filter((a: any) => !a.resolved_at)
+              const daysSincePm = eq.last_pm_date
+                ? Math.floor((Date.now() - new Date(eq.last_pm_date).getTime()) / 86400000)
+                : null
+              const pmOverdue = daysSincePm === null || daysSincePm > 90
+              return (
+                <button
+                  key={eq.id}
+                  onClick={() => handleSelect(eq)}
+                  className={cn(
+                    'w-full text-left px-2.5 py-2.5 md:py-2 rounded-lg mb-0.5 transition-all',
+                    selected?.id === eq.id
+                      ? 'bg-white border border-slate-200 shadow-sm'
+                      : 'hover:bg-slate-100'
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0', statusDot(eq.status))} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-800 truncate leading-tight">{eq.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{eq.manufacturer} {eq.model}</p>
+                      {alarms.length > 0 && (
+                        <p className="text-[10px] text-red-500 font-medium mt-0.5">
+                          ⚠ {alarms.length} alarm{alarms.length>1?'s':''}
+                        </p>
+                      )}
+                      {pmOverdue && alarms.length === 0 && (
+                        <p className="text-[10px] text-amber-500 font-medium mt-0.5">
+                          {daysSincePm === null ? '⚑ No PM on record' : `⚑ PM overdue (${daysSincePm}d)`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="px-2 pt-1 pb-1 border-t border-slate-200">
+            <button
+              onClick={() => { onAdd(); onMobileClose?.() }}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-2 rounded-lg border border-dashed border-slate-300 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            >
+              <Plus size={12}/> Add equipment
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 min-h-0" />
+      )}
 
       {/* Apprentices overview — managers, journeymen, admins */}
       {currentUser?.role && ['admin', 'manager', 'journeyman'].includes(currentUser.role) && (

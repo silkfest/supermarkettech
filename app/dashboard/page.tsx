@@ -270,24 +270,26 @@ export default function Dashboard() {
             {theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}
           </button>
 
-          {/* Active unit badge — desktop only until live equipment integration is ready */}
-          {selected ? (
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs min-w-0 max-w-none"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"/>
-              <span className="font-medium text-slate-700 truncate">{selected.name}</span>
-              <span className="text-slate-400 truncate">· {selected.manufacturer} {selected.model}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-300"/>
-              No unit selected
-            </button>
+          {/* Active unit badge — admin only until live equipment integration is ready */}
+          {currentUser?.role === 'admin' && (
+            selected ? (
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs min-w-0 max-w-none"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"/>
+                <span className="font-medium text-slate-700 truncate">{selected.name}</span>
+                <span className="text-slate-400 truncate">· {selected.manufacturer} {selected.model}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="hidden md:flex ml-auto items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs text-slate-400"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"/>
+                No unit selected
+              </button>
+            )
           )}
         </div>
 
