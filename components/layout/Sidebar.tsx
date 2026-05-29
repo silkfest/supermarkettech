@@ -68,7 +68,7 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Logo + close button */}
-      <div className="px-4 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
+      <div className="safe-top px-4 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
         <div>
           <div className="flex items-baseline gap-0.5">
             <span className="text-[17px] font-bold tracking-tight text-blue-600">Cold</span>

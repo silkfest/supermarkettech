@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   Home, ArrowLeft, User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
-  FileText, Settings,
+  FileText, Settings, MessageCircle, Send,
 } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -44,6 +44,10 @@ interface Profile {
 interface Cert {
   id: string; cert_type: string; cert_subtype: string; cert_number: string
   issued_date: string | null; expiry_date: string | null; notes: string
+}
+interface FeedbackEntry {
+  id: string; content: string; created_at: string
+  manager: { name: string; email: string; role: string } | null
 }
 
 function fmt(dateStr: string | null) {
@@ -185,6 +189,12 @@ function ProfileContent() {
   const [editYear,      setEditYear]      = useState(1)
   const [editingAppr,   setEditingAppr]   = useState(false)
 
+  // Feedback
+  const [feedback,        setFeedback]        = useState<FeedbackEntry[]>([])
+  const [newFeedback,     setNewFeedback]      = useState('')
+  const [submittingFb,    setSubmittingFb]     = useState(false)
+  const [fbError,         setFbError]          = useState('')
+
   const isAdmin      = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
   const targetUserId = searchParams.get('userId')
   const isOwnProfile = !targetUserId || targetUserId === currentUser?.id
@@ -200,11 +210,15 @@ function ProfileContent() {
     setCurrentUser(me as Profile)
 
     const targetId = userId ?? targetUserId ?? user.id
-    const res = await fetch(`/api/profile?userId=${targetId}`)
+    const [res, fbRes] = await Promise.all([
+      fetch(`/api/profile?userId=${targetId}`),
+      fetch(`/api/feedback?userId=${targetId}`),
+    ])
     if (!res.ok) { router.push('/dashboard'); return }
     const data = await res.json()
     setProfile(data.profile as Profile)
     setCerts(data.certs as Cert[])
+    if (fbRes.ok) setFeedback(await fbRes.json())
 
     // Init editable fields
     setEditStartDate(data.profile.apprenticeship_start_date ?? '')
@@ -235,6 +249,22 @@ function ProfileContent() {
       setSaved(true); setTimeout(() => setSaved(false), 2000)
       setEditingAppr(false)
     }
+  }
+
+  async function submitFeedback() {
+    if (!profile || !newFeedback.trim() || submittingFb) return
+    setSubmittingFb(true)
+    setFbError('')
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technicianId: profile.id, content: newFeedback.trim() }),
+    })
+    setSubmittingFb(false)
+    if (!res.ok) { const j = await res.json(); setFbError(j.error ?? 'Failed to save'); return }
+    const entry = await res.json()
+    setFeedback(prev => [entry, ...prev])
+    setNewFeedback('')
   }
 
   async function deleteCert(certId: string) {
@@ -481,8 +511,8 @@ function ProfileContent() {
           <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
         </button>
 
-        {/* ── My Training quick link — apprentices only ─────────────────────── */}
-        {isOwnProfile && profile.role === 'apprentice' && (
+        {/* ── My Training quick link — apprentices and journeymen ────────────── */}
+        {isOwnProfile && ['apprentice', 'journeyman'].includes(profile.role) && (
           <button
             onClick={() => router.push('/apprentice/training')}
             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
@@ -496,6 +526,56 @@ function ProfileContent() {
             </div>
             <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
           </button>
+        )}
+
+        {/* ── Reviews & Feedback ───────────────────────────────────────────── */}
+        {(isOwnProfile || ['admin', 'manager'].includes(currentUser?.role ?? '')) && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={16} className="text-slate-400 dark:text-slate-500"/>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reviews &amp; Feedback</p>
+            </div>
+
+            {/* Manager write form — only shown when viewing someone else's profile */}
+            {!isOwnProfile && ['admin', 'manager'].includes(currentUser?.role ?? '') && (
+              <div className="space-y-2">
+                <textarea
+                  value={newFeedback}
+                  onChange={e => setNewFeedback(e.target.value)}
+                  placeholder="Write feedback or a review for this technician…"
+                  rows={3}
+                  className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 resize-none transition-colors"
+                />
+                {fbError && <p className="text-xs text-red-500">{fbError}</p>}
+                <div className="flex justify-end">
+                  <button
+                    onClick={submitFeedback}
+                    disabled={!newFeedback.trim() || submittingFb}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {submittingFb ? <Loader2 size={11} className="animate-spin"/> : <Send size={11}/>}
+                    Submit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Feedback list */}
+            {feedback.length === 0 ? (
+              <p className="text-xs text-slate-400 dark:text-slate-500 py-2">No feedback yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {feedback.map(f => (
+                  <div key={f.id} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-1">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{f.content}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                      {f.manager?.name ?? f.manager?.email ?? 'Manager'} · {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Settings quick link ───────────────────────────────────────────── */}

@@ -149,24 +149,16 @@ export default function KnowledgePage() {
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8">
-        <div className="max-w-5xl mx-auto">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 mb-3 transition-colors"
-          >
-            <ArrowLeft size={13} />
-            Dashboard
-          </button>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Knowledge Base</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Technical reference from the AI system prompt — manufacturer specs, diagnostic procedures, and field rules.
-              </p>
-            </div>
-          </div>
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <ArrowLeft size={20} />
+        </button>
+        <div className="flex items-baseline gap-0.5">
+          <span className="text-lg font-bold text-blue-600">Cold</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Knowledge Base</span>
       </div>
 
       {/* Content */}
