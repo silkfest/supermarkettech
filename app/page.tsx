@@ -28,9 +28,6 @@ export default function Home() {
           </Link>
         </div>
 
-        <p className="mt-8 text-xs text-slate-400">
-          Major Refrigeration · majorrefrigeration.ca
-        </p>
       </div>
     </div>
   )
