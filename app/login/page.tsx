@@ -67,7 +67,7 @@ export default function LoginPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+                  className="w-full px-3 py-2 text-sm text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="you@company.com" />
               </div>
               <button type="submit" disabled={resetLoading}
@@ -87,8 +87,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-8 w-full max-w-sm">
         <div className="mb-6">
           <div className="flex items-baseline gap-0.5 mb-1">
             <span className="text-xl font-bold text-blue-600">Cold</span>
@@ -98,9 +98,9 @@ export default function LoginPage() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors"
               placeholder="you@company.com" />
           </div>
           <div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
               </button>
             </label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100" />
+              className="w-full px-3 py-2 text-sm text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors" />
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</p>}
           <button type="submit" disabled={loading}
