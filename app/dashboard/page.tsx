@@ -24,11 +24,11 @@ const MODE_LABELS: Record<ChatMode, string> = {
 
 type NavItem =
   | { id: ChatMode; icon: React.ReactNode; label: string; href?: never }
-  | { id: 'KNOWLEDGE' | 'PROFILE'; icon: React.ReactNode; label: string; href: string }
+  | { id: 'KNOWLEDGE' | 'PROFILE' | 'MAINTENANCE'; icon: React.ReactNode; label: string; href: string }
 
 const BOTTOM_NAV_ITEMS: NavItem[] = [
   { id: 'EXPERT',      icon: <MessageSquare size={20}/>, label: 'Expert' },
-  { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance' },
+  { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance', href: '/maintenance' },
   { id: 'KNOWLEDGE',   icon: <BookOpen      size={20}/>, label: 'Knowledge', href: '/knowledge' },
   { id: 'PROFILE',     icon: <UserCircle    size={20}/>, label: 'Profile', href: '/profile' },
 ]
