@@ -11,7 +11,7 @@ import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
-  Menu, MessageSquare, WrenchIcon, Database, AlertTriangle, BookOpen, UserCircle, Moon, Sun,
+  Menu, MessageSquare, WrenchIcon, AlertTriangle, BookOpen, UserCircle, Moon, Sun,
 } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { buildSnapshot } from '@/lib/sensor'
@@ -228,32 +228,6 @@ export default function Dashboard() {
           <div className="md:hidden flex items-baseline gap-0.5 flex-shrink-0">
             <span className="text-base font-bold text-blue-500">Cold</span>
             <span className="text-base font-bold text-slate-800 dark:text-slate-200">IQ</span>
-          </div>
-
-          {/* Mode tabs — desktop */}
-          <div className="hidden md:flex gap-0.5 bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
-            {(['EXPERT', 'MAINTENANCE'] as ChatMode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={[
-                  'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                  mode === m
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                    : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                {MODE_LABELS[m]}
-              </button>
-            ))}
-            <span className="w-px h-5 self-center bg-slate-200 mx-0.5"/>
-            <button
-              onClick={() => router.push('/maintenance/components')}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 flex items-center gap-1.5"
-            >
-              <Database size={12}/>
-              Registry
-            </button>
           </div>
 
           {/* Current mode label — mobile only */}
