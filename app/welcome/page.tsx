@@ -261,6 +261,15 @@ export default function WelcomePage() {
                 </div>
               ))}
             </div>
+            {/* SOC 2 certification badge */}
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <ShieldCheck size={14} className="text-emerald-500 flex-shrink-0" />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Hosted on <span className="font-semibold text-slate-700 dark:text-slate-300">Supabase</span> infrastructure —
+                {' '}<span className="font-semibold text-emerald-600">SOC 2 Type II certified</span>.
+                Your data is stored and managed to the same standard required by enterprise and regulated industries.
+              </p>
+            </div>
           </div>
         </div>
 
