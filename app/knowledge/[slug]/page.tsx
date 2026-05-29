@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
+import PageShell from '@/components/layout/PageShell'
 
 interface RelatedManual {
   id: string
@@ -71,6 +72,7 @@ export default function KnowledgeTopicPage() {
   }
 
   return (
+    <PageShell>
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
@@ -219,5 +221,6 @@ export default function KnowledgeTopicPage() {
         </main>
       </div>
     </div>
+    </PageShell>
   )
 }

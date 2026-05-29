@@ -7,7 +7,6 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import Sidebar from '@/components/layout/Sidebar'
 import ChatPanel from '@/components/chat/ChatPanel'
-import ContextPanel from '@/components/equipment/ContextPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
@@ -308,10 +307,6 @@ export default function Dashboard() {
             <>
               <div className="flex-1 min-w-0">
                 <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
-              </div>
-              {/* Context panel — hidden on mobile to save space */}
-              <div className="hidden lg:block">
-                <ContextPanel equipment={selected} documents={documents} snapshot={snapshot} onUpload={openFilePicker} onDocRetried={() => loadDocuments(selected?.id)} userRole={currentUser?.role} onComponentsChanged={() => loadDocuments(selected?.id)}/>
               </div>
             </>
           )}

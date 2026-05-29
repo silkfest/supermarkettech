@@ -11,6 +11,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
+import PageShell from '@/components/layout/PageShell'
 
 // ── Color map — static class names so Tailwind purge can see them ─────────────
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag: string }> = {
@@ -147,6 +148,7 @@ export default function KnowledgePage() {
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
 
   return (
+    <PageShell>
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
@@ -199,5 +201,6 @@ export default function KnowledgePage() {
         </section>
       </div>
     </div>
+    </PageShell>
   )
 }

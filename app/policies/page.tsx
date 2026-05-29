@@ -8,6 +8,7 @@ import {
   Home, ArrowLeft, FileText, Plus, Pencil, Trash2,
   ExternalLink, Loader2, X, Check, AlertTriangle,
 } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -209,6 +210,7 @@ export default function PoliciesPage() {
   const activeCat = CATEGORIES.find(c => c.key === activeTab)!
 
   return (
+    <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {(showModal || editingPolicy) && (
         <PolicyModal
@@ -380,5 +382,6 @@ export default function PoliciesPage() {
         )}
       </div>
     </div>
+    </PageShell>
   )
 }

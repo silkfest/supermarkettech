@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Filter, AlertTriangle } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
+import PageShell from '@/components/layout/PageShell'
 
 interface RecentReport {
   id: string
@@ -267,8 +268,10 @@ function MaintenanceHubContent() {
 
 export default function MaintenanceHubPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading…</div>}>
-      <MaintenanceHubContent />
-    </Suspense>
+    <PageShell>
+      <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading…</div>}>
+        <MaintenanceHubContent />
+      </Suspense>
+    </PageShell>
   )
 }

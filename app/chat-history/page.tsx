@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2 } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -239,6 +240,7 @@ export default function ChatHistoryPage() {
   })
 
   return (
+    <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
@@ -317,5 +319,6 @@ export default function ChatHistoryPage() {
         </div>
       </div>
     </div>
+    </PageShell>
   )
 }

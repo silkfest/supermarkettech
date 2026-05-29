@@ -7,6 +7,7 @@ import {
   Building2, MapPin, Wrench, ChevronRight, Plus, X, ArrowLeft,
   Calendar, Package, Home,
 } from 'lucide-react'
+import PageShell from '@/components/layout/PageShell'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 interface StoreCard {
@@ -87,6 +88,7 @@ export default function StoresPage() {
   )
 
   return (
+    <PageShell>
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
@@ -252,5 +254,6 @@ export default function StoresPage() {
         </div>
       )}
     </div>
+    </PageShell>
   )
 }
