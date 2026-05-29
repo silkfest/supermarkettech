@@ -7,11 +7,11 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServer()
 
-  const [{ data: apprentices }, { data: allProgress }, { data: tasks }, { data: journeymen }] = await Promise.all([
-    supabase.from('users').select('id,name,email,mentor_id,created_at').eq('role', 'apprentice').order('name'),
+  const [{ data: technicians }, { data: allProgress }, { data: tasks }, { data: journeymen }] = await Promise.all([
+    supabase.from('users').select('id,name,email,role,mentor_id,created_at').in('role', ['apprentice', 'journeyman']).order('name'),
     supabase.from('apprentice_progress').select('user_id,task_id,status,completed_at'),
     supabase.from('training_tasks').select('id,category,points'),
-    supabase.from('users').select('id,name').in('role', ['journeyman','admin','manager']),
+    supabase.from('users').select('id,name').in('role', ['journeyman', 'admin', 'manager']),
   ])
 
   const totalPoints = (tasks ?? []).reduce((s, t) => s + t.points, 0)
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const journeymanMap: Record<string, string> = {}
   for (const j of journeymen ?? []) journeymanMap[j.id] = j.name
 
-  const result = (apprentices ?? []).map(a => {
+  const result = (technicians ?? []).map(a => {
     const myProgress = (allProgress ?? []).filter(p => p.user_id === a.id)
     const completed  = myProgress.filter(p => p.status === 'completed')
     const earnedXP   = completed.reduce((s, p) => {
@@ -28,16 +28,17 @@ export async function GET(req: NextRequest) {
       return s + (task?.points ?? 0)
     }, 0)
     return {
-      id:            a.id,
-      name:          a.name,
-      email:         a.email,
-      mentorId:      a.mentor_id,
-      mentorName:    a.mentor_id ? (journeymanMap[a.mentor_id] ?? null) : null,
+      id:             a.id,
+      name:           a.name,
+      email:          a.email,
+      role:           a.role,
+      mentorId:       a.mentor_id,
+      mentorName:     a.mentor_id ? (journeymanMap[a.mentor_id] ?? null) : null,
       completedTasks: completed.length,
       totalTasks,
       earnedXP,
-      totalXP: totalPoints,
-      joinedAt: a.created_at,
+      totalXP:        totalPoints,
+      joinedAt:       a.created_at,
     }
   })
 
