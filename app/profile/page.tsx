@@ -46,7 +46,16 @@ interface Cert {
   issued_date: string | null; expiry_date: string | null; notes: string
 }
 interface FeedbackEntry {
-  id: string; content: string; created_at: string
+  id: string
+  content: string | null
+  strengths: string | null
+  improvements: string | null
+  review_period: string | null
+  rating_overall: number | null
+  rating_technical: number | null
+  rating_safety: number | null
+  rating_teamwork: number | null
+  created_at: string
   manager: { name: string; email: string; role: string } | null
 }
 
@@ -190,8 +199,15 @@ function ProfileContent() {
   const [editingAppr,   setEditingAppr]   = useState(false)
 
   // Feedback
-  const [feedback,        setFeedback]        = useState<FeedbackEntry[]>([])
-  const [newFeedback,     setNewFeedback]      = useState('')
+  const [feedback,        setFeedback]         = useState<FeedbackEntry[]>([])
+  const [fbStrengths,     setFbStrengths]      = useState('')
+  const [fbImprovements,  setFbImprovements]   = useState('')
+  const [fbNotes,         setFbNotes]          = useState('')
+  const [fbPeriod,        setFbPeriod]         = useState('')
+  const [fbRatingOverall, setFbRatingOverall]  = useState(0)
+  const [fbRatingTech,    setFbRatingTech]     = useState(0)
+  const [fbRatingSafety,  setFbRatingSafety]   = useState(0)
+  const [fbRatingTeam,    setFbRatingTeam]     = useState(0)
   const [submittingFb,    setSubmittingFb]     = useState(false)
   const [fbError,         setFbError]          = useState('')
 
@@ -252,19 +268,31 @@ function ProfileContent() {
   }
 
   async function submitFeedback() {
-    if (!profile || !newFeedback.trim() || submittingFb) return
+    if (!profile || (!fbStrengths.trim() && !fbNotes.trim()) || submittingFb) return
     setSubmittingFb(true)
     setFbError('')
     const res = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ technicianId: profile.id, content: newFeedback.trim() }),
+      body: JSON.stringify({
+        technicianId:     profile.id,
+        content:          fbNotes       || null,
+        strengths:        fbStrengths   || null,
+        improvements:     fbImprovements || null,
+        review_period:    fbPeriod      || null,
+        rating_overall:   fbRatingOverall  || null,
+        rating_technical: fbRatingTech     || null,
+        rating_safety:    fbRatingSafety   || null,
+        rating_teamwork:  fbRatingTeam     || null,
+      }),
     })
     setSubmittingFb(false)
     if (!res.ok) { const j = await res.json(); setFbError(j.error ?? 'Failed to save'); return }
     const entry = await res.json()
     setFeedback(prev => [entry, ...prev])
-    setNewFeedback('')
+    setFbStrengths(''); setFbImprovements(''); setFbNotes('')
+    setFbPeriod(''); setFbRatingOverall(0); setFbRatingTech(0)
+    setFbRatingSafety(0); setFbRatingTeam(0)
   }
 
   async function deleteCert(certId: string) {
@@ -530,51 +558,178 @@ function ProfileContent() {
 
         {/* ── Reviews & Feedback ───────────────────────────────────────────── */}
         {(isOwnProfile || ['admin', 'manager'].includes(currentUser?.role ?? '')) && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={16} className="text-slate-400 dark:text-slate-500"/>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <MessageCircle size={15} className="text-slate-400 dark:text-slate-500"/>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reviews &amp; Feedback</p>
+              {feedback.length > 0 && (
+                <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-slate-500">{feedback.length} review{feedback.length > 1 ? 's' : ''}</span>
+              )}
             </div>
 
-            {/* Manager write form — only shown when viewing someone else's profile */}
+            {/* Manager write form */}
             {!isOwnProfile && ['admin', 'manager'].includes(currentUser?.role ?? '') && (
-              <div className="space-y-2">
-                <textarea
-                  value={newFeedback}
-                  onChange={e => setNewFeedback(e.target.value)}
-                  placeholder="Write feedback or a review for this technician…"
-                  rows={3}
-                  className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 resize-none transition-colors"
-                />
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-4">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">New Review</p>
+
+                {/* Review period */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Review Period <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={fbPeriod}
+                    onChange={e => setFbPeriod(e.target.value)}
+                    placeholder="e.g. Q2 2026, May 2026"
+                    className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-colors"
+                  />
+                </div>
+
+                {/* Star ratings */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Ratings <span className="font-normal text-slate-400">(optional)</span></label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { label: 'Overall',       value: fbRatingOverall, set: setFbRatingOverall },
+                      { label: 'Technical',     value: fbRatingTech,    set: setFbRatingTech },
+                      { label: 'Safety',        value: fbRatingSafety,  set: setFbRatingSafety },
+                      { label: 'Teamwork',      value: fbRatingTeam,    set: setFbRatingTeam },
+                    ] as { label: string; value: number; set: (n: number) => void }[]).map(r => (
+                      <div key={r.label}>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{r.label}</p>
+                        <div className="flex gap-1">
+                          {[1,2,3,4,5].map(n => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => r.set(r.value === n ? 0 : n)}
+                              className={`text-lg leading-none transition-colors ${n <= r.value ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700 hover:text-amber-300'}`}
+                            >★</button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Strengths */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Strengths</label>
+                  <textarea
+                    value={fbStrengths}
+                    onChange={e => setFbStrengths(e.target.value)}
+                    placeholder="What is this technician doing well?"
+                    rows={2}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 resize-none transition-colors"
+                  />
+                </div>
+
+                {/* Areas for improvement */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Areas for Improvement</label>
+                  <textarea
+                    value={fbImprovements}
+                    onChange={e => setFbImprovements(e.target.value)}
+                    placeholder="What should this technician work on?"
+                    rows={2}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 resize-none transition-colors"
+                  />
+                </div>
+
+                {/* Additional notes */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Additional Notes <span className="font-normal text-slate-400">(optional)</span></label>
+                  <textarea
+                    value={fbNotes}
+                    onChange={e => setFbNotes(e.target.value)}
+                    placeholder="Any other comments…"
+                    rows={2}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 resize-none transition-colors"
+                  />
+                </div>
+
                 {fbError && <p className="text-xs text-red-500">{fbError}</p>}
                 <div className="flex justify-end">
                   <button
                     onClick={submitFeedback}
-                    disabled={!newFeedback.trim() || submittingFb}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    disabled={(!fbStrengths.trim() && !fbNotes.trim()) || submittingFb}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {submittingFb ? <Loader2 size={11} className="animate-spin"/> : <Send size={11}/>}
-                    Submit
+                    Submit Review
                   </button>
                 </div>
               </div>
             )}
 
             {/* Feedback list */}
-            {feedback.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 py-2">No feedback yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {feedback.map(f => (
-                  <div key={f.id} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-1">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{f.content}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {f.manager?.name ?? f.manager?.email ?? 'Manager'} · {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {feedback.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-slate-400 dark:text-slate-500 text-center">No reviews yet.</p>
+              ) : feedback.map(f => (
+                <div key={f.id} className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {f.manager?.name ?? f.manager?.email ?? 'Manager'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        {f.review_period ? `${f.review_period} · ` : ''}
+                        {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                    {/* Overall rating badge */}
+                    {f.rating_overall && (
+                      <div className="flex-shrink-0 flex items-center gap-0.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-2 py-1">
+                        <span className="text-amber-500 text-xs">★</span>
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{f.rating_overall}/5</span>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {/* Category ratings */}
+                  {(f.rating_technical || f.rating_safety || f.rating_teamwork) && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { label: 'Technical', value: f.rating_technical },
+                        { label: 'Safety',    value: f.rating_safety },
+                        { label: 'Teamwork',  value: f.rating_teamwork },
+                      ] as { label: string; value: number | null }[]).filter(r => r.value).map(r => (
+                        <div key={r.label} className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 text-center">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">{r.label}</p>
+                          <div className="flex justify-center gap-0.5">
+                            {[1,2,3,4,5].map(n => (
+                              <span key={n} className={`text-xs ${n <= (r.value ?? 0) ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`}>★</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Strengths */}
+                  {f.strengths && (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-lg px-3 py-2">
+                      <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Strengths</p>
+                      <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">{f.strengths}</p>
+                    </div>
+                  )}
+
+                  {/* Improvements */}
+                  {f.improvements && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
+                      <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Areas for Improvement</p>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">{f.improvements}</p>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {f.content && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{f.content}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
