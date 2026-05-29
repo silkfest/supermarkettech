@@ -101,7 +101,8 @@ export default function LoginPage() {
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className={inputCls} placeholder="you@company.com" />
+              className={inputCls} placeholder="you@company.com"
+              onFocus={e => { const n = e.target.value.length; e.target.setSelectionRange(n, n) }} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -112,7 +113,8 @@ export default function LoginPage() {
               </button>
             </label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              className={inputCls} />
+              className={inputCls}
+              onFocus={e => { const n = e.target.value.length; e.target.setSelectionRange(n, n) }} />
           </div>
           {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
           <button type="submit" disabled={loading}
