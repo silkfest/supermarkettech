@@ -36,7 +36,7 @@ const SECTIONS: Section[] = [
     body: 'The AI assistant draws on a structured knowledge base covering every major manufacturer — Copeland, Hussmann, Danfoss, Sporlan, Bitzer, Arneg, and more. Upload your own manufacturer PDFs and the system reads them automatically; when you ask a question it cites the exact manual and section. Chat history is saved so you can revisit how a fault was diagnosed or share a thread with a colleague.',
     features: [
       { title: 'AI Expert Chat', description: 'Describe the fault — get ranked causes, confirmation tests, and step-by-step fixes.', href: '/dashboard' },
-      { title: 'Knowledge Base', description: '22 in-depth topics: valve theory, VFD fault codes, CO₂ transcritical, refrigerant retrofit, defrost wiring, and more.', href: '/knowledge' },
+      { title: 'Knowledge Base', description: 'In-depth technical topics covering valve theory, VFD fault codes, CO₂ transcritical, refrigerant retrofits, defrost wiring, and more.', href: '/knowledge' },
       { title: 'Manual Library', description: 'Upload manufacturer PDFs. The AI reads them and cites them directly in answers.', href: '/library' },
       { title: 'Chat History', description: 'Every conversation saved — search by date, equipment, or topic.', href: '/chat-history' },
     ],
@@ -47,10 +47,11 @@ const SECTIONS: Section[] = [
     color: 'violet',
     title: 'Training',
     tagline: 'Hands-on practice and structured learning',
-    body: 'Technicians can build fault-finding skills on a simulated rack before touching live equipment. The rack simulator presents realistic fault scenarios — high suction, head pressure issues, compressor faults — and walks through diagnosis interactively. The knowledge base doubles as a structured reference library for apprentices working through refrigeration fundamentals, electrical, and system-specific topics.',
+    body: 'Technicians can build fault-finding skills on a simulated rack before touching live equipment. The rack simulator presents realistic fault scenarios — high suction, head pressure issues, compressor faults — and walks through diagnosis interactively. Managers can create and assign training courses, track completion, and use the knowledge base as a structured reference library for apprentices working through refrigeration fundamentals and system-specific topics.',
     features: [
       { title: 'Rack Simulator', description: 'Practice diagnosing faults on a simulated system. No live equipment, no risk.', href: '/simulation' },
-      { title: 'Knowledge Base', description: 'Structured technical content across 22 topics — usable as training modules for apprentices.', href: '/knowledge' },
+      { title: 'Knowledge Base', description: 'Structured technical reference covering refrigeration fundamentals, manufacturer specs, and field procedures.', href: '/knowledge' },
+      { title: 'Courses', description: 'Create and assign training courses, track completion, and build a structured learning path for your team.', href: '/apprentice/training' },
     ],
   },
   {
@@ -84,11 +85,12 @@ const SECTIONS: Section[] = [
     color: 'rose',
     title: 'Apprentice & Journeyman Tracking',
     tagline: 'Structured development from day one',
-    body: 'The apprentice section gives managers visibility into where each technician is in their development. Track hours logged, skill assessments, certificates earned, and leave space for structured manager feedback. Apprentices can see their own progress and know exactly what they need to work toward to reach journeyman level. This section is actively being developed — the foundation is in place and capabilities are expanding.',
+    body: 'Managers get full visibility into where each technician is in their development. Track hours logged, certificates earned, and apprenticeship year. Managers can leave structured reviews with star ratings across technical skill, safety, and teamwork — with dedicated sections for strengths and areas to improve. Technicians see their own feedback, progress, and assigned courses directly in their profile.',
     features: [
-      { title: 'Apprentice Profiles', description: 'Per-technician view of hours, skills, and certificates — all in one place.', href: '/admin/apprentices' },
+      { title: 'Apprentice Profiles', description: 'Per-technician view of hours, apprenticeship year, and certificates — all in one place.', href: '/admin/apprentices' },
+      { title: 'Reviews & Feedback', description: 'Managers write structured reviews with ratings for technical skill, safety, and teamwork. Techs view their feedback in their profile.', href: '/profile' },
+      { title: 'Courses', description: 'Assign training courses and track completion — build a structured learning path from apprentice to journeyman.', href: '/apprentice/training' },
       { title: 'Team Management', description: 'Add technicians, assign roles (apprentice, journeyman, manager), and control access.', href: '/admin/users' },
-      { title: 'Technician Records', description: 'Individual technician profiles with service history and notes.', href: '/admin/technicians' },
     ],
   },
 ]
