@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
     color: 'amber',
     title: 'Policies & Procedures',
     tagline: 'Company documents, always current, always accessible',
-    body: "Store your company's operational procedures, safety protocols, and compliance documents in one place. Includes store procedures (with seasonal ones pinnable to the top), an on-call schedule where trades can be requested and accepted by technicians, and a truck stock list so everyone knows what should be on each van. Managers can update documents instantly — no more outdated printouts in binders.",
+    body: "No more digging through emails or hunting for the right binder — store all your company procedures, safety protocols, and compliance documents in one place. Includes store procedures (with seasonal ones pinnable to the top), an on-call schedule where trades can be requested and accepted by technicians, and a truck stock list so everyone knows what should be on each van. Managers can update anything instantly and everyone sees the latest version.",
     features: [
       { title: 'Store Procedures', description: 'SOPs and safety protocols — pin seasonal procedures to the top so the right info is always front and centre.', href: '/policies' },
       { title: 'On-Call Schedule', description: 'Post the on-call roster and let technicians request or accept trades directly in the app.', href: '/policies' },

@@ -211,7 +211,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: ChatMode }) {
   const modeHints: Record<ChatMode, string> = {
-    EXPERT:      'Ask about a fault, alarm code, or refrigeration system. The AI draws on 22 technical topics covering Copeland, Hussmann, Danfoss, Sporlan, Bitzer, and more — or from manuals you\'ve uploaded.',
+    EXPERT:      'Ask about a fault, alarm code, or refrigeration system. The AI draws on an in-depth knowledge base covering Copeland, Hussmann, Danfoss, Sporlan, Bitzer, and more — or from manuals you\'ve uploaded.',
     MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done and I\'ll help document it.',
   }
 
