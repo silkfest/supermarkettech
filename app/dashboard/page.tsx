@@ -299,7 +299,7 @@ export default function Dashboard() {
 
         {/* ─── Main content ─── */}
         {/* On mobile: extra bottom padding so content doesn't hide behind the bottom nav */}
-        <div className="flex-1 flex min-h-0 pb-14 md:pb-0">
+        <div className="flex-1 flex min-h-0 pb-nav md:pb-0">
           {mode === 'MAINTENANCE' ? (
             <div className="flex-1 min-w-0 bg-slate-50">
               <MaintenancePanel equipmentId={selected?.id} />
