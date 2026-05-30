@@ -155,6 +155,7 @@ export default function KnowledgePage() {
     : null
 
   const manufacturerTopics = TOPICS.filter(t => t.category === 'manufacturer')
+  const hvacTopics = TOPICS.filter(t => t.category === 'hvac')
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
 
   return (
@@ -238,6 +239,18 @@ export default function KnowledgePage() {
                     manualCount={getCount(topic.slug)}
                     onClick={() => router.push(`/knowledge/${topic.slug}`)}
                   />
+                ))}
+              </div>
+            </section>
+
+            {/* HVAC */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Commercial HVAC
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {hvacTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
                 ))}
               </div>
             </section>
