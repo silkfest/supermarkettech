@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter } from 'next/navigation'
@@ -42,7 +42,7 @@ function TypingDots() {
   )
 }
 
-function Citations({ sources }: { sources: CitationSource[] }) {
+function Citations({ sources, onOpenPdf }: { sources: CitationSource[]; onOpenPdf: (url: string, title: string) => void }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
       {sources.map((s) => {
@@ -59,16 +59,14 @@ function Citations({ sources }: { sources: CitationSource[] }) {
         )
         const baseClass = 'flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400'
         return s.signedUrl ? (
-          <a
+          <button
             key={s.chunkId}
-            href={pdfUrl(s.signedUrl, s.pageNumber)}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={() => onOpenPdf(pdfUrl(s.signedUrl!, s.pageNumber), s.title)}
             title={`Open ${s.title}${s.pageNumber != null ? `, p.${s.pageNumber}` : ''}`}
             className={`${baseClass} hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer`}
           >
             {inner}
-          </a>
+          </button>
         ) : (
           <div key={s.chunkId} className={baseClass} title="Source document">
             {inner}
@@ -117,7 +115,7 @@ function processInlineCitations(content: string): string {
   return content.replace(/\[Doc (\d+)[^\]]*\]/g, (_, n) => `[${n}](#cite-${n})`)
 }
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: string, title: string) => void }) {
   const isUser = msg.role === 'user'
   const sources = msg.sources
 
@@ -197,7 +195,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
         {/* Citations — shown after streaming completes */}
         {!isUser && !msg.isStreaming && msg.sources && msg.sources.length > 0 && (
-          <Citations sources={msg.sources} />
+          <Citations sources={msg.sources} onOpenPdf={onOpenPdf} />
         )}
 
         {/* Component registry links — shown after streaming completes */}
@@ -240,6 +238,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [error, setError]         = useState<string | null>(null)
 
   // Save conversation state
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [saveTitle,      setSaveTitle]      = useState('')
   const [savingChat,     setSavingChat]     = useState(false)
@@ -520,7 +519,35 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 relative">
+
+      {/* ── PDF viewer modal ── */}
+      {pdfViewer && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-slate-900">
+          <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+            <button
+              onClick={() => setPdfViewer(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+              title="Back to chat"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <p className="text-sm text-slate-200 font-medium truncate flex-1">{pdfViewer.title}</p>
+            <button
+              onClick={() => setPdfViewer(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <iframe
+            src={pdfViewer.url}
+            className="flex-1 w-full border-0"
+            title={pdfViewer.title}
+          />
+        </div>
+      )}
 
       {/* ── Message list ── */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
@@ -529,7 +556,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         ) : (
           <div className="max-w-2xl mx-auto w-full">
             {messages.map(msg => (
-              <MessageBubble key={msg.id} msg={msg} />
+              <MessageBubble key={msg.id} msg={msg} onOpenPdf={(url, title) => setPdfViewer({ url, title })} />
             ))}
 
             {/* Error banner */}
