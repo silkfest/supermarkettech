@@ -5977,6 +5977,150 @@ Perform before first cooling season startup after any period > 4 weeks without c
 - HSI replacements: stock silicon nitride 120VAC elements — verify resistance (40–70Ω cold); carry universal replacement kit for common RTU sizes
 `
 
+export const AAON_RTU_KNOWLEDGE = `
+# AAON / CES / Flo Rooftop Unit Knowledge Base
+
+AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop units sold under the AAON brand and distributed in some regions as CES (Climate Equipment Solutions) or Flo RTUs. Units are built-to-order with a wide option matrix. Key model families used in commercial/supermarket settings:
+
+## Model Families
+
+**RN Series — 6 to 70 tons**
+- Most common AAON unit in supermarket and light-industrial settings
+- Gas/electric, electric/electric, or heat pump configurations
+- R-410A (legacy) and R-454B (Next Gen models, 2023+)
+- Available with VFDs on supply and return fans (standard on many configurations)
+- Next Gen RN (11–70 ton): improved scroll compressors, updated MCS-5 controls, R-454B ready
+
+**RQ Series — 2 to 25 tons**
+- Light commercial / smaller store applications
+- Same MCS control platform as RN
+- Belt-drive supply fan standard on smaller tonnages; direct-drive on larger
+- R-410A standard; Next Gen RQ available with R-454B
+
+**RZ Series — 4 to 25 tons**
+- Condensing unit + air handler split variant; less common in rooftop applications
+- Same refrigeration and control architecture as RN/RQ
+
+**OH Series — Outdoor Horizontal**
+- Horizontal-discharge for ground-level or side-wall mounting
+- Same compressor and control platform as RN
+
+## AAON Modular Control System (MCS)
+
+AAON uses a proprietary control platform called MCS (Modular Control System). All AAON RTUs shipped since ~2010 use MCS; older units may have legacy Proctor-Jones or Microtech controls.
+
+**MCS display panel:**
+- 2-line or touchscreen LCD depending on model generation
+- Navigate with UP/DOWN/ENTER/ESC or touchscreen
+- Main menu → Diagnostics → Fault Log: stores last 10–20 fault events with timestamp
+- Main menu → Status: shows all live sensor readings (supply air, return air, coil temps, pressures)
+- Main menu → Setpoints: view/edit occupied/unoccupied setpoints, deadband, heat/cool stages
+
+**MCS BACnet/Modbus integration:**
+- BACnet MS/TP or BACnet IP via optional gateway card
+- Modbus RTU standard on most models (RS-485 port on control board)
+- Default Modbus address: 1 (field-configurable via DIP switch or menu)
+- BACnet device instance: configurable via MCS menu
+- All MCS points are mappable; AAON publishes full BACnet/Modbus point lists per model
+
+## MCS Fault Codes — Common A & B Codes
+
+| Code | Fault | Reset Type |
+|------|-------|-----------|
+| A01  | Supply air high temperature limit | Auto |
+| A02  | Freeze protection (coil temp < 34°F) | Auto |
+| A03  | Return air sensor fault (open/short) | Auto |
+| A04  | Supply air sensor fault (open/short) | Auto |
+| A11  | Compressor 1 high pressure lockout | Manual |
+| A12  | Compressor 1 low pressure lockout | Auto (3 trips → manual) |
+| A13  | Compressor 1 overload / internal thermostat | Manual |
+| A14  | Compressor 1 high discharge temperature | Auto |
+| A21  | Compressor 2 high pressure lockout | Manual |
+| A22  | Compressor 2 low pressure lockout | Auto |
+| A31/A41 | Compressor 3/4 (large units) — same pattern | |
+| B01  | Supply fan overload / VFD fault | Manual |
+| B02  | Supply fan airflow proving switch failed | Auto |
+| B03  | Return fan overload / VFD fault | Manual |
+| B11  | Gas heat — failed ignition (3 attempts) | Manual |
+| B12  | Gas heat — high limit tripped | Auto |
+| B13  | Gas heat — rollout switch tripped | Manual |
+| C01  | Economizer actuator fault (end-switch not reached) | Auto |
+| C02  | Economizer enthalpy sensor fault | Auto |
+
+**Manual reset procedure:** Navigate to Main menu → Diagnostics → Reset Lockouts, or cycle power (30-second minimum off) — note that cycling power does NOT reset manual-reset faults on all models; use menu reset.
+
+## Compressor Configuration
+
+- Scroll compressors throughout: Copeland ZP/ZF or Danfoss/Maneurop MT/TT series
+- Tandem compressors (two compressors, one circuit) on 10–25 ton models
+- Quad compressors (four compressors, two circuits) on 20–40 ton models
+- Large RN (40–70 ton): may have 6–8 compressors on 3–4 circuits
+- Compressor staging via MCS: first-stage cooling = 50% capacity (one compressor or tandem lead)
+- Compressor minimum run time: 3 minutes (factory default, field-adjustable)
+- Low ambient lockout: 25°F default (field-adjustable); units can run to 0°F with low-ambient kit
+
+**Refrigerant charging (R-410A RN/RQ):**
+- System charged by weight at factory; use factory charge weight on nameplate + superheat/subcooling method
+- Target suction superheat: 10–15°F at compressor suction service valve
+- Target subcooling at liquid line: 10–15°F
+- R-410A critical charge: ±0.5 lb on tandem systems will significantly affect performance
+
+**R-454B (Next Gen) charging:**
+- R-454B is mildly flammable (A2L) — follow AAON Next Gen IOM safety procedures
+- Charge only as liquid (invert cylinder) — do not charge vapor-phase
+- Same superheat/subcooling targets as R-410A
+
+## Economizer
+
+- Integrated economizer standard on most configurations
+- Actuator: Belimo or equivalent spring-return 0–10VDC actuator (24VAC power)
+- Control signal: 0VDC = closed, 10VDC = full open
+- Enthalpy sensing: differential enthalpy (supply + return enthalpy) or dry-bulb switchover
+- Economizer minimum position: field-adjustable 0–100% (default 10–20% for outdoor air ventilation)
+- C01 fault: actuator did not reach commanded position — check actuator wiring, actuator end-switch, mechanical binding of damper
+- Economizer override test: MCS menu → Outputs → Economizer → manually command to 100% open and verify damper physically opens
+
+## Fan System
+
+**Belt-drive (RQ 2–6 ton, some RN models):**
+- V-belt tension: 1/2" deflection per foot of span at manufacturer-specified force
+- Pulley alignment: use laser alignment tool or straightedge — misalignment > 1° causes rapid belt wear
+- Belt replacement: use Gates or equivalent OEM-spec belt; AAON nameplate lists belt part number
+- Bearing lubrication: NLGI #2 grease, 2–3 pumps per bearing per season
+
+**Direct-drive / VFD (RN Series, larger RQ):**
+- VFD faults: navigate to MCS → Diagnostics → VFD Status for drive fault codes
+- VFD common faults: overcurrent (OC), overvoltage (OV), input phase loss (IPL)
+- VFD reset: MCS menu → Reset Lockouts or cycle 24VAC control power to VFD
+- Minimum VFD speed: 20 Hz default (do not reduce below 15 Hz — motor overheating risk)
+
+## Gas Heat Section
+
+- Modulating gas valve (0–100%) or staged (two-position: low/high fire) depending on model
+- Ignition: direct-spark igniter or hot surface igniter (HSI) — see unit nameplate
+- Flame sensor: microamp flame current — minimum 1.0µA to hold; typical 2–4µA
+- B11 lockout (failed ignition): verify gas supply pressure (3.5" WC min for natural gas at manifold), check igniter gap (1/8" for spark, 1/4–3/8" for HSI), verify flame sensor rod is clean and positioned correctly
+- Heat exchanger inspection: AAON uses stainless steel or aluminized steel — inspect annually with mirror and light; cracked HX = unit shutdown, tag out
+
+## Seasonal Startup Checklist (AAON RTU)
+
+1. Check and replace filters (1" MERV-8 standard, 2" optional)
+2. Inspect and clean evaporator and condenser coils — use coil cleaner, low-pressure rinse
+3. Belt inspection and tension (belt-drive models)
+4. Verify refrigerant pressures match expected values at current ambient
+5. Test economizer full-stroke (0→100%→0) via MCS menu
+6. Verify MCS setpoints match current building schedule
+7. Test heat sequence: command heat call via MCS, verify flame establishment within 3 ignition attempts
+8. Check all electrical connections for tightness (torque spec per terminal label)
+9. Verify condensate drain is clear and draining
+
+## CES / Flo RTU Notes
+
+- **CES (Climate Equipment Solutions)**: Regional distributor of AAON units in certain US markets. Units are AAON-manufactured with CES branding on the label. Service procedures, parts, and controls are identical to AAON RN/RQ. CES part numbers cross-reference directly to AAON part numbers.
+- **Flo RTU**: AAON-based units distributed under the Flo brand in select markets. Same platform — MCS controls, AAON compressors, identical service access and wiring. When troubleshooting Flo units, reference AAON RN or RQ IOM for the equivalent tonnage.
+- Parts ordering: Order directly from AAON (1-918-583-2266) or through local AAON rep — AAON controls boards and compressors are not stocked at most distributors; lead times 3–10 days typical.
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 

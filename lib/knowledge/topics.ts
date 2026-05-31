@@ -26,6 +26,7 @@ import {
   YORK_RTU_KNOWLEDGE,
   TRANE_RTU_KNOWLEDGE,
   RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
+  AAON_RTU_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -364,6 +365,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
     manualKeywords: [],
     tags: ['Troubleshooting', 'RTU', 'Economizer', 'HVAC'],
+    category: 'hvac',
+  },
+  {
+    slug: 'aaon-rtu',
+    title: 'AAON / CES / Flo RTUs',
+    shortTitle: 'AAON RTU',
+    description: 'AAON RN and RQ series rooftop units (also sold as CES or Flo RTUs): MCS control system, fault codes, compressor staging, economizer, VFD fan systems, gas heat, and R-454B Next Gen models.',
+    iconName: 'Wind',
+    colorClass: 'cyan',
+    content: AAON_RTU_KNOWLEDGE,
+    manualKeywords: ['aaon', 'rn series', 'rq series', 'ces rtu', 'flo rtu'],
+    tags: ['AAON', 'CES', 'Flo', 'MCS', 'RTU'],
     category: 'hvac',
   },
 ]

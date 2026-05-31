@@ -29,6 +29,7 @@ import {
   YORK_RTU_KNOWLEDGE,
   TRANE_RTU_KNOWLEDGE,
   RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
+  AAON_RTU_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 const KNOWLEDGE_MAP: Record<string, string> = {
@@ -59,6 +60,7 @@ const KNOWLEDGE_MAP: Record<string, string> = {
   'york-rtu':                   YORK_RTU_KNOWLEDGE,
   'trane-rtu':                  TRANE_RTU_KNOWLEDGE,
   'rtu-diagnostics':            RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
+  'aaon-rtu':                   AAON_RTU_KNOWLEDGE,
 }
 
 export interface ContentMatch {
