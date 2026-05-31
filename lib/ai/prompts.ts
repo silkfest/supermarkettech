@@ -6380,6 +6380,450 @@ Temprite sizing is based on refrigerant type and system capacity (tons or kW). A
 - Alkylbenzene (AB) oil: compatible
 `
 
+export const DIXELL_KNOWLEDGE = `
+# Dixell Controllers — Supermarket Refrigeration Reference
+
+## Overview
+Dixell (a Schneider Electric brand) manufactures electronic controllers widely used in supermarket display cases, walk-in coolers/freezers, and condensing units. Three main families appear in field service:
+- **XR series** — single- and dual-probe temperature controllers; most common on reach-in cases and condensing units
+- **XC series** — advanced case controllers with multi-probe inputs, EEV support, and Modbus/RS-485
+- **XW series** — rack-level and system controllers for condensing units and small systems
+
+## XR Series — Common Models
+
+| Model | Probes | Relays | Key Use |
+|-------|--------|--------|---------|
+| XR02CX | 1 | 1 comp | Simple temp control, no defrost relay |
+| XR20C | 1 (+ alarm) | 2 | Basic reach-in; alarm relay for door/temp |
+| XR30C | 2 (air + evap) | 3 | Display case; defrost termination by evap temp |
+| XR40C | 4 | 3 | Full case control; separate fan, defrost, comp relays |
+| XR60C | 2 | 4 | Enhanced alarm + anti-condensate heater relay |
+| XR70C | 2 (+ optional) | 3 | Condensing unit control; pressure input capable |
+
+## XC Series — Advanced Case Controllers
+
+| Model | Description |
+|-------|-------------|
+| XC440C | Plug-in refrigeration controller; reach-in and self-contained |
+| XC460H | Self-contained heated/cooled cabinets |
+| XC560D | Display case with EEV driver; Modbus RS-485 |
+| XC660C | Full case control; glass heat, door switch, lighting relay |
+| XC1008D | Multi-circuit; controls up to 8 cases from one controller |
+
+## Parameter Navigation
+
+**Entering programming mode (most XR/XC models):**
+- Hold **SET** for 5 seconds → enters first parameter
+- Or simultaneously press **SET + UP** for 5 seconds
+- Some models: hold **SET + DOWN** to enter protected parameters (Pr2 set)
+
+**Navigating:**
+- **UP / DOWN** — scroll through parameter values
+- **SET** — confirm and advance to next parameter
+- **DEF** button (if present) — manually trigger defrost cycle
+- Display returns to normal after ~30 seconds of inactivity
+
+## Key Parameters (XR Series)
+
+| Code | Description | Typical Range |
+|------|-------------|---------------|
+| St | Temperature setpoint | −40 to +50°C |
+| LS | Minimum setpoint limit | −50°C |
+| US | Maximum setpoint limit | +50°C |
+| Hy | Compressor differential (hysteresis) | 0.5–10°C |
+| OdS | Setpoint offset (display correction) | ±20°C |
+| AC | Anti-sweat heater ON above cabinet temp | −20 to +15°C |
+| rES | Resolution (0 = 1°, 1 = 0.1°) | 0 or 1 |
+| Con | Compressor restart delay on power-up | 0–15 min |
+| COn | Minimum compressor ON time | 0–15 min |
+| COF | Minimum compressor OFF time | 0–15 min |
+| dFt | Defrost type: 0=EL (electric), 1=hot gas, 2=natural off-cycle | 0, 1, or 2 |
+| dI | Defrost interval (hours between defrosts) | 1–24 h |
+| dt | Maximum defrost duration | 1–99 min |
+| d8 | Defrost end temperature (evap probe terminates defrost) | −30 to +40°C |
+| dd | Drain/drip time after defrost ends (fans off, heaters off) | 0–15 min |
+| Fdt | Fan delay after defrost (fans hold off until cabinet recovers) | 0–30 min |
+| FAd | Fan differential — fans cut off when evap temp drops below setpoint by this amount | 0–10°C |
+| AH | High temp alarm offset above setpoint | 1–20°C |
+| AL | Low temp alarm offset below setpoint | 1–20°C |
+| Ad | Alarm delay after startup or door open | 0–240 min |
+| PbC | Probe type: 0=NTC, 1=PT100, 2=PT1000 | 0, 1, or 2 |
+
+## Alarm and Error Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| E1 | Probe 1 (cabinet air) fault — open or short | Check probe connector, measure resistance (NTC: 10kΩ at 25°C; PT1000: ~1000Ω at 0°C) |
+| E2 | Probe 2 (evaporator) fault | Same as E1; check for moisture/ice on probe tip |
+| E3 | Probe 3 fault (model-dependent) | Probe 3 wiring or sensor |
+| E4 | Probe 4 fault (model-dependent) | Probe 4 wiring or sensor |
+| HA | High temperature alarm | Cabinet temp exceeded setpoint + AH for longer than Ad delay |
+| LA | Low temperature alarm | Cabinet temp below setpoint − AL for longer than Ad delay |
+| dEF | Defrost in progress (status, not fault) | Normal; shows until defrost terminates |
+| drd | Drain time active after defrost (status) | Normal; fans off during this period |
+| oFF | Controller output disabled | Check if manually disabled; verify On/Off input wiring |
+| Err | Parameter checksum error | Reset to factory defaults; re-program |
+| EEr | EEPROM write error | Power cycle; if persists, replace controller |
+
+**Probe resistance quick check (NTC 10kΩ type):**
+- −20°C ≈ 97kΩ
+- 0°C ≈ 32kΩ
+- 10°C ≈ 20kΩ
+- 25°C ≈ 10kΩ
+- 40°C ≈ 5.7kΩ
+Infinite resistance = open (wiring break or probe failed open). Near-zero = short (probe shorted or wrong probe type).
+
+**PT1000 probe:**
+- 0°C = 1000Ω, increases ~3.85Ω per °C. At −20°C ≈ 923Ω; at 20°C ≈ 1078Ω.
+
+## Defrost Configuration
+
+**Electric defrost (dFt = 0):**
+- Compressor off, electric heater relay ON
+- Terminates when evap probe (Pb2) reaches d8 temperature OR dt time expires (whichever first)
+- Drain time dd runs after termination; then Fdt fan delay before fans restart
+- If Pb2 (evap probe) is failed/absent, defrost runs full dt minutes — common cause of over-defrost flooding
+
+**Hot gas defrost (dFt = 1):**
+- Compressor stays ON, hot gas solenoid opens (via defrost relay)
+- Evap probe (Pb2) terminates defrost at d8 temp
+- Typical d8 for hot gas: +15 to +25°C on evap
+- After termination: dd drain time, Fdt fan delay — fans must wait for evap to cool below case setpoint or frost re-forms
+
+**Natural/off-cycle defrost (dFt = 2):**
+- Compressor off, no heaters — case ambient melts frost
+- Only suitable for MT (medium temp) cases, typically ≥0°C setpoint
+- d8 and dt still apply as safety limits
+
+## Manual Defrost
+Press **DEF** button (if equipped) to start a defrost cycle immediately.
+On models without a DEF button: enter parameters and toggle a manual-start parameter (typically \`Mn\` or \`MdF\` = 1).
+
+## Communication (RS-485 / Modbus)
+- Most XC series and XR60C/XR70C support RS-485 Modbus RTU
+- Default baud rate: **9600 bps**, 8-N-1
+- Address set via \`Add\` parameter (1–247)
+- Wired daisy-chain: A+ to A+, B− to B−, common ground; terminate last device with 120Ω resistor
+- Controllers appear as Modbus slave nodes on Xweb500 / third-party BMS
+
+## Wiring Notes
+
+**Probe inputs (2-wire NTC or PT1000):**
+- Polarity-insensitive; any order on terminals
+- Maximum cable run: ~50 m for NTC; ~100 m for PT1000 (lower impedance)
+- Use shielded cable near VFDs or neon lighting; float shield at controller end
+
+**Relay outputs:**
+- All relays are volt-free contacts (SPDT or SPST — check data sheet)
+- Controller does NOT supply load voltage; wire external 240V or 24V circuits through the contacts
+- Relay ratings typically 8A resistive, 2A inductive — do not switch large fan/heater loads directly without contactors
+
+**Power supply:**
+- Most XR series: 115/230 VAC ±10%, 50/60 Hz
+- Some XC series: 24 VAC/DC option — verify label before wiring
+
+## Firmware / Reset Procedures
+
+**Factory reset (most models):**
+1. Enter programming mode (hold SET 5 sec)
+2. Navigate to parameter \`rE\` or \`rES\` (model-dependent)
+3. Set to 1 (or press SET to confirm)
+4. Controller reloads factory defaults — all setpoints and defrost programming reset
+
+**If display shows garbage or locked up:**
+- Power cycle with 5-minute wait (capacitors discharge)
+- Check supply voltage; Dixell controllers are sensitive to voltage brownouts and spikes
+- A suppressor (MOV) across the supply is recommended on noisy circuits
+
+## Troubleshooting Table
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| E1/E2 alarm, display shows dashes | Probe open or disconnected | Disconnect probe, measure resistance at controller terminals |
+| HA alarm, product warm, compressor OFF | Compressor relay welded OFF, or Con/COF lockout | Check relay output with DMM; shorten Con/COF; check for manual oFF |
+| HA alarm, compressor running | Insufficient cooling — not a controller fault | Check refrigerant, TXV/EEV, condenser, fan motors |
+| Defrost never terminates — full dt runs each time | Evap probe (E2) failed or unconnected | Measure Pb2 resistance; confirm probe is mounted on evap coil, not air stream |
+| Case over-defrosts, floods after every defrost | d8 set too high (evap never reaches it) or dt too long | Lower dt; verify Pb2 location; lower d8 to +18°C for medium-temp |
+| Fans not running after defrost | Fdt delay still active, or fan relay failed | Wait Fdt minutes; if fans still off, check fan relay with DMM |
+| Controller shows correct temp but product freezes | Setpoint offset OdS incorrect; probe mounted in air stream, not product level | Check OdS; reposition probe away from evap discharge |
+| No display | No power or blown internal fuse | Check voltage at terminals; check internal fuse (if accessible) |
+| Relay chattering (rapid ON/OFF) | Hysteresis Hy set too low | Increase Hy to at least 1°C to prevent short-cycling |
+`
+
+export const KYSOR_WARREN_KNOWLEDGE = `
+# Kysor Warren Display Cases — Supermarket Refrigeration Reference
+
+## Overview
+Kysor Warren is a major supermarket display case manufacturer, now a brand under Daikin Applied. Cases are found in stores across North America under the Kysor Warren name and occasionally under earlier GE Commercial Food Service branding. Product lines span medium-temperature (MT) and low-temperature (LT) applications: open multi-deck merchandisers, coffin/island cases, reach-in glass-door cases, and service counter cases.
+
+## Product Line Summary
+
+| Series | Type | Temp Class | Typical Application |
+|--------|------|-----------|---------------------|
+| EcoFlex multi-deck | Open multi-deck | MT | Produce, dairy, deli, beverages |
+| C-Series coffin / island | Low-profile island | LT / MT | Frozen foods, ice cream |
+| G-Series / Vision | Glass door reach-in | MT or LT | Beverages, frozen meals |
+| EcoShine LED | Retrofit LED lighting | — | Energy upgrade for older cases |
+| Service/Specialty | Service counter | MT | Meat, deli, seafood, bakery |
+
+**Typical operating setpoints:**
+- MT multi-deck (produce, dairy): 34–38°F (1–3°C) discharge air
+- MT service case (meat, deli): 34–38°F
+- LT coffin / island (frozen): −10 to 0°F (−23 to −18°C)
+- LT reach-in glass door (frozen): −10 to 0°F
+- Beverage reach-in (MT): 34–40°F
+
+## Fan Motors
+
+**Older cases — shaded-pole motors:**
+- Common sizes: 1/15 HP, 1/20 HP, 1/30 HP
+- Wiring: 2-wire, line voltage (115V or 208/230V)
+- High failure rate; replace like-for-like — match HP, RPM, frame, and voltage
+- Shaded-pole motors run hot by design; check for adequate clearance and no coil ice blocking airflow
+
+**Newer EcoFlex / energy-upgrade cases — EC (electronically commutated) motors:**
+- 3-wire (or 4-wire): L, N, and a control wire (0–10V DC signal or switched 24V)
+- Speed controlled by case controller or store controller (Emerson E2/E3 fan output)
+- Common fault: no control signal → motor runs at default speed or stops; verify control wire voltage
+- EC motor replacement: match manufacturer, frame, and control input type (0–10V vs. PWM vs. on/off)
+- EC motors are polarity-sensitive on the DC control wire — reversed control wire = no speed control
+
+**Fan cycling:**
+- Most MT cases: fans run continuously (except defrost)
+- LT cases: fans typically off during electric defrost; delay 3–10 min after defrost before restart
+- Evaporator fan delay relay or controller parameter (Fdt on Dixell) prevents blowing warm air into case after defrost
+
+## Anti-Condensate (Anti-Sweat) Heaters
+
+Heaters prevent moisture condensing on glass doors, mullions (stiles), and case rails in humid store environments.
+
+**Types present on Kysor Warren cases:**
+- **Glass door edge heaters** — embedded in door frame; 24V or 120V; run continuously or switched
+- **Mullion / stile heaters** — vertical frame heaters between doors; 120V or 240V resistance wire
+- **Top rail heaters** — prevent dripping from case top
+- **Bottom rail / front rail heaters** — prevent moisture pooling
+
+**Control:**
+- Simple on/off via store humidity switch or timer (older stores)
+- Modern cases: anti-sweat controller (Paragon, Intermatic timer, or store controller ASH output)
+- Dixell XR60C/XC series: \`AC\` parameter — heaters switch on when cabinet air exceeds AC setpoint (high humidity condition)
+- Energy-saving mode: cycle heaters on timed intervals rather than continuous — reduces energy 40–60%
+
+**Troubleshooting heater faults:**
+- Sweating glass/mullions: heater open-circuited or not powered; measure resistance and verify supply voltage
+- Heater wire resistance (typical): 50–200Ω per heater element depending on wattage
+- Open heater: infinite resistance → replace element or door assembly
+- Tripped breaker on heater circuit: check for moisture in wire connections; individual heaters shorted
+
+## Defrost Systems
+
+**MT cases (multi-deck, service):**
+- Most run off-cycle (natural) defrost — compressor cycles, fan continues, frost melts at ambient
+- Some high-humidity applications: electric defrost 1–2× per day
+- Drain temperature termination common: defrost ends when drain pan temp reaches 45–55°F
+
+**LT cases (coffin, reach-in):**
+- Electric defrost standard; 2–4 defrosts per day typical
+- Heaters on evaporator coil + drain pan heater
+- Termination: evap coil probe at +50 to +60°F (10–15°C), or time backup
+- Drain pan heater: 30–60W; runs during defrost and drip time; check for continuity if case floods from incomplete defrost
+
+**Drain system:**
+- Gravity drain to floor drain or drain trough
+- Heat tape on drain line (especially LT): verify continuity; failed heat tape → ice blockage → flooding
+- Drain pan slope: should pitch toward drain outlet; improperly installed cases can pool water and leak to floor
+- Condensate evaporator tray (some MT cases): small tray under evaporator evaporates water passively — clean periodically to prevent mold/odor
+
+## Case Controllers
+
+Kysor Warren cases use a range of controllers depending on model year and configuration:
+
+**Dixell XR series** (most common on stand-alone and small cases):
+- XR30C, XR40C — most prevalent; see Dixell knowledge section for full parameter reference
+- Probe 1 (Pb1): cabinet air temperature
+- Probe 2 (Pb2): evaporator coil temperature (defrost termination)
+
+**Dixell XC series** (newer multi-case and glass-door lines):
+- XC440C, XC560D — glass-door cases with EEV capability
+- RS-485 Modbus for connection to store controller
+
+**Emerson CC-100 / CCB** (older store-controller-integrated cases):
+- Case controllers networked to Emerson E2/E3 via LonWorks
+- No standalone setpoint display — all programming through E2 store controller
+
+**Proprietary Kysor Warren controller** (some models):
+- Simple 7-segment display, limited external programming
+- Factory-set defrosts; contact Daikin/Kysor Warren tech support for parameter access
+
+## Refrigerant Connections
+
+**Liquid line connection:**
+- Located at back of case (most models) or bottom-rear access panel
+- Ball valve or hand valve at case inlet — ensure open before startup
+- Filter-drier at case inlet: replace after any burnout or when moisture indicator shows wet
+
+**Suction line connection:**
+- Insulated suction line back to rack; verify insulation is intact and not saturated (ice inside insulation = moisture problem)
+- Suction line should pitch slightly toward rack for oil return
+
+**Distributor and TXV/EEV:**
+- Most cases use a distributor nozzle + TXV (Sporlan or Danfoss)
+- TXV sensing bulb clamped to suction outlet of evaporator coil; ensure good contact and insulated
+- EEV cases (newer): Dixell XC560D controller drives stepper motor valve
+
+## Common Faults and Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| Case warm, fans running, no defrost active | Liquid feed issue — TXV, solenoid, or refrigerant shortage | Check suction superheat at case; inspect TXV bulb contact; verify solenoid opens |
+| Ice build-up front of evap, not melting | Defrost not running or terminating early | Verify defrost schedule; check Pb2 probe — if failed open, defrost terminates instantly |
+| Case floods after defrost (water on floor) | Drain blocked or drain heater failed | Clear drain; check drain heat tape continuity; verify drain pitch |
+| Sweating/condensation on glass or mullions | Anti-sweat heaters off or failed | Check heater circuit voltage and resistance; verify controller ASH output |
+| Fan not running (shaded pole) | Motor burned out or capacitor failed (if 3-phase PSC) | Measure winding resistance; check for locked rotor (ice on blade) |
+| EC fan not running | No control signal | Measure 0–10V control wire; verify controller fan output setting |
+| Case cycles on high temp alarm | Low refrigerant, solenoid stuck closed, TXV hunting | Log suction superheat; check for TXV hunting (fluctuating superheat ±10°F) |
+| Ice at back of case, warm at front | Poor airflow pattern — coil iced unevenly | Check fan blades for ice or obstruction; confirm all fans running; check defrost completeness |
+| Compressor short-cycling on rack | Case solenoid valve chattering or TXV hunting causing suction pressure swings | Inspect solenoid coil; check TXV superheat stability |
+| Noisy fan (rattling) | Ice on fan blade, failed bearing, blade rubbing shroud | Inspect during run; case may need early defrost to clear ice |
+
+## Energy and Maintenance Notes
+
+- **Night covers / anti-condensate curtains**: Roll-down or rigid covers reduce refrigeration load 25–40% overnight. Check track condition; torn or missing covers significantly increase energy use and morning pull-down time
+- **LED lighting**: Newer EcoShine LED retrofits run cooler than fluorescent T8/T12 — reduces heat load in case. Ballast removal required for direct-wire LED; confirm wiring type before replacement
+- **Evaporator cleaning**: Annual coil cleaning with approved coil cleaner. Rinse thoroughly — chemical residue causes copper corrosion. Never use wire brushes on aluminium fins
+- **Gasket inspection**: Door gaskets on glass-door cases degrade and allow warm humid air infiltration. Replace when cracked or when a dollar bill slides out without resistance from the closed door
+- **Case levelling**: Cases must be level side-to-side; front-to-back slight tilt toward drain. Out-of-level cases cause uneven defrost melt-off and floor flooding
+`
+
+export const HEAT_RECLAIM_KNOWLEDGE = `
+# Heat Reclaim Systems — Supermarket Refrigeration Reference
+
+## Overview
+Heat reclaim captures the heat normally rejected by the refrigeration system's condenser and redirects it for useful purposes — most commonly space heating and domestic hot water. A typical supermarket rack system rejects 150–300 kW of heat to atmosphere; heat reclaim can recover 30–80% of that, dramatically reducing gas/electric heating costs in colder climates.
+
+**Heat available from common rack configurations:**
+- MT rack (3–6 compressors, R-448A): ~15–25 kW per compressor at design conditions
+- LT booster rack: ~8–15 kW per compressor
+- CO₂ transcritical booster (full store): 80–200 kW total rejection at peak
+
+## Types of Heat Reclaim
+
+### 1. Desuperheater (most common)
+A heat exchanger placed in the discharge line **before** the condenser. Hot discharge gas passes through the exchanger and heats water (or glycol), then continues to the condenser.
+
+- Captures the **superheat** portion of discharge gas — typically 20–50°F of cooling before condensing begins
+- Discharge gas enters at 200–280°F (HFC systems) or 180–260°F (CO₂); leaves desuperheater at 120–160°F and continues to condenser
+- Water outlet temp achievable: 120–160°F for domestic hot water or floor heating
+- Heat exchanger types: **brazed plate (BPHE)** most common (Alfa Laval, SWEP, Danfoss); tube-in-tube for higher pressure CO₂ applications
+
+**Key point:** The desuperheater does NOT replace the condenser — the refrigerant must still condense normally downstream. The desuperheater only captures superheat energy.
+
+### 2. Heat Reclaim Condenser (total / partial heat reclaim)
+A dedicated refrigerant-to-air coil installed in the store's HVAC air handler. Discharge gas is **diverted** to this coil first; the refrigerant condenses inside the store coil, rejecting heat into the store air stream.
+
+- More heat available than desuperheater alone (full latent heat of condensation)
+- Requires a **condensing pressure control valve** (CPC / head pressure hold-back valve) — the reclaim coil may be too small to condense all gas alone, so the condenser acts as backup
+- When reclaim coil satisfies the store heating thermostat, a 3-way valve or solenoid redirects gas back to the outdoor condenser
+- If outdoor condenser is fully bypassed in cold weather, ensure minimum head pressure is maintained (typically ≥ 120 psig on R-448A systems)
+
+### 3. Liquid Line Subcooler (heat reclaim via subcooling)
+A water-cooled or glycol-cooled heat exchanger in the rack liquid line. Subcools liquid refrigerant before it reaches the expansion valves, improving system capacity and COP.
+
+- Subcooling gain: every 1°F of subcooling adds ~0.5% capacity on R-448A
+- Typical subcooler target: 10–20°F of subcooling above normal condenser subcooling
+- Water or glycol loop connects to heat dump (cooling tower, boiler pre-heat, domestic hot water pre-heat)
+- Often run year-round for efficiency; heat dump to domestic hot water pre-heat makes economic sense even in summer
+
+### 4. CO₂ Heat Reclaim (Transcritical Systems)
+CO₂ transcritical systems are especially well-suited to heat reclaim due to high discharge temperatures and the gliding temperature characteristic in the gas cooler.
+
+- Discharge gas exits CO₂ compressor at 180–280°F (82–138°C) at transcritical pressure (1,100–1,600 psi / 75–110 bar)
+- Gas cooler can be configured as a heat reclaim coil — water or glycol heated to 50–60°C (122–140°F) for floor heating, domestic hot water, or snow-melt circuits
+- **Wet heat reclaim** (common in Hussmann, Carnot, Advansor systems): dedicated water-cooled gas cooler operates in heat reclaim mode; automatic bypass to dry air-cooled gas cooler when heat not needed
+- Heat reclaim improves CO₂ system COP by reducing gas cooler outlet temperature → higher gas cooler efficiency
+
+## Key System Components
+
+### Discharge Line Diverting / Heat Reclaim Solenoid Valve
+- Normally-closed solenoid opens to allow discharge gas to flow to the reclaim circuit
+- Sized for full discharge mass flow rate at maximum operating conditions
+- **Failure mode (stuck open):** reclaim circuit absorbs heat in summer when store doesn't need it → abnormally high condensing temperature → high head pressure alarm
+- **Failure mode (stuck closed):** heat reclaim never activates → heating bills not reduced; no other refrigeration symptom
+
+### Head Pressure Hold-Back / Condensing Pressure Control (CPC)
+- Modulating valve (electronic or mechanical) that maintains a minimum condensing pressure on the rack when the outdoor condenser is bypassed or ambient is very cold
+- Set to maintain minimum ~120–150 psig (R-448A) or 200–250 psig (R-404A) condensing pressure
+- Without it: liquid refrigerant can flood back in cold weather when compressor head pressure collapses
+- Brands: Sporlan ORI/OREO series, Danfoss ICS, Emerson Alco
+
+### Desuperheater Heat Exchanger
+- Brazed plate HX (BPHE): compact, high efficiency; common sizes 10–80 plates for rack applications
+- Refrigerant side: typically 400–800 psi operating pressure; CO₂ service requires special high-pressure rated BPHE (up to 1,450 psi / 100 bar)
+- Waterside: 30–150 psi domestic water or glycol loop pressure
+- **Maintenance:** waterside fouling is the primary failure — scale deposits from hard water reduce heat transfer. Descale annually with citric acid or commercial descaler (flush and neutralize after)
+- Refrigerant-side leak into waterside: loss of refrigerant pressure OR bubbles in hot water system. Isolate and pressure-test each side independently to locate
+
+### 3-Way Diverting Valve (discharge gas diversion)
+- Motorized ball valve or globe valve body; directs discharge gas to reclaim circuit, outdoor condenser, or both simultaneously (partial bypass)
+- Electronic modulating variants used for continuous capacity control
+- Spring-return actuator: fails to outdoor condenser (safe position) on power or actuator failure — verify this on commissioning
+
+### Store Heating Coils (air-side reclaim)
+- Finned-tube coils in HVAC air handler; refrigerant condenses inside, heating store air
+- Must be rated for refrigerant operating pressure
+- Refrigerant trap / drain leg required at bottom for oil return when coil is used intermittently
+- Defrost consideration: if store heating coil is de-energised in summer, any residual liquid refrigerant must be able to drain back to the system
+
+## Control Sequences
+
+### Typical Heating Season (winter) — HFC rack:
+1. Store thermostat calls for heat → heat reclaim control board (Emerson E2/E3 or Danfoss AK-SM) opens heat reclaim solenoid
+2. Discharge gas diverts to store HVAC coil or desuperheater
+3. If condensing pressure drops below minimum setpoint → CPC valve modulates to maintain pressure
+4. When store heating satisfied (thermostat opens) → solenoid closes, gas returns to outdoor condenser
+
+### Desuperheater water control:
+- Motorised 3-way water valve bypasses desuperheater when hot water tank is at setpoint (typically 140°F / 60°C)
+- Aquastat on tank controls valve; simple on/off or modulating
+- Low water flow alarm: differential pressure switch across desuperheater → alert if flow drops (pump failure, valve failed closed, filter blocked)
+
+### CO₂ gas cooler heat reclaim:
+- Electronic controller (Emerson E2, Danfoss AK-SM, or OEM Hussmann/Carnot controller) monitors gas cooler water outlet temp and store heat demand
+- At low ambient: gas cooler operates fully in reclaim mode (water-cooled); air-cooled gas cooler fans off
+- At high ambient or when heat not needed: bypass valve opens, air-cooled gas cooler takes full load
+- Dual-mode gas cooler commissioning requires careful setpoint of bypass valve opening pressure (typically HP set-point − 50 psi)
+
+## Common Faults and Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| High head pressure, heat reclaim active | Reclaim circuit can't reject enough heat; CPC valve not opening | Check store heating coil airflow; verify CPC valve opens under pressure; check solenoid modulation |
+| High head pressure, reclaim solenoid stuck open in summer | Solenoid coil failed energised | Measure solenoid coil voltage; de-energise manually; check control wiring |
+| No heat reclaim (reclaim never activates) | Solenoid stuck closed, control board output failed, thermostat not calling | Verify control board output voltage; check thermostat setpoint; manual force test solenoid |
+| Hot water not reaching setpoint | Desuperheater fouled, low refrigerant flow, water pump issue | Check ΔT across BPHE (water side); descale if ΔT collapsed; verify water flow rate |
+| Refrigerant loss, hot water smells like oil | Desuperheater plate cracked — refrigerant leaking to waterside | Isolate; pressure-test refrigerant side with water side open; replace BPHE |
+| Low head pressure in cold weather despite reclaim off | CPC valve failed open or set too low | Verify CPC setpoint; measure HP at rack |
+| CO₂ system: poor heat reclaim output | Gas cooler bypass valve leaking by | Check valve seat; verify actuator position with controller display |
+| Oil logging in reclaim coil | Trap/drain leg absent or blocked | Inspect oil trap at bottom of store heating coil; clear blockage |
+
+## Sizing Reference
+
+**Desuperheater capacity rule of thumb:**
+- Superheat entering desuperheater: typically 30–60°F above saturated condensing temp
+- For HFC racks: heat available in desuperheater = approximately 10–15% of total system heat rejection
+- Example: 200 kW rack rejection → ~20–30 kW recoverable in desuperheater
+
+**Total heat rejection from rack (approximation):**
+- Heat rejection ≈ System capacity × (1 + 1/COP)
+- At COP 2.0: heat rejection ≈ 1.5 × refrigeration capacity
+- A 100 kW refrigeration rack rejects ≈ 150 kW at COP 2.0
+
+**Desuperheater BPHE selection:**
+- Refrigerant-side ΔT: typically 40–80°F (discharge → saturated condensing temp)
+- Water-side ΔT: typically 20–40°F rise (inlet 80°F, outlet 120–140°F)
+- LMTD calculation required for exact plate count; consult Alfa Laval / SWEP selection software
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
-const ROLE_LEVEL: Record<string, number> = {
-  apprentice: 1, journeyman: 2, manager: 3, admin: 4,
+const ROLE_LEVELS: Record<string, number> = {
+  apprentice: 1,
+  journeyman: 2,
+  manager:    3,
+  admin:      4,
 }
 
-function allowedMinRoles(userLevel: number): string[] {
-  return Object.entries(ROLE_LEVEL)
-    .filter(([, level]) => level <= userLevel)
-    .map(([role]) => role)
+// Which min_role values can a caller with this role see?
+function allowedMinRoles(callerRole: string): string[] {
+  const level = ROLE_LEVELS[callerRole] ?? 1
+  return (['apprentice', 'journeyman', 'manager'] as const).filter(
+    r => ROLE_LEVELS[r] <= level,
+  )
 }
 
 export async function GET(req: NextRequest) {
@@ -17,16 +22,26 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServer()
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-  const role = (profile as { role?: string } | null)?.role ?? 'apprentice'
-  const userLevel = ROLE_LEVEL[role] ?? 1
-  const allowed = allowedMinRoles(userLevel)
+  const callerRole = (profile as { role: string } | null)?.role ?? 'apprentice'
+
+  const visible = allowedMinRoles(callerRole)
 
   const { data, error } = await supabase
     .from('contact_sections')
     .select('*, directory_contacts(*)')
-    .in('min_role', allowed)
-    .order('sort_order', { ascending: true })
+    .in('min_role', visible)
+    .order('sort_order')
+    .order('created_at')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  // Sort contacts within each section
+  const sections = (data ?? []).map((s: any) => ({
+    ...s,
+    directory_contacts: (s.directory_contacts ?? []).sort(
+      (a: any, b: any) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
+    ),
+  }))
+
+  return NextResponse.json(sections)
 }
