@@ -5,8 +5,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Phone, Mail, Plus, Pencil, Trash2,
-  Loader2, X, Users, Lock, ChevronDown, ChevronUp,
+  Loader2, X, Users, Lock, ChevronDown, ChevronUp, GripVertical,
 } from 'lucide-react'
+import {
+  DndContext, DragEndEvent, PointerSensor,
+  useSensor, useSensors, closestCenter,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import PageShell from '@/components/layout/PageShell'
 
@@ -33,8 +41,8 @@ interface ContactSection {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const ROLE_OPTIONS = [
-  { value: 'apprentice', label: 'Everyone',   desc: 'Apprentices, Journeymen, Managers' },
-  { value: 'journeyman', label: 'Journeyman+', desc: 'Journeymen and Managers only' },
+  { value: 'apprentice', label: 'Everyone',      desc: 'Apprentices, Journeymen, Managers' },
+  { value: 'journeyman', label: 'Journeyman+',   desc: 'Journeymen and Managers only' },
   { value: 'manager',    label: 'Managers only', desc: 'Managers only' },
 ]
 
@@ -58,17 +66,17 @@ function SectionModal({ initial, onSave, onClose }: {
   onSave: (s: ContactSection) => void
   onClose: () => void
 }) {
-  const [title,    setTitle]    = useState(initial?.title       ?? '')
-  const [desc,     setDesc]     = useState(initial?.description ?? '')
-  const [minRole,  setMinRole]  = useState(initial?.min_role    ?? 'apprentice')
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState('')
+  const [title,   setTitle]   = useState(initial?.title       ?? '')
+  const [desc,    setDesc]    = useState(initial?.description ?? '')
+  const [minRole, setMinRole] = useState(initial?.min_role    ?? 'apprentice')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
 
   async function handleSave() {
     if (!title.trim()) { setError('Title is required'); return }
     setSaving(true); setError('')
-    const method   = initial ? 'PATCH' : 'POST'
-    const url      = initial ? `/api/contacts/sections/${initial.id}` : '/api/contacts/sections'
+    const method = initial ? 'PATCH' : 'POST'
+    const url    = initial ? `/api/contacts/sections/${initial.id}` : '/api/contacts/sections'
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -203,6 +211,177 @@ function ContactModal({ sectionId, initial, onSave, onClose }: {
   )
 }
 
+// ─── Sortable section card ─────────────────────────────────────────────────────
+interface SortableSectionProps {
+  section: ContactSection
+  editMode: boolean
+  isManager: boolean
+  collapsed: boolean
+  deletingId: string | null
+  onToggleCollapse: (id: string) => void
+  onEditSection: (s: ContactSection) => void
+  onDeleteSection: (id: string) => void
+  onAddContact: (sectionId: string) => void
+  onEditContact: (c: DirectoryContact) => void
+  onDeleteContact: (sectionId: string, contactId: string) => void
+}
+
+function SortableSection({
+  section, editMode, isManager, collapsed, deletingId,
+  onToggleCollapse, onEditSection, onDeleteSection,
+  onAddContact, onEditContact, onDeleteContact,
+}: SortableSectionProps) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: section.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden transition-shadow ${isDragging ? 'shadow-xl opacity-80 z-50' : ''}`}
+    >
+      {/* Section header */}
+      <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
+
+        {/* Drag handle — edit mode only */}
+        {editMode && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="flex-shrink-0 text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded touch-none"
+            title="Drag to reorder"
+            tabIndex={-1}
+          >
+            <GripVertical size={15}/>
+          </button>
+        )}
+
+        <button
+          onClick={() => onToggleCollapse(section.id)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        >
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{section.title}</span>
+          {section.description && (
+            <span className="text-xs text-slate-400 dark:text-slate-500 truncate hidden sm:inline">{section.description}</span>
+          )}
+          {collapsed
+            ? <ChevronDown size={14} className="text-slate-400 flex-shrink-0"/>
+            : <ChevronUp   size={14} className="text-slate-400 flex-shrink-0"/>}
+        </button>
+
+        {/* Visibility badge */}
+        {isManager && (
+          <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 ${ROLE_BADGE[section.min_role]}`}>
+            <Lock size={9}/>
+            {ROLE_LABEL[section.min_role]}
+          </span>
+        )}
+
+        {/* Edit-mode actions */}
+        {editMode && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => onAddContact(section.id)}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
+            >
+              <Plus size={11}/> Contact
+            </button>
+            <button
+              onClick={() => onEditSection(section)}
+              className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              title="Edit section"
+            >
+              <Pencil size={13}/>
+            </button>
+            <button
+              onClick={() => onDeleteSection(section.id)}
+              disabled={deletingId === section.id}
+              className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors disabled:opacity-40"
+              title="Delete section"
+            >
+              {deletingId === section.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Contacts grid */}
+      {!collapsed && (
+        <div className="p-3">
+          {section.directory_contacts.length === 0 ? (
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">
+              No contacts in this section yet.
+              {editMode && ' Click "+ Contact" above to add one.'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {section.directory_contacts.map(contact => (
+                <div key={contact.id} className="relative group flex gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-colors bg-slate-50/50 dark:bg-slate-800/30">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    {contact.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{contact.name}</p>
+                    {contact.title && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{contact.title}</p>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-1.5">
+                      {contact.phone && (
+                        <a href={`tel:${contact.phone}`}
+                          className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <Phone size={10}/> {contact.phone}
+                        </a>
+                      )}
+                      {contact.email && (
+                        <a href={`mailto:${contact.email}`}
+                          className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <Mail size={10}/> {contact.email}
+                        </a>
+                      )}
+                    </div>
+                    {contact.notes && (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 italic">{contact.notes}</p>
+                    )}
+                  </div>
+                  {editMode && (
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                      <button
+                        onClick={() => onEditContact(contact)}
+                        className="p-1 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                        title="Edit contact"
+                      >
+                        <Pencil size={12}/>
+                      </button>
+                      <button
+                        onClick={() => onDeleteContact(section.id, contact.id)}
+                        disabled={deletingId === contact.id}
+                        className="p-1 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded transition-colors disabled:opacity-40"
+                        title="Remove contact"
+                      >
+                        {deletingId === contact.id ? <Loader2 size={12} className="animate-spin"/> : <Trash2 size={12}/>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function ContactsPage() {
   const router = useRouter()
@@ -220,6 +399,10 @@ export default function ContactsPage() {
   const [editingContact,  setEditingContact]  = useState<DirectoryContact | null>(null)
   const [targetSectionId, setTargetSectionId] = useState<string>('')
   const [deletingId,      setDeletingId]      = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
 
   useEffect(() => {
     async function checkAuth() {
@@ -255,7 +438,32 @@ export default function ContactsPage() {
     })
   }
 
-  // ── Section saved (add or edit) ──────────────────────────────────────────────
+  // ── Drag end: reorder locally + persist ──────────────────────────────────────
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setSections(prev => {
+      const oldIdx = prev.findIndex(s => s.id === active.id)
+      const newIdx = prev.findIndex(s => s.id === over.id)
+      const reordered = arrayMove(prev, oldIdx, newIdx).map((s, i) => ({ ...s, sort_order: i }))
+
+      // Persist only sections whose sort_order changed
+      reordered.forEach((s, i) => {
+        if (prev[prev.findIndex(p => p.id === s.id)].sort_order !== i) {
+          fetch(`/api/contacts/sections/${s.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sort_order: i }),
+          })
+        }
+      })
+
+      return reordered
+    })
+  }
+
+  // ── Section saved ─────────────────────────────────────────────────────────────
   function handleSectionSaved(saved: ContactSection) {
     if (editingSection) {
       setSections(prev => prev.map(s => s.id === saved.id
@@ -276,7 +484,7 @@ export default function ContactsPage() {
     setDeletingId(null)
   }
 
-  // ── Contact saved (add or edit) ──────────────────────────────────────────────
+  // ── Contact saved ─────────────────────────────────────────────────────────────
   function handleContactSaved(saved: DirectoryContact) {
     setSections(prev => prev.map(s => {
       if (s.id !== saved.section_id) return s
@@ -303,15 +511,10 @@ export default function ContactsPage() {
   }
 
   function openAddContact(sectionId: string) {
-    setTargetSectionId(sectionId)
-    setEditingContact(null)
-    setContactModal(true)
+    setTargetSectionId(sectionId); setEditingContact(null); setContactModal(true)
   }
-
   function openEditContact(contact: DirectoryContact) {
-    setTargetSectionId(contact.section_id)
-    setEditingContact(contact)
-    setContactModal(true)
+    setTargetSectionId(contact.section_id); setEditingContact(contact); setContactModal(true)
   }
 
   return (
@@ -369,7 +572,6 @@ export default function ContactsPage() {
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-4">
 
-        {/* Error */}
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
             <span className="flex-1">{error}</span>
@@ -377,14 +579,12 @@ export default function ContactsPage() {
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-16 text-slate-400 dark:text-slate-500 text-sm gap-2">
             <Loader2 size={16} className="animate-spin"/> Loading…
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && !error && sections.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
             <Users size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
@@ -397,137 +597,31 @@ export default function ContactsPage() {
           </div>
         )}
 
-        {/* Sections */}
-        {!loading && sections.map(section => {
-          const collapsed = collapsedIds.has(section.id)
-          return (
-            <div key={section.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-
-              {/* Section header */}
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => toggleCollapse(section.id)}
-                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                >
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{section.title}</span>
-                  {section.description && (
-                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate hidden sm:inline">{section.description}</span>
-                  )}
-                  {collapsed ? <ChevronDown size={14} className="text-slate-400 flex-shrink-0"/> : <ChevronUp size={14} className="text-slate-400 flex-shrink-0"/>}
-                </button>
-
-                {/* Visibility badge — managers only */}
-                {isManager && (
-                  <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 ${ROLE_BADGE[section.min_role]}`}>
-                    <Lock size={9}/>
-                    {ROLE_LABEL[section.min_role]}
-                  </span>
-                )}
-
-                {/* Edit-mode actions */}
-                {editMode && (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => openAddContact(section.id)}
-                      className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
-                    >
-                      <Plus size={11}/> Contact
-                    </button>
-                    <button
-                      onClick={() => { setEditingSection(section); setSectionModal(true) }}
-                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                      title="Edit section"
-                    >
-                      <Pencil size={13}/>
-                    </button>
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      disabled={deletingId === section.id}
-                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors disabled:opacity-40"
-                      title="Delete section"
-                    >
-                      {deletingId === section.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
-                    </button>
-                  </div>
-                )}
+        {/* Sections — wrapped in DndContext when in edit mode */}
+        {!loading && sections.length > 0 && (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {sections.map(section => (
+                  <SortableSection
+                    key={section.id}
+                    section={section}
+                    editMode={editMode}
+                    isManager={isManager}
+                    collapsed={collapsedIds.has(section.id)}
+                    deletingId={deletingId}
+                    onToggleCollapse={toggleCollapse}
+                    onEditSection={s => { setEditingSection(s); setSectionModal(true) }}
+                    onDeleteSection={deleteSection}
+                    onAddContact={openAddContact}
+                    onEditContact={openEditContact}
+                    onDeleteContact={deleteContact}
+                  />
+                ))}
               </div>
-
-              {/* Contacts grid */}
-              {!collapsed && (
-                <div className="p-3">
-                  {section.directory_contacts.length === 0 ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">
-                      No contacts in this section yet.
-                      {editMode && ' Click "+ Contact" above to add one.'}
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {section.directory_contacts.map(contact => (
-                        <div key={contact.id} className="relative group flex gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-colors bg-slate-50/50 dark:bg-slate-800/30">
-
-                          {/* Avatar initials */}
-                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400">
-                            {contact.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                          </div>
-
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{contact.name}</p>
-                            {contact.title && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{contact.title}</p>
-                            )}
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {contact.phone && (
-                                <a href={`tel:${contact.phone}`}
-                                  className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <Phone size={10}/> {contact.phone}
-                                </a>
-                              )}
-                              {contact.email && (
-                                <a href={`mailto:${contact.email}`}
-                                  className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <Mail size={10}/> {contact.email}
-                                </a>
-                              )}
-                            </div>
-                            {contact.notes && (
-                              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 italic">{contact.notes}</p>
-                            )}
-                          </div>
-
-                          {/* Edit-mode actions */}
-                          {editMode && (
-                            <div className="flex flex-col gap-0.5 flex-shrink-0">
-                              <button
-                                onClick={() => openEditContact(contact)}
-                                className="p-1 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                                title="Edit contact"
-                              >
-                                <Pencil size={12}/>
-                              </button>
-                              <button
-                                onClick={() => deleteContact(section.id, contact.id)}
-                                disabled={deletingId === contact.id}
-                                className="p-1 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded transition-colors disabled:opacity-40"
-                                title="Remove contact"
-                              >
-                                {deletingId === contact.id ? <Loader2 size={12} className="animate-spin"/> : <Trash2 size={12}/>}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
     </div>
     </PageShell>
