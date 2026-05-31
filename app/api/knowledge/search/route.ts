@@ -33,6 +33,7 @@ import {
   TRANE_RAUC_KNOWLEDGE,
   TEMPRITE_KNOWLEDGE,
   DIXELL_KNOWLEDGE,
+  KYSOR_WARREN_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 const KNOWLEDGE_MAP: Record<string, string> = {
@@ -67,6 +68,7 @@ const KNOWLEDGE_MAP: Record<string, string> = {
   'trane-rauc':                 TRANE_RAUC_KNOWLEDGE,
   'temprite':                   TEMPRITE_KNOWLEDGE,
   'dixell':                     DIXELL_KNOWLEDGE,
+  'kysor-warren':               KYSOR_WARREN_KNOWLEDGE,
 }
 
 export interface ContentMatch {

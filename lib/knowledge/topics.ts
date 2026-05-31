@@ -30,6 +30,7 @@ import {
   TRANE_RAUC_KNOWLEDGE,
   TEMPRITE_KNOWLEDGE,
   DIXELL_KNOWLEDGE,
+  KYSOR_WARREN_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -393,6 +394,18 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
     tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
     category: 'hvac',
+  },
+  {
+    slug: 'kysor-warren',
+    title: 'Kysor Warren Display Cases',
+    shortTitle: 'Kysor Warren',
+    description: 'Kysor Warren supermarket display cases (EcoFlex multi-deck, C-Series coffin, G-Series glass door, service cases) — fan motors, anti-sweat heaters, defrost setup, drain systems, controllers, and common fault diagnosis.',
+    iconName: 'ShoppingBag',
+    colorClass: 'green',
+    content: KYSOR_WARREN_KNOWLEDGE,
+    manualKeywords: ['kysor warren', 'kysor', 'ecoflex', 'ecoshine'],
+    tags: ['Display Cases', 'Kysor Warren', 'Daikin', 'MT/LT Cases'],
+    category: 'manufacturer',
   },
   {
     slug: 'dixell',

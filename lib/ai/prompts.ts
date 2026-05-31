@@ -6550,6 +6550,151 @@ On models without a DEF button: enter parameters and toggle a manual-start param
 | Relay chattering (rapid ON/OFF) | Hysteresis Hy set too low | Increase Hy to at least 1°C to prevent short-cycling |
 `
 
+export const KYSOR_WARREN_KNOWLEDGE = `
+# Kysor Warren Display Cases — Supermarket Refrigeration Reference
+
+## Overview
+Kysor Warren is a major supermarket display case manufacturer, now a brand under Daikin Applied. Cases are found in stores across North America under the Kysor Warren name and occasionally under earlier GE Commercial Food Service branding. Product lines span medium-temperature (MT) and low-temperature (LT) applications: open multi-deck merchandisers, coffin/island cases, reach-in glass-door cases, and service counter cases.
+
+## Product Line Summary
+
+| Series | Type | Temp Class | Typical Application |
+|--------|------|-----------|---------------------|
+| EcoFlex multi-deck | Open multi-deck | MT | Produce, dairy, deli, beverages |
+| C-Series coffin / island | Low-profile island | LT / MT | Frozen foods, ice cream |
+| G-Series / Vision | Glass door reach-in | MT or LT | Beverages, frozen meals |
+| EcoShine LED | Retrofit LED lighting | — | Energy upgrade for older cases |
+| Service/Specialty | Service counter | MT | Meat, deli, seafood, bakery |
+
+**Typical operating setpoints:**
+- MT multi-deck (produce, dairy): 34–38°F (1–3°C) discharge air
+- MT service case (meat, deli): 34–38°F
+- LT coffin / island (frozen): −10 to 0°F (−23 to −18°C)
+- LT reach-in glass door (frozen): −10 to 0°F
+- Beverage reach-in (MT): 34–40°F
+
+## Fan Motors
+
+**Older cases — shaded-pole motors:**
+- Common sizes: 1/15 HP, 1/20 HP, 1/30 HP
+- Wiring: 2-wire, line voltage (115V or 208/230V)
+- High failure rate; replace like-for-like — match HP, RPM, frame, and voltage
+- Shaded-pole motors run hot by design; check for adequate clearance and no coil ice blocking airflow
+
+**Newer EcoFlex / energy-upgrade cases — EC (electronically commutated) motors:**
+- 3-wire (or 4-wire): L, N, and a control wire (0–10V DC signal or switched 24V)
+- Speed controlled by case controller or store controller (Emerson E2/E3 fan output)
+- Common fault: no control signal → motor runs at default speed or stops; verify control wire voltage
+- EC motor replacement: match manufacturer, frame, and control input type (0–10V vs. PWM vs. on/off)
+- EC motors are polarity-sensitive on the DC control wire — reversed control wire = no speed control
+
+**Fan cycling:**
+- Most MT cases: fans run continuously (except defrost)
+- LT cases: fans typically off during electric defrost; delay 3–10 min after defrost before restart
+- Evaporator fan delay relay or controller parameter (Fdt on Dixell) prevents blowing warm air into case after defrost
+
+## Anti-Condensate (Anti-Sweat) Heaters
+
+Heaters prevent moisture condensing on glass doors, mullions (stiles), and case rails in humid store environments.
+
+**Types present on Kysor Warren cases:**
+- **Glass door edge heaters** — embedded in door frame; 24V or 120V; run continuously or switched
+- **Mullion / stile heaters** — vertical frame heaters between doors; 120V or 240V resistance wire
+- **Top rail heaters** — prevent dripping from case top
+- **Bottom rail / front rail heaters** — prevent moisture pooling
+
+**Control:**
+- Simple on/off via store humidity switch or timer (older stores)
+- Modern cases: anti-sweat controller (Paragon, Intermatic timer, or store controller ASH output)
+- Dixell XR60C/XC series: `AC` parameter — heaters switch on when cabinet air exceeds AC setpoint (high humidity condition)
+- Energy-saving mode: cycle heaters on timed intervals rather than continuous — reduces energy 40–60%
+
+**Troubleshooting heater faults:**
+- Sweating glass/mullions: heater open-circuited or not powered; measure resistance and verify supply voltage
+- Heater wire resistance (typical): 50–200Ω per heater element depending on wattage
+- Open heater: infinite resistance → replace element or door assembly
+- Tripped breaker on heater circuit: check for moisture in wire connections; individual heaters shorted
+
+## Defrost Systems
+
+**MT cases (multi-deck, service):**
+- Most run off-cycle (natural) defrost — compressor cycles, fan continues, frost melts at ambient
+- Some high-humidity applications: electric defrost 1–2× per day
+- Drain temperature termination common: defrost ends when drain pan temp reaches 45–55°F
+
+**LT cases (coffin, reach-in):**
+- Electric defrost standard; 2–4 defrosts per day typical
+- Heaters on evaporator coil + drain pan heater
+- Termination: evap coil probe at +50 to +60°F (10–15°C), or time backup
+- Drain pan heater: 30–60W; runs during defrost and drip time; check for continuity if case floods from incomplete defrost
+
+**Drain system:**
+- Gravity drain to floor drain or drain trough
+- Heat tape on drain line (especially LT): verify continuity; failed heat tape → ice blockage → flooding
+- Drain pan slope: should pitch toward drain outlet; improperly installed cases can pool water and leak to floor
+- Condensate evaporator tray (some MT cases): small tray under evaporator evaporates water passively — clean periodically to prevent mold/odor
+
+## Case Controllers
+
+Kysor Warren cases use a range of controllers depending on model year and configuration:
+
+**Dixell XR series** (most common on stand-alone and small cases):
+- XR30C, XR40C — most prevalent; see Dixell knowledge section for full parameter reference
+- Probe 1 (Pb1): cabinet air temperature
+- Probe 2 (Pb2): evaporator coil temperature (defrost termination)
+
+**Dixell XC series** (newer multi-case and glass-door lines):
+- XC440C, XC560D — glass-door cases with EEV capability
+- RS-485 Modbus for connection to store controller
+
+**Emerson CC-100 / CCB** (older store-controller-integrated cases):
+- Case controllers networked to Emerson E2/E3 via LonWorks
+- No standalone setpoint display — all programming through E2 store controller
+
+**Proprietary Kysor Warren controller** (some models):
+- Simple 7-segment display, limited external programming
+- Factory-set defrosts; contact Daikin/Kysor Warren tech support for parameter access
+
+## Refrigerant Connections
+
+**Liquid line connection:**
+- Located at back of case (most models) or bottom-rear access panel
+- Ball valve or hand valve at case inlet — ensure open before startup
+- Filter-drier at case inlet: replace after any burnout or when moisture indicator shows wet
+
+**Suction line connection:**
+- Insulated suction line back to rack; verify insulation is intact and not saturated (ice inside insulation = moisture problem)
+- Suction line should pitch slightly toward rack for oil return
+
+**Distributor and TXV/EEV:**
+- Most cases use a distributor nozzle + TXV (Sporlan or Danfoss)
+- TXV sensing bulb clamped to suction outlet of evaporator coil; ensure good contact and insulated
+- EEV cases (newer): Dixell XC560D controller drives stepper motor valve
+
+## Common Faults and Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| Case warm, fans running, no defrost active | Liquid feed issue — TXV, solenoid, or refrigerant shortage | Check suction superheat at case; inspect TXV bulb contact; verify solenoid opens |
+| Ice build-up front of evap, not melting | Defrost not running or terminating early | Verify defrost schedule; check Pb2 probe — if failed open, defrost terminates instantly |
+| Case floods after defrost (water on floor) | Drain blocked or drain heater failed | Clear drain; check drain heat tape continuity; verify drain pitch |
+| Sweating/condensation on glass or mullions | Anti-sweat heaters off or failed | Check heater circuit voltage and resistance; verify controller ASH output |
+| Fan not running (shaded pole) | Motor burned out or capacitor failed (if 3-phase PSC) | Measure winding resistance; check for locked rotor (ice on blade) |
+| EC fan not running | No control signal | Measure 0–10V control wire; verify controller fan output setting |
+| Case cycles on high temp alarm | Low refrigerant, solenoid stuck closed, TXV hunting | Log suction superheat; check for TXV hunting (fluctuating superheat ±10°F) |
+| Ice at back of case, warm at front | Poor airflow pattern — coil iced unevenly | Check fan blades for ice or obstruction; confirm all fans running; check defrost completeness |
+| Compressor short-cycling on rack | Case solenoid valve chattering or TXV hunting causing suction pressure swings | Inspect solenoid coil; check TXV superheat stability |
+| Noisy fan (rattling) | Ice on fan blade, failed bearing, blade rubbing shroud | Inspect during run; case may need early defrost to clear ice |
+
+## Energy and Maintenance Notes
+
+- **Night covers / anti-condensate curtains**: Roll-down or rigid covers reduce refrigeration load 25–40% overnight. Check track condition; torn or missing covers significantly increase energy use and morning pull-down time
+- **LED lighting**: Newer EcoShine LED retrofits run cooler than fluorescent T8/T12 — reduces heat load in case. Ballast removal required for direct-wire LED; confirm wiring type before replacement
+- **Evaporator cleaning**: Annual coil cleaning with approved coil cleaner. Rinse thoroughly — chemical residue causes copper corrosion. Never use wire brushes on aluminium fins
+- **Gasket inspection**: Door gaskets on glass-door cases degrade and allow warm humid air infiltration. Replace when cracked or when a dollar bill slides out without resistance from the closed door
+- **Case levelling**: Cases must be level side-to-side; front-to-back slight tilt toward drain. Out-of-level cases cause uneven defrost melt-off and floor flooding
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
