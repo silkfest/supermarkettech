@@ -28,6 +28,7 @@ import {
   RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
   AAON_RTU_KNOWLEDGE,
   TRANE_RAUC_KNOWLEDGE,
+  TEMPRITE_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -222,6 +223,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: BITZER_KNOWLEDGE,
     manualKeywords: ['bitzer'],
     tags: ['Compressors', 'CO₂', 'Ecoline', 'INT69'],
+    category: 'manufacturer',
+  },
+  {
+    slug: 'temprite',
+    title: 'Temprite Oil Management',
+    shortTitle: 'Temprite',
+    description: 'Temprite oil separators (500, 600, 900, 300 series), oil reservoirs, mechanical and electronic (TraxOil) oil level controls — installation, sizing, element replacement, and rack oil management troubleshooting.',
+    iconName: 'Layers',
+    colorClass: 'orange',
+    content: TEMPRITE_KNOWLEDGE,
+    manualKeywords: ['temprite'],
+    tags: ['Oil Separator', 'Oil Management', 'Rack', 'Temprite'],
     category: 'manufacturer',
   },
   {

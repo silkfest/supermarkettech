@@ -6230,6 +6230,156 @@ Older RAUCC units use Trane's ReliaTel control module (same platform as Preceden
 | Tandem oil migration | Oil equalisation line blocked/pitched wrong | Verify equalisation line is level, remove any traps |
 `
 
+export const TEMPRITE_KNOWLEDGE = `
+# Temprite Oil Management Products — Supermarket Rack Reference
+
+Temprite (Schaumburg, IL) manufactures oil separators, oil reservoirs, oil level controls, and related refrigeration accessories. On a supermarket rack, Temprite products are the primary line of defence against oil migration — oil that leaves the compressor crankcase in the discharge gas and does not return causes compressor failure and oil-logged evaporators.
+
+## Why Oil Management Matters on Racks
+
+Compressor discharge gas carries oil droplets and aerosol. In a supermarket rack with long pipe runs and multiple evaporators, oil can:
+- Accumulate in evaporator coils → reduces heat transfer, eventually causes liquid slugging on defrost
+- Deplete compressor crankcases → loss of lubrication, bearing failure
+- Collect in suction accumulators and liquid receivers → intermittent slugging
+
+Temprite oil separators intercept oil at the discharge of each compressor (or on a common discharge header) and return it to the crankcase or an oil reservoir before it can migrate into the system.
+
+## Product Families — Supermarket Rack Applications
+
+### 500 Series — Conventional (Impingement Screen) Oil Separators
+
+The most widely installed Temprite separator on North American supermarket racks.
+
+**How it works:** Discharge gas enters the separator shell, velocity drops, larger oil droplets fall to the sump by gravity/impingement against a screen. A float valve opens and returns collected oil to the compressor crankcase when the oil level rises above the float.
+
+**Models (common supermarket sizes):**
+| Model | Connection Size | Typical Rack Use |
+|-------|----------------|-----------------|
+| 504   | 1/2" ODS       | Single small compressor (< 5 HP) |
+| 507   | 3/4" ODS       | 5–10 HP compressor |
+| 510   | 1" ODS / 1-1/8" ODS | 10–20 HP, medium rack |
+| 514   | 1-1/8" / 1-3/8" ODS | 15–30 HP |
+| 520   | 1-3/8" / 1-5/8" ODS | 25–50 HP, common on medium rack |
+| 528   | 1-5/8" / 2-1/8" ODS | 50–75 HP, large rack compressor |
+
+**Installation:**
+- Mount vertically, upright (oil sump at bottom) — do NOT install sideways or inverted
+- Install in the hot gas discharge line between compressor discharge service valve and condenser header
+- Insulate discharge connection above separator to prevent condensation on shell
+- Oil return line (small copper tube) runs from the separator float valve connection back to the compressor crankcase equaliser fitting — typically 1/4" ODS
+- Minimum oil return line pitch: 1/4" per foot downward toward compressor
+
+**Float valve check:**
+- If compressor oil level is low but separator is full: float valve is stuck closed or plugged — remove and clean with solvent, replace if damaged
+- Float valve opens at approximately 1/4" oil depth in sump
+- Replace float/needle assembly every 5 years on high-run compressors
+
+### 900 Series — Hermetic Coalescent Oil Separators
+
+High-efficiency coalescent separators used on modern racks and retrofits. Capture oil aerosol that impingement separators miss (submicron droplets).
+
+**How it works:** Discharge gas passes through a coalescing filter element (fibreglass media). Sub-micron oil aerosol collects on the fibres, coalesces into larger drops, and drains to the sump. Efficiency > 99.9% vs. ~80–90% for conventional separators.
+
+**Common supermarket models:**
+| Model | Connection | Notes |
+|-------|-----------|-------|
+| 900   | 3/4" ODS  | Small compressors, medium-temp |
+| 902   | 7/8" / 1-1/8" ODS | Most common rack size |
+| 903   | 1-3/8" ODS | Medium-large compressors |
+| 904   | 1-5/8" ODS | Large compressors, low-temp rack |
+| 920   | 1-1/8" ODS | Horizontal-inlet variant |
+| 920R  | Rotalock  | Refrigeration rack screw-compressor use |
+
+**When to specify coalescent over conventional:**
+- R-410A systems (lower oil viscosity at operating pressures — conventional separators less effective)
+- R-744 (CO2) systems — conventional separators ineffective at transcritical pressures
+- Parallel rack with long evaporator circuits (> 100 ft equivalent)
+- After compressor rebuild where residual metallic contamination risk is elevated
+
+**Coalescing element replacement:**
+- Temprite recommends element replacement every 2 years or when pressure drop across separator exceeds 3 PSI at rated flow
+- Field indicator: higher than normal compressor head pressure with clean condenser coil and correct refrigerant charge → check separator pressure drop
+- Replacement elements available as kits (900-series kit number matches model)
+
+### 300 Series — Coalescent (Open-Top/Serviceable)
+
+Similar coalescent technology to 900 series but with a removable top cap for element servicing without removing the separator from the line.
+
+- Common sizes: 300, 302, 303, 304
+- Used in retrofit situations where line access is limited
+- Element replacement interval: same as 900 series
+
+### 600 Series — Conventional (Larger Commercial)
+
+Larger conventional separators for high-tonnage racks (> 75 HP per circuit):
+- Models 604, 606, 610, 614
+- Same float valve and oil return as 500 series
+- Used on large parallel rack compressor banks
+
+## Oil Reservoirs
+
+On large parallel racks with multiple compressors, Temprite oil reservoirs centralise oil collection rather than returning oil individually from each separator.
+
+**Function:** Multiple separator oil returns feed into a single reservoir. An oil level control (mechanical float or electronic) on each compressor crankcase then draws oil from the reservoir as needed.
+
+**Common Temprite reservoir models:**
+- 47058 (small rack, 4 compressors)
+- 47080 (medium rack, 5–6 compressors)
+- 47115 (large rack, 6–8 compressors)
+- 47154 (extra-large / dual-rack)
+
+**Installation checklist:**
+- Mount reservoir below the compressors and below the oil separator sump outlets
+- Oil supply lines from reservoir to compressors: 3/8" ODS, pitched continuously downward from reservoir to crankcase equaliser
+- No traps in oil supply lines — oil is gravity-fed, traps cause oil starvation
+- Sight glass on reservoir: level should be visible mid-glass at steady state; empty glass = separator or float valve issue, full glass overflowing = excessive oil in system
+
+## Oil Level Controls
+
+### Mechanical (Float-Valve Type)
+- Temprite mechanical oil level controls mount on the compressor crankcase equaliser fitting
+- Float maintains oil at a constant level: when oil drops, float drops, valve opens, oil flows from reservoir
+- Service: clean strainer screen annually; replace entire float assembly if compressor repeatedly runs low on oil with reservoir full
+
+### TraxOil Electronic Oil Level Control
+- Electronic sensor replaces mechanical float — no moving parts, more reliable in contaminated oil
+- LED indicator on unit: green = oil level OK, red flashing = low oil, red steady = fault/sensor error
+- Wires to compressor safety control circuit: trips compressor on low oil condition (adjustable delay: 30 seconds default)
+- Calibration: TraxOil self-calibrates on first startup — do not power it during compressor off cycle calibration period (30 seconds after energising)
+- Common issue: sensor contaminated with black sludge (acid burnout residue) — clean with solvent and dry before recalibrating
+
+## Common Rack Oil Management Troubleshooting
+
+| Symptom | Likely Cause | Action |
+|---------|-------------|--------|
+| Compressor(s) low on oil, separator full | Float valve stuck closed | Remove, clean or replace float/needle |
+| Compressor(s) low on oil, separator empty | Separator float valve open but reservoir empty; or no oil returning from circuit | Check separator inlet — possible bypass (hole in screen) |
+| Oil in evaporators (oil logging) | Separator efficiency low, or separator bypass | Check separator pressure drop; replace coalescent element or 500-series screen |
+| Reservoir overflowing | System oil charge is excessive | Remove oil from system; verify original factory charge |
+| Black sludge in oil reservoir | Acid burnout contamination | Flush system, replace driers, change oil charge; clean TraxOil sensor |
+| High separator pressure drop (>3 PSI) | Coalescent element saturated | Replace element |
+| Compressor oil foaming on startup | Refrigerant migration into oil during off-cycle | Verify crankcase heaters on; consider crankcase heater upgrade |
+
+## Sizing Quick Reference
+
+Temprite sizing is based on refrigerant type and system capacity (tons or kW). Always use Temprite's online sizing tool or printed chart for final selection.
+
+**General guideline (500 series, R-404A / R-448A):**
+- Up to 10 tons per compressor: Model 507–510
+- 10–20 tons: Model 510–514
+- 20–35 tons: Model 520
+- 35–60 tons: Model 528
+
+**For R-410A or CO2:** Move up one model size from the above table, or specify 900/300-series coalescent.
+
+## Refrigerant Compatibility Notes
+
+- All current Temprite separators rated for HFCs (R-404A, R-448A, R-449A, R-134a, R-410A) and natural refrigerants (R-744/CO2, R-290/propane)
+- POE oil compatible with all current Temprite internal components
+- Mineral oil: acceptable in 500/600 series; NOT recommended in 900/300 series coalescent (clogs element media faster)
+- Alkylbenzene (AB) oil: compatible
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
