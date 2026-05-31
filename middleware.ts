@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+  const path = req.nextUrl.pathname
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,8 +22,24 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  // Refreshes the session if it has expired — keeps the cookie up to date.
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Mark welcome as seen when they visit /welcome
+  if (path === '/welcome') {
+    res.cookies.set('welcome_seen', '1', {
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+      sameSite: 'lax',
+    })
+    return res
+  }
+
+  // Redirect unauthenticated first-time visitors from root to welcome page
+  if (path === '/' && !user && !req.cookies.get('welcome_seen')) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/welcome'
+    return NextResponse.redirect(url)
+  }
 
   return res
 }
@@ -33,3 +50,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+
