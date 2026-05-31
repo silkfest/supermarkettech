@@ -7,8 +7,9 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseServer()
 
   const { searchParams } = new URL(req.url)
-  const equipmentId = searchParams.get('equipmentId')
-  const storeId = searchParams.get('storeId')
+  const equipmentId  = searchParams.get('equipmentId')
+  const storeId      = searchParams.get('storeId')
+  const technicianId = searchParams.get('technicianId')
 
   let query = supabase
     .from('individual_reports')
@@ -16,8 +17,9 @@ export async function GET(req: NextRequest) {
     .order('performed_at', { ascending: false })
     .limit(50)
 
-  if (equipmentId) query = query.eq('equipment_id', equipmentId)
-  if (storeId) query = query.eq('store_id', storeId)
+  if (equipmentId)  query = query.eq('equipment_id',  equipmentId)
+  if (storeId)      query = query.eq('store_id',      storeId)
+  if (technicianId) query = query.eq('technician_id', technicianId)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
