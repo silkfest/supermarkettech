@@ -11,6 +11,7 @@ import {
   ChevronUp,
   BookOpen,
   Globe,
+  X,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
@@ -33,6 +34,7 @@ export default function KnowledgeTopicPage() {
   const [manuals, setManuals] = useState<RelatedManual[]>([])
   const [manualsLoading, setManualsLoading] = useState(true)
   const [tocOpen, setTocOpen] = useState(false)
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
 
   useEffect(() => {
     if (!topic) return
@@ -158,19 +160,17 @@ export default function KnowledgeTopicPage() {
                       const isWeb = manual.source_type === 'WEB' && manual.source_url
                       const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                       return (
-                        <a
+                        <button
                           key={manual.id}
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group"
+                          onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                          className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
                         >
                           {isWeb
                             ? <Globe size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
                             : <FileText size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
                           }
                           <span className="leading-snug line-clamp-2">{manual.title}</span>
-                        </a>
+                        </button>
                       )
                     })}
                   </div>
@@ -197,12 +197,10 @@ export default function KnowledgeTopicPage() {
                   const isWeb = manual.source_type === 'WEB' && manual.source_url
                   const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                   return (
-                    <a
+                    <button
                       key={manual.id}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                      onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {isWeb
@@ -211,8 +209,8 @@ export default function KnowledgeTopicPage() {
                         }
                         <span className="text-xs text-slate-700 truncate">{manual.title}</span>
                       </div>
-                      <ExternalLink size={12} className="text-slate-400 flex-shrink-0 group-hover:text-blue-500" />
-                    </a>
+                      <FileText size={12} className="text-slate-400 flex-shrink-0 group-hover:text-blue-500" />
+                    </button>
                   )
                 })}
               </div>
@@ -221,6 +219,34 @@ export default function KnowledgeTopicPage() {
         </main>
       </div>
     </div>
+
+    {/* In-app PDF overlay — prevents mobile "stuck in browser" problem */}
+    {pdfViewer && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
+        <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+          <button
+            onClick={() => setPdfViewer(null)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+            title="Back to topic"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <p className="text-sm text-slate-200 font-medium truncate flex-1">{pdfViewer.title}</p>
+          <button
+            onClick={() => setPdfViewer(null)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <iframe
+          src={pdfViewer.url}
+          className="flex-1 w-full border-0"
+          title={pdfViewer.title}
+        />
+      </div>
+    )}
     </PageShell>
   )
 }
