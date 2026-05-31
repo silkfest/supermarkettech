@@ -60,16 +60,19 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ManualCount { slug: string; count: number }
+type SearchMatch = 'topic' | 'manual' | 'both'
 
 // ── Topic card ────────────────────────────────────────────────────────────────
 function TopicCard({
   topic,
   manualCount,
   onClick,
+  matchSource,
 }: {
   topic: KnowledgeTopic
   manualCount: number
   onClick: () => void
+  matchSource?: SearchMatch
 }) {
   const colors = COLOR_MAP[topic.colorClass] ?? COLOR_MAP.blue
 
@@ -91,6 +94,9 @@ function TopicCard({
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
               {manualCount} manual{manualCount !== 1 ? 's' : ''}
             </p>
+          )}
+          {matchSource === 'manual' && (
+            <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-0.5 font-medium">matched in manuals</p>
           )}
         </div>
       </div>
@@ -120,6 +126,7 @@ export default function KnowledgePage() {
   const router = useRouter()
   const [manualCounts, setManualCounts] = useState<ManualCount[]>([])
   const [query, setQuery] = useState('')
+  const [docMatchSlugs, setDocMatchSlugs] = useState<string[]>([])
 
   // Fetch manual counts for all topics
   useEffect(() => {
@@ -141,17 +148,48 @@ export default function KnowledgePage() {
     fetchCounts()
   }, [])
 
+  // Debounced search of document titles
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setDocMatchSlugs([]); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`)
+        if (res.ok) setDocMatchSlugs(await res.json())
+      } catch { /* ignore */ }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
   function getCount(slug: string) {
     return manualCounts.find(m => m.slug === slug)?.count ?? 0
   }
 
   const q = query.trim().toLowerCase()
-  const filteredTopics = q
-    ? TOPICS.filter(t =>
-        t.title.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.tags.some(tag => tag.toLowerCase().includes(q))
-      )
+
+  // Build combined results with source tracking
+  const filteredTopics: Array<{ topic: KnowledgeTopic; matchSource: SearchMatch }> | null = q
+    ? (() => {
+        const topicHits = new Set(
+          TOPICS.filter(t =>
+            t.title.toLowerCase().includes(q) ||
+            t.description.toLowerCase().includes(q) ||
+            t.tags.some(tag => tag.toLowerCase().includes(q))
+          ).map(t => t.slug)
+        )
+        const docHits = new Set(docMatchSlugs)
+        const allSlugs = new Set([...topicHits, ...docHits])
+        return TOPICS
+          .filter(t => allSlugs.has(t.slug))
+          .map(t => ({
+            topic: t,
+            matchSource: (topicHits.has(t.slug) && docHits.has(t.slug)
+              ? 'both'
+              : topicHits.has(t.slug)
+              ? 'topic'
+              : 'manual') as SearchMatch,
+          }))
+      })()
     : null
 
   const manufacturerTopics = TOPICS.filter(t => t.category === 'manufacturer')
@@ -181,7 +219,7 @@ export default function KnowledgePage() {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search topics, tags, or descriptions…"
+            placeholder="Search topics, manuals, model numbers…"
             className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700"
           />
           {query && (
@@ -213,11 +251,12 @@ export default function KnowledgePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredTopics.map(topic => (
+                {filteredTopics.map(({ topic, matchSource }) => (
                   <TopicCard
                     key={topic.slug}
                     topic={topic}
                     manualCount={getCount(topic.slug)}
+                    matchSource={matchSource}
                     onClick={() => router.push(`/knowledge/${topic.slug}`)}
                   />
                 ))}
