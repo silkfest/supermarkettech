@@ -223,7 +223,7 @@ export default function KnowledgeTopicPage() {
     {/* In-app PDF overlay — prevents mobile "stuck in browser" problem */}
     {pdfViewer && (
       <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+        <div className="safe-top flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
           <button
             onClick={() => setPdfViewer(null)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
@@ -240,11 +240,14 @@ export default function KnowledgeTopicPage() {
             <X size={16} />
           </button>
         </div>
-        <iframe
-          src={pdfViewer.url}
-          className="flex-1 w-full border-0"
-          title={pdfViewer.title}
-        />
+        {/* Explicit height container so iOS Safari gives the iframe a real size and PDF scrolls */}
+        <div className="flex-1 relative overflow-hidden">
+          <iframe
+            src={pdfViewer.url}
+            className="absolute inset-0 w-full h-full border-0"
+            title={pdfViewer.title}
+          />
+        </div>
       </div>
     )}
     </PageShell>
