@@ -27,6 +27,7 @@ import {
   TRANE_RTU_KNOWLEDGE,
   RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
   AAON_RTU_KNOWLEDGE,
+  TRANE_RAUC_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -366,6 +367,18 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: [],
     tags: ['Troubleshooting', 'RTU', 'Economizer', 'HVAC'],
     category: 'hvac',
+  },
+  {
+    slug: 'trane-rauc',
+    title: 'Trane RAUC / RAUCC Condensing Units',
+    shortTitle: 'Trane RAUCC',
+    description: 'Trane RAUC and RAUCC commercial split-system air-cooled condensing units (20–60 ton), including RAUCC405BX03: dual-circuit scroll compressors, ReliaTel controls, refrigerant charging, tandem compressor service, condenser fan cycling, and common field faults.',
+    iconName: 'Snowflake',
+    colorClass: 'teal',
+    content: TRANE_RAUC_KNOWLEDGE,
+    manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
+    tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
+    category: 'manufacturer',
   },
   {
     slug: 'aaon-rtu',

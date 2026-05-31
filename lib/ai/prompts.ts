@@ -6121,6 +6121,115 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - Parts ordering: Order directly from AAON (1-918-583-2266) or through local AAON rep — AAON controls boards and compressors are not stocked at most distributors; lead times 3–10 days typical.
 `
 
+export const TRANE_RAUC_KNOWLEDGE = `
+# Trane RAUC / RAUCC Split-System Air-Cooled Condensing Units
+
+The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** used in split-system configurations. Unlike packaged RTUs, these units contain only the compressor(s) and condenser coil — they mount outdoors and connect to a separate indoor evaporator coil or air handler. Common in supermarkets, big-box retail, and light-industrial applications.
+
+**Specific model RAUCC405BX03:**
+- R = Remote (split system condensing unit)
+- A = Air-cooled
+- U = Unit cooler / commercial
+- C = Commercial grade
+- C = Scroll compressors (second C distinguishes from reciprocating-compressor RAUC)
+- 40 = 40 nominal tons
+- 5 = Design series 5
+- BX03 = Factory option codes and minor revision
+
+## Model Series Overview
+
+| Series | Compressor Type | Tonnage Range | Notes |
+|--------|----------------|---------------|-------|
+| RAUC   | Reciprocating  | 20–60 ton     | Older/legacy; R-22 or R-407C |
+| RAUCC  | Scroll         | 20–60 ton     | R-22 or R-410A; most common in field |
+| RAUJ   | Scroll         | 20–120 ton    | Current production; R-410A or R-513A |
+
+**RAUCC40 (40 ton) refrigerant circuits:**
+- Two independent refrigerant circuits (circuit A and circuit B), each ~20 tons
+- Compressors: typically two Copeland Discus or scroll compressors per circuit (four compressors total on 40-ton unit)
+- Each circuit has its own TXV, filter-drier, sight glass, service valves, and pressure controls
+
+## Refrigerant & Charging
+
+**R-410A units (RAUCC — series 5 and later):**
+- Circuit A and Circuit B charged independently
+- Subcooling method at liquid service valve:
+  - Target: 10–15°F subcooling
+  - Measure liquid line temperature at service valve and compare to saturation temperature at measured liquid pressure
+- Suction superheat at suction service valve: 8–12°F
+- Low ambient charging: at ambients below 65°F, head pressure will be low — use subcooling only, not superheat
+- Sight glass: clear with no bubbles at steady-state = correct charge or overcharge; bubbles = low refrigerant or restriction
+
+**R-22 units (older RAUCC, RAUC):**
+- Same superheat/subcooling method applies
+- Do NOT top off R-22 with R-410A or blended refrigerants without full system retrofit
+- Polyol ester (POE) oil required if converting from mineral oil to R-410A — full flush required
+
+## Compressor Service
+
+**Scroll compressor (RAUCC):**
+- Minimum off time: 5 minutes before restart (allow crankcase equalisation)
+- Rotation check on new installation: briefly energise — correct rotation = rapid pressure differential buildup; reverse rotation = little to no pressure differential, loud rattling
+- Copeland scroll: crankcase heater standard — heater must be energised 8 hours minimum before start after extended off period
+- Oil level: visible in sight glass at bottom of compressor; add Copeland Ultra 32-3MAF POE if low
+- Scroll compressor failure indication: suction and discharge pressures equalise rapidly, compressor draws high amps briefly then trips on internal overload
+
+**Tandem compressors (circuit A or B on 40-ton):**
+- Two compressors piped in parallel on one suction/discharge manifold
+- If one compressor fails, the circuit loses ~50% capacity and may still operate on remaining compressor
+- Tandem equalisation line: must be level and unobstructed — oil migration causes failure of lead compressor
+
+## Controls — ReliaTel (RTOM/RTRM)
+
+Older RAUCC units use Trane's ReliaTel control module (same platform as Precedent RTUs). Newer RAUJ uses Tracer controls or optional DDC.
+
+**ReliaTel on RAUCC:**
+- RTOM (ReliaTel Options Module) handles compressor staging and alarms
+- LED flash codes at RTOM board — same 11-code DIP table as Precedent series:
+  - 2 flashes: Low refrigerant charge lockout
+  - 3 flashes: Low ambient lockout
+  - 4 flashes: High pressure lockout (manual reset)
+  - 5 flashes: Low pressure lockout (auto reset after 3 → manual)
+  - 7 flashes: Compressor overload
+  - 11 flashes: High discharge temperature
+- Jumper JP6 on RTOM enables/disables low ambient lockout (factory default enabled at 25°F)
+
+**Tracer BACnet / DDC option (RAUJ and newer RAUCC):**
+- BACnet MS/TP standard; BACnet IP via optional gateway
+- DDC controller (SS-SVX007A) replaces RTOM for building automation integration
+- All compressor staging, alarms, and setpoints accessible via Tracer TU software
+
+## Condenser Fan System
+
+- Propeller fans, belt-drive or direct-drive depending on model
+- Fan cycling: multiple fans with pressure-actuated cycling for low-ambient head pressure control
+- Fan sequencing: fans cycle in/out based on head pressure — verify all fans are operational before diagnosing head pressure faults
+- Common fan issues: motor failure (check amps vs. nameplate), blade pitch incorrect (RAUCC uses fixed pitch — verify blade angle if fans were removed)
+- RAUCC40 typical condenser fan count: 4–6 fans depending on configuration
+
+**Head pressure control:**
+- High head pressure fault (4 flash): check all fans operational, check condenser coil for fouling, check ambient temp vs. design limits (unit rated to 115°F ambient max)
+- Low head pressure in cold weather: normal — fans will cycle off to maintain minimum head pressure; LP fault in cold weather is usually not a charge issue
+
+## Condenser Coil Maintenance
+
+- Clean at minimum annually — coil fouling is the leading cause of high head pressure and compressor failure
+- Cleaning: apply Coil Safe or Nu-Brite with low-pressure spray (20–30 PSI max on aluminium fin) — flush from air side out (inside-out direction)
+- Fin damage: bent fins reduce airflow — use fin comb to straighten; replace coil section if damage is severe
+- Coil replacement: RAUCC40 uses factory-specific coil geometry — order via Trane part number from nameplate; aftermarket coils available from Emergent Coils, Colmac
+
+## Common Field Issues — RAUCC
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| High head pressure | Dirty condenser coil, fan not running, overcharge | Clean coil, verify all fans, check subcooling |
+| Low suction both circuits | Low refrigerant charge | Check subcooling/superheat each circuit independently |
+| Low suction one circuit only | TXV restriction, suction filter-drier plugged, low charge circuit B | Check each circuit's filter-drier delta-T |
+| Compressor short-cycling | Low pressure lockout, high pressure lockout, low ambient | Read RTOM flash codes, check LP/HP setpoints |
+| Liquid slugging on startup | Liquid migration during off cycle | Verify crankcase heater operational 8+ hours before start |
+| Tandem oil migration | Oil equalisation line blocked/pitched wrong | Verify equalisation line is level, remove any traps |
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
