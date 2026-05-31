@@ -29,6 +29,7 @@ import {
   AAON_RTU_KNOWLEDGE,
   TRANE_RAUC_KNOWLEDGE,
   TEMPRITE_KNOWLEDGE,
+  DIXELL_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -392,6 +393,18 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
     tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
     category: 'hvac',
+  },
+  {
+    slug: 'dixell',
+    title: 'Dixell Controllers',
+    shortTitle: 'Dixell',
+    description: 'Dixell XR, XC, and XW series controllers for display cases, walk-in coolers, and condensing units — parameter programming, alarm/error codes, defrost setup, probe types, Modbus wiring, and troubleshooting.',
+    iconName: 'Cpu',
+    colorClass: 'indigo',
+    content: DIXELL_KNOWLEDGE,
+    manualKeywords: ['dixell', 'xr series', 'xc series', 'xw series', 'xr30c', 'xr40c'],
+    tags: ['Case Controller', 'Dixell', 'XR', 'XC', 'Modbus'],
+    category: 'manufacturer',
   },
   {
     slug: 'aaon-rtu',

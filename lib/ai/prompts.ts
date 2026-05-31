@@ -6380,6 +6380,176 @@ Temprite sizing is based on refrigerant type and system capacity (tons or kW). A
 - Alkylbenzene (AB) oil: compatible
 `
 
+export const DIXELL_KNOWLEDGE = `
+# Dixell Controllers — Supermarket Refrigeration Reference
+
+## Overview
+Dixell (a Schneider Electric brand) manufactures electronic controllers widely used in supermarket display cases, walk-in coolers/freezers, and condensing units. Three main families appear in field service:
+- **XR series** — single- and dual-probe temperature controllers; most common on reach-in cases and condensing units
+- **XC series** — advanced case controllers with multi-probe inputs, EEV support, and Modbus/RS-485
+- **XW series** — rack-level and system controllers for condensing units and small systems
+
+## XR Series — Common Models
+
+| Model | Probes | Relays | Key Use |
+|-------|--------|--------|---------|
+| XR02CX | 1 | 1 comp | Simple temp control, no defrost relay |
+| XR20C | 1 (+ alarm) | 2 | Basic reach-in; alarm relay for door/temp |
+| XR30C | 2 (air + evap) | 3 | Display case; defrost termination by evap temp |
+| XR40C | 4 | 3 | Full case control; separate fan, defrost, comp relays |
+| XR60C | 2 | 4 | Enhanced alarm + anti-condensate heater relay |
+| XR70C | 2 (+ optional) | 3 | Condensing unit control; pressure input capable |
+
+## XC Series — Advanced Case Controllers
+
+| Model | Description |
+|-------|-------------|
+| XC440C | Plug-in refrigeration controller; reach-in and self-contained |
+| XC460H | Self-contained heated/cooled cabinets |
+| XC560D | Display case with EEV driver; Modbus RS-485 |
+| XC660C | Full case control; glass heat, door switch, lighting relay |
+| XC1008D | Multi-circuit; controls up to 8 cases from one controller |
+
+## Parameter Navigation
+
+**Entering programming mode (most XR/XC models):**
+- Hold **SET** for 5 seconds → enters first parameter
+- Or simultaneously press **SET + UP** for 5 seconds
+- Some models: hold **SET + DOWN** to enter protected parameters (Pr2 set)
+
+**Navigating:**
+- **UP / DOWN** — scroll through parameter values
+- **SET** — confirm and advance to next parameter
+- **DEF** button (if present) — manually trigger defrost cycle
+- Display returns to normal after ~30 seconds of inactivity
+
+## Key Parameters (XR Series)
+
+| Code | Description | Typical Range |
+|------|-------------|---------------|
+| St | Temperature setpoint | −40 to +50°C |
+| LS | Minimum setpoint limit | −50°C |
+| US | Maximum setpoint limit | +50°C |
+| Hy | Compressor differential (hysteresis) | 0.5–10°C |
+| OdS | Setpoint offset (display correction) | ±20°C |
+| AC | Anti-sweat heater ON above cabinet temp | −20 to +15°C |
+| rES | Resolution (0 = 1°, 1 = 0.1°) | 0 or 1 |
+| Con | Compressor restart delay on power-up | 0–15 min |
+| COn | Minimum compressor ON time | 0–15 min |
+| COF | Minimum compressor OFF time | 0–15 min |
+| dFt | Defrost type: 0=EL (electric), 1=hot gas, 2=natural off-cycle | 0, 1, or 2 |
+| dI | Defrost interval (hours between defrosts) | 1–24 h |
+| dt | Maximum defrost duration | 1–99 min |
+| d8 | Defrost end temperature (evap probe terminates defrost) | −30 to +40°C |
+| dd | Drain/drip time after defrost ends (fans off, heaters off) | 0–15 min |
+| Fdt | Fan delay after defrost (fans hold off until cabinet recovers) | 0–30 min |
+| FAd | Fan differential — fans cut off when evap temp drops below setpoint by this amount | 0–10°C |
+| AH | High temp alarm offset above setpoint | 1–20°C |
+| AL | Low temp alarm offset below setpoint | 1–20°C |
+| Ad | Alarm delay after startup or door open | 0–240 min |
+| PbC | Probe type: 0=NTC, 1=PT100, 2=PT1000 | 0, 1, or 2 |
+
+## Alarm and Error Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| E1 | Probe 1 (cabinet air) fault — open or short | Check probe connector, measure resistance (NTC: 10kΩ at 25°C; PT1000: ~1000Ω at 0°C) |
+| E2 | Probe 2 (evaporator) fault | Same as E1; check for moisture/ice on probe tip |
+| E3 | Probe 3 fault (model-dependent) | Probe 3 wiring or sensor |
+| E4 | Probe 4 fault (model-dependent) | Probe 4 wiring or sensor |
+| HA | High temperature alarm | Cabinet temp exceeded setpoint + AH for longer than Ad delay |
+| LA | Low temperature alarm | Cabinet temp below setpoint − AL for longer than Ad delay |
+| dEF | Defrost in progress (status, not fault) | Normal; shows until defrost terminates |
+| drd | Drain time active after defrost (status) | Normal; fans off during this period |
+| oFF | Controller output disabled | Check if manually disabled; verify On/Off input wiring |
+| Err | Parameter checksum error | Reset to factory defaults; re-program |
+| EEr | EEPROM write error | Power cycle; if persists, replace controller |
+
+**Probe resistance quick check (NTC 10kΩ type):**
+- −20°C ≈ 97kΩ
+- 0°C ≈ 32kΩ
+- 10°C ≈ 20kΩ
+- 25°C ≈ 10kΩ
+- 40°C ≈ 5.7kΩ
+Infinite resistance = open (wiring break or probe failed open). Near-zero = short (probe shorted or wrong probe type).
+
+**PT1000 probe:**
+- 0°C = 1000Ω, increases ~3.85Ω per °C. At −20°C ≈ 923Ω; at 20°C ≈ 1078Ω.
+
+## Defrost Configuration
+
+**Electric defrost (dFt = 0):**
+- Compressor off, electric heater relay ON
+- Terminates when evap probe (Pb2) reaches d8 temperature OR dt time expires (whichever first)
+- Drain time dd runs after termination; then Fdt fan delay before fans restart
+- If Pb2 (evap probe) is failed/absent, defrost runs full dt minutes — common cause of over-defrost flooding
+
+**Hot gas defrost (dFt = 1):**
+- Compressor stays ON, hot gas solenoid opens (via defrost relay)
+- Evap probe (Pb2) terminates defrost at d8 temp
+- Typical d8 for hot gas: +15 to +25°C on evap
+- After termination: dd drain time, Fdt fan delay — fans must wait for evap to cool below case setpoint or frost re-forms
+
+**Natural/off-cycle defrost (dFt = 2):**
+- Compressor off, no heaters — case ambient melts frost
+- Only suitable for MT (medium temp) cases, typically ≥0°C setpoint
+- d8 and dt still apply as safety limits
+
+## Manual Defrost
+Press **DEF** button (if equipped) to start a defrost cycle immediately.
+On models without a DEF button: enter parameters and toggle a manual-start parameter (typically `Mn` or `MdF` = 1).
+
+## Communication (RS-485 / Modbus)
+- Most XC series and XR60C/XR70C support RS-485 Modbus RTU
+- Default baud rate: **9600 bps**, 8-N-1
+- Address set via `Add` parameter (1–247)
+- Wired daisy-chain: A+ to A+, B− to B−, common ground; terminate last device with 120Ω resistor
+- Controllers appear as Modbus slave nodes on Xweb500 / third-party BMS
+
+## Wiring Notes
+
+**Probe inputs (2-wire NTC or PT1000):**
+- Polarity-insensitive; any order on terminals
+- Maximum cable run: ~50 m for NTC; ~100 m for PT1000 (lower impedance)
+- Use shielded cable near VFDs or neon lighting; float shield at controller end
+
+**Relay outputs:**
+- All relays are volt-free contacts (SPDT or SPST — check data sheet)
+- Controller does NOT supply load voltage; wire external 240V or 24V circuits through the contacts
+- Relay ratings typically 8A resistive, 2A inductive — do not switch large fan/heater loads directly without contactors
+
+**Power supply:**
+- Most XR series: 115/230 VAC ±10%, 50/60 Hz
+- Some XC series: 24 VAC/DC option — verify label before wiring
+
+## Firmware / Reset Procedures
+
+**Factory reset (most models):**
+1. Enter programming mode (hold SET 5 sec)
+2. Navigate to parameter `rE` or `rES` (model-dependent)
+3. Set to 1 (or press SET to confirm)
+4. Controller reloads factory defaults — all setpoints and defrost programming reset
+
+**If display shows garbage or locked up:**
+- Power cycle with 5-minute wait (capacitors discharge)
+- Check supply voltage; Dixell controllers are sensitive to voltage brownouts and spikes
+- A suppressor (MOV) across the supply is recommended on noisy circuits
+
+## Troubleshooting Table
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| E1/E2 alarm, display shows dashes | Probe open or disconnected | Disconnect probe, measure resistance at controller terminals |
+| HA alarm, product warm, compressor OFF | Compressor relay welded OFF, or Con/COF lockout | Check relay output with DMM; shorten Con/COF; check for manual oFF |
+| HA alarm, compressor running | Insufficient cooling — not a controller fault | Check refrigerant, TXV/EEV, condenser, fan motors |
+| Defrost never terminates — full dt runs each time | Evap probe (E2) failed or unconnected | Measure Pb2 resistance; confirm probe is mounted on evap coil, not air stream |
+| Case over-defrosts, floods after every defrost | d8 set too high (evap never reaches it) or dt too long | Lower dt; verify Pb2 location; lower d8 to +18°C for medium-temp |
+| Fans not running after defrost | Fdt delay still active, or fan relay failed | Wait Fdt minutes; if fans still off, check fan relay with DMM |
+| Controller shows correct temp but product freezes | Setpoint offset OdS incorrect; probe mounted in air stream, not product level | Check OdS; reposition probe away from evap discharge |
+| No display | No power or blown internal fuse | Check voltage at terminals; check internal fuse (if accessible) |
+| Relay chattering (rapid ON/OFF) | Hysteresis Hy set too low | Increase Hy to at least 1°C to prevent short-cycling |
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
