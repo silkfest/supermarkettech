@@ -62,10 +62,10 @@ const CAT_COLORS: Record<string, { bg: string; border: string; icon: string }> =
 }
 
 const COURSE_TYPE_META: Record<string, { label: string; icon: string; color: string }> = {
-  video:     { label: 'Video',     icon: '🎬', color: 'bg-red-900/40 text-red-300 border-red-700/50' },
-  article:   { label: 'Article',   icon: '📄', color: 'bg-blue-900/40 text-blue-300 border-blue-700/50' },
-  'hands-on':{ label: 'Hands-On', icon: '🔧', color: 'bg-amber-900/40 text-amber-300 border-amber-700/50' },
-  quiz:      { label: 'Quiz',      icon: '🧠', color: 'bg-violet-900/40 text-violet-300 border-violet-700/50' },
+  video:     { label: 'Video',     icon: '🎬', color: 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700/50' },
+  article:   { label: 'Article',   icon: '📄', color: 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50' },
+  'hands-on':{ label: 'Hands-On', icon: '🔧', color: 'bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700/50' },
+  quiz:      { label: 'Quiz',      icon: '🧠', color: 'bg-violet-50 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-700/50' },
 }
 
 const COURSE_CATEGORIES = ['General', 'Safety', 'Tools & Equipment', 'Refrigeration', 'Electrical', 'Controls', 'Business Practices']
@@ -117,7 +117,7 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
   }
 
   const inputCls = 'w-full px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
-  const labelCls = 'block text-xs font-medium text-slate-400 mb-1'
+  const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
@@ -127,7 +127,7 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={18}/></button>
         </div>
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-          {error && <div className="px-3 py-2 bg-red-900/50 border border-red-700 text-red-300 text-xs rounded-lg">{error}</div>}
+          {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 text-xs rounded-lg">{error}</div>}
 
           <div>
             <label className={labelCls}>Title *</label>
@@ -489,17 +489,17 @@ function TrainingInner() {
 
       {/* Banners */}
       {toggleError && (
-        <div className="bg-red-900/60 border-b border-red-700/50 px-4 py-2 flex items-center justify-between">
-          <span className="text-xs text-red-300">{toggleError}</span>
-          <button onClick={() => setToggleError(null)} className="ml-3 text-red-400 hover:text-red-200 text-base leading-none">×</button>
+        <div className="bg-red-50 dark:bg-red-900/60 border-b border-red-200 dark:border-red-700/50 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-red-700 dark:text-red-300">{toggleError}</span>
+          <button onClick={() => setToggleError(null)} className="ml-3 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200 text-base leading-none">×</button>
         </div>
       )}
       {isReadOnly && (
-        <div className="bg-blue-900/60 border-b border-blue-700/50 px-4 py-2 flex items-center gap-2">
-          <span className="text-xs text-blue-300">
-            👁 Viewing <span className="font-semibold text-blue-200">{displayUser?.name || displayUser?.email}</span>'s training — read-only
+        <div className="bg-blue-50 dark:bg-blue-900/60 border-b border-blue-200 dark:border-blue-700/50 px-4 py-2 flex items-center gap-2">
+          <span className="text-xs text-blue-700 dark:text-blue-300">
+            👁 Viewing <span className="font-semibold text-blue-800 dark:text-blue-200">{displayUser?.name || displayUser?.email}</span>'s training — read-only
           </span>
-          {mentor && <span className="ml-auto text-xs text-blue-400">Journeyman: <span className="text-blue-200 font-medium">{mentor.name}</span></span>}
+          {mentor && <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">Journeyman: <span className="text-blue-700 dark:text-blue-200 font-medium">{mentor.name}</span></span>}
         </div>
       )}
 

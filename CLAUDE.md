@@ -55,6 +55,27 @@ the feature is ready to build.
 
 ---
 
+## Color Scheme — Semantic Status Colors
+
+All pages support both light and dark mode. Follow these conventions for semantic/status colors so text stays readable on both white and dark backgrounds:
+
+| Intent | Light mode | Dark mode |
+|--------|-----------|-----------|
+| Error / critical | `text-red-600` | `dark:text-red-400` |
+| Warning | `text-amber-600` or `text-amber-700` | `dark:text-amber-400` |
+| Success / OK | `text-emerald-600` or `text-emerald-700` | `dark:text-emerald-400` |
+| Info / blue accent | `text-blue-600` | `dark:text-blue-400` |
+| Violet / scenario | `text-violet-600` or `text-violet-700` | `dark:text-violet-400` |
+| Soft badge bg | `bg-*-50 border-*-200` | `dark:bg-*-500/10 dark:border-*-500/30` |
+
+**Rules:**
+- Never use `text-*-300` without a `dark:` prefix — 300-level colors are invisible on white.
+- Never use `bg-*-900/XX` without a `dark:` prefix — dark-tinted containers in light mode.
+- The `-400` level is acceptable for large/bold text only; use `-600` for small labels and body text.
+- Dot indicators (`.bg-*-500` circles) are fine without `dark:` — they're color blocks, not text.
+
+---
+
 ## New table rule
 Any new table created via `apply_migration` MUST receive explicit grants:
 ```sql

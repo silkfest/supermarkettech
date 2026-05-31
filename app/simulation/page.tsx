@@ -935,21 +935,21 @@ function buildFieldDiagnoseText(r: FieldReadings, derived: Record<string, number
 function statusColor(val: number, warn: number, alarm: number, reversed = false) {
   const bad  = reversed ? val <= alarm : val >= alarm
   const wrn  = reversed ? val <= warn  : val >= warn
-  if (bad) return 'text-red-400'
-  if (wrn) return 'text-amber-400'
-  return 'text-emerald-400'
+  if (bad) return 'text-red-600 dark:text-red-400'
+  if (wrn) return 'text-amber-600 dark:text-amber-400'
+  return 'text-emerald-600 dark:text-emerald-400'
 }
 function dotColor(val: number, warn: number, alarm: number, reversed = false) {
   const bad  = reversed ? val <= alarm : val >= alarm
   const wrn  = reversed ? val <= warn  : val >= warn
   if (bad) return 'bg-red-500'
-  if (wrn) return 'bg-amber-400'
+  if (wrn) return 'bg-amber-500'
   return 'bg-emerald-500'
 }
 function caseTempColor(temp: number, s: CaseSection) {
-  if (temp >= s.criticalTemp) return 'text-red-400'
-  if (temp >= s.warnTemp)     return 'text-amber-400'
-  return 'text-emerald-400'
+  if (temp >= s.criticalTemp) return 'text-red-600 dark:text-red-400'
+  if (temp >= s.warnTemp)     return 'text-amber-600 dark:text-amber-400'
+  return 'text-emerald-600 dark:text-emerald-400'
 }
 function caseDotColor(temp: number, s: CaseSection) {
   if (temp >= s.criticalTemp) return 'bg-red-500'
@@ -1147,11 +1147,11 @@ export default function SimulationPage() {
   const faultsByGroup = FAULT_GROUPS.map(g => ({ group: g, faults: FAULT_DEFS.filter(d => d.group === g) }))
 
   // OAT colour helper
-  const oatColor = activeOat <= 32 ? 'text-blue-300'
-    : activeOat <= 60 ? 'text-cyan-300'
-    : activeOat <= 85 ? 'text-emerald-400'
-    : activeOat <= 100 ? 'text-amber-400'
-    : 'text-red-400'
+  const oatColor = activeOat <= 32 ? 'text-blue-600 dark:text-blue-300'
+    : activeOat <= 60 ? 'text-cyan-600 dark:text-cyan-300'
+    : activeOat <= 85 ? 'text-emerald-600 dark:text-emerald-400'
+    : activeOat <= 100 ? 'text-amber-600 dark:text-amber-400'
+    : 'text-red-600 dark:text-red-400'
 
   // Clean-condenser condensing sat for reference (HP ctrl floor applied); condensing → bubble
   const cleanCondensingPsig = Math.round(toGauge(ptBubble(Math.max(activeOat + 15, hpCtrlSatTemp), pt)))
@@ -1177,7 +1177,7 @@ export default function SimulationPage() {
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
 
         {!scenarioMode && activeFaultCount > 0 && (
-          <span className="text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded-full">
+          <span className="text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 px-2 py-1 rounded-full">
             {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
           </span>
         )}
@@ -1259,7 +1259,7 @@ export default function SimulationPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-slate-600 dark:text-slate-400">Refrigerant</span>
-                    <span className="text-[11px] font-mono font-semibold text-violet-300">{rackConfig.refrigerant}</span>
+                    <span className="text-[11px] font-mono font-semibold text-violet-600 dark:text-violet-300">{rackConfig.refrigerant}</span>
                   </div>
                   <div className="flex gap-1">
                     {(['R-404A', 'R-448A', 'R-407A'] as Refrigerant[]).map(ref => (
@@ -1269,7 +1269,7 @@ export default function SimulationPage() {
                         className={[
                           'flex-1 text-[10px] font-medium py-1 rounded-md border transition-colors',
                           rackConfig.refrigerant === ref
-                            ? 'bg-violet-600/30 border-violet-500/60 text-violet-200'
+                            ? 'bg-violet-100 dark:bg-violet-600/30 border-violet-300 dark:border-violet-500/60 text-violet-700 dark:text-violet-200'
                             : 'bg-slate-200/60 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700',
                         ].join(' ')}
                       >
@@ -1288,7 +1288,7 @@ export default function SimulationPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-slate-600 dark:text-slate-400">HP Control Set Point</span>
-                    <span className="text-[11px] font-mono font-semibold text-amber-300">{rackConfig.hpCtrlPsig} psig</span>
+                    <span className="text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-300">{rackConfig.hpCtrlPsig} psig</span>
                   </div>
                   <input
                     type="range" min={SLIDER_RANGES[rackConfig.refrigerant].hp[0]} max={SLIDER_RANGES[rackConfig.refrigerant].hp[1]} step={5}
@@ -1309,7 +1309,7 @@ export default function SimulationPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-slate-600 dark:text-slate-400">MT Suction Set Point</span>
-                    <span className="text-[11px] font-mono font-semibold text-emerald-300">{rackConfig.mtSuctionPsig} psig</span>
+                    <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-300">{rackConfig.mtSuctionPsig} psig</span>
                   </div>
                   <input
                     type="range" min={SLIDER_RANGES[rackConfig.refrigerant].mt[0]} max={SLIDER_RANGES[rackConfig.refrigerant].mt[1]} step={1}
@@ -1328,7 +1328,7 @@ export default function SimulationPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-slate-600 dark:text-slate-400">LT Suction Set Point</span>
-                    <span className="text-[11px] font-mono font-semibold text-blue-300">{rackConfig.ltSuctionPsig} psig</span>
+                    <span className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-300">{rackConfig.ltSuctionPsig} psig</span>
                   </div>
                   <input
                     type="range" min={SLIDER_RANGES[rackConfig.refrigerant].lt[0]} max={SLIDER_RANGES[rackConfig.refrigerant].lt[1]} step={SLIDER_RANGES[rackConfig.refrigerant].lt[2]}
@@ -1381,7 +1381,7 @@ export default function SimulationPage() {
             )}
             {scenarioMode && submitted && score && (
               <div className="text-center">
-                <div className={`text-2xl font-bold ${score.pct >= 80 ? 'text-emerald-400' : score.pct >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                <div className={`text-2xl font-bold ${score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                   {score.pct}%
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1557,9 +1557,9 @@ export default function SimulationPage() {
                     <p className="text-xs text-slate-500 text-center py-4">Enter readings on the left to see analysis</p>
                   ) : fieldAnalysis.findings.map((f, i) => (
                     <div key={i} className={`rounded-lg border p-3 ${
-                      f.severity === 'critical' ? 'bg-red-500/10 border-red-500/40' :
-                      f.severity === 'warning'  ? 'bg-amber-500/10 border-amber-500/40' :
-                      f.severity === 'ok'       ? 'bg-emerald-500/10 border-emerald-500/40' :
+                      f.severity === 'critical' ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40' :
+                      f.severity === 'warning'  ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/40' :
+                      f.severity === 'ok'       ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/40' :
                       'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600'}`}>
                       <div className="flex items-start gap-2 mb-1.5">
                         {f.severity === 'critical' ? <XCircle size={13} className="text-red-400 flex-shrink-0 mt-0.5"/> :
@@ -1568,9 +1568,9 @@ export default function SimulationPage() {
                          <Info size={13} className="text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5"/>}
                         <div className="min-w-0">
                           <span className={`text-xs font-semibold ${
-                            f.severity === 'critical' ? 'text-red-300' :
-                            f.severity === 'warning'  ? 'text-amber-300' :
-                            f.severity === 'ok'       ? 'text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>{f.label}</span>
+                            f.severity === 'critical' ? 'text-red-600 dark:text-red-300' :
+                            f.severity === 'warning'  ? 'text-amber-700 dark:text-amber-300' :
+                            f.severity === 'ok'       ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>{f.label}</span>
                           {f.measurement && <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-1.5">{f.measurement}</span>}
                         </div>
                       </div>
@@ -1609,7 +1609,7 @@ export default function SimulationPage() {
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Outdoor Ambient Temperature (OAT)</span>
                 </div>
                 {scenarioMode && (
-                  <span className="text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full">
+                  <span className="text-[10px] px-2 py-0.5 bg-violet-50 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 rounded-full">
                     {activeScenario ? 'Set by scenario' : 'Locked in scenario mode'}
                   </span>
                 )}
@@ -1651,17 +1651,17 @@ export default function SimulationPage() {
                   Expected discharge:{' '}
                   <span className="text-slate-500 dark:text-slate-400">{cleanCondensingPsig} psig</span>
                 </span>
-                {activeOat < 32 && <span className="text-blue-300 font-medium">Below freezing — monitor for ice on coil</span>}
+                {activeOat < 32 && <span className="text-blue-600 dark:text-blue-300 font-medium">Below freezing — monitor for ice on coil</span>}
                 {activeOat > 95 && <span className="text-amber-400 font-medium">High heat load — inspect condenser fan operation</span>}
               </div>
             </div>
 
             {/* ── Scenario picker / active scenario ── */}
             {scenarioMode && (
-              <div className="bg-violet-900/30 border border-violet-500/40 rounded-xl overflow-hidden">
-                <div className="px-4 py-2 bg-violet-900/40 border-b border-violet-500/30 flex items-center gap-2">
-                  <Target size={13} className="text-violet-400"/>
-                  <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider">Scenario Mode</span>
+              <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-500/40 rounded-xl overflow-hidden">
+                <div className="px-4 py-2 bg-violet-100 dark:bg-violet-900/40 border-b border-violet-200 dark:border-violet-500/30 flex items-center gap-2">
+                  <Target size={13} className="text-violet-600 dark:text-violet-400"/>
+                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wider">Scenario Mode</span>
                 </div>
                 {!activeScenario ? (
                   <div className="p-3 space-y-2">
@@ -1672,13 +1672,13 @@ export default function SimulationPage() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-medium text-slate-900 dark:text-white">{s.name}</span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
-                            s.difficulty === 'Beginner' ? 'bg-emerald-500/20 text-emerald-400' :
-                            s.difficulty === 'Advanced' ? 'bg-red-500/20 text-red-400' :
-                            'bg-amber-500/20 text-amber-400'}`}>{s.difficulty}</span>
+                            s.difficulty === 'Beginner' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' :
+                            s.difficulty === 'Advanced' ? 'bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-400' :
+                            'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'}`}>{s.difficulty}</span>
                           {s.oat !== undefined && (
                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
-                              (s.oat ?? 80) <= 32 ? 'bg-blue-500/20 text-blue-300' :
-                              (s.oat ?? 80) >= 90 ? 'bg-orange-500/20 text-orange-300' :
+                              (s.oat ?? 80) <= 32 ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300' :
+                              (s.oat ?? 80) >= 90 ? 'bg-orange-50 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300' :
                               'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                               OAT {s.oat}°F
                             </span>
@@ -1700,8 +1700,8 @@ export default function SimulationPage() {
                             'bg-amber-500/20 text-amber-400'}`}>{activeScenario.difficulty}</span>
                           {activeScenario.oat !== undefined && (
                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
-                              (activeScenario.oat ?? 80) <= 32 ? 'bg-blue-500/20 text-blue-300' :
-                              (activeScenario.oat ?? 80) >= 90 ? 'bg-orange-500/20 text-orange-300' :
+                              (activeScenario.oat ?? 80) <= 32 ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300' :
+                              (activeScenario.oat ?? 80) >= 90 ? 'bg-orange-50 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300' :
                               'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>OAT {activeScenario.oat}°F</span>
                           )}
                         </div>
@@ -1713,8 +1713,8 @@ export default function SimulationPage() {
                     {submitted && score && (
                       <div className="mt-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                         <div className="flex items-center gap-2">
-                          <Trophy size={14} className={score.pct >= 80 ? 'text-emerald-400' : score.pct >= 50 ? 'text-amber-400' : 'text-red-400'}/>
-                          <span className={`text-sm font-bold ${score.pct >= 80 ? 'text-emerald-400' : score.pct >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                          <Trophy size={14} className={score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}/>
+                          <span className={`text-sm font-bold ${score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                             Score: {score.pct}%
                           </span>
                           <span className="text-[10px] text-slate-500">{score.correct}/{score.total} fault{score.total > 1 ? 's' : ''} identified</span>
@@ -1724,10 +1724,10 @@ export default function SimulationPage() {
                           const def = FAULT_DEFS.find(d => d.key === key)
                           const hit = userGuess[key]
                           return (
-                            <div key={key} className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg ${hit ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
-                              {hit ? <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0 mt-0.5"/> : <XCircle size={12} className="text-red-400 flex-shrink-0 mt-0.5"/>}
+                            <div key={key} className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg ${hit ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30' : 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30'}`}>
+                              {hit ? <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"/> : <XCircle size={12} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"/>}
                               <div>
-                                <span className={hit ? 'text-emerald-300' : 'text-red-300'}>{def?.label}</span>
+                                <span className={hit ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}>{def?.label}</span>
                                 <span className="text-slate-500 ml-1.5">— {def?.hint}</span>
                               </div>
                             </div>
@@ -1759,7 +1759,7 @@ export default function SimulationPage() {
                 </div>
                 <div className="p-2 space-y-1">
                   {allAlarms.map((a, i) => (
-                    <div key={`${a.code}-${i}`} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg text-xs ${a.severity === 'CRITICAL' ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'}`}>
+                    <div key={`${a.code}-${i}`} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg text-xs ${a.severity === 'CRITICAL' ? 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300' : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300'}`}>
                       <AlertTriangle size={11} className="flex-shrink-0 mt-0.5"/>
                       <div><span className="font-mono font-bold mr-2">{a.code}</span><span>{a.message}</span></div>
                     </div>
@@ -1785,13 +1785,13 @@ export default function SimulationPage() {
               <Card title="MT Discharge Side" icon={<Thermometer size={13}/>}>
                 {/* Expected vs actual discharge banner */}
                 <div className={`mx-0 mt-1 mb-2 px-2.5 py-1.5 rounded-lg text-[10px] flex items-center justify-between ${
-                  mt.dischargeDeviation > 50 ? 'bg-red-500/15 border border-red-500/30 text-red-300' :
-                  mt.dischargeDeviation > 25 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' :
+                  mt.dischargeDeviation > 50 ? 'bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-300' :
+                  mt.dischargeDeviation > 25 ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300' :
                   'bg-slate-200 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
                   <span>Expected at {activeOat}°F OAT</span>
                   <span className="font-mono font-semibold">
                     ~{Math.round(mt.expectedDischargePsig)} psig
-                    <span className={`ml-2 ${mt.dischargeDeviation > 25 ? 'text-amber-300 font-bold' : mt.dischargeDeviation < -15 ? 'text-blue-300' : 'text-slate-500'}`}>
+                    <span className={`ml-2 ${mt.dischargeDeviation > 25 ? 'text-amber-700 dark:text-amber-300 font-bold' : mt.dischargeDeviation < -15 ? 'text-blue-600 dark:text-blue-300' : 'text-slate-500'}`}>
                       ({mt.dischargeDeviation >= 0 ? '+' : ''}{Math.round(mt.dischargeDeviation)})
                     </span>
                   </span>
@@ -1801,11 +1801,11 @@ export default function SimulationPage() {
                   color={statusColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
                   note={mt.nonCondensables ? `≈ ${Math.round(mt.dischargePsig - 28)} psig without non-cond.` : undefined} />
                 <ReadingRow label="Condensing sat temp" value={`${mt.condensingTemp.toFixed(1)} °F`} sub="from PT"
-                  color={mt.hpCtrlActive ? 'text-amber-400' : 'text-slate-600 dark:text-slate-300'}
+                  color={mt.hpCtrlActive ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}
                   note={mt.hpCtrlActive ? 'HP control active — minimum setpoint' : undefined} />
                 <ReadingRow label="Approach ΔT" value={`${mt.approachDelta.toFixed(1)} °F`}
                   dot={mt.approachDelta > 25 ? 'bg-red-500' : mt.approachDelta > 18 ? 'bg-amber-400' : mt.hpCtrlActive ? 'bg-amber-400' : 'bg-emerald-500'}
-                  color={mt.approachDelta > 25 ? 'text-red-400' : mt.approachDelta > 18 ? 'text-amber-400' : mt.hpCtrlActive ? 'text-amber-400' : 'text-emerald-400'}
+                  color={mt.approachDelta > 25 ? 'text-red-600 dark:text-red-400' : mt.approachDelta > 18 ? 'text-amber-600 dark:text-amber-400' : mt.hpCtrlActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
                   note={mt.approachDelta > 25 ? 'High — dirty coil / fan fault' : mt.approachDelta > 18 ? 'Elevated — inspect condenser' : mt.hpCtrlActive ? 'HP ctrl floor — not airside ΔT' : 'Normal (12–18 °F clean rack)'}
                   tooltip="Condensing sat temp minus outdoor air temp (OAT). On a clean rack with all fans running, baseline is ~15°F. A higher approach means the condenser is less efficient — caused by a dirty coil, failed fans, or non-condensables. Normal range: 12–18°F." />
                 <ReadingRow label="Discharge temp" value={`${Math.round(mt.dischargeTemp)} °F`}
@@ -1854,12 +1854,12 @@ export default function SimulationPage() {
             <Card title="MT Compressors — 4 × Copeland Scroll" icon={<Zap size={13}/>}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1">
                 {mt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
+                  <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40'}`}>
                     <div className="flex items-center justify-center gap-1.5 mb-1.5">
                       <div className={`w-2 h-2 rounded-full ${running ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
                       <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">COMP {i + 1}</span>
                     </div>
-                    <div className={`text-sm font-mono font-bold ${running ? 'text-slate-900 dark:text-white' : 'text-red-400'}`}>
+                    <div className={`text-sm font-mono font-bold ${running ? 'text-slate-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
                       {running ? `${mt.compAmps[i].toFixed(1)} A` : 'OFF'}
                     </div>
                     <div className="text-[9px] text-slate-500 mt-0.5">{running ? 'Running' : 'Tripped'}</div>
@@ -1869,13 +1869,13 @@ export default function SimulationPage() {
               <div className="mt-1 py-1 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-4 text-[10px] text-slate-500">
                 <span><span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compRunning.filter(Boolean).length}</span> of 4 running</span>
                 <span>Total: <span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compAmps.reduce((s, a) => s + a, 0).toFixed(1)} A</span></span>
-                {mt.compRunning.filter(Boolean).length < 4 && <span className="text-amber-400">↑ Remaining amps elevated</span>}
+                {mt.compRunning.filter(Boolean).length < 4 && <span className="text-amber-600 dark:text-amber-400">↑ Remaining amps elevated</span>}
               </div>
             </Card>
 
             {/* ── LT Booster ── */}
             <Card title="LT Booster Circuit — 2 × Scroll (−20 °F SST setpoint)" icon={<Zap size={13}/>}
-              accent="bg-blue-900/40 border-blue-700/50" className="border-blue-700/40">
+              accent="bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-700/50" className="border-blue-200 dark:border-blue-700/40">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 py-1">
                 <div>
                   <ReadingRow label="LT suction pressure" value={`${lt.suctionPsig.toFixed(1)} psig`} sub={`${(lt.suctionPsig + 14.696).toFixed(1)} psia`}
@@ -1884,27 +1884,27 @@ export default function SimulationPage() {
                   <ReadingRow label="LT suction sat temp" value={`${lt.suctionSatTemp.toFixed(1)} °F`} sub="from PT" color="text-slate-600 dark:text-slate-300" />
                   <ReadingRow label="LT superheat" value={`${lt.superheat.toFixed(1)} °F`}
                     dot={lt.superheat > 25 ? 'bg-amber-400' : lt.superheat < 5 ? 'bg-amber-400' : 'bg-emerald-500'}
-                    color={lt.superheat > 25 ? 'text-amber-400' : lt.superheat < 5 ? 'text-amber-400' : 'text-emerald-400'}
+                    color={lt.superheat > 25 ? 'text-amber-600 dark:text-amber-400' : lt.superheat < 5 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
                     note={lt.superheat > 25 ? 'HIGH — check TXV/charge' : undefined} />
                   <ReadingRow label="LT compression ratio" value={`${lt.compressionRatio.toFixed(2)} : 1`} color="text-slate-600 dark:text-slate-300" />
                 </div>
                 <div>
-                  <ReadingRow label="LT discharge (→MT suction)" value={`${lt.dischargePsig.toFixed(1)} psig`} sub={`${lt.dischargeSatTemp.toFixed(0)} °F sat`} color="text-blue-300" />
+                  <ReadingRow label="LT discharge (→MT suction)" value={`${lt.dischargePsig.toFixed(1)} psig`} sub={`${lt.dischargeSatTemp.toFixed(0)} °F sat`} color="text-blue-600 dark:text-blue-300" />
                   <ReadingRow label="LT discharge temp" value={`${Math.round(lt.dischargeTemp)} °F`} color="text-slate-600 dark:text-slate-300" />
                   <ReadingRow label="LT case temp (avg)" value={`${lt.caseTemp.toFixed(1)} °F`}
                     dot={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'bg-red-500' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'bg-amber-400' : 'bg-emerald-500'}
-                    color={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'text-red-400' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'text-amber-400' : 'text-emerald-400'}
+                    color={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'text-red-600 dark:text-red-400' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
                     note={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'Frozen food at risk!' : undefined} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 mt-1 border-t border-slate-200 dark:border-slate-700/50">
                 {lt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
+                  <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40'}`}>
                     <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${running ? 'bg-blue-400 animate-pulse' : 'bg-red-500'}`}/>
+                      <div className={`w-2 h-2 rounded-full ${running ? 'bg-blue-500 animate-pulse' : 'bg-red-500'}`}/>
                       <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">LT BOOST {i + 1}</span>
                     </div>
-                    <div className={`text-sm font-mono font-bold ${running ? 'text-blue-200' : 'text-red-400'}`}>
+                    <div className={`text-sm font-mono font-bold ${running ? 'text-blue-700 dark:text-blue-200' : 'text-red-600 dark:text-red-400'}`}>
                       {running ? `${lt.compAmps[i].toFixed(1)} A` : 'OFF'}
                     </div>
                     <div className="text-[9px] text-slate-500 mt-0.5">{running ? 'Running' : 'Tripped'}</div>
@@ -1943,7 +1943,7 @@ export default function SimulationPage() {
 
                 {/* LT cases */}
                 <div className="mt-4 sm:mt-0">
-                  <p className="text-[9px] font-semibold text-blue-500/70 uppercase tracking-widest mb-2">LT Circuit — Frozen Food</p>
+                  <p className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">LT Circuit — Frozen Food</p>
                   {STORE_LINEUP.filter(s => s.circuit === 'LT').map(s => {
                     const idx  = STORE_LINEUP.indexOf(s)
                     const temp = caseTemps[idx]
@@ -1979,11 +1979,11 @@ export default function SimulationPage() {
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Subcooling</span><span>10–20 °F</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Discharge temp</span><span>130–200 °F</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Oil diff</span><span>20–25 psi (Y825)</span></div>
-                  <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
+                  <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT suction setpoint</span><span>{rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F)</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT ratio</span><span>2.0–3.5 : 1</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT superheat</span><span>10–20 °F</span></div>
-                  <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig</div>
+                  <div className="text-[9px] font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig</div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Min cond sat</span><span>{hpCtrlSatTemp.toFixed(1)}°F ({rackConfig.hpCtrlPsig} psig)</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Activates below OAT</span><span>~{Math.round(hpCtrlSatTemp - 15)}°F</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Typical range</span><span>155–175 psig</span></div>
@@ -2012,9 +2012,9 @@ export default function SimulationPage() {
                       ) : (
                         <div className="space-y-1">
                           {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
-                            <div key={d.key} className="flex items-start gap-2 text-xs text-amber-300">
+                            <div key={d.key} className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
                               <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-amber-500"/>
-                              <div><span className="font-medium">{d.label}</span><span className="text-amber-400/60 ml-1.5">— {d.hint}</span></div>
+                              <div><span className="font-medium">{d.label}</span><span className="text-amber-600/70 dark:text-amber-400/60 ml-1.5">— {d.hint}</span></div>
                             </div>
                           ))}
                         </div>
