@@ -36,7 +36,6 @@ const SECTIONS: Section[] = [
     body: 'The AI assistant draws on a structured knowledge base covering every major manufacturer — Copeland, Hussmann, Danfoss, Sporlan, Bitzer, Arneg, and more. Upload your own manufacturer PDFs and the system reads them automatically; when you ask a question it cites the exact manual and section. Chat history is saved so you can revisit how a fault was diagnosed or share a thread with a colleague.',
     features: [
       { title: 'AI Expert Chat', description: 'Describe the fault — get ranked causes, confirmation tests, and step-by-step fixes.', href: '/dashboard' },
-      { title: 'Knowledge Base', description: 'In-depth technical topics covering valve theory, VFD fault codes, CO₂ transcritical, refrigerant retrofits, defrost wiring, and more.', href: '/knowledge' },
       { title: 'Manual Library', description: 'Upload manufacturer PDFs. The AI reads them and cites them directly in answers.', href: '/library' },
       { title: 'Chat History', description: 'Every conversation saved — search by date, equipment, or topic.', href: '/chat-history' },
     ],
@@ -215,14 +214,19 @@ export default function WelcomePage() {
         {/* Security & Privacy trust block */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-900/50 overflow-hidden">
           {/* Header */}
-          <div className="bg-emerald-600 px-6 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
-              <Lock size={20} />
+          <div className="bg-emerald-600 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                <Lock size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest">06</span>
+                </div>
+                <h2 className="text-base font-bold text-white leading-tight">Security & Privacy</h2>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white leading-tight">Security & Privacy</h2>
-              <p className="text-sm text-white/80 mt-0.5">Built for companies — not public sign-ups</p>
-            </div>
+            <p className="text-sm text-white/80 mt-2 leading-relaxed">Built for companies — not public sign-ups</p>
           </div>
           {/* Body */}
           <div className="px-6 py-5">

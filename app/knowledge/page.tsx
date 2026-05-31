@@ -8,10 +8,11 @@ import {
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
-  BookOpen,
+  BookOpen, Search, X,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
+import type { ContentMatch } from '@/app/api/knowledge/search/route'
 
 // ── Color map — static class names so Tailwind purge can see them ─────────────
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag: string }> = {
@@ -60,16 +61,19 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ManualCount { slug: string; count: number }
+type SearchMatch = 'topic' | 'manual' | 'both' | 'content'
 
 // ── Topic card ────────────────────────────────────────────────────────────────
 function TopicCard({
   topic,
   manualCount,
   onClick,
+  matchSource,
 }: {
   topic: KnowledgeTopic
   manualCount: number
   onClick: () => void
+  matchSource?: SearchMatch
 }) {
   const colors = COLOR_MAP[topic.colorClass] ?? COLOR_MAP.blue
 
@@ -91,6 +95,12 @@ function TopicCard({
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
               {manualCount} manual{manualCount !== 1 ? 's' : ''}
             </p>
+          )}
+          {matchSource === 'manual' && (
+            <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-0.5 font-medium">matched in manuals</p>
+          )}
+          {matchSource === 'content' && (
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">matched in content</p>
           )}
         </div>
       </div>
@@ -119,6 +129,9 @@ function TopicCard({
 export default function KnowledgePage() {
   const router = useRouter()
   const [manualCounts, setManualCounts] = useState<ManualCount[]>([])
+  const [query, setQuery] = useState('')
+  const [docMatchSlugs, setDocMatchSlugs] = useState<string[]>([])
+  const [contentMatches, setContentMatches] = useState<ContentMatch[]>([])
 
   // Fetch manual counts for all topics
   useEffect(() => {
@@ -140,65 +153,205 @@ export default function KnowledgePage() {
     fetchCounts()
   }, [])
 
+  // Debounced search of document titles + knowledge content
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setDocMatchSlugs([]); setContentMatches([]); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const { docSlugs, contentMatches: cm } = await res.json()
+          setDocMatchSlugs(docSlugs ?? [])
+          setContentMatches(cm ?? [])
+        }
+      } catch { /* ignore */ }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
   function getCount(slug: string) {
     return manualCounts.find(m => m.slug === slug)?.count ?? 0
   }
 
+  const q = query.trim().toLowerCase()
+
+  // Build combined topic results with source tracking
+  const filteredTopics: Array<{ topic: KnowledgeTopic; matchSource: SearchMatch }> | null = q
+    ? (() => {
+        const topicHits = new Set(
+          TOPICS.filter(t =>
+            t.title.toLowerCase().includes(q) ||
+            t.description.toLowerCase().includes(q) ||
+            t.tags.some(tag => tag.toLowerCase().includes(q))
+          ).map(t => t.slug)
+        )
+        const docHits = new Set(docMatchSlugs)
+        const contentHits = new Set(contentMatches.map(m => m.topicSlug))
+        const allSlugs = new Set([...topicHits, ...docHits, ...contentHits])
+        return TOPICS
+          .filter(t => allSlugs.has(t.slug))
+          .map(t => ({
+            topic: t,
+            matchSource: (topicHits.has(t.slug)
+              ? (docHits.has(t.slug) ? 'both' : 'topic')
+              : docHits.has(t.slug)
+              ? 'manual'
+              : 'content') as SearchMatch,
+          }))
+      })()
+    : null
+
   const manufacturerTopics = TOPICS.filter(t => t.category === 'manufacturer')
+  const hvacTopics = TOPICS.filter(t => t.category === 'hvac')
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
 
   return (
     <PageShell>
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 sticky top-0 z-10">
+        <div className="flex items-center gap-3 mb-3">
+          <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-lg font-bold text-blue-600">Cold</span>
+            <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-600">/</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Knowledge Base</span>
         </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Knowledge Base</span>
+        {/* Search bar */}
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search topics, manuals, model numbers…"
+            className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 space-y-8">
 
-        {/* Manufacturer Reference */}
-        <section>
-          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-            Manufacturer Reference
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {manufacturerTopics.map(topic => (
-              <TopicCard
-                key={topic.slug}
-                topic={topic}
-                manualCount={getCount(topic.slug)}
-                onClick={() => router.push(`/knowledge/${topic.slug}`)}
-              />
-            ))}
-          </div>
-        </section>
+        {filteredTopics !== null ? (
+          /* Search results */
+          <>
+            {/* Topic cards */}
+            <section>
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                {filteredTopics.length} topic{filteredTopics.length !== 1 ? 's' : ''} for &ldquo;{query.trim()}&rdquo;
+              </p>
+              {filteredTopics.length === 0 && contentMatches.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No results match that search.</p>
+                  <button onClick={() => setQuery('')} className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                    Clear search
+                  </button>
+                </div>
+              ) : filteredTopics.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredTopics.map(({ topic, matchSource }) => (
+                    <TopicCard
+                      key={topic.slug}
+                      topic={topic}
+                      manualCount={getCount(topic.slug)}
+                      matchSource={matchSource}
+                      onClick={() => router.push(`/knowledge/${topic.slug}`)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </section>
 
-        {/* Fundamentals */}
-        <section>
-          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-            Fundamentals
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {fundamentalsTopics.map(topic => (
-              <TopicCard
-                key={topic.slug}
-                topic={topic}
-                manualCount={getCount(topic.slug)}
-                onClick={() => router.push(`/knowledge/${topic.slug}`)}
-              />
-            ))}
-          </div>
-        </section>
+            {/* Content excerpts */}
+            {contentMatches.length > 0 && (
+              <section>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                  {contentMatches.length} passage{contentMatches.length !== 1 ? 's' : ''} in knowledge content
+                </p>
+                <div className="space-y-2">
+                  {contentMatches.map((match, i) => (
+                    <button
+                      key={i}
+                      onClick={() => router.push(`/knowledge/${match.topicSlug}`)}
+                      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all group"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">{match.topicTitle}</span>
+                        <span className="text-slate-300 dark:text-slate-600 text-[11px]">›</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{match.sectionTitle}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 group-hover:text-slate-800 dark:group-hover:text-slate-100">
+                        {match.excerpt}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Manufacturer Reference */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Manufacturer Reference
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {manufacturerTopics.map(topic => (
+                  <TopicCard
+                    key={topic.slug}
+                    topic={topic}
+                    manualCount={getCount(topic.slug)}
+                    onClick={() => router.push(`/knowledge/${topic.slug}`)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* HVAC */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Commercial HVAC
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {hvacTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                ))}
+              </div>
+            </section>
+
+            {/* Fundamentals */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Fundamentals
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {fundamentalsTopics.map(topic => (
+                  <TopicCard
+                    key={topic.slug}
+                    topic={topic}
+                    manualCount={getCount(topic.slug)}
+                    onClick={() => router.push(`/knowledge/${topic.slug}`)}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </div>
     </PageShell>

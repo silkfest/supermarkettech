@@ -4686,6 +4686,1700 @@ Always back-seat after service.
 9. Using standard INT69 on CO₂ compressor — wrong trip point, compressor unprotected
 10. Tandem oil equalization line reversed — oil pools in one crankcase, other compressor fails`
 
+// ── HVAC Rooftop Unit Knowledge Base ─────────────────────────────────────────
+
+export const LENNOX_RTU_KNOWLEDGE = `
+## Lennox Commercial Rooftop Units — Field Reference
+
+---
+
+### Model Families Overview
+
+| Series | Type | Capacity Range | Notes |
+|---|---|---|---|
+| LGH / LCH | Gas heat / Electric cool (3-phase) | 3–25 ton | Most common commercial |
+| LGF / LCF | Gas heat / Electric cool (single-phase) | 3–5 ton | Light commercial |
+| Landmark | High-efficiency commercial | 7.5–25 ton | Two-stage cooling and heating |
+
+**LGH naming decode — example LGH120H4B:**
+- **L** = Lennox
+- **G** = gas heat
+- **H** = cooling (H = R-410A; C = R-22 legacy)
+- **120** = 120 = 10-ton nominal (MBH ÷ 12 for tons: 120 MBH ÷ 12 = 10 tons)
+- **H** = high-efficiency variant
+- **4** = 3-phase 460V
+- **B** = design sequence
+
+LCH is identical to LGH except L**C** = electric heat instead of gas. LGF/LCF follow the same convention with an F suffix indicating single-phase power.
+
+**Landmark series** uses LZH prefix (high efficiency), has factory-installed two-stage scroll compressors and communicating Prodigy 2 controls.
+
+---
+
+### Prodigy 1 vs Prodigy 2 Control Boards
+
+#### Identifying Which Board Is Installed
+
+- **Board label**: look at the upper edge of the board for silkscreen text — "PRODIGY" or "PRODIGY 2"
+- **Model year**: units manufactured before ~2012 generally have Prodigy 1; post-2012 have Prodigy 2 (check unit nameplate manufacture date)
+- **Physical layout**: Prodigy 1 has a single bank of status LEDs on the left side; Prodigy 2 has a 4-character scrolling LED display in the upper-right corner
+- **Connector count**: Prodigy 2 has additional connectors for variable-speed ID fan and communicating thermostat (RJ-45 port visible on right edge)
+
+#### Prodigy 1 LED Flash Codes
+
+The status LED flashes a number of times, pauses, then repeats. Count flashes in one group.
+
+| Flash Count | Fault |
+|---|---|
+| 2 | Pressure switch open (not verified after inducer start) |
+| 3 | Draft inducer fault (pressure switch failed to close) |
+| 4 | High-limit switch open |
+| 5 | Flame sense fault (flame lost after establishing) |
+| 6 | Ignition fault (failed to establish flame on all retries) |
+| 7 | Low flame signal (microamp signal below threshold during operation) |
+| 8 | Polarity reversed (L1/L2 swapped at unit disconnect — fix incoming wiring) |
+
+**Note:** Prodigy 1 does not store fault history. You must observe the LED in real time during a fault condition.
+
+#### Prodigy 2 Fault Codes and Navigation
+
+Prodigy 2 displays fault codes as scrolling text on the 4-digit LED display.
+
+**Accessing fault history:**
+1. Press and hold the MODE button for 3 seconds — display enters fault history mode
+2. Each stored fault code scrolls across the display
+3. Prodigy 2 stores the last 5 faults with timestamp
+4. Press MODE again to exit fault history
+
+**Prodigy 2 added features vs Prodigy 1:**
+- Variable-speed ID (induced draft) fan — reduces noise, improves combustion efficiency
+- Enhanced economizer integration with mixed-air temperature PID control
+- Expanded fault history (5 faults vs none on Prodigy 1)
+- Communicating thermostat support via RJ-45 bus (iComfort system)
+- Two-stage heat control output (W2 terminal active)
+- Active dehumidification mode output
+
+**Common Prodigy 2 fault codes (scrolling display text):**
+- \`LP\` = Low pressure switch fault (cooling)
+- \`HP\` = High pressure switch fault (cooling)
+- \`HL\` = High limit open (heating)
+- \`PS\` = Pressure switch (inducer — heating)
+- \`FS\` = Flame sense fault
+- \`IG\` = Ignition fault (failed to light on retries)
+- \`EC\` = Economizer fault (mixed-air sensor, actuator feedback)
+- \`HR\` = Heat rollout switch open (manual reset required)
+
+---
+
+### Economizer System
+
+#### Types
+
+- **Differential dry-bulb**: compares outdoor air temperature (OAT) to return air temperature (RAT). Opens damper when OAT < RAT − differential setpoint (typically 2°F). Simple, no humidity sensing.
+- **Differential enthalpy**: compares outdoor air enthalpy to return air enthalpy using dedicated enthalpy sensors. More efficient — avoids bringing in humid outdoor air even when temperature is favorable.
+
+#### Damper Actuator — Lennox/Interlink Part 102691-04
+
+- Type: 24VAC, 2-position (open/closed), spring-return, normally-closed
+- Stroke: 0–90°
+- Spring-return direction: closes on loss of power (fail-safe closed = no outside air on power failure)
+- Signal: Y1 from control board energizes 24VAC to open damper; de-energized = spring drives damper closed
+
+**Wiring for 102691-04:**
+- Black/White = 24VAC power (common and hot)
+- Orange = damper open signal from Y1 terminal on control board
+- Green = ground
+
+**Replacement procedure for 102691-04:**
+1. Shut off unit power at disconnect
+2. Note wire positions and photograph wiring before disconnecting
+3. Disconnect the 24VAC harness connector at actuator body
+4. Remove 2 mounting screws (5/16" head) holding actuator to damper bracket
+5. Rotate coupler ring to neutral (midpoint) to relieve spring tension before removing
+6. Install new actuator, align coupler to damper shaft
+7. Torque mounting screws to 35 in-lb
+8. Reconnect wiring harness
+9. Restore power; cycle Y1 signal and verify damper opens fully (90°) and spring-returns closed when signal removed
+10. Verify no binding at extreme positions
+
+#### Common Economizer Faults
+
+**Actuator gear strip:**
+- Symptom: motor runs but damper doesn't move, clicking noise
+- Test: disconnect power, manually push damper — should move freely
+- Fix: replace actuator 102691-04; check damper blade for binding before installing new actuator
+
+**Damper blade binding on debris:**
+- Symptom: actuator hums, draws high current, damper won't reach full stroke
+- Test: with power off, manually operate damper — note resistance
+- Fix: clear debris from damper frame and blade seals; verify blade is not warped
+
+**Mixed-air sensor failure (C7835A or equivalent NTC sensor):**
+- Symptom: damper hunts continuously (opens and closes rapidly), fault code EC on Prodigy 2
+- Test: measure sensor resistance — at 70°F should read approximately 10 kΩ (varies by sensor type — check data sheet)
+- Fix: replace sensor; verify mounting location is in mixed-air stream (6–12" downstream of mixing point)
+
+**Economizer high-limit tripping in high ambient:**
+- Symptom: unit locks out economizer function on hot days even when OAT < RAT
+- Cause: mixed-air temperature high-limit switch set too low, or high-limit sensor in wrong location reading supply air discharge
+- Fix: verify high-limit setpoint is 65°F (adjustable on Prodigy 2); confirm sensor is in mixed-air section not discharge
+
+---
+
+### Ignition System
+
+#### Components
+
+- **Hot Surface Igniter (HSI)**: silicon nitride element, rated ~60W at 120VAC. Resistance when cold: 40–70Ω. At operating temperature: resistance drops. Replace if resistance out of range or if element is visibly cracked.
+- **Flame sensor/rod**: stainless steel rod positioned in burner flame. Measured output: microamp signal, should be >1.5µA during flame. Check with a microamp-capable meter in series with the flame rod wire.
+- **Draft inducer motor**: pre-purges combustion chamber before ignition, maintains negative pressure for combustion.
+
+#### Normal Ignition Sequence (Prodigy 1 and 2)
+
+1. W1 thermostat call received
+2. Draft inducer energizes — begins pre-purge
+3. Pressure switch closes within 7–15 seconds (confirms inducer is moving air)
+4. HSI pre-heat begins — 17-second warm-up period
+5. Gas valve opens — W valve energizes
+6. Flame must be detected within 7 seconds or the IFC aborts the trial
+7. If flame established: normal heating operation
+8. Flame sense signal confirmed >1.5µA continuously during operation
+
+#### Soft Lockout Sequence
+
+- Trial for ignition fails → wait → retry
+- Total of 3 retry attempts
+- After 3rd failed trial: soft lockout — 1-hour wait before automatic restart
+- Manual reset: cycle thermostat call off for 30 seconds, back on
+
+**Hard lockout** (Prodigy 2 only): after 5 consecutive soft lockout cycles, board goes to hard lockout requiring manual board reset button press.
+
+#### Ignition Troubleshooting
+
+**No spark / no glow:**
+- Verify 120VAC to HSI circuit (IFC board output)
+- Measure HSI resistance: replace if open or < 10Ω (shorted)
+- Check igniter wire harness for chafing
+
+**Nuisance ignition lockouts:**
+- Most common cause: carbon-fouled flame rod
+- Clean rod with fine steel wool — do not use sandpaper (leaves abrasive residue)
+- Verify microamp signal in flame: connect microamp meter (on DC µA range) in series with sensor wire
+- Signal <1.5µA: clean rod first, then verify rod positioning in flame (tip should be 1/2" into flame cone)
+- If signal still low after cleaning: check ground path continuity from burner box to unit chassis; poor ground = weak flame signal
+
+---
+
+### Common Faults and Fixes
+
+#### Cracked Heat Exchanger
+
+**Signs:**
+- CO spillage detected at supply registers (> 9 ppm CO is actionable; > 35 ppm is OSHA action level for occupied space)
+- Elevated CO2 in supply air beyond expected combustion contribution
+- Soot deposits on secondary heat exchanger tubes
+- Visible cracks or pinholes in primary heat exchanger panels
+
+**Diagnosis protocol:**
+1. Perform CO test at supply registers with combustion analyzer — unit running in heating with all air handlers on full airflow
+2. Visual inspection: remove access panels, use inspection mirror and flashlight to examine primary HX panels for cracks, warping, or holes
+3. Dye test: introduce non-toxic smoke/dye into combustion chamber; observe supply air for traces with UV light (use appropriate dye formulated for HX testing)
+4. If CO confirmed: immediately shut down heating section, tag unit, notify building owner
+
+**Important:** A cracked heat exchanger requires full heat exchanger assembly replacement — do not attempt field repair.
+
+#### High-Limit Trip
+
+Causes (in order of likelihood):
+1. **Dirty filter** — measure static pressure across filter bank; > 0.25" W.C. = restricted
+2. **Failed supply fan** — check capacitor first (measure µF, compare to nameplate ±6%), then motor winding resistance and amp draw
+3. **Dirty evaporator coil** — reduced airflow through fouled coil; clean with low-pressure coil cleaner
+4. **Blocked return air** — furniture, merchandise, or store fixtures blocking return grilles
+
+**High-limit switch specs (LGH/LCH):** auto-reset at 170°F, opens at 200°F. Manual-reset rollout switch: 250°F.
+
+#### Pressure Switch Fault (Heating — Flash Code 2 or 3 on Prodigy 1)
+
+Causes:
+1. **Condensate in pressure switch tubing** — disconnect tubing at switch, blow clear, slope tubing to drain away from switch
+2. **Failed inducer motor** — motor hums but shaft doesn't turn (check capacitor), or motor dead (check 120VAC supply to motor)
+3. **Flue restriction** — bird nest, collapsed vent section, failed draft hood
+4. **Cracked inducer wheel** — wheel spins but doesn't move adequate air; remove housing cover and inspect wheel
+
+**Pressure switch specification (standard):** closes on −0.3" to −0.5" W.C. differential. Test with manometer tap at pressure switch port.
+
+#### Refrigerant Low-Charge Diagnosis
+
+**Superheat method (fixed orifice systems):**
+- Record outdoor ambient temperature (OAT) and return air wet-bulb (RWB)
+- Target suction superheat = 10–15°F
+- Measure suction line temperature at compressor service valve (clamp thermometer)
+- Measure suction saturation pressure and convert to temperature (use P/T chart for R-410A)
+- Superheat = Suction line temp − Suction saturation temp
+- If superheat > 15°F: unit is low on charge — add refrigerant in small increments
+- If superheat < 5°F: risk of flood-back — check airflow before adding charge
+
+**Subcooling method (TXV systems, Lennox Landmark):**
+- Measure liquid line temperature at liquid service valve
+- Measure liquid saturation pressure (high-side gauge at liquid service valve) and convert to temperature
+- Subcooling = Liquid saturation temp − Liquid line temp
+- Target: 10–15°F subcooling
+- < 10°F subcooling: low charge or restriction upstream
+- > 18°F subcooling: overcharged or liquid line restriction
+
+**Never add refrigerant without identifying and repairing the leak.** R-410A systems must be pressure-tested with nitrogen before recharging.
+
+---
+
+### Maintenance Intervals
+
+| Task | Interval |
+|---|---|
+| Filter replacement (2" commercial) | Every 3 months (monthly if dusty environment) |
+| Heat exchanger visual inspection | Annually |
+| Combustion analysis (CO, CO2, flue temp) | Annually |
+| Belt tension check (belt-drive supply fan) | Every 6 months; 1/2" deflection per foot of span |
+| Evaporator coil cleaning | Spring and fall |
+| Condenser coil cleaning | Spring and fall |
+| Gas pressure verification | Annually |
+| Electrical connection torque | Annually |
+| Drain pan cleaning and inspection | Annually |
+| Economizer actuator stroke test | Annually |
+
+**Gas pressure specs:**
+- Natural gas manifold pressure: 3.5" W.C.
+- Propane manifold pressure: 10.0" W.C.
+- Incoming gas supply pressure: 5.0–13.6" W.C. (natural gas); 11.0–13.6" W.C. (propane)
+
+**Supply fan belt tension:** apply 1 lb of force perpendicular to belt midspan — deflection should be 1/2" per foot of span. Over-tightening causes premature bearing failure.
+
+**Compressor oil:** scroll compressors on R-410A units require Lennox-approved POE oil. Do not add oil unless refrigerant weigh-in confirms oil loss during refrigerant service.
+
+---
+
+### Quick Reference — Prodigy 2 DIP Switch Settings
+
+| DIP | Function | ON | OFF |
+|---|---|---|---|
+| 1 | Cooling stages | 2-stage | 1-stage |
+| 2 | Heating stages | 2-stage | 1-stage |
+| 3 | Heat/Cool changeover | Auto | Manual |
+| 4 | Economizer enable | Enabled | Disabled |
+| 5 | Dehumidification | Enabled | Disabled |
+| 6 | Reserved | — | — |
+| 7 | BMS communication | Enabled | Disabled |
+| 8 | Test mode | Test | Normal |
+
+Always return DIP 8 to OFF (Normal) after testing.
+`
+
+export const CARRIER_RTU_KNOWLEDGE = `
+## Carrier Commercial Rooftop Units — Field Reference
+
+---
+
+### Model Families Overview
+
+| Series | Type | Capacity Range | Notes |
+|---|---|---|---|
+| 48TC / 48TM | Gas/electric, standard efficiency | 3–12.5 ton | Most common light-commercial |
+| 48TF | Gas/electric, large commercial | 15–25 ton | Single or dual refrigerant circuit |
+| 50TJ | Cooling only (electric heat optional) | 6–25 ton | No gas section |
+| 50XC WeatherExpert | High efficiency gas/electric | 6–25 ton | ASHRAE 90.1 compliant, integrated economizer |
+
+**Bryant equivalents:** Bryant 580J series ≈ Carrier 48TC (same cabinet, different badging). York and other Johnson Controls brands may share components on OEM versions.
+
+#### Carrier 48TC Naming Example: 48TC D06A2A5A0A0A0
+
+- **48TC** = product series (gas heat, standard efficiency)
+- **D** = cabinet size (D = medium commercial)
+- **06** = nominal cooling capacity (6 ton)
+- **A** = design sequence
+- **2** = 2-stage cooling
+- **A** = 208–230V, 3-phase (varies by position)
+- **5** = R-410A refrigerant
+- Remaining characters = factory options (economizer, electric heat kW, etc.)
+
+---
+
+### Controls
+
+#### Standard Electromechanical Controls (24V)
+
+- Basic 24V thermostat wiring: R, C, Y1, Y2 (2-stage), W1, W2, G
+- Staged cooling via two compressor contactors on dual-circuit units
+- No onboard diagnostics — faults identified by checking components directly
+
+#### ComfortLink II (Communicating Controls)
+
+Used on 50XC WeatherExpert and some larger 48TF units. ComfortLink II is Carrier's CCN (Carrier Comfort Network) communicating control platform.
+
+**CCN bus:** 2-wire RS-485 communications at 9600 baud. Address set via DIP switches on the main control board.
+
+**Accessing ComfortLink II diagnostics:**
+1. Press and hold the TEST button for 5 seconds
+2. Board enters diagnostic scroll mode
+3. LED flash codes on the board indicate active faults
+4. Connect a Carrier Service Tool (CST) laptop interface for full fault history and live sensor readings
+5. Without CST: check flash code table on inside of control access panel door
+
+**Common ComfortLink II LED flash codes:**
+
+| Flashes | Fault |
+|---|---|
+| 1 | Call for cooling/heating (status, not fault) |
+| 2 | Low pressure fault |
+| 3 | High pressure fault |
+| 4 | Compressor overload / thermal protector |
+| 5 | Freeze stat trip (evaporator coil temperature low) |
+| 6 | Outdoor fan fault |
+| 7 | Supply air temperature sensor fault |
+| 8 | Economizer fault |
+
+**CCN address DIP switch setting:**
+- Switches 1–6 set the binary CCN address (1–63)
+- Switch 7: baud rate (OFF = 9600, ON = 19200)
+- Switch 8: termination resistor (ON = terminated; only end devices on bus should be ON)
+
+---
+
+### Economizer System (WeatherExpert)
+
+The WeatherExpert integrated economizer uses motorized damper with full modulating control.
+
+**Damper actuator:** Honeywell ML6161 or equivalent, spring-return, 24VAC, 0–10VDC modulating signal. Spring returns damper to closed (0%) on power loss.
+
+**Enthalpy sensor:** Carrier 33ZCH series enthalpy sensor. Measures both temperature and relative humidity to calculate enthalpy. Installed in outdoor air intake stream.
+
+**Changeover logic:**
+- **Differential enthalpy**: opens damper when OA enthalpy is lower than RA enthalpy by a set differential (typically 2 BTU/lb)
+- **Differential dry-bulb** (fallback if enthalpy sensor fails): opens when OAT < RAT by differential
+
+**Economizer high-limit control:** prevents mixed-air temperature from dropping below 55°F (adjustable). Mixed-air temperature sensor located downstream of mixing point.
+
+#### Common WeatherExpert Economizer Faults
+
+**OAT or RAT sensor failure causing full-open damper:**
+- Symptom: building floods with hot, humid outdoor air; cooling load spikes; humidity complaints from occupants
+- Cause: failed sensor reads extreme value, controller defaults to open position
+- Test: measure sensor resistance at sensor terminals (compare to resistance/temperature table in service manual)
+- Fix: replace failed sensor; verify damper returns to minimum position with new sensor
+
+**Linkage binding:**
+- Symptom: actuator hums, damper doesn't reach commanded position, actuator overheats
+- Test: disconnect actuator, manually operate damper linkage — should move freely
+- Fix: lubricate pivot points with food-grade grease (if food retail application); realign linkage
+
+**Actuator burnout from 24VAC brown-out:**
+- Symptom: actuator dead, no response to control signal; may have burn marks on PCB inside actuator
+- Cause: voltage below 20VAC at actuator terminals causes motor to stall and overheat
+- Test: measure 24VAC at actuator terminals with unit under full load — must be 24–28VAC
+- Fix: replace actuator; investigate transformer capacity if voltage is chronically low under load
+
+---
+
+### Refrigerant Circuit
+
+**Circuit configuration:**
+- Single-circuit: all units ≤7.5 ton — one compressor, one evaporator coil, one condenser coil section
+- Dual-circuit: units ≥10 ton — two independent refrigerant circuits, each with its own scroll compressor, TXV, liquid line, and suction line
+
+**Compressors:** Copeland ZP (scroll) on most models; Carlyle on some OEM variants. R-410A throughout current production.
+
+**Expansion:** TXV standard on all 48/50 series. Orifice plates only on very old legacy units.
+
+**Charging on TXV units (subcooling method):**
+- Target subcooling: 10–15°F
+- Measure liquid line temperature at liquid service valve with contact thermometer
+- Read liquid saturation pressure (high-side gauge) and convert to saturation temperature using R-410A P/T chart
+- Subcooling = Sat temp − Liquid line temp
+- Add refrigerant if subcooling < 10°F; remove if > 18°F
+
+**Pressure switch settings (R-410A):**
+- Low-pressure cutout: 25 psig (manual reset on some models, auto-reset after 5 min on others)
+- Low-pressure reset: 40 psig
+- High-pressure cutout: 400 psig
+- High-pressure manual reset: red button on HP switch body (or compressor access panel)
+
+---
+
+### Heat Section
+
+**Natural gas — single-stage (48TC standard):**
+- Gas valve: White-Rodgers 36C or Honeywell VR8300 series (24VAC operator, 3/4" inlet typical)
+- Manifold pressure: 3.5" W.C. natural gas, 10.0" W.C. propane
+- Ignition: intermittent pilot or direct spark ignition (DSI) on newer units; HSI on late-model units
+
+**Natural gas — two-stage (48TC with W2):**
+- First stage: minimum fire (typically 40–50% of rated input)
+- Second stage: full fire on continued demand
+- Gas valve: dual-operator valve (White-Rodgers 36J or similar)
+
+**Electric heat option (48TC-E suffix):**
+- SCR-controlled electric heat strips
+- Staged via W1 and W2 signals
+- Check amp draw — each strip draws significant current; verify breaker sizing
+
+**Heat exchangers:** primary and secondary (condensing) — two-pass design. Secondary HX condenses water vapor from flue gases (condensing design on high-efficiency 50XC). Condensate drain required on 50XC heat section.
+
+**Cracked HX signs:**
+- Elevated CO in supply air (>9 ppm at supply registers during heating operation)
+- Excessive cycling on high-limit switch
+- Visible carbonization or scale deposits on HX panels
+- Water intrusion marks on burner or heat section panels
+
+---
+
+### Common Faults
+
+**Compressor lockout (3-phase units):**
+- Cause: 3-phase voltage imbalance > 2% — scroll compressors are sensitive to imbalance and will trip internal overload
+- Test: measure all three line voltages L1-L2, L1-L3, L2-L3 at unit disconnect with unit running
+- Calculate imbalance: (Max deviation from average ÷ Average voltage) × 100%
+- If > 2%: report to utility or building electrical; do not operate compressor until corrected
+- Manual reset: press reset button on high-pressure switch; if compressor trips again immediately, internal overload is tripped — wait 30 min for thermal reset
+
+**Dirty condenser coil reducing summer capacity:**
+- Target condensing temperature = OAT + 25°F (clean coil)
+- Measure: high-side saturation pressure, convert to saturation temperature; compare to OAT
+- If condensing temp > OAT + 35°F: coil needs cleaning
+- Clean with low-pressure coil cleaner (alkaline for aluminum fin coils — follow manufacturer dwell time)
+- Rinse from inside out (supply water from inside, push dirt out of face side)
+
+**TXV hunting:**
+- Symptom: suction pressure oscillates ±5 psig continuously, evaporator temperature unstable
+- Cause: worn TXV power element loses sensitivity; hunting also caused by refrigerant floodback washing out bulb charge
+- Test: confirm superheat at evaporator outlet — should be steady ±2°F; if swinging ±8°F = TXV hunting
+- Fix: replace TXV assembly (bulb and valve body together on most Carrier applications)
+
+**Economizer damper stuck open in winter:**
+- Result: unit brings in cold outdoor air, heating load increases dramatically, building may not maintain setpoint
+- Test: remove control signal (disconnect Y1 at actuator) — spring should close damper within 10 seconds
+- If damper doesn't close with Y1 disconnected: actuator spring failed or damper physically stuck
+- Fix: replace actuator; clear damper blade obstruction
+
+---
+
+### Maintenance Schedule
+
+| Task | Interval |
+|---|---|
+| Filter replacement | Quarterly (2" commercial filters) |
+| Condenser coil cleaning (chemical) | Annually (spring) |
+| Evaporator coil cleaning | Annually (fall) |
+| Belt inspection (if belt-drive supply fan) | Every 6 months |
+| Gas pressure verification | Annually |
+| Blower wheel cleaning | Annually |
+| Drain pan inspection and treatment | Quarterly |
+| Electrical connection torque check | Annually |
+| Economizer full-stroke test | Annually |
+| Compressor oil level (if sight glass present) | Annually |
+
+**Gas pressure spec:** manifold 3.5" W.C. natural gas; 10.0" W.C. propane. Measure at manifold test port with digital manometer.
+
+**Drain pan treatment:** apply BioGuard or equivalent slow-release condensate treatment tablet quarterly to prevent algae and biofilm growth.
+`
+
+export const YORK_RTU_KNOWLEDGE = `
+## York / Johnson Controls Commercial Rooftop Units — Field Reference
+
+---
+
+### Model Families Overview (Johnson Controls)
+
+| Series | Name | Type | Capacity |
+|---|---|---|---|
+| ZJ | Predator | Gas/electric 3-phase | 3–25 ton |
+| ZR | Predator | Cooling only, 3-phase | 3–25 ton |
+| DJSC | Sunline 2000 | Gas/electric, older mid-range | 3–12.5 ton |
+| DJFC | Sunline | Gas heat, older light commercial | 3–7.5 ton |
+| LX | — | High efficiency commercial | 7.5–25 ton |
+
+**York Predator ZJ naming example: ZJ048N06B2AAB1A**
+- **ZJ** = Predator gas heat series
+- **048** = 048 = 4-ton nominal (CFM-based — 048 = 48,000 BTU cooling)
+- **N** = standard efficiency
+- **06** = 6 kW electric auxiliary heat
+- **B** = 2nd design sequence
+- **2** = 208–230V/3-phase
+- **AA** = factory options
+- **B** = unit options
+- **1A** = manufacturing sequence
+
+**Sunline 2000 (DJSC):** older generation, still widely in field service. Use Quantum board, same LED diagnostics. Parts availability declining — consider like-for-like replacement on major failures.
+
+---
+
+### Quantum Microprocessor Control Board
+
+The Quantum board is York's standard RTU controller across Predator and most Sunline units.
+
+**LED indicator layout (Quantum board, looking at board face):**
+- Green LED (POWER): steady on = 24VAC supply OK
+- Red LED (FAULT): solid on = active fault; flashing = fault code (count flashes)
+- Amber LED (ALARM): second fault indicator (used on newer Quantum revisions)
+
+#### Quantum Board LED Flash Codes
+
+| Flash Count | Fault |
+|---|---|
+| 1 | Low pressure switch open (cooling) |
+| 2 | High pressure switch open (cooling) |
+| 3 | Loss of charge fault (low-pressure lockout initiated) |
+| 4 | High discharge temperature sensor open (>225°F) |
+| 5 | Low pressure lockout (3 LP trips in 1 hour) |
+| 6 | High pressure lockout (manual reset required) |
+
+#### Accessing Stored Fault History on Quantum Board
+
+1. Press and release the RESET button rapidly — 3 times within 5 seconds
+2. The red FAULT LED will flash the code for the first stored fault
+3. Press RESET once more to advance to the next stored fault
+4. Quantum stores up to 3 recent faults
+5. To clear fault history: hold RESET button for 10 seconds
+
+**OptiView controls** (larger LX series): full touchscreen interface. Access diagnostics via: Menu → Diagnostics → Fault History. OptiView stores last 10 faults with timestamp and sensor values at time of fault.
+
+---
+
+### Economizer System
+
+**Damper actuator:** Honeywell ML6161 or equivalent (spring-return, 24VAC). Modulating 0–100% on LX series with 0–10VDC signal; 2-position on standard Predator (open/closed).
+
+**Changeover sensors:**
+- Differential dry-bulb: single OAT sensor vs RAT sensor, opens damper when OAT < RAT − differential
+- Differential enthalpy: Honeywell C7400A enthalpy sensors at OA and RA intakes
+  - C7400A output: 2–10VDC proportional to enthalpy
+  - 2VDC = low enthalpy (favorable outside conditions); 10VDC = high enthalpy
+
+**Enthalpy wheel option (LX high-efficiency models):** energy recovery wheel transfers heat/moisture between exhaust and intake airstreams. Wheel drive motor: 1/4 HP, 120VAC; check belt tension and wheel purge sector quarterly.
+
+**Damper calibration procedure (modulating economizer on LX):**
+1. Shut off power to actuator (disconnect actuator signal wire)
+2. Manually position damper to 0% (fully closed) — damper should spring-close without power
+3. Restore power to actuator
+4. Send Y1 signal (24VAC or 10VDC depending on actuator type) and verify full stroke to 100% open
+5. Measure mixed-air temperature at both extremes to verify sensor readings are logical
+6. On OptiView: navigate to Economizer → Calibrate to initiate auto-calibration routine
+
+---
+
+### Heating Section
+
+**Draft inducer:**
+- Manufacturer: Fasco Industries 702111538 or equivalent (model-specific — check parts manual)
+- Typical specs: 120VAC, 0.8–1.2A, 3000 RPM, sleeve bearing
+- Check capacitor: most inducer motors use a run capacitor (5–10µF); measure with capacitance meter
+
+**Pressure switch:**
+- Standard setpoint: closes on −0.35" W.C. differential (rise-to-close sensing manifold pressure)
+- Opens on loss of draft pressure when inducer fails or flue blocks
+- Test: apply −0.35" W.C. with a manometer and hand pump to the pressure port; contacts should close
+
+**Ignition system (standard Predator/Sunline):**
+- DSI (Direct Spark Ignition) on older units; HSI on current Predator production
+- IFC (Ignition Field Control) board handles sequence timing
+- Normal sequence: W1 call → inducer on → pressure switch closes (within 30 sec) → HSI heat-up (17 sec on HSI models) → gas valve open → flame sense within 7 sec
+- Retries: 3 attempts then soft lockout (1-hour wait)
+
+**Multi-speed ID fan (LX series):** 2-speed on standard, variable-speed on high-efficiency. Variable-speed ID fan controlled by Quantum board PWM signal. Fault: variable-speed control board fails, inducer runs at full speed only (noisy at part-load heating).
+
+#### Common Heating Faults
+
+**Pressure switch won't close:**
+- Step 1: verify inducer is spinning (visually or with tachometer — should be 2800–3200 RPM)
+- Step 2: check for blocked flue (birds, wasps, collapsed vent)
+- Step 3: inspect inducer wheel — cracked wheel (plastic) reduces static pressure output significantly
+- Step 4: check condensate trap — if trap is flooded, condensate backs up and creates positive pressure opposing inducer
+- Step 5: test pressure switch directly with manometer — if switch closes at correct differential but board still shows fault, check switch wiring continuity
+
+**Rollout switch tripped:**
+- Location: red manual-reset button on burner box front panel
+- Cause: flame rolls out of burner combustion area due to restricted heat exchanger, improper gas pressure, or wrong orifices
+- Always investigate cause before resetting — repeated rollout trips indicate a serious combustion problem
+- Reset: press red button firmly until it clicks; button will not hold in if temperature at rollout switch bimetal is still above trip point
+
+---
+
+### Compressor Protection
+
+**High discharge temperature sensor:**
+- Carlislie sensor (NTC type) on discharge line
+- Opens output at 225°F discharge temp; auto-resets when discharge temp drops to 185°F
+- Persistent high discharge temp cause: low refrigerant charge, failed condenser fan, dirty condenser coil
+
+**Crankcase heater:**
+- 40–70W PTC heater element on compressor crankcase
+- **Critical:** energize crankcase heater minimum 8 hours before first cooling season startup after extended off period
+- Refrigerant migrates to compressor crankcase during extended off periods; starting compressor with liquid refrigerant in crankcase = slug damage
+- Verify heater is energized: measure temperature at crankcase (should be warm to touch, 90–110°F ambient + elevation); or clamp ammeter on heater circuit
+
+**Klixon overload:**
+- Internal overload protector embedded in compressor motor windings
+- Trips on overcurrent or winding overtemperature
+- Auto-reset after 30–60 minutes of cooling
+- Check: if compressor is silent (no hum) and 24VAC is at contactor coil and contactor is pulled in, suspect internal overload — wait 45 minutes, try again
+
+---
+
+### Known Field Issues — York/JCI Predator
+
+**Corroded terminal boards on Quantum controller:**
+- York Predator units installed in coastal or high-humidity environments (within 1 mile of ocean) are notorious for corrosion on the Quantum board terminal strips
+- Symptoms: intermittent faults, sensors reading erratic, unexplained lockouts
+- Inspection interval: every 2 years in coastal environments
+- Remedy: clean terminal strip with contact cleaner, apply dielectric grease; replace board if traces are corroded through
+
+**Refrigerant charge loss through Schrader cores:**
+- York RTUs have reported slow leaks at Schrader valve cores on service ports, particularly on units > 5 years old
+- Replace standard Schrader cores with locking-style caps (JB Industries LP-5 or equivalent) at every PM visit
+- Locking caps require a special tool to remove — prevents vandalism and slow-leak loss
+
+**Evaporator coil freeze from combined low-airflow faults:**
+- Common scenario: partially-failed supply blower capacitor + dirty filter = just enough airflow restriction to freeze coil at night when thermostat setpoint drops
+- Morning finding: ice-packed evaporator, no cooling, possible liquid flood-back to compressor
+- Check capacitor µF (within ±6% of nameplate) and filter static pressure at every PM
+
+**Economizer full-open fault from failed enthalpy sensor:**
+- C7400A sensor failure mode: output sticks at 2VDC (indicating ideal outside conditions), damper stays 100% open regardless of actual conditions
+- Result: high humidity and temperature complaints in summer
+- Test: disconnect sensor signal wire, verify damper goes to minimum position; if yes, replace sensor
+
+---
+
+### Refrigerant Notes
+
+**R-410A (post-2010 Predator ZJ/ZR):** standard. Charge to subcooling spec (TXV equipped): 10–15°F. Use only R-410A-rated service equipment (hoses, gauges rated to 800 psi minimum).
+
+**R-22 (pre-2009 Sunline DJSC/DJFC, legacy service only):** R-22 is no longer produced for new equipment (EPA phaseout). For legacy R-22 units:
+- Use reclaimed R-22 or approved R-22 replacement refrigerants (MO29, RS-44B — confirm compressor OEM acceptance)
+- Check filter-drier annually on units > 10 years — acid formation in aged mineral oil systems can plug capillary tubes or TXV inlet screens
+- Consider recommending full unit replacement to building owner on units > 15 years
+
+---
+
+### Maintenance Intervals
+
+| Task | Interval |
+|---|---|
+| Filter replacement | Quarterly |
+| Condenser coil cleaning | Annually (spring) |
+| Evaporator coil cleaning | Annually |
+| Quantum board terminal inspection | Every 2 years (annually in coastal areas) |
+| Crankcase heater verification | Pre-season (before first cooling startup) |
+| Gas pressure check | Annually |
+| Filter drier inspection (older R-22 units) | Annually |
+| Locking Schrader caps check | Every PM visit |
+| Economizer stroke test | Annually |
+| Rollout and high-limit switch continuity test | Annually |
+`
+
+export const TRANE_RTU_KNOWLEDGE = `
+## Trane Commercial Rooftop Units — Field Reference
+
+---
+
+### Model Families Overview
+
+| Series | Name | Type | Capacity |
+|---|---|---|---|
+| YCD / YCH | Precedent | Gas/electric, 3-phase | 3–10 ton |
+| YSD / YSH | Precedent | Gas/electric, large commercial | 12.5–25 ton |
+| Sintesis | — | High efficiency commercial | 10–50 ton |
+| Voyager | TCONT/TONT | Older commercial, gas/electric | 3–25 ton (legacy) |
+| Intellipak II | — | Large commercial | 20–130 ton |
+
+**Precedent YCD naming example: YCD060F3ELA**
+- **Y** = commercial product line
+- **C** = cooling
+- **D** = direct-drive supply fan
+- **060** = 5-ton nominal (060 MBH ÷ 12 = 5 ton)
+- **F** = 2-stage gas heat
+- **3** = 3-phase
+- **E** = high-efficiency variant
+- **L** = 460V/60Hz/3-phase
+- **A** = design sequence
+
+**YSH (large Precedent):** YS = large, H = gas heat. Units ≥12.5 ton have top-accessible filter rack — remove top panel for filter access (distinct from smaller units' front access).
+
+---
+
+### ReliaTel Control System
+
+The ReliaTel control system is split across two key modules:
+
+**RTOM — Refrigeration/Unit Output Module:**
+- Controls compressor contactors, condenser fan motors, economizer actuator outputs
+- Houses the primary diagnostic LED array
+- Field-replaceable module (plug-in to main wiring harness)
+
+**RTRM — Refrigeration/Thermostat Module:**
+- Receives thermostat inputs (Y1, Y2, W1, W2, G, etc.)
+- Communicates with RTOM over internal data bus
+- Contains the system control algorithm (temperature staging, safeties)
+- Houses battery backup for fault memory retention
+
+#### ReliaTel LED Diagnostics (RTOM)
+
+| LED | Normal State | Fault Indication |
+|---|---|---|
+| POWER (green) | Steady on | Off = no 24VAC supply |
+| ALERT (amber) | Off | Flashing = active diagnostic fault |
+| ALARM (red) | Off | Steady = system lockout |
+
+**Reading active diagnostic codes via DIP switch:**
+1. Locate DIP switches 1–8 on the RTOM board
+2. The DIP switches display the binary code of the active fault when ALERT LED is flashing
+3. Read switch positions: ON = 1 (up), OFF = 0 (down)
+4. Convert binary to decimal for fault code lookup
+5. Example: DIP 1=ON, 2=OFF, 3=OFF, others OFF = binary 00000001 = Code 1
+
+**Trane ReliaTel Fault Code Table:**
+
+| Code | Fault Description |
+|---|---|
+| 1 | Low refrigerant pressure (LP switch open) |
+| 2 | High refrigerant pressure (HP switch open, manual reset) |
+| 3 | Low discharge superheat (compressor flood-back risk) |
+| 4 | Compressor overload (Klixon or external overload) |
+| 5 | Outdoor fan motor failure (current sensing) |
+| 6 | Supply fan motor failure (current sensing or airflow switch) |
+| 7 | Freeze stat trip (evaporator temp below 32°F) |
+| 8 | Economizer fault (actuator feedback out of range, sensor fault) |
+| 9 | Heat section fault (high limit, rollout, ignition failure) |
+| 10 | Low ambient lockout (OAT below minimum cooling ambient — typically 35°F) |
+| 11 | Loss of charge (LP locked out after 3 trips) |
+
+**Reading fault history:** RTRM module retains last fault in battery-backed memory. With ReliaTel, connect Trane service tool (TechView laptop software) for full fault log with timestamps and sensor values at fault time. Without TechView: observe ALERT LED flash pattern and read DIP switches to identify most recent active code.
+
+---
+
+### Tracer Controls (BAS Integration)
+
+**Tracer UC400 / UC600 controllers:** building automation system integration modules. Used when Trane RTU is tied to a BAS (BACnet, LonTalk, or Modbus over RS-485).
+
+**Communication protocols:**
+- LonTalk (FTT-10A): 78 kbps, free-topology wiring (up to 500m without repeater). Termination: 105Ω terminator at each physical end of bus segment.
+- BACnet MS/TP: RS-485, 9600 or 76800 baud. Max devices per segment: 128. Termination: 120Ω at each end.
+
+**Tracer test mode:**
+1. Press and hold the TEST button on the Tracer controller for 3 seconds
+2. Unit enters output test cycle (energizes each output in sequence for commissioning verification)
+3. Sequence: supply fan → cooling stage 1 → cooling stage 2 → heat stage 1 → heat stage 2 → economizer open → economizer close
+4. Press TEST button again to advance to next output during test sequence
+5. Test mode times out automatically after 15 minutes if not manually ended
+
+**Communication loss fault:** Tracer controller loses BAS communication → unit falls back to standalone operation using last received setpoints or factory defaults (typically 74°F cooling, 68°F heating). Field-program fallback setpoints via TechView before commissioning.
+
+---
+
+### Economizer — Trane Economizer2
+
+**Types:**
+- Standard: differential dry-bulb (OAT vs RAT)
+- Optional: differential enthalpy (OAT vs RAT enthalpy comparison)
+
+**Actuator (standard Precedent):**
+- Belimo NF24-SR or equivalent
+- 24VAC power, spring-return to closed (normally closed)
+- 0–10VDC modulating signal from RTOM
+
+**High-efficiency Sintesis units:** Belimo LF24-SR (spring-return) with 0–10V modulating — allows precise mixed-air temperature control.
+
+**Economizer fault diagnostics via ReliaTel (Code 8):**
+- RTOM Code 8 = economizer fault
+- Possible causes in order:
+  1. Actuator feedback signal out of range (RTOM expects 0–10VDC feedback; check at RTOM feedback terminal)
+  2. Mixed-air temperature sensor failure (open or short — see sensor resistance table)
+  3. High-limit switch in economizer housing tripped
+  4. Actuator binding or gear failure
+- Isolate: disconnect actuator feedback wire; if Code 8 clears = actuator feedback issue; if persists = sensor or high-limit switch
+
+**Mixed-air sensor resistance table (Trane 600Ω thermistor):**
+
+| Temperature (°F) | Resistance (Ω) |
+|---|---|
+| 32 | 1130 |
+| 50 | 800 |
+| 68 | 580 |
+| 77 | 500 |
+| 86 | 440 |
+
+---
+
+### Two-Stage Refrigeration (YCD/YCH ≥7.5 Ton, YSD/YSH)
+
+**Stage architecture:**
+- Stage 1: Compressor 1 + Condenser Fan 1 circuit
+- Stage 2: Compressor 2 + Condenser Fan 2 circuit (energized only when Stage 1 insufficient)
+
+**Staging control:**
+- Discharge air temperature: RTOM stages up when supply air temp > setpoint + 2°F differential; stages down when supply air temp < setpoint − 2°F
+- Suction pressure: alternate staging algorithm on some units — uses suction pressure to stage compressors
+
+**Compressor timers:** minimum-on time (3 min) and minimum-off time (3 min) prevent short-cycling. Stored in RTRM.
+
+---
+
+### Heat Section
+
+**IFC (Integrated Furnace Control) board:**
+- Controls ignition sequence independently of ReliaTel RTOM
+- Reports heat fault to RTOM via hardwired signal (W fault output)
+
+**Normal ignition sequence (Precedent gas heat):**
+1. W1 thermostat call
+2. Draft inducer energizes (24VAC from IFC)
+3. Pressure switch must close within 15 seconds — if not: IFC aborts, reports fault to RTOM
+4. HSI heater pre-heat: 34-second warm-up (Trane uses longer preheat than Lennox/Carrier)
+5. Gas valve opens
+6. Flame sense: flame must be detected within 7 seconds
+7. If flame detected: normal heating operation; IFC monitors flame continuously
+8. Lockout after 3 failed ignition retries
+
+**Rollout switch:**
+- Location: burner box front — red button
+- Trip temperature: 195°F auto-reset; 210°F manual-reset
+- Manual-reset switch requires pressing firmly — verify button is down and latched before restoring power
+- Persistent rollout trips: inspect heat exchanger for blockage, verify gas manifold pressure (3.5" W.C. NG), check burner orifice sizing for altitude
+
+**High-limit switch:**
+- Auto-reset version: opens at 170°F, resets at 140°F
+- Manual-reset version: opens at 200°F (requires manual button press after cooling)
+- Location: supply air plenum above heat exchanger
+
+---
+
+### Common Faults
+
+**RTRM or RTOM board failure:**
+Before condemning either board, perform these checks:
+1. Verify 24VAC supply at board power terminals (should be 24–28VAC under load)
+2. Check all fused circuits on board: typically F1 (transformer), F2 (control), F3 (economizer) — pull each fuse, measure continuity
+3. Inspect all connector seating on board (pull and reseat each connector — corrosion or vibration can cause intermittent contact)
+4. Verify 5VDC reference supply on board (test point labeled 5V REF or similar) — if missing, board is internally failed
+5. Only after verifying all external wiring, power, and fuses: condemn board
+
+**Scroll compressor internal overload trip in high ambient:**
+- Scenario: high ambient (>95°F), dirty condenser coil, or weak condenser fan motor capacitor → condenser fan slows → head pressure spikes → compressor internal overload trips
+- Diagnosis: condenser fan running (check amp draw on all condenser fan motors — if < 50% of nameplate = capacitor weak), head pressure high
+- Check condenser fan run capacitors: measure µF within ±6% of nameplate (35µF, 40µF most common on 5-ton condenser fans)
+- Fix: replace capacitor, clean coil; verify condenser fan motor amp draw returns to nameplate after repair
+
+**TXV failure (low suction, high superheat):**
+- Symptom: low suction pressure (<60 psig R-410A), high suction line temperature at compressor
+- Confirm: temperature clamp at suction line at compressor — should be 45–65°F on a typical day
+- Superheat calculation: (Suction line temp) − (Suction saturation temp from pressure gauge)
+- If superheat > 25°F with adequate airflow and correct charge level: suspect stuck-closed TXV
+- TXV test: using liquid line temperature and suction pressure, look up target superheat on manufacturer superheat chart. If measured superheat >> chart target = TXV restrictive
+- Fix: replace TXV assembly (body + power element + bulb as complete assembly — do not mix brands or generations)
+
+**Tracer communication loss:**
+- Symptom: BAS shows units offline; units running on fallback setpoints
+- Check: LonTalk/BACnet wiring for continuity (ring out each segment end-to-end)
+- Verify termination resistors: only two terminators per bus segment; check with ohmmeter across bus with all devices powered off (should read ~60Ω for BACnet or ~52Ω for FTT-10)
+- Check power supply at each Tracer controller (24VAC from Class 2 transformer)
+- Common failure: one corroded splice in the RS-485 cable takes down entire daisy-chain segment
+
+---
+
+### Maintenance Schedule
+
+| Task | Interval |
+|---|---|
+| Filter replacement (large Precedent: top panel access) | Quarterly |
+| Coil cleaning (low-pressure coil cleaner) | Annually |
+| Belt tension (supply blower): 1/2" deflection per foot of span | Every 6 months |
+| ReliaTel battery backup replacement | Every 5 years |
+| Gas pressure verification (3.5" W.C. NG) | Annually |
+| Combustion analysis | Annually |
+| Economizer stroke test | Annually |
+| Condenser fan capacitor check | Annually |
+| Compressor terminal torque | Annually |
+| LonTalk/BACnet wiring inspection | Every 2 years |
+
+**Filter access on large Precedent (YSD/YSH ≥12.5 ton):**
+- Remove top panel (2 quarter-turn fasteners per side)
+- Filter rack slides out from top of unit
+- Reinstall: verify filter rack seated fully before replacing top panel to prevent bypass air
+
+**ReliaTel battery:** CR2032 coin cell on RTRM board (or rechargeable NiMH on some revisions). Battery failure = loss of fault memory and setpoint retention across power interruptions.
+`
+
+export const RTU_HVAC_DIAGNOSTICS_KNOWLEDGE = `
+## RTU Fault Diagnosis — Cross-Manufacturer Field Reference
+
+---
+
+### Cooling Mode Diagnosis
+
+#### No Cooling — Symptom Tree
+
+Work through this sequence before replacing any components:
+
+**1. Thermostat call verified?**
+- Confirm Y1 (and Y2 for 2-stage) is active at thermostat
+- Measure 24VAC between Y1 and C at unit control board — should be 24–28VAC when thermostat calls for cooling
+- If no 24VAC: thermostat wiring, thermostat failure, or transformer issue
+
+**2. 24VAC at compressor contactor coil?**
+- Measure between contactor coil terminals (A1 and A2 on most contactors)
+- Should be 24VAC when Y1 call is present and no safeties are open
+- If no 24VAC: check high-pressure switch, low-pressure switch, freeze stat, and any other series-wired safeties
+
+**3. Contactor pulled in?**
+- Listen for audible click when 24VAC applies
+- Check line-side and load-side voltage on contactor (should be within 5V of each other when pulled in)
+- If 24VAC present at coil but contactor not pulling in: coil burnt out — replace contactor
+
+**4. Compressor response (pulled-in contactor):**
+- **Compressor hums but doesn't start:** check start capacitor (if equipped) and start relay; check for mechanical seizure (try rotating shaft if accessible — if won't turn, compressor is seized)
+- **Compressor silent with contactor pulled in:** internal overload tripped — wait 30–45 minutes for thermal reset; check line voltage (low voltage = compressor won't start)
+- **Compressor trips breaker immediately:** check for compressor short to ground (megohm test: should be >1 MΩ phase to ground); check for phase-to-phase short (should be >0.3Ω between each winding pair)
+
+**5. Compressor running but no cooling:**
+- Compressor running but not pumping: broken valve reeds (reciprocating) or failed scroll wraps — check compression ratio: suction should drop below 100 psig (R-410A) within 3 min of startup; if not, compressor is not pumping
+- Liquid line solenoid not opening: verify 24VAC at solenoid coil; if coil has power but solenoid is closed, replace solenoid coil or valve
+
+---
+
+#### Low Cooling Capacity — Diagnosis Sequence
+
+**Always start with airflow before touching refrigerant gauges.**
+
+**Step 1: Static pressure across filter bank**
+- Clean filter: 0.05–0.10" W.C. differential
+- Dirty filter requiring replacement: 0.20–0.25" W.C.
+- Use digital manometer with two Magnehelic probes — one upstream, one downstream of filter rack
+- Replace filter if pressure drop > 0.20" W.C. before proceeding
+
+**Step 2: Supply/return temperature split (delta-T)**
+- Measure supply air temperature at nearest supply register
+- Measure return air temperature at return grille
+- Target delta-T: 18–22°F for adequate cooling
+- Delta-T < 14°F: low airflow or low refrigerant charge
+- Delta-T > 24°F: restricted airflow or overcharged refrigerant
+
+**Step 3: Refrigerant check (after confirming airflow is adequate)**
+- Attach gauges (R-410A rated to 800 psi minimum — use low-loss fittings)
+- Measure suction and discharge pressures
+- Compare suction saturation temp to expected evaporator temp (typically 40–45°F evaporator)
+- Normal R-410A operating pressures at 75°F return air, 95°F OAT:
+  - Suction: ~115–125 psig (40–45°F saturation)
+  - Discharge: ~375–420 psig (115–125°F condensing)
+- **High suction, low discharge, large delta-T**: likely overcharged or low condensing
+- **Low suction, high superheat, small delta-T**: likely low charge or airflow restricted
+
+---
+
+#### High Head Pressure — Causes and Tests
+
+| Cause | Test | Fix |
+|---|---|---|
+| Dirty condenser coil | Measure OAT and condensing sat temp: target condensing = OAT + 25°F. If > OAT + 35°F = dirty | Clean coil (alkaline cleaner inside-out) |
+| Failed condenser fan motor | Clamp ammeter on condenser fan motor leads — compare to nameplate. Low amps = weak capacitor or failed motor | Replace capacitor first; then motor if capacitor doesn't resolve |
+| Non-condensables in system | Shut unit off, allow pressures to equalize, wait 20 min for refrigerant temperature to equalize with ambient. Read static pressure and compare to R-410A saturation at that ambient temp. If pressure > saturation = non-condensables present | Recover refrigerant, evacuate system to <200 microns, reweigh-in refrigerant |
+| Overcharge | After confirming airflow good: measure subcooling. > 18°F = overcharged | Remove refrigerant in small increments, verify subcooling 10–15°F |
+
+---
+
+#### Low Suction Pressure — Causes and Tests
+
+| Cause | Test | Fix |
+|---|---|---|
+| Refrigerant undercharge | Measure superheat: > 15°F = likely undercharge; also check for oil foaming at sight glass | Find and repair leak, recharge to spec |
+| Low airflow / frozen evaporator | Measure static pressure across evap coil — high DP = frost buildup. Shut unit off, allow 30 min defrost, restart and verify airflow | Correct airflow cause (filter, fan motor, coil cleaning) |
+| TXV stuck closed | Superheat high (>25°F), suction temp at compressor above 70°F | Replace TXV assembly |
+| Liquid line solenoid not fully open | Check pressure drop across solenoid body (> 5 psig = restricted) | Replace solenoid coil; if persists, replace valve body |
+| Plugged liquid line filter-drier | Measure liquid line temp before and after drier — if > 3°F temperature drop across drier = restricted | Replace filter drier (bi-flow on heat pump units, directional on cooling-only) |
+
+---
+
+### Heating Mode Diagnosis
+
+#### No Heat — Symptom Tree
+
+**1. W1 thermostat call present?**
+- Measure 24VAC at W1 terminal on control board
+- If no call: thermostat or wiring issue
+
+**2. 24VAC at gas valve?**
+- Measure at gas valve operator terminals
+- No voltage: check inducer status first (must be proven on before gas valve can energize)
+- No voltage with inducer running and pressure switch verified closed: check IFC/ignition board output
+
+**3. Inducer motor running?**
+- Listen for inducer startup (low hum, building to steady operation)
+- If no inducer: check 120VAC at inducer motor (IFC board provides switched 120VAC to inducer)
+- Inducer hums but doesn't spin: check run capacitor (5–10µF) — replace if outside ±6%
+
+**4. Pressure switch closed?**
+- Test switch directly: measure continuity across switch terminals with inducer running
+- If switch does not close with inducer running: check for blocked flue, cracked inducer wheel, condensate in switch tubing
+
+**5. Gas valve opens but no flame:**
+- Verify gas supply — check incoming pressure and manual shutoff valves are open
+- Verify gas valve is functional: measure coil resistance (gas valve solenoid: typically 10–20Ω)
+- HSI glow: verify HSI is energizing (should glow orange-white within 17–34 seconds of IFC command)
+
+---
+
+#### Delayed Ignition
+
+Symptoms: ignition occurs after a 2–4 second delay with a "poof" or small backfire sound.
+
+**Causes and fixes:**
+- **Dirty burners**: remove burner assembly (typically 4 screws on burner manifold); clean ports with compressed air; never use wire brushes on burner ports
+- **Low gas pressure**: measure manifold pressure with digital manometer at manifold test port; target 3.5" W.C. (NG) or 10.0" W.C. (propane)
+- **Wrong orifices for altitude**: at elevations > 2,000 ft, standard sea-level orifices deliver too much gas for the available combustion air; use altitude-derated orifices per manufacturer altitude chart
+- **Wet gas or debris in gas train**: water in gas line causes inconsistent ignition timing; install a gas dryer upstream
+
+---
+
+#### Rollout Switch Trips
+
+**Causes:**
+1. Restricted heat exchanger (secondary HX plugged with scale or corrosion products)
+2. Incorrect manifold gas pressure (too high = overfire = flame rollout)
+3. Wrong orifices for gas type (propane orifice with natural gas = severely oversized flow)
+4. Cracked primary heat exchanger (combustion air escapes into heat exchanger rather than flowing through burner)
+5. Insufficient combustion air (blocked combustion air inlet on roof unit)
+
+**Protocol after rollout trip:**
+1. Do not reset and return the unit to service without investigation
+2. Inspect burner box for soot or carbon deposits indicating sustained rollout
+3. Verify gas manifold pressure
+4. Inspect heat exchanger for blockage or cracks
+5. If cause is unclear after inspection, perform CO test at supply registers
+
+---
+
+#### Cracked Heat Exchanger Protocol
+
+**Detection methods:**
+1. **CO test**: combustion analyzer at supply registers, unit in heating mode, all air handlers at full airflow. >9 ppm CO is actionable; >35 ppm is OSHA action level
+2. **Visual inspection**: bright flashlight and mirror inside heat exchanger access panel. Look for cracks, pinholes, deformation, soot lines running from combustion side to air side
+3. **Combustion analyzer**: measure CO and CO2 in flue exhaust; CO >400 ppm in flue = incomplete combustion (not necessarily cracked HX, but warrants further investigation)
+4. **Dye/smoke test**: introduce non-combustible dye smoke into firebox; UV light on supply air stream for traces
+
+**Action:**
+- Confirmed cracked HX: shut down gas heat immediately, tag unit "GAS HEAT DISABLED — CRACKED HX"
+- Notify building owner/manager in writing
+- Unit may continue running in cooling mode only if cooling section is separate and unaffected
+- HX replacement requires complete heat section disassembly — typically 4–8 hours labor; often justifies full unit replacement on older units
+
+---
+
+### Economizer Operation
+
+#### Free-Cooling Theory
+
+When outdoor air is cooler and/or drier than return air, a rooftop unit can cool the building entirely with outdoor air — zero compressor operation. The economizer damper opens to deliver 100% outdoor air. Compressors remain off as long as OA conditions are favorable and building temperature is satisfied.
+
+**Conditions for economizer to provide free cooling:**
+- OA temperature (differential dry-bulb) or OA enthalpy (differential enthalpy) is more favorable than return air
+- Building is calling for cooling (Y1 from thermostat)
+- Supply air temperature can be maintained above 55°F (high-limit control)
+
+**Changeover setpoints:**
+- Dry-bulb differential: economizer opens when OAT < RAT − 2°F (typical setpoint; adjustable on most controls)
+- Enthalpy differential: economizer opens when OA enthalpy < RA enthalpy − 2 BTU/lb
+
+**Mixed-air temperature control:** once damper is open, modulating economizer control adjusts damper position to maintain mixed-air temperature at setpoint (typically 55°F). This prevents over-cooling and condensation on supply registers.
+
+**High-limit control:** prevents supply air from dropping below 55°F. If mixed-air sensor reads below 55°F, damper modulates toward closed until temperature recovers.
+
+#### Economizer Troubleshooting
+
+**Damper stuck open in heating season:**
+- Result: cold outdoor air enters building during heating, defeating heating operation
+- Test: disconnect Y1 signal wire at actuator. If damper closes = control signal issue (board not commanding off). If damper stays open = spring failed or damper physically bound
+- Also check: minimum position setpoint — if set > 0%, damper will not fully close (intentional code minimum OA ventilation). Confirm minimum position is appropriate for the space (ASHRAE 62.1 requires minimum OA cfm based on occupancy and floor area)
+
+**Damper stuck closed in free-cooling conditions:**
+- Result: compressors run when free cooling should be available — wastes energy
+- Test: verify Y1 signal is present at economizer actuator (24VAC or 0–10VDC depending on type) when thermostat calls for cooling
+- Check enthalpy/dry-bulb sensor voltage: sensor should output 2–10VDC proportional to conditions. Use a voltmeter at sensor output terminal:
+  - 2VDC = very favorable (should open)
+  - 10VDC = very unfavorable (should stay closed)
+  - Stuck at 10VDC on a cool dry day = sensor failed (replace)
+
+**Minimum position setting:**
+- ASHRAE 62.1 requires continuous minimum outdoor air flow for occupied spaces
+- Typical commercial minimum: 0.15 cfm/sq.ft. or 5–10% damper opening at low occupancy
+- Verify minimum position is set and verified (not zero in heating season, not bypassing ventilation code)
+
+---
+
+### Refrigerant Charging in RTUs
+
+#### Weighing-In (Preferred Method)
+
+1. Recover all remaining refrigerant (required if contaminated or if fully evacuating for repair)
+2. Evacuate system to <200 microns with a quality vacuum pump — hold 10 minutes, verify no rise > 200 microns (indicates leak or moisture)
+3. Calculate nameplate charge (unit label or service manual)
+4. Tare scale, place refrigerant cylinder, connect to liquid line service valve
+5. Charge full nameplate weight with unit off; top off with gauges running once within ±1 lb of full charge
+
+#### Field Superheat Method (Fixed-Orifice Systems)
+
+1. Record outdoor ambient temperature (OAT) — dry-bulb
+2. Record return air wet-bulb (RWB) at return grille — use sling psychrometer or digital RH/temp meter to calculate WB
+3. Look up target suction saturation temperature: reference manufacturer chart (or use approximation: Target sat temp ≈ RWB − 35°F)
+4. Measure actual suction saturation: read suction pressure gauge → convert to saturation temperature using R-410A P/T chart
+5. Measure suction line temperature with contact thermometer at suction service valve
+6. Superheat = Suction line temp − Suction saturation temp
+7. **If superheat > 15°F**: add refrigerant in 4-oz increments, allow 5 min to stabilize
+8. **If superheat < 5°F**: remove refrigerant; risk of flood-back damage to compressor
+
+#### Subcooling Method (TXV Systems)
+
+1. Record liquid line temperature at liquid service valve (contact thermometer)
+2. Record high-side pressure at liquid service valve (gauge)
+3. Convert high-side pressure to saturation temperature (R-410A P/T chart)
+4. Subcooling = Saturation temp − Liquid line temp
+5. Target: 10–15°F subcooling
+6. **< 10°F**: low charge or restriction upstream of measurement point
+7. **> 18°F**: overcharged or liquid line restriction (check filter-drier pressure drop)
+
+**Critical rule:** never add refrigerant without finding the leak first. Document any charge additions per EPA 608 requirements. R-410A systems operating significantly low on charge have a refrigerant leak — it didn't disappear on its own.
+
+---
+
+### Electrical Checks
+
+**24VAC transformer:**
+- Measure output at transformer secondary terminals — should be 24–28VAC under full control load
+- < 22VAC under load: transformer is undersized or failing
+- Common transformer: 40VA or 75VA (verify current draw matches transformer rating)
+- Transformer primary: verify line voltage matches transformer primary tap (208, 230, or 460V)
+
+**Contactor contact resistance:**
+- Use low-resistance ohmmeter (DLRO or equivalent) — standard meters are not accurate at these levels
+- Acceptable: < 0.5Ω per pole (L1 to T1, L2 to T2, L3 to T3 with contactor pulled in)
+- Replace contactor if any pole reads > 1.0Ω — high resistance = heat build-up = compressor failure
+- Also replace if contacts are visually pitted, arced, or show carbon buildup
+
+**Capacitor testing:**
+- Use dedicated capacitance meter (not multimeter auto-cap range — insufficient accuracy)
+- Measure µF with capacitor disconnected from circuit
+- Acceptable: within ±6% of nameplate µF rating
+- Most common RTU run capacitors: 35+5µF (dual capacitor for fan and compressor), 40+5µF
+- Replace all run capacitors > 5 years old as PM item — capacitors degrade with heat cycles
+
+**Blower motor amp draw:**
+- Clamp ammeter on motor leads
+- Compare to nameplate FLA (full-load amps) at operating conditions
+- > 10% above nameplate: motor is struggling (dirty wheel, bearing wear, over-belt tension)
+- < 70% of nameplate on belt-drive: possible broken drive belt
+
+**Compressor amp draw:**
+- Measure all 3 legs (3-phase) — should be within 10% of each other
+- Compare to compressor nameplate RLA (rated load amps)
+- LRA (locked-rotor amps): 5–8× RLA; only seen momentarily on startup
+- High amps all phases: high compression ratio, internal overload approaching trip
+- Unbalanced amps: phase voltage imbalance or compressor winding problem
+
+---
+
+### Filter and Airflow
+
+**Measuring filter static pressure:**
+- Digital manometer (Magnehelic or electronic) with two probes
+- Probe placement: one upstream of filter, one downstream
+- Measure differential pressure across filter bank
+- Reference values:
+
+| Filter Condition | Static Pressure Drop |
+|---|---|
+| New / clean filter | 0.05–0.10" W.C. |
+| Replace at | 0.20–0.25" W.C. |
+| Severely restricted | > 0.40" W.C. |
+
+**Supply/return delta-T as airflow indicator:**
+- < 14°F delta-T: low airflow (check filter, motor, belt) OR low refrigerant charge
+- 18–22°F delta-T: normal operation
+- > 24°F delta-T: restricted airflow on return side OR overcharged OR restricted evaporator
+
+**Grille velocity checks (optional, for airflow balancing):**
+- Use vane anemometer at supply grilles
+- Sum all grille CFM readings for an estimate of total supply airflow
+- Compare to unit nameplate CFM rating — should be within 10%
+
+---
+
+### Seasonal Startup Checklist
+
+Perform before first cooling season startup after any period > 4 weeks without compressor operation:
+
+**Pre-startup electrical:**
+- [ ] Verify crankcase heater is energized and has been on for minimum 8 hours
+- [ ] Check all terminal connections for corrosion — clean and torque to spec
+- [ ] Torque compressor terminals (often loosen from vibration over winter)
+- [ ] Verify control transformer output voltage (24–28VAC)
+- [ ] Check all fuses in unit — pull each fuse and measure continuity
+
+**Refrigerant system (with unit off):**
+- [ ] Read static (off) pressures — compare to R-410A saturation at current ambient temp
+  - At 70°F ambient: R-410A static pressure should be approximately 201 psig
+  - If pressures are low: system lost charge over winter — find and repair leak before charging
+- [ ] Check sight glass (if equipped) for moisture indicator color (green = dry, yellow = moisture present)
+
+**Safety system tests:**
+- [ ] Test high-pressure cutout: block condenser airflow with cardboard until HP switch trips (do not allow pressure to exceed 430 psig — remove cardboard before that)
+- [ ] Test low-pressure cutout: front-seat suction service valve slowly until LP switch trips (verify trip point per spec)
+- [ ] Verify HP and LP switches reset correctly after test
+- [ ] Test freeze stat: apply ice pack to evaporator coil sensor — verify unit shuts down within 60 seconds
+
+**Economizer:**
+- [ ] Manually stroke damper full open and full closed — verify smooth operation and no binding
+- [ ] Test spring-return: disconnect 24VAC to actuator, verify damper closes fully within 10 seconds
+- [ ] Verify minimum position setpoint is correct for the space
+
+**Cooling operation:**
+- [ ] Start unit, allow 10 minutes to reach steady state
+- [ ] Record suction and discharge pressures, compare to expected for ambient conditions
+- [ ] Measure supply/return delta-T — target 18–22°F
+- [ ] Verify condenser fan amperage on all motors (within 10% of nameplate)
+- [ ] Verify supply fan amperage
+
+---
+
+### Common Cross-Manufacturer Part Failures
+
+**Run capacitors (most common PM replacement):**
+- Replace proactively on PM if > 5 years old and > 90°F summer ambient
+- Most common sizes on 3–5 ton RTUs: 35+5µF, 40+5µF (dual round capacitor), 45+5µF
+- Ensure replacement capacitor voltage rating matches or exceeds original (370VAC or 440VAC)
+- Never use a capacitor with lower µF than nameplate — motor will overheat
+
+**Contactors:**
+- Replace if contact pitting is visible or if unit is > 10 years with original contactor
+- Replace as matched pair (2-pole for single-phase, 3-pole for 3-phase)
+- Verify coil voltage (24VAC on all standard RTU applications)
+- Carry 2-pole 30A and 3-pole 30A/40A on service vehicle as common replacements
+
+**TXVs:**
+- Hunting (oscillating suction pressure) indicates worn power element — the gas charge in the power element loses sensitivity over time
+- Replace as complete assembly: body + power element + bulb
+- Do not mix manufacturers or generations — use OEM or exact match replacement
+- Rebulb carefully: clamp bulb securely to suction line at same orientation as original (typically 4 or 10 o'clock position on horizontal pipe)
+
+**Pressure switches:**
+- Test by applying pressure to port with hand pump and manometer — verify trip and reset points match spec (allow ±5% tolerance)
+- Replace if measured trip/reset points have drifted > 5% from spec — field calibration is not reliable
+- Stock: LP cutout switch, HP cutout/manual reset switch for most-common RTU brands
+
+**Ignition transformers (spark ignition only):**
+- Measure secondary output with insulated high-voltage meter leads: should be 6,000–12,000V depending on model
+- Do not short-circuit secondary while measuring — use dedicated HV probe
+- Replace if output < 5,000V or if arcing is visible at transformer housing
+- HSI replacements: stock silicon nitride 120VAC elements — verify resistance (40–70Ω cold); carry universal replacement kit for common RTU sizes
+`
+
+export const AAON_RTU_KNOWLEDGE = `
+# AAON / CES / Flo Rooftop Unit Knowledge Base
+
+AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop units sold under the AAON brand and distributed in some regions as CES (Climate Equipment Solutions) or Flo RTUs. Units are built-to-order with a wide option matrix. Key model families used in commercial/supermarket settings:
+
+## Model Families
+
+**RN Series — 6 to 70 tons**
+- Most common AAON unit in supermarket and light-industrial settings
+- Gas/electric, electric/electric, or heat pump configurations
+- R-410A (legacy) and R-454B (Next Gen models, 2023+)
+- Available with VFDs on supply and return fans (standard on many configurations)
+- Next Gen RN (11–70 ton): improved scroll compressors, updated MCS-5 controls, R-454B ready
+
+**RQ Series — 2 to 25 tons**
+- Light commercial / smaller store applications
+- Same MCS control platform as RN
+- Belt-drive supply fan standard on smaller tonnages; direct-drive on larger
+- R-410A standard; Next Gen RQ available with R-454B
+
+**RZ Series — 4 to 25 tons**
+- Condensing unit + air handler split variant; less common in rooftop applications
+- Same refrigeration and control architecture as RN/RQ
+
+**OH Series — Outdoor Horizontal**
+- Horizontal-discharge for ground-level or side-wall mounting
+- Same compressor and control platform as RN
+
+## AAON Modular Control System (MCS)
+
+AAON uses a proprietary control platform called MCS (Modular Control System). All AAON RTUs shipped since ~2010 use MCS; older units may have legacy Proctor-Jones or Microtech controls.
+
+**MCS display panel:**
+- 2-line or touchscreen LCD depending on model generation
+- Navigate with UP/DOWN/ENTER/ESC or touchscreen
+- Main menu → Diagnostics → Fault Log: stores last 10–20 fault events with timestamp
+- Main menu → Status: shows all live sensor readings (supply air, return air, coil temps, pressures)
+- Main menu → Setpoints: view/edit occupied/unoccupied setpoints, deadband, heat/cool stages
+
+**MCS BACnet/Modbus integration:**
+- BACnet MS/TP or BACnet IP via optional gateway card
+- Modbus RTU standard on most models (RS-485 port on control board)
+- Default Modbus address: 1 (field-configurable via DIP switch or menu)
+- BACnet device instance: configurable via MCS menu
+- All MCS points are mappable; AAON publishes full BACnet/Modbus point lists per model
+
+## MCS Fault Codes — Common A & B Codes
+
+| Code | Fault | Reset Type |
+|------|-------|-----------|
+| A01  | Supply air high temperature limit | Auto |
+| A02  | Freeze protection (coil temp < 34°F) | Auto |
+| A03  | Return air sensor fault (open/short) | Auto |
+| A04  | Supply air sensor fault (open/short) | Auto |
+| A11  | Compressor 1 high pressure lockout | Manual |
+| A12  | Compressor 1 low pressure lockout | Auto (3 trips → manual) |
+| A13  | Compressor 1 overload / internal thermostat | Manual |
+| A14  | Compressor 1 high discharge temperature | Auto |
+| A21  | Compressor 2 high pressure lockout | Manual |
+| A22  | Compressor 2 low pressure lockout | Auto |
+| A31/A41 | Compressor 3/4 (large units) — same pattern | |
+| B01  | Supply fan overload / VFD fault | Manual |
+| B02  | Supply fan airflow proving switch failed | Auto |
+| B03  | Return fan overload / VFD fault | Manual |
+| B11  | Gas heat — failed ignition (3 attempts) | Manual |
+| B12  | Gas heat — high limit tripped | Auto |
+| B13  | Gas heat — rollout switch tripped | Manual |
+| C01  | Economizer actuator fault (end-switch not reached) | Auto |
+| C02  | Economizer enthalpy sensor fault | Auto |
+
+**Manual reset procedure:** Navigate to Main menu → Diagnostics → Reset Lockouts, or cycle power (30-second minimum off) — note that cycling power does NOT reset manual-reset faults on all models; use menu reset.
+
+## Compressor Configuration
+
+- Scroll compressors throughout: Copeland ZP/ZF or Danfoss/Maneurop MT/TT series
+- Tandem compressors (two compressors, one circuit) on 10–25 ton models
+- Quad compressors (four compressors, two circuits) on 20–40 ton models
+- Large RN (40–70 ton): may have 6–8 compressors on 3–4 circuits
+- Compressor staging via MCS: first-stage cooling = 50% capacity (one compressor or tandem lead)
+- Compressor minimum run time: 3 minutes (factory default, field-adjustable)
+- Low ambient lockout: 25°F default (field-adjustable); units can run to 0°F with low-ambient kit
+
+**Refrigerant charging (R-410A RN/RQ):**
+- System charged by weight at factory; use factory charge weight on nameplate + superheat/subcooling method
+- Target suction superheat: 10–15°F at compressor suction service valve
+- Target subcooling at liquid line: 10–15°F
+- R-410A critical charge: ±0.5 lb on tandem systems will significantly affect performance
+
+**R-454B (Next Gen) charging:**
+- R-454B is mildly flammable (A2L) — follow AAON Next Gen IOM safety procedures
+- Charge only as liquid (invert cylinder) — do not charge vapor-phase
+- Same superheat/subcooling targets as R-410A
+
+## Economizer
+
+- Integrated economizer standard on most configurations
+- Actuator: Belimo or equivalent spring-return 0–10VDC actuator (24VAC power)
+- Control signal: 0VDC = closed, 10VDC = full open
+- Enthalpy sensing: differential enthalpy (supply + return enthalpy) or dry-bulb switchover
+- Economizer minimum position: field-adjustable 0–100% (default 10–20% for outdoor air ventilation)
+- C01 fault: actuator did not reach commanded position — check actuator wiring, actuator end-switch, mechanical binding of damper
+- Economizer override test: MCS menu → Outputs → Economizer → manually command to 100% open and verify damper physically opens
+
+## Fan System
+
+**Belt-drive (RQ 2–6 ton, some RN models):**
+- V-belt tension: 1/2" deflection per foot of span at manufacturer-specified force
+- Pulley alignment: use laser alignment tool or straightedge — misalignment > 1° causes rapid belt wear
+- Belt replacement: use Gates or equivalent OEM-spec belt; AAON nameplate lists belt part number
+- Bearing lubrication: NLGI #2 grease, 2–3 pumps per bearing per season
+
+**Direct-drive / VFD (RN Series, larger RQ):**
+- VFD faults: navigate to MCS → Diagnostics → VFD Status for drive fault codes
+- VFD common faults: overcurrent (OC), overvoltage (OV), input phase loss (IPL)
+- VFD reset: MCS menu → Reset Lockouts or cycle 24VAC control power to VFD
+- Minimum VFD speed: 20 Hz default (do not reduce below 15 Hz — motor overheating risk)
+
+## Gas Heat Section
+
+- Modulating gas valve (0–100%) or staged (two-position: low/high fire) depending on model
+- Ignition: direct-spark igniter or hot surface igniter (HSI) — see unit nameplate
+- Flame sensor: microamp flame current — minimum 1.0µA to hold; typical 2–4µA
+- B11 lockout (failed ignition): verify gas supply pressure (3.5" WC min for natural gas at manifold), check igniter gap (1/8" for spark, 1/4–3/8" for HSI), verify flame sensor rod is clean and positioned correctly
+- Heat exchanger inspection: AAON uses stainless steel or aluminized steel — inspect annually with mirror and light; cracked HX = unit shutdown, tag out
+
+## Seasonal Startup Checklist (AAON RTU)
+
+1. Check and replace filters (1" MERV-8 standard, 2" optional)
+2. Inspect and clean evaporator and condenser coils — use coil cleaner, low-pressure rinse
+3. Belt inspection and tension (belt-drive models)
+4. Verify refrigerant pressures match expected values at current ambient
+5. Test economizer full-stroke (0→100%→0) via MCS menu
+6. Verify MCS setpoints match current building schedule
+7. Test heat sequence: command heat call via MCS, verify flame establishment within 3 ignition attempts
+8. Check all electrical connections for tightness (torque spec per terminal label)
+9. Verify condensate drain is clear and draining
+
+## CES / Flo RTU Notes
+
+- **CES (Climate Equipment Solutions)**: Regional distributor of AAON units in certain US markets. Units are AAON-manufactured with CES branding on the label. Service procedures, parts, and controls are identical to AAON RN/RQ. CES part numbers cross-reference directly to AAON part numbers.
+- **Flo RTU**: AAON-based units distributed under the Flo brand in select markets. Same platform — MCS controls, AAON compressors, identical service access and wiring. When troubleshooting Flo units, reference AAON RN or RQ IOM for the equivalent tonnage.
+- Parts ordering: Order directly from AAON (1-918-583-2266) or through local AAON rep — AAON controls boards and compressors are not stocked at most distributors; lead times 3–10 days typical.
+`
+
+export const TRANE_RAUC_KNOWLEDGE = `
+# Trane RAUC / RAUCC Split-System Air-Cooled Condensing Units
+
+The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** used in split-system configurations. Unlike packaged RTUs, these units contain only the compressor(s) and condenser coil — they mount outdoors and connect to a separate indoor evaporator coil or air handler. Common in supermarkets, big-box retail, and light-industrial applications.
+
+**Specific model RAUCC405BX03:**
+- R = Remote (split system condensing unit)
+- A = Air-cooled
+- U = Unit cooler / commercial
+- C = Commercial grade
+- C = Scroll compressors (second C distinguishes from reciprocating-compressor RAUC)
+- 40 = 40 nominal tons
+- 5 = Design series 5
+- BX03 = Factory option codes and minor revision
+
+## Model Series Overview
+
+| Series | Compressor Type | Tonnage Range | Notes |
+|--------|----------------|---------------|-------|
+| RAUC   | Reciprocating  | 20–60 ton     | Older/legacy; R-22 or R-407C |
+| RAUCC  | Scroll         | 20–60 ton     | R-22 or R-410A; most common in field |
+| RAUJ   | Scroll         | 20–120 ton    | Current production; R-410A or R-513A |
+
+**RAUCC40 (40 ton) refrigerant circuits:**
+- Two independent refrigerant circuits (circuit A and circuit B), each ~20 tons
+- Compressors: typically two Copeland Discus or scroll compressors per circuit (four compressors total on 40-ton unit)
+- Each circuit has its own TXV, filter-drier, sight glass, service valves, and pressure controls
+
+## Refrigerant & Charging
+
+**R-410A units (RAUCC — series 5 and later):**
+- Circuit A and Circuit B charged independently
+- Subcooling method at liquid service valve:
+  - Target: 10–15°F subcooling
+  - Measure liquid line temperature at service valve and compare to saturation temperature at measured liquid pressure
+- Suction superheat at suction service valve: 8–12°F
+- Low ambient charging: at ambients below 65°F, head pressure will be low — use subcooling only, not superheat
+- Sight glass: clear with no bubbles at steady-state = correct charge or overcharge; bubbles = low refrigerant or restriction
+
+**R-22 units (older RAUCC, RAUC):**
+- Same superheat/subcooling method applies
+- Do NOT top off R-22 with R-410A or blended refrigerants without full system retrofit
+- Polyol ester (POE) oil required if converting from mineral oil to R-410A — full flush required
+
+## Compressor Service
+
+**Scroll compressor (RAUCC):**
+- Minimum off time: 5 minutes before restart (allow crankcase equalisation)
+- Rotation check on new installation: briefly energise — correct rotation = rapid pressure differential buildup; reverse rotation = little to no pressure differential, loud rattling
+- Copeland scroll: crankcase heater standard — heater must be energised 8 hours minimum before start after extended off period
+- Oil level: visible in sight glass at bottom of compressor; add Copeland Ultra 32-3MAF POE if low
+- Scroll compressor failure indication: suction and discharge pressures equalise rapidly, compressor draws high amps briefly then trips on internal overload
+
+**Tandem compressors (circuit A or B on 40-ton):**
+- Two compressors piped in parallel on one suction/discharge manifold
+- If one compressor fails, the circuit loses ~50% capacity and may still operate on remaining compressor
+- Tandem equalisation line: must be level and unobstructed — oil migration causes failure of lead compressor
+
+## Controls — ReliaTel (RTOM/RTRM)
+
+Older RAUCC units use Trane's ReliaTel control module (same platform as Precedent RTUs). Newer RAUJ uses Tracer controls or optional DDC.
+
+**ReliaTel on RAUCC:**
+- RTOM (ReliaTel Options Module) handles compressor staging and alarms
+- LED flash codes at RTOM board — same 11-code DIP table as Precedent series:
+  - 2 flashes: Low refrigerant charge lockout
+  - 3 flashes: Low ambient lockout
+  - 4 flashes: High pressure lockout (manual reset)
+  - 5 flashes: Low pressure lockout (auto reset after 3 → manual)
+  - 7 flashes: Compressor overload
+  - 11 flashes: High discharge temperature
+- Jumper JP6 on RTOM enables/disables low ambient lockout (factory default enabled at 25°F)
+
+**Tracer BACnet / DDC option (RAUJ and newer RAUCC):**
+- BACnet MS/TP standard; BACnet IP via optional gateway
+- DDC controller (SS-SVX007A) replaces RTOM for building automation integration
+- All compressor staging, alarms, and setpoints accessible via Tracer TU software
+
+## Condenser Fan System
+
+- Propeller fans, belt-drive or direct-drive depending on model
+- Fan cycling: multiple fans with pressure-actuated cycling for low-ambient head pressure control
+- Fan sequencing: fans cycle in/out based on head pressure — verify all fans are operational before diagnosing head pressure faults
+- Common fan issues: motor failure (check amps vs. nameplate), blade pitch incorrect (RAUCC uses fixed pitch — verify blade angle if fans were removed)
+- RAUCC40 typical condenser fan count: 4–6 fans depending on configuration
+
+**Head pressure control:**
+- High head pressure fault (4 flash): check all fans operational, check condenser coil for fouling, check ambient temp vs. design limits (unit rated to 115°F ambient max)
+- Low head pressure in cold weather: normal — fans will cycle off to maintain minimum head pressure; LP fault in cold weather is usually not a charge issue
+
+## Condenser Coil Maintenance
+
+- Clean at minimum annually — coil fouling is the leading cause of high head pressure and compressor failure
+- Cleaning: apply Coil Safe or Nu-Brite with low-pressure spray (20–30 PSI max on aluminium fin) — flush from air side out (inside-out direction)
+- Fin damage: bent fins reduce airflow — use fin comb to straighten; replace coil section if damage is severe
+- Coil replacement: RAUCC40 uses factory-specific coil geometry — order via Trane part number from nameplate; aftermarket coils available from Emergent Coils, Colmac
+
+## Common Field Issues — RAUCC
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| High head pressure | Dirty condenser coil, fan not running, overcharge | Clean coil, verify all fans, check subcooling |
+| Low suction both circuits | Low refrigerant charge | Check subcooling/superheat each circuit independently |
+| Low suction one circuit only | TXV restriction, suction filter-drier plugged, low charge circuit B | Check each circuit's filter-drier delta-T |
+| Compressor short-cycling | Low pressure lockout, high pressure lockout, low ambient | Read RTOM flash codes, check LP/HP setpoints |
+| Liquid slugging on startup | Liquid migration during off cycle | Verify crankcase heater operational 8+ hours before start |
+| Tandem oil migration | Oil equalisation line blocked/pitched wrong | Verify equalisation line is level, remove any traps |
+`
+
+export const TEMPRITE_KNOWLEDGE = `
+# Temprite Oil Management Products — Supermarket Rack Reference
+
+Temprite (Schaumburg, IL) manufactures oil separators, oil reservoirs, oil level controls, and related refrigeration accessories. On a supermarket rack, Temprite products are the primary line of defence against oil migration — oil that leaves the compressor crankcase in the discharge gas and does not return causes compressor failure and oil-logged evaporators.
+
+## Why Oil Management Matters on Racks
+
+Compressor discharge gas carries oil droplets and aerosol. In a supermarket rack with long pipe runs and multiple evaporators, oil can:
+- Accumulate in evaporator coils → reduces heat transfer, eventually causes liquid slugging on defrost
+- Deplete compressor crankcases → loss of lubrication, bearing failure
+- Collect in suction accumulators and liquid receivers → intermittent slugging
+
+Temprite oil separators intercept oil at the discharge of each compressor (or on a common discharge header) and return it to the crankcase or an oil reservoir before it can migrate into the system.
+
+## Product Families — Supermarket Rack Applications
+
+### 500 Series — Conventional (Impingement Screen) Oil Separators
+
+The most widely installed Temprite separator on North American supermarket racks.
+
+**How it works:** Discharge gas enters the separator shell, velocity drops, larger oil droplets fall to the sump by gravity/impingement against a screen. A float valve opens and returns collected oil to the compressor crankcase when the oil level rises above the float.
+
+**Models (common supermarket sizes):**
+| Model | Connection Size | Typical Rack Use |
+|-------|----------------|-----------------|
+| 504   | 1/2" ODS       | Single small compressor (< 5 HP) |
+| 507   | 3/4" ODS       | 5–10 HP compressor |
+| 510   | 1" ODS / 1-1/8" ODS | 10–20 HP, medium rack |
+| 514   | 1-1/8" / 1-3/8" ODS | 15–30 HP |
+| 520   | 1-3/8" / 1-5/8" ODS | 25–50 HP, common on medium rack |
+| 528   | 1-5/8" / 2-1/8" ODS | 50–75 HP, large rack compressor |
+
+**Installation:**
+- Mount vertically, upright (oil sump at bottom) — do NOT install sideways or inverted
+- Install in the hot gas discharge line between compressor discharge service valve and condenser header
+- Insulate discharge connection above separator to prevent condensation on shell
+- Oil return line (small copper tube) runs from the separator float valve connection back to the compressor crankcase equaliser fitting — typically 1/4" ODS
+- Minimum oil return line pitch: 1/4" per foot downward toward compressor
+
+**Float valve check:**
+- If compressor oil level is low but separator is full: float valve is stuck closed or plugged — remove and clean with solvent, replace if damaged
+- Float valve opens at approximately 1/4" oil depth in sump
+- Replace float/needle assembly every 5 years on high-run compressors
+
+### 900 Series — Hermetic Coalescent Oil Separators
+
+High-efficiency coalescent separators used on modern racks and retrofits. Capture oil aerosol that impingement separators miss (submicron droplets).
+
+**How it works:** Discharge gas passes through a coalescing filter element (fibreglass media). Sub-micron oil aerosol collects on the fibres, coalesces into larger drops, and drains to the sump. Efficiency > 99.9% vs. ~80–90% for conventional separators.
+
+**Common supermarket models:**
+| Model | Connection | Notes |
+|-------|-----------|-------|
+| 900   | 3/4" ODS  | Small compressors, medium-temp |
+| 902   | 7/8" / 1-1/8" ODS | Most common rack size |
+| 903   | 1-3/8" ODS | Medium-large compressors |
+| 904   | 1-5/8" ODS | Large compressors, low-temp rack |
+| 920   | 1-1/8" ODS | Horizontal-inlet variant |
+| 920R  | Rotalock  | Refrigeration rack screw-compressor use |
+
+**When to specify coalescent over conventional:**
+- R-410A systems (lower oil viscosity at operating pressures — conventional separators less effective)
+- R-744 (CO2) systems — conventional separators ineffective at transcritical pressures
+- Parallel rack with long evaporator circuits (> 100 ft equivalent)
+- After compressor rebuild where residual metallic contamination risk is elevated
+
+**Coalescing element replacement:**
+- Temprite recommends element replacement every 2 years or when pressure drop across separator exceeds 3 PSI at rated flow
+- Field indicator: higher than normal compressor head pressure with clean condenser coil and correct refrigerant charge → check separator pressure drop
+- Replacement elements available as kits (900-series kit number matches model)
+
+### 300 Series — Coalescent (Open-Top/Serviceable)
+
+Similar coalescent technology to 900 series but with a removable top cap for element servicing without removing the separator from the line.
+
+- Common sizes: 300, 302, 303, 304
+- Used in retrofit situations where line access is limited
+- Element replacement interval: same as 900 series
+
+### 600 Series — Conventional (Larger Commercial)
+
+Larger conventional separators for high-tonnage racks (> 75 HP per circuit):
+- Models 604, 606, 610, 614
+- Same float valve and oil return as 500 series
+- Used on large parallel rack compressor banks
+
+## Oil Reservoirs
+
+On large parallel racks with multiple compressors, Temprite oil reservoirs centralise oil collection rather than returning oil individually from each separator.
+
+**Function:** Multiple separator oil returns feed into a single reservoir. An oil level control (mechanical float or electronic) on each compressor crankcase then draws oil from the reservoir as needed.
+
+**Common Temprite reservoir models:**
+- 47058 (small rack, 4 compressors)
+- 47080 (medium rack, 5–6 compressors)
+- 47115 (large rack, 6–8 compressors)
+- 47154 (extra-large / dual-rack)
+
+**Installation checklist:**
+- Mount reservoir below the compressors and below the oil separator sump outlets
+- Oil supply lines from reservoir to compressors: 3/8" ODS, pitched continuously downward from reservoir to crankcase equaliser
+- No traps in oil supply lines — oil is gravity-fed, traps cause oil starvation
+- Sight glass on reservoir: level should be visible mid-glass at steady state; empty glass = separator or float valve issue, full glass overflowing = excessive oil in system
+
+## Oil Level Controls
+
+### Mechanical (Float-Valve Type)
+- Temprite mechanical oil level controls mount on the compressor crankcase equaliser fitting
+- Float maintains oil at a constant level: when oil drops, float drops, valve opens, oil flows from reservoir
+- Service: clean strainer screen annually; replace entire float assembly if compressor repeatedly runs low on oil with reservoir full
+
+### TraxOil Electronic Oil Level Control
+- Electronic sensor replaces mechanical float — no moving parts, more reliable in contaminated oil
+- LED indicator on unit: green = oil level OK, red flashing = low oil, red steady = fault/sensor error
+- Wires to compressor safety control circuit: trips compressor on low oil condition (adjustable delay: 30 seconds default)
+- Calibration: TraxOil self-calibrates on first startup — do not power it during compressor off cycle calibration period (30 seconds after energising)
+- Common issue: sensor contaminated with black sludge (acid burnout residue) — clean with solvent and dry before recalibrating
+
+## Common Rack Oil Management Troubleshooting
+
+| Symptom | Likely Cause | Action |
+|---------|-------------|--------|
+| Compressor(s) low on oil, separator full | Float valve stuck closed | Remove, clean or replace float/needle |
+| Compressor(s) low on oil, separator empty | Separator float valve open but reservoir empty; or no oil returning from circuit | Check separator inlet — possible bypass (hole in screen) |
+| Oil in evaporators (oil logging) | Separator efficiency low, or separator bypass | Check separator pressure drop; replace coalescent element or 500-series screen |
+| Reservoir overflowing | System oil charge is excessive | Remove oil from system; verify original factory charge |
+| Black sludge in oil reservoir | Acid burnout contamination | Flush system, replace driers, change oil charge; clean TraxOil sensor |
+| High separator pressure drop (>3 PSI) | Coalescent element saturated | Replace element |
+| Compressor oil foaming on startup | Refrigerant migration into oil during off-cycle | Verify crankcase heaters on; consider crankcase heater upgrade |
+
+## Sizing Quick Reference
+
+Temprite sizing is based on refrigerant type and system capacity (tons or kW). Always use Temprite's online sizing tool or printed chart for final selection.
+
+**General guideline (500 series, R-404A / R-448A):**
+- Up to 10 tons per compressor: Model 507–510
+- 10–20 tons: Model 510–514
+- 20–35 tons: Model 520
+- 35–60 tons: Model 528
+
+**For R-410A or CO2:** Move up one model size from the above table, or specify 900/300-series coalescent.
+
+## Refrigerant Compatibility Notes
+
+- All current Temprite separators rated for HFCs (R-404A, R-448A, R-449A, R-134a, R-410A) and natural refrigerants (R-744/CO2, R-290/propane)
+- POE oil compatible with all current Temprite internal components
+- Mineral oil: acceptable in 500/600 series; NOT recommended in 900/300 series coalescent (clogs element media faster)
+- Alkylbenzene (AB) oil: compatible
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 

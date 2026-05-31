@@ -21,6 +21,14 @@ import {
   TYLER_HILL_PHOENIX_KNOWLEDGE,
   HEATCRAFT_BOHN_KNOWLEDGE,
   BITZER_KNOWLEDGE,
+  LENNOX_RTU_KNOWLEDGE,
+  CARRIER_RTU_KNOWLEDGE,
+  YORK_RTU_KNOWLEDGE,
+  TRANE_RTU_KNOWLEDGE,
+  RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
+  AAON_RTU_KNOWLEDGE,
+  TRANE_RAUC_KNOWLEDGE,
+  TEMPRITE_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -33,7 +41,7 @@ export interface KnowledgeTopic {
   content: string            // full markdown string
   manualKeywords: string[]   // for DB search (ILIKE match on document title or manufacturer)
   tags: string[]
-  category: 'manufacturer' | 'fundamentals'
+  category: 'manufacturer' | 'fundamentals' | 'hvac'
 }
 
 export const TOPICS: KnowledgeTopic[] = [
@@ -218,6 +226,18 @@ export const TOPICS: KnowledgeTopic[] = [
     category: 'manufacturer',
   },
   {
+    slug: 'temprite',
+    title: 'Temprite Oil Management',
+    shortTitle: 'Temprite',
+    description: 'Temprite oil separators (500, 600, 900, 300 series), oil reservoirs, mechanical and electronic (TraxOil) oil level controls — installation, sizing, element replacement, and rack oil management troubleshooting.',
+    iconName: 'Layers',
+    colorClass: 'orange',
+    content: TEMPRITE_KNOWLEDGE,
+    manualKeywords: ['temprite'],
+    tags: ['Oil Separator', 'Oil Management', 'Rack', 'Temprite'],
+    category: 'manufacturer',
+  },
+  {
     slug: 'carnot',
     title: 'Carnot (M&M Carnot / JCI)',
     shortTitle: 'Carnot',
@@ -300,6 +320,90 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: [],
     tags: ['Racks', 'HFC', 'Multiplex', 'Oil Management'],
     category: 'fundamentals',
+  },
+  {
+    slug: 'lennox-rtu',
+    title: 'Lennox Rooftop Units',
+    shortTitle: 'Lennox RTU',
+    description: 'LGH/LCH commercial RTUs, Prodigy 1 and 2 control boards, economizer (Interlink 102691-04 damper actuator), fault codes, ignition diagnostics, and common field failures.',
+    iconName: 'Wind',
+    colorClass: 'blue',
+    content: LENNOX_RTU_KNOWLEDGE,
+    manualKeywords: ['lennox', 'prodigy', 'lgh', 'lch', 'rooftop'],
+    tags: ['Lennox', 'Prodigy', 'Economizer', 'RTU'],
+    category: 'hvac',
+  },
+  {
+    slug: 'carrier-rtu',
+    title: 'Carrier Rooftop Units',
+    shortTitle: 'Carrier RTU',
+    description: '48TC/TM/TF and 50TJ/XC WeatherExpert commercial RTUs, ComfortLink II controls, economizer faults, refrigerant circuit, and maintenance.',
+    iconName: 'Wind',
+    colorClass: 'sky',
+    content: CARRIER_RTU_KNOWLEDGE,
+    manualKeywords: ['carrier', 'weatherexpert', 'comfortlink', 'bryant', 'rooftop'],
+    tags: ['Carrier', 'WeatherExpert', 'ComfortLink', 'RTU'],
+    category: 'hvac',
+  },
+  {
+    slug: 'york-rtu',
+    title: 'York Rooftop Units',
+    shortTitle: 'York RTU',
+    description: 'York / Johnson Controls Predator (ZJ/ZR) and Sunline RTUs, Quantum board diagnostics, economizer, compressor protection, and field faults.',
+    iconName: 'Wind',
+    colorClass: 'orange',
+    content: YORK_RTU_KNOWLEDGE,
+    manualKeywords: ['york', 'predator', 'sunline', 'quantum', 'rooftop', 'johnson controls'],
+    tags: ['York', 'Predator', 'Quantum', 'RTU'],
+    category: 'hvac',
+  },
+  {
+    slug: 'trane-rtu',
+    title: 'Trane Rooftop Units',
+    shortTitle: 'Trane RTU',
+    description: 'Trane Precedent (YCD/YCH/YSD/YSH) and Sintesis RTUs, ReliaTel controls (RTOM/RTRM), Tracer BAS, two-stage cooling, economizer fault codes.',
+    iconName: 'Wind',
+    colorClass: 'red',
+    content: TRANE_RTU_KNOWLEDGE,
+    manualKeywords: ['trane', 'precedent', 'reliattel', 'sintesis', 'voyager', 'rooftop'],
+    tags: ['Trane', 'ReliaTel', 'Precedent', 'RTU'],
+    category: 'hvac',
+  },
+  {
+    slug: 'rtu-diagnostics',
+    title: 'RTU Fault Diagnosis',
+    shortTitle: 'RTU Diagnostics',
+    description: 'Cross-manufacturer RTU troubleshooting: cooling and heating mode diagnosis, economizer operation, refrigerant charging, electrical checks, filter and airflow, seasonal startup.',
+    iconName: 'Settings2',
+    colorClass: 'slate',
+    content: RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
+    manualKeywords: [],
+    tags: ['Troubleshooting', 'RTU', 'Economizer', 'HVAC'],
+    category: 'hvac',
+  },
+  {
+    slug: 'trane-rauc',
+    title: 'Trane RAUC / RAUCC Condensing Units',
+    shortTitle: 'Trane RAUCC',
+    description: 'Trane RAUC and RAUCC commercial split-system air-cooled condensing units (20–60 ton), including RAUCC405BX03: dual-circuit scroll compressors, ReliaTel controls, refrigerant charging, tandem compressor service, condenser fan cycling, and common field faults.',
+    iconName: 'Snowflake',
+    colorClass: 'teal',
+    content: TRANE_RAUC_KNOWLEDGE,
+    manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
+    tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
+    category: 'hvac',
+  },
+  {
+    slug: 'aaon-rtu',
+    title: 'AAON / CES / Flo RTUs',
+    shortTitle: 'AAON RTU',
+    description: 'AAON RN and RQ series rooftop units (also sold as CES or Flo RTUs): MCS control system, fault codes, compressor staging, economizer, VFD fan systems, gas heat, and R-454B Next Gen models.',
+    iconName: 'Wind',
+    colorClass: 'cyan',
+    content: AAON_RTU_KNOWLEDGE,
+    manualKeywords: ['aaon', 'rn series', 'rq series', 'ces rtu', 'flo rtu'],
+    tags: ['AAON', 'CES', 'Flo', 'MCS', 'RTU'],
+    category: 'hvac',
   },
 ]
 
