@@ -6,12 +6,10 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
   FileText,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
   BookOpen,
   Globe,
-  X,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
@@ -34,7 +32,6 @@ export default function KnowledgeTopicPage() {
   const [manuals, setManuals] = useState<RelatedManual[]>([])
   const [manualsLoading, setManualsLoading] = useState(true)
   const [tocOpen, setTocOpen] = useState(false)
-  const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
 
   useEffect(() => {
     if (!topic) return
@@ -70,6 +67,17 @@ export default function KnowledgeTopicPage() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
       setTocOpen(false)
+    }
+  }
+
+  function openManual(href: string, isWeb: boolean) {
+    if (isWeb) {
+      // External links open in new tab
+      window.open(href, '_blank', 'noopener,noreferrer')
+    } else {
+      // Same-origin PDF: navigate in current tab so browser back button returns here.
+      // iOS shows it in Quick Look (native PDF viewer with proper scroll/zoom).
+      window.location.href = href
     }
   }
 
@@ -157,12 +165,12 @@ export default function KnowledgeTopicPage() {
                 ) : (
                   <div className="space-y-1">
                     {manuals.map(manual => {
-                      const isWeb = manual.source_type === 'WEB' && manual.source_url
+                      const isWeb = !!(manual.source_type === 'WEB' && manual.source_url)
                       const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                       return (
                         <button
                           key={manual.id}
-                          onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                          onClick={() => openManual(href, isWeb)}
                           className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
                         >
                           {isWeb
@@ -194,12 +202,12 @@ export default function KnowledgeTopicPage() {
               </p>
               <div className="space-y-2">
                 {manuals.map(manual => {
-                  const isWeb = manual.source_type === 'WEB' && manual.source_url
+                  const isWeb = !!(manual.source_type === 'WEB' && manual.source_url)
                   const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                   return (
                     <button
                       key={manual.id}
-                      onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                      onClick={() => openManual(href, isWeb)}
                       className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -219,37 +227,6 @@ export default function KnowledgeTopicPage() {
         </main>
       </div>
     </div>
-
-    {/* In-app PDF overlay — prevents mobile "stuck in browser" problem */}
-    {pdfViewer && (
-      <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
-        <div className="safe-top flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
-          <button
-            onClick={() => setPdfViewer(null)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
-            title="Back to topic"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <p className="text-sm text-slate-200 font-medium truncate flex-1">{pdfViewer.title}</p>
-          <button
-            onClick={() => setPdfViewer(null)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
-            title="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        {/* Explicit height container so iOS Safari gives the iframe a real size and PDF scrolls */}
-        <div className="flex-1 relative overflow-hidden">
-          <iframe
-            src={pdfViewer.url}
-            className="absolute inset-0 w-full h-full border-0"
-            title={pdfViewer.title}
-          />
-        </div>
-      </div>
-    )}
     </PageShell>
   )
 }
