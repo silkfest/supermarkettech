@@ -1345,7 +1345,7 @@ export default function SimulationPage() {
 
                 <button
                   onClick={() => setRackConfig(c => ({ ...c, ...REFRIGERANT_DEFAULTS[c.refrigerant] }))}
-                  className="text-[9px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+                  className="text-[9px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2"
                 >
                   Reset to defaults
                 </button>
@@ -1391,7 +1391,7 @@ export default function SimulationPage() {
             )}
             {!scenarioMode && (
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Set faults + OAT slider, then <strong className="text-slate-400">Diagnose</strong> to pre-fill ColdIQ chat.
+                Set faults + OAT slider, then <strong className="text-slate-500 dark:text-slate-400">Diagnose</strong> to pre-fill ColdIQ chat.
               </p>
             )}
           </div>
@@ -1787,7 +1787,7 @@ export default function SimulationPage() {
                 <div className={`mx-0 mt-1 mb-2 px-2.5 py-1.5 rounded-lg text-[10px] flex items-center justify-between ${
                   mt.dischargeDeviation > 50 ? 'bg-red-500/15 border border-red-500/30 text-red-300' :
                   mt.dischargeDeviation > 25 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' :
-                  'bg-slate-700/40 border border-slate-700 text-slate-400'}`}>
+                  'bg-slate-200 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
                   <span>Expected at {activeOat}°F OAT</span>
                   <span className="font-mono font-semibold">
                     ~{Math.round(mt.expectedDischargePsig)} psig
@@ -1801,7 +1801,7 @@ export default function SimulationPage() {
                   color={statusColor(mt.dischargePsig, SAFETY.hpcoWarnPsig, SAFETY.hpcoPsig)}
                   note={mt.nonCondensables ? `≈ ${Math.round(mt.dischargePsig - 28)} psig without non-cond.` : undefined} />
                 <ReadingRow label="Condensing sat temp" value={`${mt.condensingTemp.toFixed(1)} °F`} sub="from PT"
-                  color={mt.hpCtrlActive ? 'text-amber-400' : 'text-slate-300'}
+                  color={mt.hpCtrlActive ? 'text-amber-400' : 'text-slate-600 dark:text-slate-300'}
                   note={mt.hpCtrlActive ? 'HP control active — minimum setpoint' : undefined} />
                 <ReadingRow label="Approach ΔT" value={`${mt.approachDelta.toFixed(1)} °F`}
                   dot={mt.approachDelta > 25 ? 'bg-red-500' : mt.approachDelta > 18 ? 'bg-amber-400' : mt.hpCtrlActive ? 'bg-amber-400' : 'bg-emerald-500'}
@@ -1814,7 +1814,7 @@ export default function SimulationPage() {
                   note={mt.dischargeTemp >= SAFETY.highDischargeF ? 'Liquid injection active' : undefined} />
                 <ReadingRow label="Discharge superheat" value={`${mt.dischargeSuperheat.toFixed(0)} °F`} color="text-slate-600 dark:text-slate-300" />
                 <ReadingRow label="Compression ratio" value={`${mt.compressionRatio.toFixed(2)} : 1`}
-                  color={mt.compressionRatio > 10 ? 'text-red-400' : mt.compressionRatio > 8 ? 'text-amber-400' : 'text-slate-300'} />
+                  color={mt.compressionRatio > 10 ? 'text-red-400' : mt.compressionRatio > 8 ? 'text-amber-400' : 'text-slate-600 dark:text-slate-300'} />
               </Card>
             </div>
 
@@ -1854,21 +1854,21 @@ export default function SimulationPage() {
             <Card title="MT Compressors — 4 × Copeland Scroll" icon={<Zap size={13}/>}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1">
                 {mt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-700/40 border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
+                  <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
                     <div className="flex items-center justify-center gap-1.5 mb-1.5">
                       <div className={`w-2 h-2 rounded-full ${running ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
-                      <span className="text-[10px] font-semibold text-slate-300">COMP {i + 1}</span>
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">COMP {i + 1}</span>
                     </div>
-                    <div className={`text-sm font-mono font-bold ${running ? 'text-white' : 'text-red-400'}`}>
+                    <div className={`text-sm font-mono font-bold ${running ? 'text-slate-900 dark:text-white' : 'text-red-400'}`}>
                       {running ? `${mt.compAmps[i].toFixed(1)} A` : 'OFF'}
                     </div>
                     <div className="text-[9px] text-slate-500 mt-0.5">{running ? 'Running' : 'Tripped'}</div>
                   </div>
                 ))}
               </div>
-              <div className="mt-1 py-1 border-t border-slate-700/50 flex items-center gap-4 text-[10px] text-slate-500">
-                <span><span className="text-slate-400 font-medium">{mt.compRunning.filter(Boolean).length}</span> of 4 running</span>
-                <span>Total: <span className="text-slate-400 font-medium">{mt.compAmps.reduce((s, a) => s + a, 0).toFixed(1)} A</span></span>
+              <div className="mt-1 py-1 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-4 text-[10px] text-slate-500">
+                <span><span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compRunning.filter(Boolean).length}</span> of 4 running</span>
+                <span>Total: <span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compAmps.reduce((s, a) => s + a, 0).toFixed(1)} A</span></span>
                 {mt.compRunning.filter(Boolean).length < 4 && <span className="text-amber-400">↑ Remaining amps elevated</span>}
               </div>
             </Card>
@@ -1897,12 +1897,12 @@ export default function SimulationPage() {
                     note={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'Frozen food at risk!' : undefined} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 mt-1 border-t border-slate-700/50">
+              <div className="grid grid-cols-2 gap-2 pt-1 mt-1 border-t border-slate-200 dark:border-slate-700/50">
                 {lt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-700/40 border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
+                  <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-500/10 border-red-500/40'}`}>
                     <div className="flex items-center justify-center gap-1.5 mb-1">
                       <div className={`w-2 h-2 rounded-full ${running ? 'bg-blue-400 animate-pulse' : 'bg-red-500'}`}/>
-                      <span className="text-[10px] font-semibold text-slate-300">LT BOOST {i + 1}</span>
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">LT BOOST {i + 1}</span>
                     </div>
                     <div className={`text-sm font-mono font-bold ${running ? 'text-blue-200' : 'text-red-400'}`}>
                       {running ? `${lt.compAmps[i].toFixed(1)} A` : 'OFF'}
@@ -1923,11 +1923,11 @@ export default function SimulationPage() {
                     const idx  = STORE_LINEUP.indexOf(s)
                     const temp = caseTemps[idx]
                     return (
-                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-700/30 last:border-0">
+                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/30 last:border-0">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
                           <div className="min-w-0">
-                            <span className="text-xs text-slate-300 font-medium">{s.name}</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{s.name}</span>
                             <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
                           </div>
                         </div>
@@ -1948,11 +1948,11 @@ export default function SimulationPage() {
                     const idx  = STORE_LINEUP.indexOf(s)
                     const temp = caseTemps[idx]
                     return (
-                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-700/30 last:border-0">
+                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/30 last:border-0">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
                           <div className="min-w-0">
-                            <span className="text-xs text-slate-300 font-medium">{s.name}</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{s.name}</span>
                             <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
                           </div>
                         </div>
@@ -1972,43 +1972,43 @@ export default function SimulationPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="Normal Ranges" icon={<Info size={13}/>}>
                 <div className="text-[10px] text-slate-500 space-y-0.5 py-1 leading-relaxed">
-                  <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">MT Circuit — {rackConfig.mtSuctionPsig} psig / {mtSatSetpoint.toFixed(1)}°F SST</div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Suction setpoint</span><span>{rackConfig.mtSuctionPsig} psig ({mtSatSetpoint.toFixed(1)}°F)</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Discharge (HP ctrl)</span><span>{rackConfig.hpCtrlPsig} psig min</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Suction SH</span><span>15–25 °F</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Subcooling</span><span>10–20 °F</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Discharge temp</span><span>130–200 °F</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Oil diff</span><span>20–25 psi (Y825)</span></div>
+                  <div className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">MT Circuit — {rackConfig.mtSuctionPsig} psig / {mtSatSetpoint.toFixed(1)}°F SST</div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Suction setpoint</span><span>{rackConfig.mtSuctionPsig} psig ({mtSatSetpoint.toFixed(1)}°F)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Discharge (HP ctrl)</span><span>{rackConfig.hpCtrlPsig} psig min</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Suction SH</span><span>15–25 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Subcooling</span><span>10–20 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Discharge temp</span><span>130–200 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Oil diff</span><span>20–25 psi (Y825)</span></div>
                   <div className="text-[9px] font-semibold text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT suction setpoint</span><span>{rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F)</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT ratio</span><span>2.0–3.5 : 1</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">LT superheat</span><span>10–20 °F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT suction setpoint</span><span>{rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT ratio</span><span>2.0–3.5 : 1</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT superheat</span><span>10–20 °F</span></div>
                   <div className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig</div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Min cond sat</span><span>{hpCtrlSatTemp.toFixed(1)}°F ({rackConfig.hpCtrlPsig} psig)</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Activates below OAT</span><span>~{Math.round(hpCtrlSatTemp - 15)}°F</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-400">Typical range</span><span>155–175 psig</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Min cond sat</span><span>{hpCtrlSatTemp.toFixed(1)}°F ({rackConfig.hpCtrlPsig} psig)</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Activates below OAT</span><span>~{Math.round(hpCtrlSatTemp - 15)}°F</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Typical range</span><span>155–175 psig</span></div>
                 </div>
               </Card>
 
               {!scenarioMode ? (
                 <div className="space-y-3">
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
+                  <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-300 font-medium">Instructor mode — reveal active faults</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Instructor mode — reveal active faults</p>
                       <p className="text-[10px] text-slate-500">Use after trainee gives their diagnosis</p>
                     </div>
                     <button
                       onClick={() => setRevealFaults(v => !v)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-amber-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                     >
                       {revealFaults ? 'Hide faults' : 'Reveal faults'}
                     </button>
                   </div>
                   {revealFaults && (
-                    <div className="bg-slate-800 border border-amber-500/30 rounded-xl p-3">
+                    <div className="bg-slate-100 dark:bg-slate-800 border border-amber-500/30 rounded-xl p-3">
                       <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-2">Active faults · OAT {activeOat} °F</p>
                       {activeFaultCount === 0 ? (
-                        <p className="text-xs text-slate-400 italic">No faults active — system in normal operation</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
                       ) : (
                         <div className="space-y-1">
                           {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
@@ -2023,7 +2023,7 @@ export default function SimulationPage() {
                   )}
                 </div>
               ) : (
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-center">
+                <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-center">
                   <p className="text-[10px] text-slate-500 text-center leading-relaxed">
                     Instructor reveal disabled in scenario mode.<br/>Exit scenario mode to use it.
                   </p>
