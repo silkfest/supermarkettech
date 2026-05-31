@@ -6497,12 +6497,12 @@ Infinite resistance = open (wiring break or probe failed open). Near-zero = shor
 
 ## Manual Defrost
 Press **DEF** button (if equipped) to start a defrost cycle immediately.
-On models without a DEF button: enter parameters and toggle a manual-start parameter (typically `Mn` or `MdF` = 1).
+On models without a DEF button: enter parameters and toggle a manual-start parameter (typically \`Mn\` or \`MdF\` = 1).
 
 ## Communication (RS-485 / Modbus)
 - Most XC series and XR60C/XR70C support RS-485 Modbus RTU
 - Default baud rate: **9600 bps**, 8-N-1
-- Address set via `Add` parameter (1–247)
+- Address set via \`Add\` parameter (1–247)
 - Wired daisy-chain: A+ to A+, B− to B−, common ground; terminate last device with 120Ω resistor
 - Controllers appear as Modbus slave nodes on Xweb500 / third-party BMS
 
@@ -6526,7 +6526,7 @@ On models without a DEF button: enter parameters and toggle a manual-start param
 
 **Factory reset (most models):**
 1. Enter programming mode (hold SET 5 sec)
-2. Navigate to parameter `rE` or `rES` (model-dependent)
+2. Navigate to parameter \`rE\` or \`rES\` (model-dependent)
 3. Set to 1 (or press SET to confirm)
 4. Controller reloads factory defaults — all setpoints and defrost programming reset
 
@@ -6606,7 +6606,7 @@ Heaters prevent moisture condensing on glass doors, mullions (stiles), and case 
 **Control:**
 - Simple on/off via store humidity switch or timer (older stores)
 - Modern cases: anti-sweat controller (Paragon, Intermatic timer, or store controller ASH output)
-- Dixell XR60C/XC series: `AC` parameter — heaters switch on when cabinet air exceeds AC setpoint (high humidity condition)
+- Dixell XR60C/XC series: \`AC\` parameter — heaters switch on when cabinet air exceeds AC setpoint (high humidity condition)
 - Energy-saving mode: cycle heaters on timed intervals rather than continuous — reduces energy 40–60%
 
 **Troubleshooting heater faults:**
