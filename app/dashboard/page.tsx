@@ -133,7 +133,7 @@ export default function Dashboard() {
   }, [alarmToast])
 
   useEffect(() => { if (currentUser) loadEquipment() }, [currentUser, loadEquipment])
-  useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
+  useEffect(() => { if (currentUser) loadDocuments(selected?.id) }, [selected?.id, loadDocuments, currentUser])
 
   async function handleUpload(file: File) {
     if (file.size > 25 * 1024 * 1024) {

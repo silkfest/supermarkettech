@@ -1025,11 +1025,11 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
       onClick={onChange} disabled={disabled} title={hint}
       className={[
         'w-full flex items-start gap-2 px-3 py-2 text-left rounded-lg transition-all text-xs',
-        active   ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300' : 'bg-slate-200/60 dark:bg-slate-700/40 border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200',
+        active   ? 'bg-blue-50 dark:bg-blue-500/15 border border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300' : 'bg-slate-200/60 dark:bg-slate-700/40 border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200',
         disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
-      <div className={`mt-0.5 flex-shrink-0 w-7 h-3.5 rounded-full transition-colors flex items-center px-0.5 ${active ? 'bg-amber-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
+      <div className={`mt-0.5 flex-shrink-0 w-7 h-3.5 rounded-full transition-colors flex items-center px-0.5 ${active ? 'bg-blue-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
         <div className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${active ? 'translate-x-3.5' : 'translate-x-0'}`} />
       </div>
       <span className="leading-snug">{label}</span>
@@ -1177,7 +1177,7 @@ export default function SimulationPage() {
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
 
         {!scenarioMode && activeFaultCount > 0 && (
-          <span className="text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 px-2 py-1 rounded-full">
+          <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 px-2 py-1 rounded-full">
             {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
           </span>
         )}
@@ -1401,7 +1401,7 @@ export default function SimulationPage() {
         {!showFaults && (
           <button
             onClick={() => setShowFaults(true)}
-            className="md:hidden fixed bottom-5 right-4 z-20 bg-amber-500 text-white rounded-full px-4 py-2.5 text-xs font-semibold shadow-lg flex items-center gap-1.5"
+            className="md:hidden fixed bottom-5 right-4 z-20 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2.5 text-xs font-semibold shadow-lg flex items-center gap-1.5"
           >
             <Zap size={13}/>
             {scenarioMode ? 'Diagnose' : `Faults & Settings${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
@@ -1999,22 +1999,22 @@ export default function SimulationPage() {
                     </div>
                     <button
                       onClick={() => setRevealFaults(v => !v)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-amber-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${revealFaults ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                     >
                       {revealFaults ? 'Hide faults' : 'Reveal faults'}
                     </button>
                   </div>
                   {revealFaults && (
-                    <div className="bg-slate-100 dark:bg-slate-800 border border-amber-500/30 rounded-xl p-3">
-                      <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-2">Active faults · OAT {activeOat} °F</p>
+                    <div className="bg-slate-100 dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
+                      <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Active faults · OAT {activeOat} °F</p>
                       {activeFaultCount === 0 ? (
                         <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
                       ) : (
                         <div className="space-y-1">
                           {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
-                            <div key={d.key} className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
-                              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-amber-500"/>
-                              <div><span className="font-medium">{d.label}</span><span className="text-amber-600/70 dark:text-amber-400/60 ml-1.5">— {d.hint}</span></div>
+                            <div key={d.key} className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-300">
+                              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-blue-500"/>
+                              <div><span className="font-medium">{d.label}</span><span className="text-blue-600/70 dark:text-blue-400/60 ml-1.5">— {d.hint}</span></div>
                             </div>
                           ))}
                         </div>
