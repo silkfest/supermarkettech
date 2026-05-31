@@ -102,11 +102,8 @@ export default function KnowledgeTopicPage() {
               ))}
               <button
                 onClick={() => {
-                  try {
-                    const prefill = `I was just reading the "${topic.title}" topic in the Knowledge Hub.\n\nTopic summary: ${topic.description}\n\nMy question: `
-                    localStorage.setItem('coldiq_prefill', prefill)
-                  } catch { /* ignore */ }
-                  router.push('/dashboard')
+                  const prefill = `I was just reading the "${topic.title}" topic in the Knowledge Hub.\n\nTopic summary: ${topic.description}\n\nMy question: `
+                  router.push(`/dashboard?q=${encodeURIComponent(prefill)}`)
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors ml-1"
                 title="Open this topic in ColdIQ Expert chat"
