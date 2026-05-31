@@ -31,6 +31,7 @@ import {
   TEMPRITE_KNOWLEDGE,
   DIXELL_KNOWLEDGE,
   KYSOR_WARREN_KNOWLEDGE,
+  HEAT_RECLAIM_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -394,6 +395,18 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
     tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
     category: 'hvac',
+  },
+  {
+    slug: 'heat-reclaim',
+    title: 'Heat Reclaim Systems',
+    shortTitle: 'Heat Reclaim',
+    description: 'Supermarket heat reclaim fundamentals — desuperheaters, heat reclaim condensers, liquid subcoolers, CO₂ wet heat reclaim, head pressure control, diverting valves, water-side maintenance, control sequences, and fault diagnosis.',
+    iconName: 'Flame',
+    colorClass: 'rose',
+    content: HEAT_RECLAIM_KNOWLEDGE,
+    manualKeywords: ['heat reclaim', 'desuperheater', 'subcooler', 'heat recovery'],
+    tags: ['Heat Reclaim', 'Desuperheater', 'Subcooler', 'CO₂', 'Energy'],
+    category: 'fundamentals',
   },
   {
     slug: 'kysor-warren',

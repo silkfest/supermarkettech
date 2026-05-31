@@ -34,6 +34,7 @@ import {
   TEMPRITE_KNOWLEDGE,
   DIXELL_KNOWLEDGE,
   KYSOR_WARREN_KNOWLEDGE,
+  HEAT_RECLAIM_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 const KNOWLEDGE_MAP: Record<string, string> = {
@@ -69,6 +70,7 @@ const KNOWLEDGE_MAP: Record<string, string> = {
   'temprite':                   TEMPRITE_KNOWLEDGE,
   'dixell':                     DIXELL_KNOWLEDGE,
   'kysor-warren':               KYSOR_WARREN_KNOWLEDGE,
+  'heat-reclaim':               HEAT_RECLAIM_KNOWLEDGE,
 }
 
 export interface ContentMatch {

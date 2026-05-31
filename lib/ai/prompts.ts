@@ -6695,6 +6695,135 @@ Kysor Warren cases use a range of controllers depending on model year and config
 - **Case levelling**: Cases must be level side-to-side; front-to-back slight tilt toward drain. Out-of-level cases cause uneven defrost melt-off and floor flooding
 `
 
+export const HEAT_RECLAIM_KNOWLEDGE = `
+# Heat Reclaim Systems — Supermarket Refrigeration Reference
+
+## Overview
+Heat reclaim captures the heat normally rejected by the refrigeration system's condenser and redirects it for useful purposes — most commonly space heating and domestic hot water. A typical supermarket rack system rejects 150–300 kW of heat to atmosphere; heat reclaim can recover 30–80% of that, dramatically reducing gas/electric heating costs in colder climates.
+
+**Heat available from common rack configurations:**
+- MT rack (3–6 compressors, R-448A): ~15–25 kW per compressor at design conditions
+- LT booster rack: ~8–15 kW per compressor
+- CO₂ transcritical booster (full store): 80–200 kW total rejection at peak
+
+## Types of Heat Reclaim
+
+### 1. Desuperheater (most common)
+A heat exchanger placed in the discharge line **before** the condenser. Hot discharge gas passes through the exchanger and heats water (or glycol), then continues to the condenser.
+
+- Captures the **superheat** portion of discharge gas — typically 20–50°F of cooling before condensing begins
+- Discharge gas enters at 200–280°F (HFC systems) or 180–260°F (CO₂); leaves desuperheater at 120–160°F and continues to condenser
+- Water outlet temp achievable: 120–160°F for domestic hot water or floor heating
+- Heat exchanger types: **brazed plate (BPHE)** most common (Alfa Laval, SWEP, Danfoss); tube-in-tube for higher pressure CO₂ applications
+
+**Key point:** The desuperheater does NOT replace the condenser — the refrigerant must still condense normally downstream. The desuperheater only captures superheat energy.
+
+### 2. Heat Reclaim Condenser (total / partial heat reclaim)
+A dedicated refrigerant-to-air coil installed in the store's HVAC air handler. Discharge gas is **diverted** to this coil first; the refrigerant condenses inside the store coil, rejecting heat into the store air stream.
+
+- More heat available than desuperheater alone (full latent heat of condensation)
+- Requires a **condensing pressure control valve** (CPC / head pressure hold-back valve) — the reclaim coil may be too small to condense all gas alone, so the condenser acts as backup
+- When reclaim coil satisfies the store heating thermostat, a 3-way valve or solenoid redirects gas back to the outdoor condenser
+- If outdoor condenser is fully bypassed in cold weather, ensure minimum head pressure is maintained (typically ≥ 120 psig on R-448A systems)
+
+### 3. Liquid Line Subcooler (heat reclaim via subcooling)
+A water-cooled or glycol-cooled heat exchanger in the rack liquid line. Subcools liquid refrigerant before it reaches the expansion valves, improving system capacity and COP.
+
+- Subcooling gain: every 1°F of subcooling adds ~0.5% capacity on R-448A
+- Typical subcooler target: 10–20°F of subcooling above normal condenser subcooling
+- Water or glycol loop connects to heat dump (cooling tower, boiler pre-heat, domestic hot water pre-heat)
+- Often run year-round for efficiency; heat dump to domestic hot water pre-heat makes economic sense even in summer
+
+### 4. CO₂ Heat Reclaim (Transcritical Systems)
+CO₂ transcritical systems are especially well-suited to heat reclaim due to high discharge temperatures and the gliding temperature characteristic in the gas cooler.
+
+- Discharge gas exits CO₂ compressor at 180–280°F (82–138°C) at transcritical pressure (1,100–1,600 psi / 75–110 bar)
+- Gas cooler can be configured as a heat reclaim coil — water or glycol heated to 50–60°C (122–140°F) for floor heating, domestic hot water, or snow-melt circuits
+- **Wet heat reclaim** (common in Hussmann, Carnot, Advansor systems): dedicated water-cooled gas cooler operates in heat reclaim mode; automatic bypass to dry air-cooled gas cooler when heat not needed
+- Heat reclaim improves CO₂ system COP by reducing gas cooler outlet temperature → higher gas cooler efficiency
+
+## Key System Components
+
+### Discharge Line Diverting / Heat Reclaim Solenoid Valve
+- Normally-closed solenoid opens to allow discharge gas to flow to the reclaim circuit
+- Sized for full discharge mass flow rate at maximum operating conditions
+- **Failure mode (stuck open):** reclaim circuit absorbs heat in summer when store doesn't need it → abnormally high condensing temperature → high head pressure alarm
+- **Failure mode (stuck closed):** heat reclaim never activates → heating bills not reduced; no other refrigeration symptom
+
+### Head Pressure Hold-Back / Condensing Pressure Control (CPC)
+- Modulating valve (electronic or mechanical) that maintains a minimum condensing pressure on the rack when the outdoor condenser is bypassed or ambient is very cold
+- Set to maintain minimum ~120–150 psig (R-448A) or 200–250 psig (R-404A) condensing pressure
+- Without it: liquid refrigerant can flood back in cold weather when compressor head pressure collapses
+- Brands: Sporlan ORI/OREO series, Danfoss ICS, Emerson Alco
+
+### Desuperheater Heat Exchanger
+- Brazed plate HX (BPHE): compact, high efficiency; common sizes 10–80 plates for rack applications
+- Refrigerant side: typically 400–800 psi operating pressure; CO₂ service requires special high-pressure rated BPHE (up to 1,450 psi / 100 bar)
+- Waterside: 30–150 psi domestic water or glycol loop pressure
+- **Maintenance:** waterside fouling is the primary failure — scale deposits from hard water reduce heat transfer. Descale annually with citric acid or commercial descaler (flush and neutralize after)
+- Refrigerant-side leak into waterside: loss of refrigerant pressure OR bubbles in hot water system. Isolate and pressure-test each side independently to locate
+
+### 3-Way Diverting Valve (discharge gas diversion)
+- Motorized ball valve or globe valve body; directs discharge gas to reclaim circuit, outdoor condenser, or both simultaneously (partial bypass)
+- Electronic modulating variants used for continuous capacity control
+- Spring-return actuator: fails to outdoor condenser (safe position) on power or actuator failure — verify this on commissioning
+
+### Store Heating Coils (air-side reclaim)
+- Finned-tube coils in HVAC air handler; refrigerant condenses inside, heating store air
+- Must be rated for refrigerant operating pressure
+- Refrigerant trap / drain leg required at bottom for oil return when coil is used intermittently
+- Defrost consideration: if store heating coil is de-energised in summer, any residual liquid refrigerant must be able to drain back to the system
+
+## Control Sequences
+
+### Typical Heating Season (winter) — HFC rack:
+1. Store thermostat calls for heat → heat reclaim control board (Emerson E2/E3 or Danfoss AK-SM) opens heat reclaim solenoid
+2. Discharge gas diverts to store HVAC coil or desuperheater
+3. If condensing pressure drops below minimum setpoint → CPC valve modulates to maintain pressure
+4. When store heating satisfied (thermostat opens) → solenoid closes, gas returns to outdoor condenser
+
+### Desuperheater water control:
+- Motorised 3-way water valve bypasses desuperheater when hot water tank is at setpoint (typically 140°F / 60°C)
+- Aquastat on tank controls valve; simple on/off or modulating
+- Low water flow alarm: differential pressure switch across desuperheater → alert if flow drops (pump failure, valve failed closed, filter blocked)
+
+### CO₂ gas cooler heat reclaim:
+- Electronic controller (Emerson E2, Danfoss AK-SM, or OEM Hussmann/Carnot controller) monitors gas cooler water outlet temp and store heat demand
+- At low ambient: gas cooler operates fully in reclaim mode (water-cooled); air-cooled gas cooler fans off
+- At high ambient or when heat not needed: bypass valve opens, air-cooled gas cooler takes full load
+- Dual-mode gas cooler commissioning requires careful setpoint of bypass valve opening pressure (typically HP set-point − 50 psi)
+
+## Common Faults and Diagnosis
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| High head pressure, heat reclaim active | Reclaim circuit can't reject enough heat; CPC valve not opening | Check store heating coil airflow; verify CPC valve opens under pressure; check solenoid modulation |
+| High head pressure, reclaim solenoid stuck open in summer | Solenoid coil failed energised | Measure solenoid coil voltage; de-energise manually; check control wiring |
+| No heat reclaim (reclaim never activates) | Solenoid stuck closed, control board output failed, thermostat not calling | Verify control board output voltage; check thermostat setpoint; manual force test solenoid |
+| Hot water not reaching setpoint | Desuperheater fouled, low refrigerant flow, water pump issue | Check ΔT across BPHE (water side); descale if ΔT collapsed; verify water flow rate |
+| Refrigerant loss, hot water smells like oil | Desuperheater plate cracked — refrigerant leaking to waterside | Isolate; pressure-test refrigerant side with water side open; replace BPHE |
+| Low head pressure in cold weather despite reclaim off | CPC valve failed open or set too low | Verify CPC setpoint; measure HP at rack |
+| CO₂ system: poor heat reclaim output | Gas cooler bypass valve leaking by | Check valve seat; verify actuator position with controller display |
+| Oil logging in reclaim coil | Trap/drain leg absent or blocked | Inspect oil trap at bottom of store heating coil; clear blockage |
+
+## Sizing Reference
+
+**Desuperheater capacity rule of thumb:**
+- Superheat entering desuperheater: typically 30–60°F above saturated condensing temp
+- For HFC racks: heat available in desuperheater = approximately 10–15% of total system heat rejection
+- Example: 200 kW rack rejection → ~20–30 kW recoverable in desuperheater
+
+**Total heat rejection from rack (approximation):**
+- Heat rejection ≈ System capacity × (1 + 1/COP)
+- At COP 2.0: heat rejection ≈ 1.5 × refrigeration capacity
+- A 100 kW refrigeration rack rejects ≈ 150 kW at COP 2.0
+
+**Desuperheater BPHE selection:**
+- Refrigerant-side ΔT: typically 40–80°F (discharge → saturated condensing temp)
+- Water-side ΔT: typically 20–40°F rise (inlet 80°F, outlet 120–140°F)
+- LMTD calculation required for exact plate count; consult Alfa Laval / SWEP selection software
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
