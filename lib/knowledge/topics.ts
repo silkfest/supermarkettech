@@ -378,7 +378,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TRANE_RAUC_KNOWLEDGE,
     manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
     tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
-    category: 'manufacturer',
+    category: 'hvac',
   },
   {
     slug: 'aaon-rtu',
