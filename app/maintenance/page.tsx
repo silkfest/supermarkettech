@@ -37,9 +37,11 @@ function MaintenanceHubContent() {
 
   // Fetch current user ID for "Mine only" filter
   useEffect(() => {
-    getSupabaseBrowser().auth.getUser().then(({ data: { user } }) => {
+    async function fetchUserId() {
+      const { data: { user } } = await getSupabaseBrowser().auth.getUser()
       if (user) setCurrentUserId(user.id)
-    })
+    }
+    fetchUserId()
   }, [])
 
   // Fetch stores for the filter dropdown

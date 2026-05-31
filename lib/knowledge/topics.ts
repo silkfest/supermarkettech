@@ -32,6 +32,8 @@ import {
   DIXELL_KNOWLEDGE,
   KYSOR_WARREN_KNOWLEDGE,
   HEAT_RECLAIM_KNOWLEDGE,
+  FILTER_DRIER_KNOWLEDGE,
+  SOLENOID_VALVE_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -395,6 +397,30 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['trane rauc', 'raucc', 'rauj', 'split system condensing'],
     tags: ['Trane', 'RAUCC', 'Condensing Unit', 'Split System'],
     category: 'hvac',
+  },
+  {
+    slug: 'filter-driers',
+    title: 'Filter-Drier Selection & Burnout Cleanup',
+    shortTitle: 'Filter Driers',
+    description: 'Filter-drier selection (Parker Sporlan Catch-All vs Henry Technologies), desiccant types (HH/XH cores), ARI sizing methodology, post-burnout cleanup protocol with acid test interpretation, and 8 common field mistakes.',
+    iconName: 'Filter',
+    colorClass: 'teal',
+    content: FILTER_DRIER_KNOWLEDGE,
+    manualKeywords: ['sporlan catch-all', 'henry filter', 'henry drier', 'catch-all', 'filter drier', 'desiccant', 'acid test', 'burnout'],
+    tags: ['Filter Drier', 'Burnout', 'Acid Test', 'Henry', 'Sporlan'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'solenoid-valves',
+    title: 'Solenoid Valve Troubleshooting',
+    shortTitle: 'Solenoid Valves',
+    description: 'Direct-acting vs pilot-operated solenoids, NC vs NO selection, coil testing (resistance + amperage), manual stem override procedure, voltage vs current diagnosis, common failure modes (stuck open/closed, chatter, coil burnout), and CO₂-rated valves.',
+    iconName: 'Zap',
+    colorClass: 'amber',
+    content: SOLENOID_VALVE_KNOWLEDGE,
+    manualKeywords: ['sporlan solenoid', 'danfoss evr', 'solenoid valve', 'liquid line solenoid', 'mkc coil', 'evra'],
+    tags: ['Solenoid', 'Liquid Line', 'Coil Testing', 'Pilot-Operated', 'CO₂'],
+    category: 'fundamentals',
   },
   {
     slug: 'heat-reclaim',
