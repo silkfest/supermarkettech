@@ -5977,6 +5977,259 @@ Perform before first cooling season startup after any period > 4 weeks without c
 - HSI replacements: stock silicon nitride 120VAC elements — verify resistance (40–70Ω cold); carry universal replacement kit for common RTU sizes
 `
 
+export const AAON_RTU_KNOWLEDGE = `
+# AAON / CES / Flo Rooftop Unit Knowledge Base
+
+AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop units sold under the AAON brand and distributed in some regions as CES (Climate Equipment Solutions) or Flo RTUs. Units are built-to-order with a wide option matrix. Key model families used in commercial/supermarket settings:
+
+## Model Families
+
+**RN Series — 6 to 70 tons**
+- Most common AAON unit in supermarket and light-industrial settings
+- Gas/electric, electric/electric, or heat pump configurations
+- R-410A (legacy) and R-454B (Next Gen models, 2023+)
+- Available with VFDs on supply and return fans (standard on many configurations)
+- Next Gen RN (11–70 ton): improved scroll compressors, updated MCS-5 controls, R-454B ready
+
+**RQ Series — 2 to 25 tons**
+- Light commercial / smaller store applications
+- Same MCS control platform as RN
+- Belt-drive supply fan standard on smaller tonnages; direct-drive on larger
+- R-410A standard; Next Gen RQ available with R-454B
+
+**RZ Series — 4 to 25 tons**
+- Condensing unit + air handler split variant; less common in rooftop applications
+- Same refrigeration and control architecture as RN/RQ
+
+**OH Series — Outdoor Horizontal**
+- Horizontal-discharge for ground-level or side-wall mounting
+- Same compressor and control platform as RN
+
+## AAON Modular Control System (MCS)
+
+AAON uses a proprietary control platform called MCS (Modular Control System). All AAON RTUs shipped since ~2010 use MCS; older units may have legacy Proctor-Jones or Microtech controls.
+
+**MCS display panel:**
+- 2-line or touchscreen LCD depending on model generation
+- Navigate with UP/DOWN/ENTER/ESC or touchscreen
+- Main menu → Diagnostics → Fault Log: stores last 10–20 fault events with timestamp
+- Main menu → Status: shows all live sensor readings (supply air, return air, coil temps, pressures)
+- Main menu → Setpoints: view/edit occupied/unoccupied setpoints, deadband, heat/cool stages
+
+**MCS BACnet/Modbus integration:**
+- BACnet MS/TP or BACnet IP via optional gateway card
+- Modbus RTU standard on most models (RS-485 port on control board)
+- Default Modbus address: 1 (field-configurable via DIP switch or menu)
+- BACnet device instance: configurable via MCS menu
+- All MCS points are mappable; AAON publishes full BACnet/Modbus point lists per model
+
+## MCS Fault Codes — Common A & B Codes
+
+| Code | Fault | Reset Type |
+|------|-------|-----------|
+| A01  | Supply air high temperature limit | Auto |
+| A02  | Freeze protection (coil temp < 34°F) | Auto |
+| A03  | Return air sensor fault (open/short) | Auto |
+| A04  | Supply air sensor fault (open/short) | Auto |
+| A11  | Compressor 1 high pressure lockout | Manual |
+| A12  | Compressor 1 low pressure lockout | Auto (3 trips → manual) |
+| A13  | Compressor 1 overload / internal thermostat | Manual |
+| A14  | Compressor 1 high discharge temperature | Auto |
+| A21  | Compressor 2 high pressure lockout | Manual |
+| A22  | Compressor 2 low pressure lockout | Auto |
+| A31/A41 | Compressor 3/4 (large units) — same pattern | |
+| B01  | Supply fan overload / VFD fault | Manual |
+| B02  | Supply fan airflow proving switch failed | Auto |
+| B03  | Return fan overload / VFD fault | Manual |
+| B11  | Gas heat — failed ignition (3 attempts) | Manual |
+| B12  | Gas heat — high limit tripped | Auto |
+| B13  | Gas heat — rollout switch tripped | Manual |
+| C01  | Economizer actuator fault (end-switch not reached) | Auto |
+| C02  | Economizer enthalpy sensor fault | Auto |
+
+**Manual reset procedure:** Navigate to Main menu → Diagnostics → Reset Lockouts, or cycle power (30-second minimum off) — note that cycling power does NOT reset manual-reset faults on all models; use menu reset.
+
+## Compressor Configuration
+
+- Scroll compressors throughout: Copeland ZP/ZF or Danfoss/Maneurop MT/TT series
+- Tandem compressors (two compressors, one circuit) on 10–25 ton models
+- Quad compressors (four compressors, two circuits) on 20–40 ton models
+- Large RN (40–70 ton): may have 6–8 compressors on 3–4 circuits
+- Compressor staging via MCS: first-stage cooling = 50% capacity (one compressor or tandem lead)
+- Compressor minimum run time: 3 minutes (factory default, field-adjustable)
+- Low ambient lockout: 25°F default (field-adjustable); units can run to 0°F with low-ambient kit
+
+**Refrigerant charging (R-410A RN/RQ):**
+- System charged by weight at factory; use factory charge weight on nameplate + superheat/subcooling method
+- Target suction superheat: 10–15°F at compressor suction service valve
+- Target subcooling at liquid line: 10–15°F
+- R-410A critical charge: ±0.5 lb on tandem systems will significantly affect performance
+
+**R-454B (Next Gen) charging:**
+- R-454B is mildly flammable (A2L) — follow AAON Next Gen IOM safety procedures
+- Charge only as liquid (invert cylinder) — do not charge vapor-phase
+- Same superheat/subcooling targets as R-410A
+
+## Economizer
+
+- Integrated economizer standard on most configurations
+- Actuator: Belimo or equivalent spring-return 0–10VDC actuator (24VAC power)
+- Control signal: 0VDC = closed, 10VDC = full open
+- Enthalpy sensing: differential enthalpy (supply + return enthalpy) or dry-bulb switchover
+- Economizer minimum position: field-adjustable 0–100% (default 10–20% for outdoor air ventilation)
+- C01 fault: actuator did not reach commanded position — check actuator wiring, actuator end-switch, mechanical binding of damper
+- Economizer override test: MCS menu → Outputs → Economizer → manually command to 100% open and verify damper physically opens
+
+## Fan System
+
+**Belt-drive (RQ 2–6 ton, some RN models):**
+- V-belt tension: 1/2" deflection per foot of span at manufacturer-specified force
+- Pulley alignment: use laser alignment tool or straightedge — misalignment > 1° causes rapid belt wear
+- Belt replacement: use Gates or equivalent OEM-spec belt; AAON nameplate lists belt part number
+- Bearing lubrication: NLGI #2 grease, 2–3 pumps per bearing per season
+
+**Direct-drive / VFD (RN Series, larger RQ):**
+- VFD faults: navigate to MCS → Diagnostics → VFD Status for drive fault codes
+- VFD common faults: overcurrent (OC), overvoltage (OV), input phase loss (IPL)
+- VFD reset: MCS menu → Reset Lockouts or cycle 24VAC control power to VFD
+- Minimum VFD speed: 20 Hz default (do not reduce below 15 Hz — motor overheating risk)
+
+## Gas Heat Section
+
+- Modulating gas valve (0–100%) or staged (two-position: low/high fire) depending on model
+- Ignition: direct-spark igniter or hot surface igniter (HSI) — see unit nameplate
+- Flame sensor: microamp flame current — minimum 1.0µA to hold; typical 2–4µA
+- B11 lockout (failed ignition): verify gas supply pressure (3.5" WC min for natural gas at manifold), check igniter gap (1/8" for spark, 1/4–3/8" for HSI), verify flame sensor rod is clean and positioned correctly
+- Heat exchanger inspection: AAON uses stainless steel or aluminized steel — inspect annually with mirror and light; cracked HX = unit shutdown, tag out
+
+## Seasonal Startup Checklist (AAON RTU)
+
+1. Check and replace filters (1" MERV-8 standard, 2" optional)
+2. Inspect and clean evaporator and condenser coils — use coil cleaner, low-pressure rinse
+3. Belt inspection and tension (belt-drive models)
+4. Verify refrigerant pressures match expected values at current ambient
+5. Test economizer full-stroke (0→100%→0) via MCS menu
+6. Verify MCS setpoints match current building schedule
+7. Test heat sequence: command heat call via MCS, verify flame establishment within 3 ignition attempts
+8. Check all electrical connections for tightness (torque spec per terminal label)
+9. Verify condensate drain is clear and draining
+
+## CES / Flo RTU Notes
+
+- **CES (Climate Equipment Solutions)**: Regional distributor of AAON units in certain US markets. Units are AAON-manufactured with CES branding on the label. Service procedures, parts, and controls are identical to AAON RN/RQ. CES part numbers cross-reference directly to AAON part numbers.
+- **Flo RTU**: AAON-based units distributed under the Flo brand in select markets. Same platform — MCS controls, AAON compressors, identical service access and wiring. When troubleshooting Flo units, reference AAON RN or RQ IOM for the equivalent tonnage.
+- Parts ordering: Order directly from AAON (1-918-583-2266) or through local AAON rep — AAON controls boards and compressors are not stocked at most distributors; lead times 3–10 days typical.
+`
+
+export const TRANE_RAUC_KNOWLEDGE = `
+# Trane RAUC / RAUCC Split-System Air-Cooled Condensing Units
+
+The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** used in split-system configurations. Unlike packaged RTUs, these units contain only the compressor(s) and condenser coil — they mount outdoors and connect to a separate indoor evaporator coil or air handler. Common in supermarkets, big-box retail, and light-industrial applications.
+
+**Specific model RAUCC405BX03:**
+- R = Remote (split system condensing unit)
+- A = Air-cooled
+- U = Unit cooler / commercial
+- C = Commercial grade
+- C = Scroll compressors (second C distinguishes from reciprocating-compressor RAUC)
+- 40 = 40 nominal tons
+- 5 = Design series 5
+- BX03 = Factory option codes and minor revision
+
+## Model Series Overview
+
+| Series | Compressor Type | Tonnage Range | Notes |
+|--------|----------------|---------------|-------|
+| RAUC   | Reciprocating  | 20–60 ton     | Older/legacy; R-22 or R-407C |
+| RAUCC  | Scroll         | 20–60 ton     | R-22 or R-410A; most common in field |
+| RAUJ   | Scroll         | 20–120 ton    | Current production; R-410A or R-513A |
+
+**RAUCC40 (40 ton) refrigerant circuits:**
+- Two independent refrigerant circuits (circuit A and circuit B), each ~20 tons
+- Compressors: typically two Copeland Discus or scroll compressors per circuit (four compressors total on 40-ton unit)
+- Each circuit has its own TXV, filter-drier, sight glass, service valves, and pressure controls
+
+## Refrigerant & Charging
+
+**R-410A units (RAUCC — series 5 and later):**
+- Circuit A and Circuit B charged independently
+- Subcooling method at liquid service valve:
+  - Target: 10–15°F subcooling
+  - Measure liquid line temperature at service valve and compare to saturation temperature at measured liquid pressure
+- Suction superheat at suction service valve: 8–12°F
+- Low ambient charging: at ambients below 65°F, head pressure will be low — use subcooling only, not superheat
+- Sight glass: clear with no bubbles at steady-state = correct charge or overcharge; bubbles = low refrigerant or restriction
+
+**R-22 units (older RAUCC, RAUC):**
+- Same superheat/subcooling method applies
+- Do NOT top off R-22 with R-410A or blended refrigerants without full system retrofit
+- Polyol ester (POE) oil required if converting from mineral oil to R-410A — full flush required
+
+## Compressor Service
+
+**Scroll compressor (RAUCC):**
+- Minimum off time: 5 minutes before restart (allow crankcase equalisation)
+- Rotation check on new installation: briefly energise — correct rotation = rapid pressure differential buildup; reverse rotation = little to no pressure differential, loud rattling
+- Copeland scroll: crankcase heater standard — heater must be energised 8 hours minimum before start after extended off period
+- Oil level: visible in sight glass at bottom of compressor; add Copeland Ultra 32-3MAF POE if low
+- Scroll compressor failure indication: suction and discharge pressures equalise rapidly, compressor draws high amps briefly then trips on internal overload
+
+**Tandem compressors (circuit A or B on 40-ton):**
+- Two compressors piped in parallel on one suction/discharge manifold
+- If one compressor fails, the circuit loses ~50% capacity and may still operate on remaining compressor
+- Tandem equalisation line: must be level and unobstructed — oil migration causes failure of lead compressor
+
+## Controls — ReliaTel (RTOM/RTRM)
+
+Older RAUCC units use Trane's ReliaTel control module (same platform as Precedent RTUs). Newer RAUJ uses Tracer controls or optional DDC.
+
+**ReliaTel on RAUCC:**
+- RTOM (ReliaTel Options Module) handles compressor staging and alarms
+- LED flash codes at RTOM board — same 11-code DIP table as Precedent series:
+  - 2 flashes: Low refrigerant charge lockout
+  - 3 flashes: Low ambient lockout
+  - 4 flashes: High pressure lockout (manual reset)
+  - 5 flashes: Low pressure lockout (auto reset after 3 → manual)
+  - 7 flashes: Compressor overload
+  - 11 flashes: High discharge temperature
+- Jumper JP6 on RTOM enables/disables low ambient lockout (factory default enabled at 25°F)
+
+**Tracer BACnet / DDC option (RAUJ and newer RAUCC):**
+- BACnet MS/TP standard; BACnet IP via optional gateway
+- DDC controller (SS-SVX007A) replaces RTOM for building automation integration
+- All compressor staging, alarms, and setpoints accessible via Tracer TU software
+
+## Condenser Fan System
+
+- Propeller fans, belt-drive or direct-drive depending on model
+- Fan cycling: multiple fans with pressure-actuated cycling for low-ambient head pressure control
+- Fan sequencing: fans cycle in/out based on head pressure — verify all fans are operational before diagnosing head pressure faults
+- Common fan issues: motor failure (check amps vs. nameplate), blade pitch incorrect (RAUCC uses fixed pitch — verify blade angle if fans were removed)
+- RAUCC40 typical condenser fan count: 4–6 fans depending on configuration
+
+**Head pressure control:**
+- High head pressure fault (4 flash): check all fans operational, check condenser coil for fouling, check ambient temp vs. design limits (unit rated to 115°F ambient max)
+- Low head pressure in cold weather: normal — fans will cycle off to maintain minimum head pressure; LP fault in cold weather is usually not a charge issue
+
+## Condenser Coil Maintenance
+
+- Clean at minimum annually — coil fouling is the leading cause of high head pressure and compressor failure
+- Cleaning: apply Coil Safe or Nu-Brite with low-pressure spray (20–30 PSI max on aluminium fin) — flush from air side out (inside-out direction)
+- Fin damage: bent fins reduce airflow — use fin comb to straighten; replace coil section if damage is severe
+- Coil replacement: RAUCC40 uses factory-specific coil geometry — order via Trane part number from nameplate; aftermarket coils available from Emergent Coils, Colmac
+
+## Common Field Issues — RAUCC
+
+| Symptom | Likely Cause | Check |
+|---------|-------------|-------|
+| High head pressure | Dirty condenser coil, fan not running, overcharge | Clean coil, verify all fans, check subcooling |
+| Low suction both circuits | Low refrigerant charge | Check subcooling/superheat each circuit independently |
+| Low suction one circuit only | TXV restriction, suction filter-drier plugged, low charge circuit B | Check each circuit's filter-drier delta-T |
+| Compressor short-cycling | Low pressure lockout, high pressure lockout, low ambient | Read RTOM flash codes, check LP/HP setpoints |
+| Liquid slugging on startup | Liquid migration during off cycle | Verify crankcase heater operational 8+ hours before start |
+| Tandem oil migration | Oil equalisation line blocked/pitched wrong | Verify equalisation line is level, remove any traps |
+`
+
 const MODE_INSTRUCTIONS: Record<ChatMode, string> = {
   EXPERT: `MODE: Expert Assistant
 
