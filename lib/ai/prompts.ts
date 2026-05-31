@@ -6875,6 +6875,472 @@ RESPONSE FORMAT:
 - Never pad responses with generic disclaimers — if something is safe and routine, just explain it
 `
 
+export const FILTER_DRIER_KNOWLEDGE = `
+# Filter-Drier Selection, Sizing & Burnout Cleanup
+
+Filter-driers are the most underrated component on a refrigeration system. A restricted or saturated drier causes more unnecessary compressor replacements and callbacks than almost any other component failure. This guide covers cross-brand selection (Parker Sporlan Catch-All and Henry Technologies), sizing methodology, post-burnout cleanup protocol, and acid test interpretation.
+
+---
+
+## What a Filter-Drier Does
+
+A filter-drier performs three jobs simultaneously:
+1. **Moisture removal** — desiccant adsorbs water vapor from the refrigerant; prevents ice formation at the expansion device and acid formation in the oil
+2. **Acid neutralisation** — activated alumina chemically neutralises refrigerant acids (HF, HCl) before they attack copper, steel, and polymer components
+3. **Particulate filtration** — metal shavings, copper oxide, carbon, rubber fragments, and compressor wear debris are trapped in the filter element
+
+A drier that has reached capacity for any one of these does nothing for the others — it is not a passive component that merely degrades gracefully.
+
+---
+
+## Desiccant Types
+
+### Activated Alumina (AA)
+- High moisture capacity; also neutralises acid
+- Used in standard HFC systems (R-404A, R-448A, R-407A, R-134a)
+- Loses effectiveness at very high moisture loads — can release moisture back into the system if oversaturated
+
+### Molecular Sieve (3Å or 4Å)
+- Very high selectivity for water molecules; does not release moisture once adsorbed
+- Lower acid capacity than alumina
+- 3Å preferred for HFO refrigerants (R-448A, R-449A, R-452A) — smaller pore size prevents HFO molecules from being adsorbed and degraded
+
+### Blended (Alumina + Molecular Sieve)
+- Most common in standard HFC liquid line driers
+- Sporlan "HH" core and Henry standard core: blended alumina + sieve
+- Best overall performance for typical HFC systems
+
+### Core Designations by Brand
+
+| Application | Sporlan (Catch-All) | Henry Technologies | Notes |
+|------------|--------------------|--------------------|-------|
+| Standard HFC liquid line | HH core | Standard / H series | Blended alumina + sieve |
+| HFO retrofit (R-448A/R-449A) | XH core | XH or "Dryness Plus" | Molecular sieve; required for low-GWP HFO blends |
+| High moisture / open-system cleanup | XH core | XH core | Sieve only; maximise adsorption |
+| Suction line post-burnout | RSF (Sporlan) / SLD (Henry) | SLD series | Temporary (72 hr max); remove after cleanup |
+
+---
+
+## Product Lines
+
+### Parker Sporlan Catch-All
+
+**C series (solid core):**
+- Available 032 through 715 nominal ARI tons (R-22 basis)
+- Solid desiccant cylinder; entire drier replaced when spent
+- Most economical for smaller liquid lines (1/4"–7/8")
+
+**RC series (replaceable core, also called "Core-Dri"):**
+- Shell permanently brazed in line; only desiccant core replaced
+- Reduces downtime: no need to recover refrigerant to change a drier after the initial installation
+- Available in larger sizes (up to 2-1/8" ODS)
+- Core types: HH (standard), XH (HFO/high moisture)
+
+**RSF series (suction line, post-burnout):**
+- Large-bore suction line filter-drier; high acid and carbon capacity
+- For post-burnout cleanup ONLY — 72-hour maximum in-line time
+- Excessive pressure drop (5–15 psi) causes capacity loss on suction side if left in
+- After 72 hours: remove and install a standard suction filter (no desiccant)
+
+### Henry Technologies
+
+**BD series (standard liquid line, solid core):**
+- Functionally equivalent to Sporlan C series
+- Available 032 through 715 (same ARI sizing basis)
+- ODS sweat connections, standard
+- Henry uses the same 3/8", 1/2", 5/8", 7/8", 1-1/8", 1-3/8", 1-5/8", 2-1/8" connection sizes as Sporlan
+
+**HBR series (replaceable core):**
+- Henry's equivalent to Sporlan RC
+- Core types: standard (alumina+sieve) and XH (sieve only)
+
+**SLD series (suction line, post-burnout):**
+- Henry's equivalent to Sporlan RSF
+- Same 72-hour maximum rule applies
+
+**Connection types (both brands):**
+- **ODS sweat (brazed)** — most common; sizes match copper tube OD
+- **SAE flare** — field-fittable; used where brazing is not available (rare in commercial refrigeration)
+- **Rotalock / access fitting** — used on some condensing unit factory-installed driers; requires rotalock wrench
+
+---
+
+## Sizing Methodology
+
+Filter-driers are sized on **nominal refrigerating capacity (ARI tons)** at standard ARI conditions:
+- Liquid entering at 100°F (38°C) with 10°F (5.5°C) subcooling
+- Evaporating at +5°F (-15°C) SST
+- Rated on R-22 basis; correction factors apply for other refrigerants
+
+### Step 1 — Determine system capacity and refrigerant
+Use the rack nameplate or engineering drawings for total connected case load.
+
+### Step 2 — Apply refrigerant correction factor
+Different refrigerants have different densities and mass flow rates at the same tonnage:
+
+| Refrigerant | Approx. Correction Factor vs R-22 |
+|-------------|----------------------------------|
+| R-404A | 0.85 (slightly undersized at same ton rating — use next size up) |
+| R-448A / R-449A | 0.90 |
+| R-134a | 0.75 (needs larger drier for same capacity) |
+| R-22 | 1.00 (baseline) |
+| R-410A | 1.10 (use same or one size smaller) |
+
+### Step 3 — Apply subcooling correction
+More subcooling = denser liquid = higher mass flow = slightly larger drier needed:
+- Standard: 10°F subcooling (baseline)
+- High subcooling (20–30°F from subcooler): multiply capacity by 0.90 → use next size up
+
+### Step 4 — Match to line size
+The drier connection must match the liquid line size. For multiplex racks, size the drier on the **total rack capacity** (liquid line leaves the condenser/receiver), not individual circuit capacity.
+
+### Pressure Drop Target
+A new, clean drier should have < 1 psi pressure drop in normal operation. Replace at > 2 psi drop (measured liquid-to-liquid subcooling temperature difference, or manifold gauge differential). Most sight glasses installed immediately downstream will show bubbles if drop exceeds ~3 psi (flash gas from pressure drop).
+
+---
+
+## Sight Glass / Moisture Indicator Interpretation
+
+Install a sight glass with moisture indicator immediately downstream of the filter-drier (upstream of TXV/EEV):
+
+| Colour | Meaning | Action |
+|--------|---------|--------|
+| **Green / Blue** | Dry — moisture below threshold | Normal; no action |
+| **Yellow / Gold** | Wet — moisture above threshold | Replace drier immediately; do not delay |
+| **White / Cloudy** | Severely wet — system contaminated | Emergency drier change; recover system; check for open joints |
+| **Bubbles in glass** | Flash gas — low charge OR drier restriction | Check drier pressure drop and refrigerant charge |
+
+Yellow is an urgent warning, not a monitoring item. Acid formation accelerates exponentially above the moisture threshold — a system left with a yellow sight glass for weeks will have significant oil degradation.
+
+---
+
+## When to Replace a Filter-Drier
+
+1. Pressure drop across drier > 2 psi (0.14 bar)
+2. Sight glass shows yellow or white indicator
+3. Any time the system has been open to atmosphere for more than a few minutes
+4. After any compressor replacement (wear debris in system)
+5. After a confirmed burnout — replace liquid line drier with XH core; install suction line filter (RSF/SLD)
+6. As part of a refrigerant retrofit from R-404A to R-448A or R-449A (XH core required)
+7. Annual PM on systems with known moisture history or repeated compressor issues
+
+---
+
+## Post-Burnout Cleanup Protocol
+
+A compressor burnout leaves carbon, copper oxide, acid, and degraded oil throughout the system. Proper cleanup takes 4–6 weeks for a severe burnout; shortcuts lead to repeat compressor failures.
+
+### Classify the Burnout
+
+| Severity | Visual Indicators | Oil Acid Test Result |
+|----------|------------------|---------------------|
+| Mild | Slightly darkened oil; minimal carbon at discharge | Slight yellow (borderline) |
+| Moderate | Black oil; carbon deposits at service valve ports | Yellow to light orange |
+| Severe | Heavy carbon deposits; oil smells burnt; black sludge | Orange to red |
+
+### Step-by-Step Cleanup
+
+**Immediately after burnout confirmed:**
+1. Recover refrigerant — note: burned refrigerant has HF and HCl acids; use dedicated recovery cylinder
+2. Pull oil sample before flushing — submit for acid test (see below)
+3. Remove failed compressor
+4. Flush discharge manifold and liquid line with approved flush solvent if heavily contaminated; blow dry with dry nitrogen
+5. Install **suction line filter-drier** (RSF or SLD) on suction service valve port
+6. Replace **liquid line filter-drier** with XH core (high moisture/acid capacity)
+7. Install new compressor; charge oil to correct level
+8. Triple-evacuate to < 300 microns
+
+**First 72 hours:**
+9. Charge system with correct refrigerant type and quantity
+10. Start system and run for 4 hours
+11. Pull oil sample at 24 hours and 48 hours — acid test each sample
+12. At 72 hours: **remove suction line RSF/SLD** (mandatory — do not leave it in)
+
+**Follow-up drier changes:**
+13. Change liquid line drier at 72 hours, then again at ~2 weeks
+14. At each drier change: cut open the old drier with a pipe cutter and inspect the core
+    - Mild burnout: core is slightly discoloured; clear oil drops
+    - Moderate: core is dark brown with black particles
+    - Severe: core is black, saturated with carbon; may have oil sludge
+15. Continue drier changes until:
+    - Acid test is green (negative)
+    - Cut-open drier core shows minimal discolouration
+    - Compressor oil is clear or light amber at the sight glass
+
+**Typical timeline:**
+- Mild burnout: 1–2 drier changes over 1–2 weeks; acid test negative at 2 weeks
+- Moderate: 2–3 changes over 3–4 weeks
+- Severe: 3–5 changes over 4–6 weeks; may require oil flush mid-sequence
+
+---
+
+## Acid Test Interpretation
+
+Acid test kits measure the concentration of organic and inorganic acids in the compressor oil. Two types are common in the field:
+
+### Type 1 — Oil Acid Test (most common)
+Tests a small oil sample drawn from the crankcase or oil separator.
+
+**Common kits:**
+- **Sporlan / Parker Acid Test Kit** — test tube with indicator solution
+- **Emerson Universal Acid Alert / Uni-Kit** — similar colorimetric test
+- **Henry Acid Test Kit** — uses similar chemistry
+
+**Procedure:**
+1. With system off (or using a live-sample port), draw ~5 mL of oil into test tube
+2. Add 2 drops of indicator solution; cap and invert 3× to mix
+3. Compare colour to reference chart after 10 minutes (colours continue to develop)
+
+**Colour interpretation:**
+
+| Colour | Acid Level | Meaning | Action |
+|--------|-----------|---------|--------|
+| **Green / Clear** | Negative (< 0.05 mg KOH/g) | Clean oil; no acid | Normal operation |
+| **Yellow / Straw** | Slight (0.05–0.1 mg KOH/g) | Borderline; acid present | Change drier; retest in 1 week |
+| **Orange** | Moderate (0.1–0.5 mg KOH/g) | Acid contamination | Active cleanup protocol; change drier; retest in 72 hr |
+| **Red / Dark Red** | High (> 0.5 mg KOH/g) | Heavy acid — system contaminated | Full burnout cleanup; may need multiple drier changes and oil flush |
+
+**Key rules:**
+- A green test does NOT mean the system is clean — particulates and carbon remain even after acid is neutralised
+- Test at time zero (before any cleanup) to establish baseline severity
+- Test at 24 hr, 48 hr, 2 weeks, and 4 weeks to track cleanup progress
+- Do not stop the cleanup protocol just because the acid test is green — complete all scheduled drier changes
+
+### Type 2 — Refrigerant Acid Test
+Less common in the field; tests a refrigerant liquid sample rather than oil. Used when oil is inaccessible (hermetic compressor) or when checking the refrigerant circuit after recovery/recharge.
+
+**Interpretation is similar** — green/clear = acceptable; yellow/orange/red = increasing contamination.
+
+---
+
+## Common Field Mistakes
+
+1. **Leaving RSF/SLD suction filter in beyond 72 hours** — creates 5–15 psi suction pressure drop; case temperatures rise, compressor runs hot, capacity is lost. The drier has done its job by then — leaving it in only hurts.
+2. **Not changing the liquid line drier after opening the system** — even 5 minutes of air exposure during a repair introduces enough moisture for acid formation within days.
+3. **Using HH core on R-448A / R-449A retrofit** — activated alumina degrades HFO refrigerant molecules; always use XH (molecular sieve only) after an R-404A → R-448A retrofit.
+4. **Sizing drier to suction group capacity instead of rack total capacity** — liquid line drier sees all refrigerant returning from the condenser; size it on total rack tonnage.
+5. **Not installing a sight glass with moisture indicator** — no way to know when to change; always pair drier with a See-All or equivalent.
+6. **Cutting corners after a moderate burnout** — skipping the second or third drier change because "the test is yellow, not red." Yellow means active acid is still present; the next compressor will fail within 6 months.
+7. **Using wrong connections — piping in backward** — flow direction is marked on the drier shell (arrow pointing toward TXV/EEV); installing backward allows bypassed moisture to reach the expansion device.
+8. **Charging through the liquid line drier** — foreign particles and moisture from the manifold hose contaminate the drier core; always charge through a dedicated schrader port downstream of the drier.
+`
+
+export const SOLENOID_VALVE_KNOWLEDGE = `
+# Solenoid Valve Troubleshooting — Coil Testing, Manual Operation & Field Diagnosis
+
+Solenoid valves are found everywhere on a commercial refrigeration system: liquid lines, hot gas defrost lines, oil return lines, EPR bypass circuits, and pump-down controls. When one fails, it usually presents as a case not cooling, a case overcooling, or a compressor cycling issue. Knowing how to quickly confirm whether the valve, coil, or control signal is at fault saves hours.
+
+---
+
+## Types and Operating Principles
+
+### Direct-Acting (Series B — Sporlan; A series — Danfoss EVRA)
+- The solenoid plunger directly lifts the valve disc off the seat
+- Works at **any pressure differential**, including zero differential
+- Available in smaller sizes (up to ~3/4" orifice)
+- Used on: oil return lines, small liquid lines, low-pressure circuits
+
+### Pilot-Operated (Series E — Sporlan; EVR/EVRs — Danfoss)
+- The coil lifts a small pilot piston; line pressure differential does the actual work of opening the main disc
+- **Requires minimum pressure differential (3–5 psi) across the valve to open fully**
+- Available in larger sizes (7/8" through 2-1/8")
+- Used on: main liquid lines, hot gas headers, discharge lines
+- **Critical: if system pressure is equalized (off-cycle), pilot-operated valve will not open** — use direct-acting for circuits that must open at zero differential (oil return, bypass)
+
+### Normally Closed (NC) vs Normally Open (NO)
+- **NC** = closed when coil is de-energised; opens when coil is energised — standard for liquid lines (prevents flow during off-cycle)
+- **NO** = open when coil is de-energised; closes when coil is energised — used on oil return lines (must stay open during off-cycle to allow oil drainage), bypass valves, and some safety circuits
+- **Getting this wrong is a common installation mistake** — an NC valve on an oil return line means oil can't drain when the system is off
+
+---
+
+## Coil Identification and Voltage
+
+Most commercial refrigeration solenoid coils fall into these categories:
+
+| Coil Series | Voltage | Typical Resistance | Notes |
+|-------------|---------|-------------------|-------|
+| 24 VAC | 24 VAC, 60 Hz | 200–400 Ω | Most common; used with store controller outputs |
+| 120 VAC | 120 VAC, 60 Hz | 1,200–2,000 Ω | Older installations; confirm before ordering replacement |
+| 24 VDC | 24 VDC | 20–60 Ω | Lower resistance than AC coils; used with DC relay outputs |
+| 240 VAC | 240 VAC, 60 Hz | 4,000–8,000 Ω | Rare; large industrial applications |
+
+**Sporlan coil designation:**
+- MKC-1 = 24 VAC/DC (universal coil; most common replacement)
+- MKC-2 = 120 VAC
+
+**Danfoss coil designation:**
+- 018F series = 24 VAC; 120 VAC; 240 VAC (interchangeable coil body, different voltage wound inside)
+- Always read the coil label before measuring resistance — a 120 VAC coil on a 24 VAC circuit will not hold open; a 24 VAC coil on 120 VAC will burn out immediately
+
+---
+
+## Coil Testing Procedure
+
+### Step 1 — Visual Inspection
+- Look for coil body cracking, melted plastic, burn marks, or corrosion on terminals
+- Check that the coil retention nut is snug (finger-tight + 1/4 turn) — a loose coil will chatter and burn out
+- Confirm coil is correct for the valve body it's on (wrong voltage; wrong series)
+
+### Step 2 — Voltage at the Coil Terminals
+**This is the most important test — always check voltage before condemning the valve.**
+
+Using a multimeter set to AC or DC volts (match expected coil type):
+1. Place probes on the two coil terminals (leave coil on valve)
+2. Verify controller is calling for the valve to open (thermostat in call, defrost active, or manually trigger the output)
+3. **Expected: rated voltage ± 10%** (e.g., 24 VAC coil should read 21–26 VAC)
+4. **No voltage = control signal problem**, not a valve problem — trace the circuit back to the relay, controller output, or thermostat before touching the valve
+
+**Low voltage (e.g., 18 VAC on a 24 VAC circuit):**
+- Check for voltage drop across long wire runs — use Ohm's law to verify wire gauge is adequate
+- Causes valve chatter (buzzing) and shortened coil life
+- Acceptable range: ±10% of rated voltage; below this, the magnetic pull force is insufficient
+
+### Step 3 — Coil Resistance (de-energised)
+Remove the coil from the valve (or disconnect wires) and measure resistance with multimeter set to Ω:
+
+| Reading | Interpretation | Action |
+|---------|---------------|--------|
+| Within expected range (see table above) | Coil is electrically healthy | Check control signal and valve body |
+| Open loop (OL / ∞) | Coil winding broken | Replace coil |
+| Near 0 Ω (shorted) | Coil winding shorted | Replace coil; check fuse/breaker |
+| Half of expected value | One winding shorted (partially failed) | Replace coil |
+
+### Step 4 — Coil Current Draw (amperage)
+A clamp meter around one coil wire measures actual current draw while energised:
+
+**Expected values (approximate):**
+- 24 VAC, 200–400 Ω coil: ~60–120 mA (0.06–0.12 A) — multiply by VA rating on label
+- 24 VAC coil rated at 10 VA: I = 10 VA ÷ 24 V = ~0.42 A
+- 120 VAC coil rated at 20 VA: I = 20 VA ÷ 120 V = ~0.17 A
+
+**Current vs resistance diagnosis:**
+- Normal current = coil and magnetic circuit are healthy; if valve isn't opening, problem is mechanical (valve body) or pressure differential
+- High current + low resistance = shorted coil; replace coil
+- Zero current = open winding or no voltage reaching coil
+
+**Why current matters:** On older systems with relay cards, a shorted coil drawing excess current can trip the relay output without a visible fault — measure current when the output appears active but the valve isn't responding.
+
+---
+
+## Manual Stem Operation
+
+Most Sporlan B and E series and Danfoss EVR valves have a manual lift stem (also called an emergency override or manual operator):
+
+### How to Use
+1. Locate the manual stem — typically a slotted hex post under a protective cap on top of the coil bonnet
+2. Remove cap; insert correct hex key (typically 3/32" or 1/8") or flat-blade screwdriver
+3. **Screw the stem IN (clockwise)** to manually lift the plunger/pilot and force the valve open
+4. Valve remains open mechanically regardless of coil or control signal
+5. **Return stem to fully OUT (counter-clockwise) when done** — leaving it in blocks the solenoid plunger from seating on power-off, defeating pump-down and defrost termination
+
+### When to Use Manual Stem
+- Confirm a valve is physically capable of opening when coil or wiring is suspect
+- Emergency: valve coil failed and system must remain running until parts arrive — manually open the liquid line solenoid
+- Pre-startup commissioning: verify each liquid line valve opens before energising the full rack
+
+### Manual Stem Cautions
+- Do not force the stem past its stop — you can damage the packing or break the stem
+- On CO₂-rated valves (Sporlan W series, Danfoss EVRA): use appropriate CO₂-rated valve only; manually lifting on a failed valve at high pressure is dangerous — confirm pressure is safe
+- Always return to auto position before leaving the site
+
+---
+
+## Common Failure Modes and Diagnosis
+
+### Valve Sticks Open (NC valve allowing flow when should be closed)
+
+**Symptoms:**
+- Case overcools continuously; compressor runs without cycling off
+- Pump-down fails (suction pressure doesn't drop when thermostat is satisfied)
+
+**Causes and checks:**
+1. Coil is energised when it shouldn't be — check controller output, thermostat wiring, defrost timer position
+2. Plunger scored, corroded, or has debris on seat — remove coil; listen for click when coil is energised/de-energised; if no mechanical click, valve body is seized
+3. Pilot orifice blocked open by debris (pilot-operated valve) — remove and clean or replace
+4. Refrigerant contamination (acid, moisture, metallic particles) scored the seat — replace valve body
+
+**Quick test:** De-energise coil and place hand on suction line or liquid line downstream. If temperature change stops, valve is opening on signal. If no change, valve is stuck open mechanically.
+
+### Valve Sticks Closed (NC valve not opening when energised)
+
+**Symptoms:**
+- Case warms; no refrigerant flow despite controller calling for cooling
+- Suction pressure very low on affected section
+
+**Causes and checks:**
+1. No voltage at coil terminals — trace control circuit (see Step 2 above)
+2. Open coil (OL resistance reading) — replace coil
+3. Wrong voltage coil — 24 VAC coil on 120 VAC circuit burns out; 120 VAC coil on 24 VAC circuit is too weak to open
+4. Plunger seized (corrosion or debris) — test with manual stem; if manual stem opens OK but coil doesn't, coil is likely failed; if manual stem also won't move, valve body is seized
+5. Pilot-operated valve with insufficient pressure differential — confirm ≥ 5 psi differential across valve
+
+### Chatter / Buzzing (usually 60 Hz hum, sometimes intermittent click)
+
+**Causes:**
+1. Low voltage at coil (below ~90% of rated) — magnetic pull force insufficient to hold plunger fully seated; test voltage at coil terminals
+2. Loose coil retention nut — coil vibrates around valve body; tighten to finger-tight + 1/4 turn
+3. Partial coil failure — one winding degraded; resistance slightly low; replace coil
+4. Dirty/scored plunger — plunger can't seat fully; magnetic circuit is not completing
+
+**Consequence:** Chattering coils burn out within days to weeks from heat and vibration — do not defer this repair.
+
+### Coil Burn-Out
+
+**Symptoms:** Plastic coil housing discoloured, melted, or cracked; smoke smell near valve; OL resistance reading; breaker/fuse tripping
+
+**Causes:**
+1. Wrong voltage coil installed (most common — 24 VAC coil on 120 VAC system)
+2. Valve body seized — plunger couldn't move; coil ran continuously at full inrush current with no back-EMF reduction from mechanical motion
+3. Low voltage causing coil to run at abnormally high current for extended period
+4. Coil submerged in water or refrigerant — insulation breakdown
+
+**After replacement:**
+- Confirm correct voltage
+- Test valve body with manual stem to confirm plunger moves freely before installing new coil
+- Check retention nut torque
+
+---
+
+## CO₂-Rated Solenoid Valves
+
+Standard brass solenoid valves are NOT rated for CO₂ pressures. CO₂ transcritical systems see up to 130 bar (1,885 psi) on the high side and 45+ bar on the low side. Use only CO₂-rated valves:
+
+- **Sporlan W series** — forged steel body; CO₂ rated; most common on CO₂ hot gas defrost lines
+- **Danfoss EVRA / EVRAT** — CO₂-rated normal-close solenoid; standard for CO₂ liquid feed circuits
+- **Danfoss ICS / ICMTS** — pilot-operated for CO₂; requires CO₂-compatible pilot solenoid
+
+**Never substitute a standard HFC solenoid for a CO₂-rated one — body will fail catastrophically at high pressure.**
+
+---
+
+## Troubleshooting Decision Tree
+
+**No cooling on a case (suspected liquid line solenoid):**
+1. Is the thermostat/controller calling? → Confirm controller output is active (LED, fault log)
+2. Is there voltage at the coil? → Yes: proceed; No: trace control wiring
+3. Is the coil resistance in range? → Yes: coil OK; No: replace coil
+4. With coil energised, do you hear a click? → Yes: valve is operating electrically
+5. Manual stem opens OK? → Yes: plunger moves; check for pressure differential issue
+6. Still no flow with manual stem open? → Check liquid line valve position upstream; check for filter-drier restriction
+
+**Case runs continuously without cycling off:**
+1. Is the thermostat/controller calling? → Yes: thermostat not satisfied (case problem); No: proceed
+2. Is there voltage at the coil when it should be off? → Yes: control wiring fault (shorted wire, stuck relay); No: proceed
+3. Manual stem fully retracted? → No: technician left stem in — return to auto
+4. Plunger click audible when coil de-energised? → No: plunger stuck; try manual stem; replace valve body if stem also won't seat
+
+---
+
+## Post-Repair Checklist
+- [ ] Correct replacement coil voltage confirmed (check coil label AND system voltage)
+- [ ] Manual stem returned to fully counter-clockwise (auto) position
+- [ ] Retention nut snug (not over-torqued — can crack coil housing)
+- [ ] Voltage at coil terminals verified within ±10% of rating
+- [ ] Valve opens and closes audibly on command before buttoning up
+- [ ] Pump-down test passed (suction drops to LPCO within expected time)
+`
+
 export interface BuildSystemPromptOptions {
   mode: ChatMode
   equipment?: Equipment | null
