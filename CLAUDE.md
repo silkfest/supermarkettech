@@ -6,6 +6,23 @@ deliberately incomplete.
 
 ---
 
+## Navigation Structure (current)
+
+- **Sidebar "Learning"** → `/knowledge` (Knowledge Base tab)
+  - Knowledge Base, Rack Simulator, and Training are connected via a shared tab bar (`LearningTabBar`)
+  - Knowledge tab: `/knowledge` and `/knowledge/[slug]`
+  - Simulator tab: `/simulation`
+  - Training tab: `/apprentice/training`
+- **Sidebar "Company Hub"** → `/company-hub`
+  - Tab 1: Policies & Procedures (was `/policies`)
+  - Tab 2: Contact Directory (was `/contacts`)
+  - Old `/policies` and `/contacts` routes redirect here
+- **"Ask ColdIQ" button** on every knowledge topic page (`/knowledge/[slug]`)
+  - Stores `coldiq_prefill` in localStorage, navigates to `/dashboard`
+  - ChatPanel picks it up and pre-fills the chat input
+
+---
+
 ## Intentionally Hidden / Not Built Yet
 
 These features are scoped for future development. They are purposely restricted or absent
@@ -33,26 +50,53 @@ the feature is ready to build.
 - Chat AI (ColdIQ Expert) uses Claude via the Anthropic API with equipment context injected into the system prompt.
 - Maintenance reports split into two types: PM reports (refrigeration/HVAC checklists) and individual service reports (fault + steps taken + next action).
 - The rack simulator is a self-contained training tool — no server calls, all computed in-browser from fault toggles and slider values.
+- Profile page is intentionally a career-focused page (certifications, feedback, progression) — NOT just account settings.
+- Welcome page (`/welcome`) is a management/demo-facing page to showcase the product — not a user onboarding flow.
 
 ---
 
-## Recommended Future Work (Backlog)
+## Color Scheme — Semantic Status Colors
 
-Captured from a site-wide audit. These are suggestions — confirm with the user before implementing.
+All pages support both light and dark mode. Follow these conventions for semantic/status colors so text stays readable on both white and dark backgrounds:
 
-### Phase 1 — Functional gaps
-- [ ] "Ask ColdIQ" button on knowledge topic pages to pre-load a chat session with topic context
+| Intent | Light mode | Dark mode |
+|--------|-----------|-----------|
+| Error / critical | `text-red-600` | `dark:text-red-400` |
+| Warning | `text-amber-600` or `text-amber-700` | `dark:text-amber-400` |
+| Success / OK | `text-emerald-600` or `text-emerald-700` | `dark:text-emerald-400` |
+| Info / blue accent | `text-blue-600` | `dark:text-blue-400` |
+| Violet / scenario | `text-violet-600` or `text-violet-700` | `dark:text-violet-400` |
+| Soft badge bg | `bg-*-50 border-*-200` | `dark:bg-*-500/10 dark:border-*-500/30` |
+
+**Rules:**
+- Never use `text-*-300` without a `dark:` prefix — 300-level colors are invisible on white.
+- Never use `bg-*-900/XX` without a `dark:` prefix — dark-tinted containers in light mode.
+- The `-400` level is acceptable for large/bold text only; use `-600` for small labels and body text.
+- Dot indicators (`.bg-*-500` circles) are fine without `dark:` — they're color blocks, not text.
+
+---
+
+## New table rule
+Any new table created via `apply_migration` MUST receive explicit grants:
+```sql
+GRANT SELECT ON <table> TO anon, authenticated;
+GRANT ALL PRIVILEGES ON <table> TO service_role;
+```
+Otherwise the table will be inaccessible to the app (even with RLS disabled).
+
+---
+
+## Remaining Backlog
+
+### Phase 2 — Feature integrations
+- [ ] Chat history scoping: non-admins see only own sessions; admins see all with user filter
+- [ ] Mobile bottom nav: move into PageShell so it renders on all authenticated pages
 - [ ] Equipment selector + chat context for journeymen/apprentices *(blocked — see above)*
 - [ ] Read-only store/site view for non-admins *(blocked — see above)*
 
-### Phase 2 — Navigation restructure
-- [ ] Combine Knowledge base, Rack Simulator, and Training courses into a unified "Learning" section with tabs/sub-nav
-- [ ] Contacts quick-access shortcut from the dashboard or maintenance report area (contextual "who to call")
-
 ### Phase 3 — Polish
-- [ ] Synchronize the mobile bottom nav across all pages (currently only on dashboard)
-- [ ] Standardize empty states across pages (contacts and policies are well done; others vary)
-- [ ] Photo gallery/viewer on maintenance report detail pages (upload API exists, no viewer yet)
-- [ ] Manager-side "team certificates expiring soon" view on the team/admin page
-- [ ] Manager view of all feedback/reviews they have written (currently only the recipient sees them)
-- [ ] Pending user screen: add "resend approval request" option or estimated wait context
+- [ ] Reusable `EmptyState` component, apply across all pages
+- [ ] Report photo gallery/viewer on maintenance report detail pages
+- [ ] Manager cert expiry: team-wide view on admin/team page
+- [ ] Pending user screen: add wait context + "notify admin again" button
+- [ ] Manager feedback view: "Reviews I've Written" tab on manager's profile

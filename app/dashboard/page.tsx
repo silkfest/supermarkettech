@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -133,7 +133,7 @@ export default function Dashboard() {
   }, [alarmToast])
 
   useEffect(() => { if (currentUser) loadEquipment() }, [currentUser, loadEquipment])
-  useEffect(() => { loadDocuments(selected?.id) }, [selected?.id, loadDocuments])
+  useEffect(() => { if (currentUser) loadDocuments(selected?.id) }, [selected?.id, loadDocuments, currentUser])
 
   async function handleUpload(file: File) {
     if (file.size > 25 * 1024 * 1024) {
@@ -306,7 +306,9 @@ export default function Dashboard() {
           ) : (
             <>
               <div className="flex-1 min-w-0">
-                <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
+                <Suspense>
+                  <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
+                </Suspense>
               </div>
             </>
           )}

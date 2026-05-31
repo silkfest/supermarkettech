@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Equipment, ChatMode, ChatMessage, CitationSource, ComponentLink } from '@/types'
 
 // ── Mode display config ───────────────────────────────────────────────────────
@@ -232,6 +232,7 @@ function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: Ch
 
 export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [messages, setMessages]   = useState<ChatMessage[]>([])
   const [input, setInput]         = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -250,13 +251,28 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
 
-  // Pre-fill input from simulation "Diagnose" button (stored in localStorage)
+  // Pre-fill from ?q= URL param (Ask ColdIQ from knowledge pages) — fires on
+  // every navigation even when the component is cached by the router.
+  useEffect(() => {
+    const q = searchParams?.get('q')
+    if (q) {
+      setInput(q)
+      // Strip the param so the prefill doesn't re-appear on back/forward
+      const url = new URL(window.location.href)
+      url.searchParams.delete('q')
+      window.history.replaceState({}, '', url.toString())
+      setTimeout(() => textareaRef.current?.focus(), 100)
+    }
+  }, [searchParams])
+
+  // Pre-fill from localStorage — used by simulator "Diagnose" button
   useEffect(() => {
     try {
       const prefill = localStorage.getItem('coldiq_prefill')
       if (prefill) {
         setInput(prefill)
         localStorage.removeItem('coldiq_prefill')
+        setTimeout(() => textareaRef.current?.focus(), 100)
       }
     } catch { /* ignore – SSR or private browsing */ }
   }, [])

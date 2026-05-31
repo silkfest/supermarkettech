@@ -6,14 +6,18 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
   FileText,
+  ExternalLink,
   ChevronDown,
   ChevronUp,
   BookOpen,
   Globe,
+  X,
+  MessageSquare,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
+import LearningTabBar from '@/components/layout/LearningTabBar'
 
 interface RelatedManual {
   id: string
@@ -32,6 +36,7 @@ export default function KnowledgeTopicPage() {
   const [manuals, setManuals] = useState<RelatedManual[]>([])
   const [manualsLoading, setManualsLoading] = useState(true)
   const [tocOpen, setTocOpen] = useState(false)
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
 
   useEffect(() => {
     if (!topic) return
@@ -70,17 +75,6 @@ export default function KnowledgeTopicPage() {
     }
   }
 
-  function openManual(href: string, isWeb: boolean) {
-    if (isWeb) {
-      // External links open in new tab
-      window.open(href, '_blank', 'noopener,noreferrer')
-    } else {
-      // Same-origin PDF: navigate in current tab so browser back button returns here.
-      // iOS shows it in Quick Look (native PDF viewer with proper scroll/zoom).
-      window.location.href = href
-    }
-  }
-
   return (
     <PageShell>
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -97,7 +91,7 @@ export default function KnowledgeTopicPage() {
             </button>
             <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{topic.title}</span>
-            <div className="flex gap-1.5 ml-auto flex-wrap">
+            <div className="flex items-center gap-1.5 ml-auto flex-wrap">
               {topic.tags.map(tag => (
                 <span
                   key={tag}
@@ -106,10 +100,23 @@ export default function KnowledgeTopicPage() {
                   {tag}
                 </span>
               ))}
+              <button
+                onClick={() => {
+                  const prefill = `I was just reading the "${topic.title}" topic in the Knowledge Hub.\n\nTopic summary: ${topic.description}\n\nMy question: `
+                  router.push(`/dashboard?q=${encodeURIComponent(prefill)}`)
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors ml-1"
+                title="Open this topic in ColdIQ Expert chat"
+              >
+                <MessageSquare size={12}/> Ask ColdIQ
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Learning tab bar */}
+      <LearningTabBar />
 
       {/* Mobile TOC toggle */}
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4">
@@ -165,12 +172,12 @@ export default function KnowledgeTopicPage() {
                 ) : (
                   <div className="space-y-1">
                     {manuals.map(manual => {
-                      const isWeb = !!(manual.source_type === 'WEB' && manual.source_url)
+                      const isWeb = manual.source_type === 'WEB' && manual.source_url
                       const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                       return (
                         <button
                           key={manual.id}
-                          onClick={() => openManual(href, isWeb)}
+                          onClick={() => setPdfViewer({ url: href, title: manual.title })}
                           className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
                         >
                           {isWeb
@@ -202,12 +209,12 @@ export default function KnowledgeTopicPage() {
               </p>
               <div className="space-y-2">
                 {manuals.map(manual => {
-                  const isWeb = !!(manual.source_type === 'WEB' && manual.source_url)
+                  const isWeb = manual.source_type === 'WEB' && manual.source_url
                   const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
                   return (
                     <button
                       key={manual.id}
-                      onClick={() => openManual(href, isWeb)}
+                      onClick={() => setPdfViewer({ url: href, title: manual.title })}
                       className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -227,6 +234,34 @@ export default function KnowledgeTopicPage() {
         </main>
       </div>
     </div>
+
+    {/* In-app PDF overlay — prevents mobile "stuck in browser" problem */}
+    {pdfViewer && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
+        <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+          <button
+            onClick={() => setPdfViewer(null)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+            title="Back to topic"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <p className="text-sm text-slate-200 font-medium truncate flex-1">{pdfViewer.title}</p>
+          <button
+            onClick={() => setPdfViewer(null)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <iframe
+          src={pdfViewer.url}
+          className="flex-1 w-full border-0"
+          title={pdfViewer.title}
+        />
+      </div>
+    )}
     </PageShell>
   )
 }

@@ -2,9 +2,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Filter, AlertTriangle } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Filter, AlertTriangle, User } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 import PageShell from '@/components/layout/PageShell'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 interface RecentReport {
   id: string
@@ -30,7 +31,16 @@ function MaintenanceHubContent() {
   const [stores, setStores] = useState<Store[]>([])
   const [filterStoreId, setFilterStoreId] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'pm' | 'individual'>('all')
+  const [myReportsOnly, setMyReportsOnly] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [storeError, setStoreError] = useState<string | null>(null)
+
+  // Fetch current user ID for "Mine only" filter
+  useEffect(() => {
+    getSupabaseBrowser().auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
+  }, [])
 
   // Fetch stores for the filter dropdown
   useEffect(() => {
@@ -48,6 +58,7 @@ function MaintenanceHubContent() {
     const params = new URLSearchParams()
     if (equipmentId) params.set('equipmentId', equipmentId)
     if (filterStoreId) params.set('storeId', filterStoreId)
+    if (myReportsOnly && currentUserId) params.set('technicianId', currentUserId)
     const qs = params.toString() ? `?${params}` : ''
 
     const fetchPm = filterType !== 'individual'
@@ -61,7 +72,7 @@ function MaintenanceHubContent() {
     Promise.all([fetchPm, fetchInd]).then(([pm, individual]) =>
       setRecent({ pm: pm.slice(0, 20), individual: individual.slice(0, 20) })
     )
-  }, [equipmentId, filterStoreId, filterType])
+  }, [equipmentId, filterStoreId, filterType, myReportsOnly, currentUserId])
 
   const reportTypes = [
     {
@@ -94,7 +105,7 @@ function MaintenanceHubContent() {
     .sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime())
     .slice(0, 24)
 
-  const hasFilters = filterStoreId || filterType !== 'all'
+  const hasFilters = filterStoreId || filterType !== 'all' || !myReportsOnly
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
@@ -187,9 +198,33 @@ function MaintenanceHubContent() {
               ))}
             </div>
 
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 text-xs">
+              <button
+                onClick={() => setMyReportsOnly(true)}
+                className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1 ${
+                  myReportsOnly
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}
+              >
+                <User size={11} />
+                Mine
+              </button>
+              <button
+                onClick={() => setMyReportsOnly(false)}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  !myReportsOnly
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}
+              >
+                All
+              </button>
+            </div>
+
             {hasFilters && (
               <button
-                onClick={() => { setFilterStoreId(''); setFilterType('all') }}
+                onClick={() => { setFilterStoreId(''); setFilterType('all'); setMyReportsOnly(true) }}
                 className="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
               >
                 Clear

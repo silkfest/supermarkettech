@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, FlaskConical, UserCircle, Shield, Layers, Moon, Sun, Phone } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, FlaskConical, UserCircle, Shield, Layers, Moon, Sun, Building } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
@@ -146,7 +146,7 @@ function SidebarContent({
           className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><Layers size={13}/></span>
-          Knowledge base
+          Learning
         </button>
         {currentUser?.role === 'admin' && (
           <button
@@ -158,11 +158,11 @@ function SidebarContent({
           </button>
         )}
         <button
-          onClick={() => { router.push('/simulation'); onMobileClose?.() }}
+          onClick={() => { router.push('/company-hub'); onMobileClose?.() }}
           className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
-          <span className="opacity-60"><FlaskConical size={13}/></span>
-          Rack simulator
+          <span className="opacity-60"><Building size={13}/></span>
+          Company Hub
         </button>
         <button
           onClick={() => { router.push('/profile'); onMobileClose?.() }}
@@ -170,20 +170,6 @@ function SidebarContent({
         >
           <span className="opacity-60"><UserCircle size={13}/></span>
           My profile
-        </button>
-        <button
-          onClick={() => { router.push('/policies'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          <span className="opacity-60"><Shield size={13}/></span>
-          Policies &amp; procedures
-        </button>
-        <button
-          onClick={() => { router.push('/contacts'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          <span className="opacity-60"><Phone size={13}/></span>
-          Contact directory
         </button>
       </div>
 
