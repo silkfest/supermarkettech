@@ -511,7 +511,7 @@ function TrainingInner() {
             <div>
               <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-1">Level</p>
               <p className={`text-2xl font-bold ${level.color}`}>{level.label}</p>
-              <p className="text-sm text-slate-300 mt-0.5">{displayUser?.name}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-300 mt-0.5">{displayUser?.name}</p>
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{earnedXP}</p>
@@ -520,7 +520,7 @@ function TrainingInner() {
           </div>
           <div className="mb-2">
             <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+              <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
             </div>
           </div>
           <div className="flex justify-between text-xs text-slate-400">
@@ -641,12 +641,12 @@ function TrainingInner() {
                     <span className="text-xl">{ci.icon}</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm flex-1 text-left">{cat}</span>
                     <span className="text-xs text-slate-400">{catDone}/{catTasks.length}</span>
-                    {catDone === catTasks.length && <span className="text-emerald-400 text-xs font-bold">✓ Complete</span>}
+                    {catDone === catTasks.length && <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold">✓ Complete</span>}
                     <ChevronDown size={15} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {isOpen && (
-                    <div className="divide-y divide-slate-700/50">
+                    <div className="divide-y divide-slate-200 dark:divide-slate-700/50">
                       {catTasks.map(task => {
                         const done = task.progress?.status === 'completed'
                         const busy = toggling === task.id
@@ -656,7 +656,7 @@ function TrainingInner() {
                               className={`flex-shrink-0 mt-0.5 transition-transform ${isReadOnly ? 'cursor-default' : 'active:scale-90'}`}
                             >
                               {busy ? <Loader2 size={20} className="animate-spin text-blue-400" />
-                                : done ? <CheckCircle2 size={20} className="text-emerald-400" />
+                                : done ? <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
                                 : <Circle size={20} className={isReadOnly ? 'text-slate-700' : 'text-slate-600 hover:text-slate-400'} />}
                             </button>
                             <div className="flex-1 min-w-0">
@@ -668,7 +668,7 @@ function TrainingInner() {
                               {done && task.progress?.verifier && <p className="text-[10px] text-emerald-500 mt-1">✓ Verified by {task.progress.verifier.name}</p>}
                               {done && task.progress?.completed_at && <p className="text-[10px] text-slate-500 mt-0.5">Completed {new Date(task.progress.completed_at).toLocaleDateString()}</p>}
                             </div>
-                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                               +{task.points} XP
                             </span>
                           </div>
@@ -712,12 +712,12 @@ function TrainingInner() {
             {!coursesLoading && Object.entries(coursesByCat).map(([cat, catCourses]) => (
               <div key={cat} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
                 {/* Category header */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-700/40 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex-1">{cat}</span>
+                <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-700/40 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex-1">{cat}</span>
                   <span className="text-xs text-slate-500">{catCourses.filter(c => c.completion).length}/{catCourses.length} done</span>
                 </div>
 
-                <div className="divide-y divide-slate-700/50">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700/50">
                   {catCourses.map(course => {
                     const done = !!course.completion
                     const busy = togglingCourse === course.id
@@ -757,7 +757,7 @@ function TrainingInner() {
                               </span>
                             )}
                             {done && course.completion?.completed_at && (
-                              <span className="text-[10px] text-emerald-500">
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-500">
                                 ✓ Completed {new Date(course.completion.completed_at).toLocaleDateString()}
                               </span>
                             )}
@@ -766,7 +766,7 @@ function TrainingInner() {
 
                         {/* Right side: XP + link + admin actions */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                             +{course.points} XP
                           </span>
                           {course.url && (

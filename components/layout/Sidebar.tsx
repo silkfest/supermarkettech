@@ -158,18 +158,18 @@ function SidebarContent({
           </button>
         )}
         <button
-          onClick={() => { router.push('/profile'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          <span className="opacity-60"><UserCircle size={13}/></span>
-          My profile
-        </button>
-        <button
           onClick={() => { router.push('/company-hub'); onMobileClose?.() }}
           className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
         >
           <span className="opacity-60"><Building size={13}/></span>
           Company Hub
+        </button>
+        <button
+          onClick={() => { router.push('/profile'); onMobileClose?.() }}
+          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
+        >
+          <span className="opacity-60"><UserCircle size={13}/></span>
+          My profile
         </button>
       </div>
 
