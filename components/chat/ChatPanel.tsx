@@ -250,13 +250,14 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
 
-  // Pre-fill input from simulation "Diagnose" button (stored in localStorage)
+  // Pre-fill input from "Diagnose" / "Ask ColdIQ" buttons (stored in localStorage)
   useEffect(() => {
     try {
       const prefill = localStorage.getItem('coldiq_prefill')
       if (prefill) {
         setInput(prefill)
         localStorage.removeItem('coldiq_prefill')
+        setTimeout(() => textareaRef.current?.focus(), 100)
       }
     } catch { /* ignore – SSR or private browsing */ }
   }, [])

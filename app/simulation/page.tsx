@@ -1025,7 +1025,7 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
       onClick={onChange} disabled={disabled} title={hint}
       className={[
         'w-full flex items-start gap-2 px-3 py-2 text-left rounded-lg transition-all text-xs',
-        active   ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300' : 'bg-slate-200/60 dark:bg-slate-700/40 border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200',
+        active   ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300' : 'bg-slate-200/60 dark:bg-slate-700/40 border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200',
         disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
@@ -1404,7 +1404,7 @@ export default function SimulationPage() {
             className="md:hidden fixed bottom-5 right-4 z-20 bg-amber-500 text-white rounded-full px-4 py-2.5 text-xs font-semibold shadow-lg flex items-center gap-1.5"
           >
             <Zap size={13}/>
-            {scenarioMode ? 'Diagnose' : `Faults${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
+            {scenarioMode ? 'Diagnose' : `Faults & Settings${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`}
           </button>
         )}
 
