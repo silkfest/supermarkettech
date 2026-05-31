@@ -116,14 +116,14 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
     onSave(await res.json())
   }
 
-  const inputCls = 'w-full px-3 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputCls = 'w-full px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
   const labelCls = 'block text-xs font-medium text-slate-400 mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-white">{initial ? 'Edit Course' : 'Add Course'}</h2>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{initial ? 'Edit Course' : 'Add Course'}</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={18}/></button>
         </div>
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -169,8 +169,8 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 rounded-lg">Cancel</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg">Cancel</button>
           <button
             onClick={handleSave}
             disabled={saving}
@@ -381,7 +381,7 @@ function TrainingInner() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
       <Loader2 size={24} className="animate-spin text-blue-400" />
     </div>
   )
@@ -412,7 +412,7 @@ function TrainingInner() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-900 text-white">
+    <div className="min-h-[100dvh] bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
       {/* Badge toast */}
       {newBadge && (() => {
         const b = BADGES.find(x => x.id === newBadge)!
@@ -434,25 +434,25 @@ function TrainingInner() {
       )}
 
       {/* Header */}
-      <div className="safe-top bg-slate-800 border-b border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => isAdmin ? router.push('/admin/apprentices') : router.push('/dashboard')}
-          className="p-1.5 -ml-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-700"
+          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
         >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-400">Cold</span>
-          <span className="text-lg font-bold text-white">IQ</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
         </div>
-        <span className="text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-300">Training</span>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Training</span>
 
         {isAdmin && apprentices.length > 0 && (
           <div className="ml-auto relative">
             <button
               onClick={() => setShowSwitcher(s => !s)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-xs text-slate-200 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 transition-colors"
             >
               <span className="font-medium truncate max-w-[120px]">
                 {isReadOnly ? displayUser?.name || displayUser?.email : 'View as apprentice'}
@@ -460,14 +460,14 @@ function TrainingInner() {
               <Down size={12} className={`flex-shrink-0 transition-transform ${showSwitcher ? 'rotate-180' : ''}`} />
             </button>
             {showSwitcher && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="p-2 border-b border-slate-700">
+              <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="p-2 border-b border-slate-200 dark:border-slate-700">
                   <p className="text-[10px] text-slate-500 uppercase tracking-widest px-1">Switch apprentice</p>
                 </div>
                 <div className="max-h-60 overflow-y-auto py-1">
                   {apprentices.map(a => (
                     <button key={a.id} onClick={() => switchTo(a)}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors ${a.id === displayUser?.id ? 'text-blue-400 font-medium' : 'text-slate-300'}`}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${a.id === displayUser?.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-300'}`}
                     >
                       <p className="font-medium truncate">{a.name || a.email}</p>
                       {a.name && <p className="text-slate-500 truncate">{a.email}</p>}
@@ -480,12 +480,12 @@ function TrainingInner() {
         )}
 
         {!isAdmin && mentor && (
-          <span className="ml-auto text-xs text-slate-400">Journeyman: <span className="text-slate-200 font-medium">{mentor.name}</span></span>
+          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">Journeyman: <span className="text-slate-700 dark:text-slate-200 font-medium">{mentor.name}</span></span>
         )}
       </div>
 
       {/* Learning tab bar */}
-      <LearningTabBar variant="dark" />
+      <LearningTabBar />
 
       {/* Banners */}
       {toggleError && (
@@ -506,7 +506,7 @@ function TrainingInner() {
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
         {/* XP / Level card */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 rounded-2xl p-5">
+        <div className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl p-5">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-1">Level</p>
@@ -514,12 +514,12 @@ function TrainingInner() {
               <p className="text-sm text-slate-300 mt-0.5">{displayUser?.name}</p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-white">{earnedXP}</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{earnedXP}</p>
               <p className="text-xs text-slate-400">/ {totalXP} XP</p>
             </div>
           </div>
           <div className="mb-2">
-            <div className="h-3 bg-slate-600 rounded-full overflow-hidden">
+            <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
             </div>
           </div>
@@ -527,24 +527,24 @@ function TrainingInner() {
             <span>{pct}% complete</span>
             {nextLevel && <span>{nextLevel.min - earnedXP} XP to {nextLevel.label}</span>}
           </div>
-          <div className="flex gap-4 mt-4 pt-4 border-t border-slate-600">
+          <div className="flex gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
             <div className="text-center">
-              <p className="text-lg font-bold text-white">{completed.length}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{completed.length}</p>
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Tasks Done</p>
             </div>
-            <div className="w-px bg-slate-600" />
+            <div className="w-px bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-white">{courses.filter(c => c.completion).length}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{courses.filter(c => c.completion).length}</p>
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Courses Done</p>
             </div>
-            <div className="w-px bg-slate-600" />
+            <div className="w-px bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-white">{earnedBadges.length}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{earnedBadges.length}</p>
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Badges</p>
             </div>
-            <div className="w-px bg-slate-600" />
+            <div className="w-px bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-white">{categories.length}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{categories.length}</p>
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Categories</p>
             </div>
           </div>
@@ -559,11 +559,11 @@ function TrainingInner() {
               const isNew  = newBadge === b.id
               return (
                 <div key={b.id}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'bg-slate-700 border-slate-500' : 'bg-slate-800/50 border-slate-700 opacity-40 grayscale'}`}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-white dark:ring-offset-slate-900' : 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-40 grayscale'}`}
                   title={`${b.name}: ${b.desc}`}
                 >
                   <span className="text-xl sm:text-2xl">{b.icon}</span>
-                  <span className="text-[10px] text-center text-slate-300 font-medium leading-tight">{b.name}</span>
+                  <span className="text-[10px] text-center text-slate-600 dark:text-slate-300 font-medium leading-tight">{b.name}</span>
                 </div>
               )
             })}
@@ -571,28 +571,28 @@ function TrainingInner() {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
           <button
             onClick={() => setActiveTab('tasks')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'tasks' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'tasks' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
             <span>📋</span>
             <span>313A Tasks</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'tasks' ? 'bg-slate-500 text-slate-200' : 'bg-slate-700 text-slate-500'}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'tasks' ? 'bg-blue-100 dark:bg-slate-500 text-blue-700 dark:text-slate-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
               {completed.length}/{tasks.length}
             </span>
           </button>
           <button
             onClick={() => setActiveTab('courses')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'courses' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'courses' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
             <BookOpen size={15}/>
             <span>Courses</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'courses' ? 'bg-slate-500 text-slate-200' : 'bg-slate-700 text-slate-500'}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'courses' ? 'bg-blue-100 dark:bg-slate-500 text-blue-700 dark:text-slate-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
               {courses.filter(c => c.completion).length}/{courses.length}
             </span>
           </button>
@@ -610,17 +610,17 @@ function TrainingInner() {
                 const ci       = CAT_COLORS[cat]
                 return (
                   <button key={cat} onClick={() => setOpenCats(o => ({ ...o, [cat]: !o[cat] }))}
-                    className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-left hover:border-slate-500 transition-colors"
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-left hover:border-slate-400 dark:hover:border-slate-500 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-base">{ci.icon}</span>
-                      <span className="text-xs font-bold text-white">{catPct}%</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{catPct}%</span>
                     </div>
-                    <div className="h-1.5 bg-slate-600 rounded-full overflow-hidden mb-1.5">
+                    <div className="h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden mb-1.5">
                       <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${catPct}%` }} />
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-tight">{cat}</p>
-                    <p className="text-[10px] text-slate-500">{catDone}/{catTasks.length}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{cat}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">{catDone}/{catTasks.length}</p>
                   </button>
                 )
               })}
@@ -634,12 +634,12 @@ function TrainingInner() {
               const ci       = CAT_COLORS[cat]
 
               return (
-                <div key={cat} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+                <div key={cat} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
                   <button onClick={() => setOpenCats(o => ({ ...o, [cat]: !o[cat] }))}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-700/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                   >
                     <span className="text-xl">{ci.icon}</span>
-                    <span className="font-semibold text-slate-100 text-sm flex-1 text-left">{cat}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm flex-1 text-left">{cat}</span>
                     <span className="text-xs text-slate-400">{catDone}/{catTasks.length}</span>
                     {catDone === catTasks.length && <span className="text-emerald-400 text-xs font-bold">✓ Complete</span>}
                     <ChevronDown size={15} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -661,14 +661,14 @@ function TrainingInner() {
                             </button>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                <p className={`text-sm font-medium ${done ? 'line-through text-slate-500' : 'text-slate-100'}`}>{task.title}</p>
+                                <p className={`text-sm font-medium ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>{task.title}</p>
                                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${DIFF_BADGE[task.difficulty]}`}>{task.difficulty}</span>
                               </div>
                               <p className="text-xs text-slate-400 leading-relaxed">{task.description}</p>
                               {done && task.progress?.verifier && <p className="text-[10px] text-emerald-500 mt-1">✓ Verified by {task.progress.verifier.name}</p>}
                               {done && task.progress?.completed_at && <p className="text-[10px] text-slate-500 mt-0.5">Completed {new Date(task.progress.completed_at).toLocaleDateString()}</p>}
                             </div>
-                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                               +{task.points} XP
                             </span>
                           </div>
@@ -689,7 +689,7 @@ function TrainingInner() {
             {isAdmin && !isReadOnly && (
               <button
                 onClick={() => { setEditingCourse(null); setShowCourseModal(true) }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl text-slate-400 hover:text-blue-400 text-sm font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl text-slate-400 hover:text-blue-500 text-sm font-medium transition-colors"
               >
                 <Plus size={16}/> Add Course
               </button>
@@ -710,9 +710,9 @@ function TrainingInner() {
             )}
 
             {!coursesLoading && Object.entries(coursesByCat).map(([cat, catCourses]) => (
-              <div key={cat} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+              <div key={cat} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
                 {/* Category header */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-700/40 border-b border-slate-700">
+                <div className="flex items-center gap-2 px-4 py-3 bg-slate-700/40 border-b border-slate-200 dark:border-slate-700">
                   <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex-1">{cat}</span>
                   <span className="text-xs text-slate-500">{catCourses.filter(c => c.completion).length}/{catCourses.length} done</span>
                 </div>
@@ -739,7 +739,7 @@ function TrainingInner() {
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <p className={`text-sm font-medium ${done ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                            <p className={`text-sm font-medium ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
                               {course.title}
                             </p>
                             {/* Type badge */}
@@ -766,12 +766,12 @@ function TrainingInner() {
 
                         {/* Right side: XP + link + admin actions */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                             +{course.points} XP
                           </span>
                           {course.url && (
                             <a href={course.url} target="_blank" rel="noopener noreferrer"
-                              className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                               title="Open resource"
                             >
                               <ExternalLink size={14}/>
@@ -781,7 +781,7 @@ function TrainingInner() {
                             <>
                               <button
                                 onClick={() => { setEditingCourse(course); setShowCourseModal(true) }}
-                                className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                                 title="Edit course"
                               >
                                 <Pencil size={13}/>
@@ -789,7 +789,7 @@ function TrainingInner() {
                               <button
                                 onClick={() => deleteCourse(course.id)}
                                 disabled={deletingCourse === course.id}
-                                className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-40"
+                                className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-40"
                                 title="Delete course"
                               >
                                 {deletingCourse === course.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
@@ -814,7 +814,7 @@ function TrainingInner() {
 export default function TrainingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-blue-400" />
       </div>
     }>
