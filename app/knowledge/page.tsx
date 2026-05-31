@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
+import LearningTabBar from '@/components/layout/LearningTabBar'
 import type { ContentMatch } from '@/app/api/knowledge/search/route'
 
 // ── Color map — static class names so Tailwind purge can see them ─────────────
@@ -220,7 +221,7 @@ export default function KnowledgePage() {
             <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
           </div>
           <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Knowledge Base</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Learning</span>
         </div>
         {/* Search bar */}
         <div className="relative">
@@ -242,6 +243,9 @@ export default function KnowledgePage() {
           )}
         </div>
       </div>
+
+      {/* Learning tab bar */}
+      <LearningTabBar />
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 space-y-8">

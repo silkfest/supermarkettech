@@ -12,10 +12,12 @@ import {
   BookOpen,
   Globe,
   X,
+  MessageSquare,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
+import LearningTabBar from '@/components/layout/LearningTabBar'
 
 interface RelatedManual {
   id: string
@@ -89,7 +91,7 @@ export default function KnowledgeTopicPage() {
             </button>
             <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{topic.title}</span>
-            <div className="flex gap-1.5 ml-auto flex-wrap">
+            <div className="flex items-center gap-1.5 ml-auto flex-wrap">
               {topic.tags.map(tag => (
                 <span
                   key={tag}
@@ -98,10 +100,23 @@ export default function KnowledgeTopicPage() {
                   {tag}
                 </span>
               ))}
+              <button
+                onClick={() => {
+                  try { localStorage.setItem('coldiq_prefill', `I have a question about ${topic.title}. `) } catch { /* ignore */ }
+                  router.push('/dashboard')
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors ml-1"
+                title="Open this topic in ColdIQ Expert chat"
+              >
+                <MessageSquare size={12}/> Ask ColdIQ
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Learning tab bar */}
+      <LearningTabBar />
 
       {/* Mobile TOC toggle */}
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4">

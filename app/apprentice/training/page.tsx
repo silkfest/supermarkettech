@@ -9,6 +9,7 @@ import {
   ChevronDown as Down, BookOpen, Plus, Pencil, Trash2,
   ExternalLink, Clock, Star, X, Check,
 } from 'lucide-react'
+import LearningTabBar from '@/components/layout/LearningTabBar'
 
 // ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
@@ -433,7 +434,7 @@ function TrainingInner() {
       )}
 
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-slate-800 border-b border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => isAdmin ? router.push('/admin/apprentices') : router.push('/dashboard')}
           className="p-1.5 -ml-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-700"
@@ -482,6 +483,9 @@ function TrainingInner() {
           <span className="ml-auto text-xs text-slate-400">Journeyman: <span className="text-slate-200 font-medium">{mentor.name}</span></span>
         )}
       </div>
+
+      {/* Learning tab bar */}
+      <LearningTabBar variant="dark" />
 
       {/* Banners */}
       {toggleError && (

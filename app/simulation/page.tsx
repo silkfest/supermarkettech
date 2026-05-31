@@ -8,6 +8,7 @@ import {
   Thermometer, Gauge, Wind, Zap, Activity, Info,
   ChevronUp, MessageSquare, Trophy, Target, Package,
 } from 'lucide-react'
+import LearningTabBar from '@/components/layout/LearningTabBar'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
 // R-404A: Arkema/Forane data via learnmetrics.com (liquid bubble + vapor dew columns)
@@ -1209,6 +1210,9 @@ export default function SimulationPage() {
           </button>
         )}
       </div>
+
+      {/* ── Learning tab bar ── */}
+      <LearningTabBar variant="dark" />
 
       {/* ── Body ── */}
       <div className="flex flex-1 overflow-hidden">
