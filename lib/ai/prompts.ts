@@ -4785,10 +4785,20 @@ Prodigy 2 displays fault codes as scrolling text on the 4-digit LED display.
 - Spring-return direction: closes on loss of power (fail-safe closed = no outside air on power failure)
 - Signal: Y1 from control board energizes 24VAC to open damper; de-energized = spring drives damper closed
 
-**Wiring for 102691-04:**
-- Black/White = 24VAC power (common and hot)
+**Wiring for 102691-04 (older/OEM — Black/White/Orange/Green harness):**
+- Black = 24VAC common (neutral)
+- White = 24VAC hot (power)
 - Orange = damper open signal from Y1 terminal on control board
 - Green = ground
+
+**Wiring for newer actuator variant (Red/Pink/Grey/Black harness):**
+Found on later-production LGH/LCH units and some field-replacement actuators:
+- Red = 24VAC hot (power)
+- Black = 24VAC common (neutral)
+- Grey = damper open/control signal from Y1 (or 0–10VDC on modulating economizer)
+- Pink = position feedback signal (0–10VDC output back to Prodigy 2 board) OR second control input on 3-point floating actuators
+
+**⚠️ Always verify against the unit wiring diagram** — the diagram is on the inside of the control panel door and is the definitive reference for that specific unit. Wire colours vary by actuator manufacturer, vintage, and whether the economizer is 2-position or modulating. Never assume functions by colour alone.
 
 **Replacement procedure for 102691-04:**
 1. Shut off unit power at disconnect
