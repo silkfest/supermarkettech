@@ -1,6 +1,13 @@
 'use client'
 
 import React from 'react'
+import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
+import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
+
+const DIAGRAM_REGISTRY: Record<string, React.ReactNode> = {
+  'rack-style-1': <RackStyle1Diagram />,
+  'rack-style-2': <RackStyle2Diagram />,
+}
 
 // ── Inline formatter ──────────────────────────────────────────────────────────
 // Handles **bold** and `backtick` spans within a line of text.
@@ -153,6 +160,16 @@ export function renderMarkdown(content: string): React.ReactNode[] {
       continue
     } else {
       flushTable()
+    }
+
+    // ── Diagram block ──
+    const diagramMatch = trimmed.match(/^\[diagram:([a-z0-9-]+)\]$/)
+    if (diagramMatch) {
+      flushList()
+      const diagram = DIAGRAM_REGISTRY[diagramMatch[1]]
+      if (diagram) nodes.push(<React.Fragment key={nodes.length}>{diagram}</React.Fragment>)
+      i++
+      continue
     }
 
     // ── Blank line ──

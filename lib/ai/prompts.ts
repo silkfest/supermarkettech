@@ -6889,20 +6889,21 @@ RESPONSE FORMAT:
 export const RACK_SEQUENCE_KNOWLEDGE = `
 # Parallel Rack — Sequence of Events
 
-Understanding the sequence of events through a parallel rack — in every operating mode — is what separates a technician who can diagnose quickly from one who chases symptoms. This guide walks through each operating mode step by step for both rack styles: the standard **receiver-based rack** and the **surge drum (recirculating) rack**, with notes on variants like subcooled racks and racks with hot gas defrost.
+Understanding the sequence of events through a parallel rack — in every operating mode — is what separates a technician who can diagnose quickly from one who chases symptoms. This guide walks through each operating mode step by step for both rack styles: the standard **receiver-based rack** and the **Tyler Enviroguard (receiver-bypass / floating head) rack**, with notes on variants like subcooled racks and racks with hot gas defrost.
 
 ---
 
 ## Rack Styles Overview
 
-| Feature | Receiver Rack | Surge Drum Rack |
-|---------|--------------|-----------------|
-| Liquid storage | Full liquid receiver (flooded with subcooled liquid) | Surge drum at saturation pressure (liquid/vapour mixture) |
-| Subcooling | From condenser + receiver; typically 10–15°F | Little or none from drum; subcooler coil often added |
-| Flash gas risk | Moderate (pressure drop in long liquid lines) | Low — liquid is close to saturated but drum absorbs flash |
-| Refrigerant feed | Single-phase liquid via TXV/EEV | Overfeed or gravity from drum; expansion at circuit level |
-| Common on | HFC racks (most common) | Some Hill Phoenix, Hussmann designs; CO₂ systems |
-| Complexity | Standard | Higher — requires liquid level control in drum |
+| Feature | Receiver Rack | Enviroguard Rack (Tyler/Carrier) |
+|---------|--------------|----------------------------------|
+| Liquid storage | Full liquid receiver (flooded with subcooled liquid) | Receiver is **bypassed** — not in main circuit; serves as seasonal charge buffer only |
+| Subcooling | From condenser + receiver; typically 10–15°F | Very high in winter (cold condenser liquid delivered directly to cases); lower in summer |
+| Flash gas risk | Moderate (pressure drop in long liquid lines) | Low in cool weather; liquid lines must be **fully insulated** to preserve subcooling |
+| Refrigerant feed | Single-phase liquid via TXV/EEV | Single-phase liquid direct from condenser via TXV/EEV — same metering, different source |
+| Head pressure control | OPR or headmaster valve (holds fixed minimum) | SPR pilot-controlled by ambient sensor; tracks ambient dynamically |
+| Common on | HFC racks (most common) | Tyler/Carrier parallel rack installations (Canada and US); floating head pressure systems |
+| Complexity | Standard | Higher — SPR setpoint, ambient sensor calibration, bleed circuit maintenance |
 
 ---
 
@@ -6920,6 +6921,8 @@ This is the rack found in the majority of North American supermarkets. Refrigera
   → Evaporator Coil → Suction Line
   → EPR Valve (MT circuits only) → **Suction Header**
 → **Compressors** (cycle repeats)
+
+[diagram:rack-style-1]
 
 ---
 
@@ -7096,67 +7099,104 @@ The most common defrost method on HFC parallel racks in supermarkets. Hot discha
 
 ---
 
-## Rack Style 2 — Surge Drum (Recirculating Liquid Feed) Rack
+## Rack Style 2 — Tyler Enviroguard (Receiver-Bypass / Floating Head) Rack
 
-The surge drum rack uses a vessel at intermediate pressure (between condensing and evaporating) that floats at saturation pressure. Liquid is fed to circuits from the drum's liquid leg — typically as overfeed (more liquid than evaporated, with excess returning to drum as wet vapour).
+**Reference: Tyler Refrigeration — Parallel Compressors & Enviroguard Installation & Service Manual (Part No. 5806448 Rev. D, June 2007)**
 
-### Component Flow Path
+The Enviroguard system (Tyler/Carrier) is fundamentally different from a standard receiver rack. The key distinction: **the receiver is taken OUT of the main refrigeration circuit**. Liquid refrigerant flows directly from the condenser to the liquid manifold that feeds the branch circuits — the receiver is not in the normal flow path.
 
-**Compressors** → Discharge Header → Oil Separator
-→ Condenser → **Surge Drum** (floats at MT suction pressure)
-  - Liquid outlet (bottom) → liquid feed pump or gravity → Liquid Header
-    → (each circuit) → Expansion valve → Evaporator → Wet suction return → **Surge Drum**
-  - Vapour outlet (top) → MT suction header → **Compressors**
+The receiver serves only as a **seasonal charge buffer** — it stores refrigerant in summer (when the condenser charge is lower due to flooding) and releases it in winter. It is NOT a surge drum and NOT a liquid recirculating vessel.
 
-### Key Difference from Receiver Rack
+### The SPR (System Pressure Regulator) — The Core Component
 
-On a receiver rack, liquid is subcooled and single-phase at the expansion device — the TXV only handles sensible heat removal via expansion.
+The SPR is the key valve that makes Enviroguard work. It has two functions:
+1. **Bypass to receiver**: When head pressure rises too high relative to ambient, the SPR diverts liquid refrigerant into the receiver — removing it from the active circuit
+2. **Pilot-controlled setpoint**: The SPR is controlled by a pilot line connected to an ambient air sensor (a small charged tube mounted under the condenser fans)
 
-On a surge drum rack, liquid is at saturation temperature (same as the MT suction saturation point). There is **no subcooling** from the drum itself. The circuit is intentionally overfed — 2–3× the actual evaporation rate — so that the suction return is a wet vapour/liquid mix that returns to the drum. The drum's liquid leg continuously receives this return; liquid falls, vapour rises to the suction header.
+**How the pilot works:** The ambient air sensor contains the same refrigerant as the system. As outdoor temperature changes, the pressure inside the sensor changes proportionally. This pilot pressure sets the SPR opening point automatically — the SPR always tracks ambient conditions.
 
-### Sequence 2A — Normal Refrigeration on a Surge Drum Rack
+**SPR differential settings (R-22):**
+- Low temperature systems: ~45 psig above ambient saturation pressure
+- Medium temperature systems: ~61 psig above ambient saturation pressure
+- R-404A and R-448A systems: different differentials — refer to the SPR bleed pressure charts in the Tyler manual
+
+Whenever condensing pressure exceeds ambient saturation pressure by the set differential, the SPR opens and bypasses liquid refrigerant into the receiver. This prevents over-condensing in cold weather while allowing maximum subcooling in warm weather.
+
+### Correct Component Flow Path
+
+**Normal refrigeration (liquid bypasses receiver):**
+Compressors → Discharge Header → Oil Separator → Condenser → **Liquid Dropleg** → SPR (closed) → **Liquid Manifold** → Branch circuits (TXV → Evaporator → Suction return) → Suction Header → Compressors
+
+**When head pressure is too high (SPR opens):**
+Condenser → Liquid Dropleg → **SPR opens** → Receiver (excess liquid stored temporarily)
+- Receiver acts as buffer; liquid is removed from active circuit
+- Branch circuits see reduced liquid supply — case temperatures rise as a diagnostic signal of SPR overcorrection or condenser fouling
+
+**Receiver bleed circuit (always active when compressors run):**
+Receiver → Hand valve → Strainer → Solenoid valve → Sightglass → Capillary tube → 1/4" O.D. heat exchanger → Suction manifold
+- A small, controlled bleed of liquid from the receiver evaporates before entering the suction manifold
+- Ensures oil return from the receiver and prevents receiver from overfilling
+- The heat exchanger ensures liquid is fully evaporated before entering suction — liquid floodback through this circuit would cause compressor failure
+
+[diagram:rack-style-2]
+
+### Sequence 2A — Normal Refrigeration on an Enviroguard Rack (Cool Weather)
 
 **Step 1 — Thermostat calls for cooling**
-- Circuit solenoid (or liquid feed valve) opens
-- Saturated liquid from the drum's liquid leg feeds the circuit via gravity (if drum is elevated) or a liquid recirculating pump
+- Circuit liquid line solenoid or suction stop EPR opens
+- Subcooled liquid from the condenser dropleg flows directly to the TXV — bypassing the receiver entirely
 
 **Step 2 — Expansion at the circuit**
-- Liquid enters the expansion device already at saturation; a small flash occurs at expansion
-- Evaporator floods with wet refrigerant mixture (overfeed ratio 2–3:1)
-- Because liquid is at saturation with no superheat, the entire evaporator surface is active for boiling — very efficient heat transfer
+- TXV meters liquid at the evaporator inlet; suction bulb maintains 6–12°F superheat (same as standard receiver rack)
+- Liquid arrives at the TXV at condenser liquid temperature — in cool weather, this can be extremely subcooled (20–40°F+), significantly more than a conventional receiver rack
 
-**Step 3 — Wet suction return**
-- Suction gas leaving the evaporator is wet (contains liquid droplets mixed with vapour)
-- The wet return line carries this mixture back to the surge drum — NOT directly to the compressor suction
-- This is critical: liquid must never reach the compressors; the surge drum separates it out
+**Step 3 — Suction return (standard)**
+- Dry superheated vapour returns to suction manifold — same as any receiver rack
+- No wet return, no overfeed, no recirculating pump
 
-**Step 4 — Surge drum separation**
-- Wet vapour/liquid mixture enters the drum at mid-height or from a deflector
-- Liquid falls to the bottom (gravity separation); vapour rises to the top
-- Dry saturated vapour exits the top → MT suction header → compressors
-- Liquid exits the bottom → continues to feed circuits
+**Step 4 — SPR monitoring**
+- SPR continuously compares condensing pressure to ambient sensor pressure + differential
+- Cool weather: head pressure is low; SPR stays closed; all liquid flows to cases — maximum subcooling delivered
+- Warm day or defrost surge: head pressure rises above set differential; SPR opens; excess liquid diverted to receiver temporarily
 
-**Step 5 — Compression and condensing**
-- Same as receiver rack: compressors → oil separator → condenser
-- Condensed liquid from condenser enters the surge drum (top or dedicated inlet) — the drum receives liquid from the condenser in addition to the wet returns
+**Step 5 — Receiver bleed**
+- Whenever any compressor runs, the bleed circuit solenoid is energized (open)
+- Metered liquid from the receiver passes through capillary tube and heat exchanger, evaporating into the suction manifold
+- Returns oil that migrated to the receiver; prevents receiver overfill
 
-**Step 6 — Drum level control**
-- A float valve or electronic level controller maintains drum liquid level at 30–50% of drum height
-- Too high: liquid carryover to compressor suction
-- Too low: circuits starve; wet suction feed becomes vapour; high superheat
+### Critical Service Notes (from Tyler Manual)
 
----
+**Liquid line insulation is mandatory on all Enviroguard systems**: All liquid lines from rack to cases must be fully insulated. The entire energy savings of Enviroguard comes from delivering cold condenser liquid directly to cases. Uninsulated lines absorb heat, raise liquid temperature, cause flash gas at the TXV, and completely eliminate the subcooling benefit.
 
-### Surge Drum Rack — Key Operating Differences
+**Condenser fan control must use a pressure transducer — never temperature**: Temperature sensors respond too slowly to sudden head pressure surges from defrost termination or compressor cycling. A surge with temperature-based control causes the SPR to dump liquid into the receiver, starving branch circuits until refrigerant transfers back. Use an electronic pressure controller with a pressure transducer on the condenser liquid dropleg.
 
-| Parameter | Receiver Rack | Surge Drum Rack |
-|-----------|--------------|-----------------|
-| Evaporator superheat | 6–12°F | Near 0°F (wet feed) |
-| Suction return | Dry vapour | Wet vapour/liquid mix (return to drum) |
-| Expansion device | TXV or EEV (metering) | Float valve, orifice, or hand expansion valve |
-| Subcooling at liquid line | 10–15°F | Minimal (near saturation); often add subcooler coil |
-| Circuit superheat alarm | Yes | Not applicable (superheat not meaningful) |
-| Compressor protection | Standard | Critical — drum level failure = liquid carryover to compressors |
+**A full receiver is abnormal**: In a conventional rack, a full receiver is normal. In an Enviroguard system, a full receiver means the SPR has been dumping liquid — indicating elevated head pressure, a fouled condenser, or an SPR setpoint error. Investigate the cause.
+
+**SPR tracks ambient, not a fixed pressure**: Unlike an OPR/headmaster that holds a minimum fixed receiver pressure, the SPR setpoint floats with outdoor ambient temperature. Setting the SPR differential incorrectly for the refrigerant or ambient range causes chronic receiver dumping (system starved) or no bypass (receiver floods in winter).
+
+**Existing system retrofits require factory approval**: Tyler explicitly states retrofitting Enviroguard onto an existing conventional rack is not supported without factory sign-off.
+
+### Enviroguard Variants
+
+| Variant | Key Feature |
+|---|---|
+| Enviroguard (original) | SPR + ambient air sensor; mechanical pilot control |
+| Enviroguard II | Contact Tyler service department for documentation |
+| Enviroguard III | Electronic control integration (Comtrol MCS-4000, CPC RMCC, Danfoss AKC-55); liquid return piping; SPR solenoid valve for controller |
+
+### Comparison: Enviroguard vs Standard Receiver Rack
+
+| Parameter | Standard Receiver Rack | Enviroguard Rack |
+|---|---|---|
+| Receiver in main circuit | Yes — all liquid passes through receiver | No — receiver is bypassed; liquid flows direct to cases |
+| Receiver function | Liquid storage and pressure buffer | Seasonal charge buffer only |
+| Head pressure control | OPR/headmaster holds minimum fixed pressure | SPR tracks ambient dynamically |
+| Subcooling at liquid manifold | 10–15°F (receiver + condenser) | Varies with ambient — much higher in winter |
+| Expansion device | TXV or EEV (standard) | TXV (standard — unchanged) |
+| Liquid line insulation | Recommended | Mandatory — subcooling benefit is lost without it |
+| Condenser fan control | Temperature or pressure | Must be pressure-based |
+| Oil return from receiver | Handled through receiver level | Dedicated bleed circuit (capillary tube + heat exchanger) required |
+| Full receiver = normal? | Yes | No — indicates SPR overcorrection or fouled condenser |
 
 ---
 
@@ -7206,14 +7246,16 @@ When suction pressure falls below the HGBP setpoint (typically 5–8 psig below 
 
 ## Side-by-Side: What Changes Between Rack Styles at Each Mode
 
-| Operating Mode | Receiver Rack | Surge Drum Rack |
-|---------------|--------------|-----------------|
-| Normal cooling | Single-phase liquid feed via TXV/EEV; dry suction return | Overfeed liquid via float/orifice; wet suction return to drum |
-| Thermostat satisfied | LLS closes; suction pumps down; compressor stages off | Feed valve closes; drum level rises as overfeed returns |
-| Hot gas defrost | HGDS opens; hot gas reverses through coil; condensate drains to suction | Same; but defrost condensate drains to drum (not suction header directly) |
-| Startup | Crankcase heater warmup; LP reset; sequential staging | Same + verify drum liquid level before starting; low drum = liquid feed starvation immediately |
-| Low load | HGBP or compressor staging; floating suction raises | Same; drum level rises (less liquid being consumed); level controller throttles condensed liquid entry |
-| Power outage recovery | Check crankcase heaters; receiver will be full (liquid migrated during off period) | Check drum level; significant liquid migration may have entered drum and suction piping — open LLS slowly |
+| Operating Mode | Receiver Rack | Enviroguard Rack (Tyler/Carrier) |
+|---------------|--------------|----------------------------------|
+| Normal cooling | Single-phase liquid feed via TXV/EEV; liquid flows condenser → receiver → liquid header | Single-phase liquid feed via TXV/EEV; liquid flows condenser → **directly to liquid manifold** (receiver bypassed); SPR closed |
+| Cool ambient | Head pressure held by OPR/headmaster at fixed minimum | Head pressure floats low; SPR closed (head pressure below ambient saturation + differential); maximum subcooling at cases |
+| Warm ambient / high head pressure | OPR/headmaster opens to relieve pressure | SPR opens → diverts liquid into receiver; removes refrigerant from active circuit; head pressure drops |
+| Thermostat satisfied | LLS closes; suction pumps down; compressor stages off | Same — LLS closes; compressor stages off; bleed circuit continues returning small liquid volume from receiver to suction |
+| Hot gas defrost | HGDS opens; hot gas reverses through coil; condensate drains to suction | Same sequence — Enviroguard does not change defrost logic; condensate drains to suction header normally |
+| Startup | Crankcase heater warmup; LP reset; sequential staging | Same + confirm bleed circuit hand valve is open; confirm SPR ambient sensor tube is intact and positioned under condenser fans |
+| Low load / overnight | HGBP or compressor staging; floating suction raises | Same; as ambient drops, head pressure drops; SPR stays closed; receiver gradually drains via bleed circuit back to active charge |
+| Power outage recovery | Check crankcase heaters; receiver full (liquid migrated during off) | Check receiver sight glass — if full, bleed circuit will take time to redistribute; restart normally; do not manually open SPR |
 
 ---
 
