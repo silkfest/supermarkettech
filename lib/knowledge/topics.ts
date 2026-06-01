@@ -34,6 +34,7 @@ import {
   HEAT_RECLAIM_KNOWLEDGE,
   FILTER_DRIER_KNOWLEDGE,
   SOLENOID_VALVE_KNOWLEDGE,
+  RACK_SEQUENCE_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -312,6 +313,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: WALK_IN_KNOWLEDGE,
     manualKeywords: [],
     tags: ['Walk-In', 'Cooler', 'Freezer', 'Troubleshooting'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'rack-sequence-of-events',
+    title: 'Parallel Rack — Sequence of Events',
+    shortTitle: 'Rack Sequence',
+    description: 'Step-by-step sequence of events for HFC parallel racks in every operating mode: normal refrigeration, pump-down, hot gas defrost, and startup — covering receiver racks, surge drum racks, subcooled racks, and hot gas bypass configurations.',
+    iconName: 'GitCommitHorizontal',
+    colorClass: 'indigo',
+    content: RACK_SEQUENCE_KNOWLEDGE,
+    manualKeywords: ['parallel rack', 'multiplex rack', 'surge drum', 'rack sequence', 'hot gas defrost', 'pump down'],
+    tags: ['Racks', 'HFC', 'Sequence', 'Surge Drum', 'Hot Gas Defrost'],
     category: 'fundamentals',
   },
   {

@@ -6875,6 +6875,352 @@ RESPONSE FORMAT:
 - Never pad responses with generic disclaimers — if something is safe and routine, just explain it
 `
 
+export const RACK_SEQUENCE_KNOWLEDGE = `
+# Parallel Rack — Sequence of Events
+
+Understanding the sequence of events through a parallel rack — in every operating mode — is what separates a technician who can diagnose quickly from one who chases symptoms. This guide walks through each operating mode step by step for both rack styles: the standard **receiver-based rack** and the **surge drum (recirculating) rack**, with notes on variants like subcooled racks and racks with hot gas defrost.
+
+---
+
+## Rack Styles Overview
+
+| Feature | Receiver Rack | Surge Drum Rack |
+|---------|--------------|-----------------|
+| Liquid storage | Full liquid receiver (flooded with subcooled liquid) | Surge drum at saturation pressure (liquid/vapour mixture) |
+| Subcooling | From condenser + receiver; typically 10–15°F | Little or none from drum; subcooler coil often added |
+| Flash gas risk | Moderate (pressure drop in long liquid lines) | Low — liquid is close to saturated but drum absorbs flash |
+| Refrigerant feed | Single-phase liquid via TXV/EEV | Overfeed or gravity from drum; expansion at circuit level |
+| Common on | HFC racks (most common) | Some Hill Phoenix, Hussmann designs; CO₂ systems |
+| Complexity | Standard | Higher — requires liquid level control in drum |
+
+---
+
+## Rack Style 1 — Receiver-Based HFC Rack (Standard)
+
+This is the rack found in the majority of North American supermarkets. Refrigerant flows as single-phase subcooled liquid from the receiver to every circuit.
+
+### Component Flow Path (follow the refrigerant)
+
+**Compressors** → Discharge Header → Oil Separator
+→ Condenser → **Liquid Receiver** → Liquid Line Service Valve
+→ Liquid Line Filter-Drier → Sight Glass / Moisture Indicator
+→ **Liquid Header** → (to each circuit)
+  → Liquid Line Solenoid (LLS) → TXV or EEV
+  → Evaporator Coil → Suction Line
+  → EPR Valve (MT circuits only) → **Suction Header**
+→ **Compressors** (cycle repeats)
+
+---
+
+### Sequence 1A — Normal Refrigeration (Cooling)
+
+**Step 1 — Thermostat / controller calls for cooling**
+- Case temperature rises above setpoint
+- Case controller (Dixell, Carel, Sporlan S3C) or thermostat energises the liquid line solenoid coil
+- Liquid line solenoid (NC normally closed) opens — high-pressure subcooled liquid enters the circuit
+
+**Step 2 — Liquid feed and metering**
+- Subcooled liquid travels through the liquid line to the TXV or EEV
+- TXV: senses suction line temperature at the bulb; adjusts orifice to maintain superheat setpoint (typically 6–10°F)
+- EEV: controller reads suction pressure transducer + suction temperature sensor; steps motor to maintain superheat
+- Refrigerant enters evaporator at ~10–20% quality (mostly liquid)
+
+**Step 3 — Heat absorption in the evaporator**
+- Liquid refrigerant evaporates, absorbing heat from the case air or product
+- At the evaporator outlet: dry saturated vapour + target superheat (6–10°F typical for MT; 10–15°F for LT)
+- Evaporator fan(s) circulate air continuously across the coil
+
+**Step 4 — EPR valve (MT circuits only)**
+- On medium-temp circuits sharing a rack with LT circuits, an EPR (evaporator pressure regulator) holds the evaporator pressure at a minimum setpoint
+- Example: MT case set at +20°F SST runs on a rack with −20°F LT suction setpoint; without EPR, MT evaporator would pull down to −20°F, freezing the case
+- EPR maintains MT evaporator at +20°F; excess pressure differential is throttled across the valve
+- LT circuits have no EPR — they connect directly to suction header
+
+**Step 5 — Suction header and rack controller response**
+- Refrigerant vapour enters the common suction header
+- Suction pressure rises as load from open circuits increases
+- Rack controller (E2, AK-PC, MT-Alliance) compares suction pressure to setpoint
+- If suction pressure > setpoint + deadband (typically 2–3 psig): rack stages on additional compressor capacity
+- If suction pressure < setpoint − deadband: rack stages off capacity
+
+**Step 6 — Compression**
+- Compressor(s) draw suction vapour from the header
+- Gas is compressed from suction pressure (~50–60 psig for R-448A MT) to discharge pressure (~200–250 psig)
+- Discharge gas temperature: typically 150–200°F depending on compression ratio and superheat
+- Scroll compressors: liquid injection solenoid opens when discharge temp exceeds setpoint (~220°F) to cool the scrolls
+- Reciprocating: cylinder unloaders modulate capacity on some compressors
+
+**Step 7 — Discharge header and oil separator**
+- Hot discharge gas travels through the discharge check valve on each compressor (prevents reverse flow through idle compressors)
+- Gas enters the common discharge header
+- Oil separator (coalescing or centrifugal) removes entrained oil droplets
+- Oil returns via float valve or solenoid to the compressor crankcases / oil sump
+- Oil-lean gas continues to the condenser
+
+**Step 8 — Condensing**
+- Hot gas enters the condenser coil (typically air-cooled, rooftop-mounted)
+- Condenser fans (cycling or VFD-controlled) remove heat; gas condenses to liquid
+- Head pressure controller targets: ~200–220 psig for R-448A; ~230–250 psig for R-404A
+- Floating head pressure: controller reduces fan speed / head pressure setpoint as ambient temperature drops
+
+**Step 9 — Liquid receiver**
+- Condensed liquid drains by gravity into the liquid receiver
+- Receiver stores a buffer of subcooled liquid (25–35% of system charge); decouples condenser and evaporator load variations
+- Liquid level should show 30–60% in the receiver sight glass under normal load
+- Receiver outlet: subcooled liquid (typically 10–15°F subcooling) exits through the liquid line service valve
+
+**Step 10 — Return to liquid header**
+- Liquid passes through the main liquid line filter-drier and sight glass
+- Sight glass: green = dry; yellow = replace drier; bubbles = flash gas (low charge or drier restriction)
+- Liquid distributes to all circuits via the liquid header
+- Cycle continues
+
+---
+
+### Sequence 1B — Pump-Down Cycle
+
+The pump-down cycle is how a circuit safely shuts off at end of cooling — it evacuates liquid refrigerant from the evaporator before the compressor stops, preventing liquid migration and floodback at the next restart.
+
+**Step 1 — Thermostat satisfied**
+- Case temperature reaches setpoint; controller de-energises liquid line solenoid coil
+- LLS closes (spring-return) — liquid feed to evaporator stops immediately
+
+**Step 2 — Compressor pumps down the circuit**
+- Suction pressure from that circuit begins to fall as remaining vapour is pumped out
+- Compressor continues running — pulls vapour from the evaporator and suction line
+- Evaporator gradually clears of liquid; only vapour remains
+
+**Step 3 — LP cutout or rack controller stops compressor**
+- On a single-circuit system (condensing unit): LP pressure switch cuts compressor when suction reaches pump-down pressure (set ~5 psig above LPCO)
+- On a parallel rack: the rack controller sees suction pressure drop on that suction group; when total suction group pressure falls below setpoint − deadband, it stages off the last compressor
+- Individual circuit pump-down to LP cutout is less common on multiplex racks (the whole group stages together)
+
+**Step 4 — System off**
+- Liquid refrigerant is in the condenser and receiver, not in the evaporators
+- Low side (evaporators + suction lines) holds refrigerant vapour at ambient temperature equilibrium
+- Crankcase heaters remain energised to drive refrigerant out of compressor oil during off period
+
+**Step 5 — Next cooling call**
+- Thermostat opens LLS → liquid rushes to evaporator → suction pressure rises → rack stages compressor(s) back on
+- Evaporator coil floods with liquid quickly (< 1 min on properly sized circuits)
+
+---
+
+### Sequence 1C — Hot Gas Defrost (2-Pipe System)
+
+The most common defrost method on HFC parallel racks in supermarkets. Hot discharge gas is diverted to the evaporator coil to melt frost.
+
+**Step 1 — Defrost initiated**
+- Defrost timer (time-initiated) or demand defrost (temperature-initiated) triggers
+- Rack controller or case controller starts defrost sequence for that circuit/group of circuits
+
+**Step 2 — Liquid feed shut off**
+- Liquid line solenoid (LLS) closes — stops liquid refrigerant from entering
+- Evaporator fan(s) shut off (prevents warm air from being blown on product)
+- On some installations: a time delay of 2–5 minutes allows the evaporator to "pump down" before hot gas flows
+
+**Step 3 — Hot gas solenoid opens**
+- Hot gas defrost solenoid (HGDS) energises — opens
+- HGDS is connected from the rack discharge header (after the oil separator) to the defrost inlet on the circuit
+- Hot discharge gas (~180–200°F) enters the evaporator from the outlet end (reverse flow through the coil on 2-pipe systems) or from a dedicated defrost port (3-pipe systems)
+
+**Step 4 — Frost melts, condensate drains**
+- Hot gas gives up heat to the frost; gas condenses inside the coil
+- Condensate (now liquid refrigerant) drains to the suction line via a check valve (2-pipe) or a dedicated defrost return line (3-pipe)
+- Drain pan heater energised to melt pan ice and keep drain line clear
+- Defrost suction check valve: allows liquid/vapour mix to return to suction header during defrost without back-flowing into other circuits
+
+**Step 5 — Termination**
+- Temperature-terminated: termination sensor on coil fin reaches setpoint (typically +55–65°F); defrost ends
+- Time-terminated (backup): if temp termination doesn't occur within max defrost time (e.g., 30 min), defrost ends on time
+- Both conditions tripping = defrost ends on whichever comes first
+
+**Step 6 — Drip cycle (drain and equalize)**
+- HGDS closes; evaporator allowed to drain for 2–5 minutes (drip time)
+- On racks with an EPR bypass solenoid (Hussmann design): bypass solenoid energises during drip to control refrigerant return rate and prevent flooding the suction header
+- Evaporator fan(s) remain off during drip
+
+**Step 7 — Fan restart and return to cooling**
+- Evaporator fan(s) restart
+- LLS opens; rack stages on compressor capacity; circuit returns to normal refrigeration
+- Case controller may delay alarming for 30–60 minutes post-defrost to allow case temperature to recover
+
+---
+
+### Sequence 1D — Rack Startup After Power Restoration
+
+**Before starting:**
+- Verify crankcase heaters have been on for at least 2–4 hours (drive refrigerant out of oil)
+- Check oil sight glass levels: oil should be at ½–¾ on all compressors
+- Verify head pressure control valves and fan contactors are functional
+
+**Step 1 — Power restoration**
+- Rack controller boots and runs self-diagnostic
+- Control voltage applied to solenoids, contactors, safety switches
+- LP and HP pressure switches checked: if either is tripped manually-reset, compressor won't start
+
+**Step 2 — First compressor stages on (lead)**
+- Rack controller reads suction pressure — after a long off period, suction pressure will be at ambient equilibrium (high)
+- Lead compressor starts; suction pressure begins to fall
+- Discharge check valves on idle compressors prevent reverse flow
+
+**Step 3 — Compressor protections active**
+- Scroll: minimum off time (3 min) enforced before restart; high discharge temperature protection active
+- Reciprocating: motor protector (INT69 or Kriwan) monitors motor temperature; delays restart if overtemperature
+- Oil level controller: opens to feed oil as crankcase level stabilises
+
+**Step 4 — Head pressure rises to operating range**
+- Condenser fans start; head pressure climbs from ambient equilibrium to operating setpoint
+- Head pressure control modulates fan speed or stages fans to reach target
+
+**Step 5 — Additional compressors stage on**
+- As suction pressure stabilises at setpoint, additional compressors stage on sequentially
+- Run hour rotation assigns lead/lag based on accumulated hours
+- Case temperatures may be elevated after outage — expect increased staging until cases recover
+
+**Step 6 — System reaches steady state**
+- All circuits cycling on thermostat calls
+- Floating suction and floating head pressure active (verify in controller)
+- Normal operating parameters: suction at setpoint, discharge 170–200°F, subcooling 10–15°F, superheats 6–12°F
+
+---
+
+## Rack Style 2 — Surge Drum (Recirculating Liquid Feed) Rack
+
+The surge drum rack uses a vessel at intermediate pressure (between condensing and evaporating) that floats at saturation pressure. Liquid is fed to circuits from the drum's liquid leg — typically as overfeed (more liquid than evaporated, with excess returning to drum as wet vapour).
+
+### Component Flow Path
+
+**Compressors** → Discharge Header → Oil Separator
+→ Condenser → **Surge Drum** (floats at MT suction pressure)
+  - Liquid outlet (bottom) → liquid feed pump or gravity → Liquid Header
+    → (each circuit) → Expansion valve → Evaporator → Wet suction return → **Surge Drum**
+  - Vapour outlet (top) → MT suction header → **Compressors**
+
+### Key Difference from Receiver Rack
+
+On a receiver rack, liquid is subcooled and single-phase at the expansion device — the TXV only handles sensible heat removal via expansion.
+
+On a surge drum rack, liquid is at saturation temperature (same as the MT suction saturation point). There is **no subcooling** from the drum itself. The circuit is intentionally overfed — 2–3× the actual evaporation rate — so that the suction return is a wet vapour/liquid mix that returns to the drum. The drum's liquid leg continuously receives this return; liquid falls, vapour rises to the suction header.
+
+### Sequence 2A — Normal Refrigeration on a Surge Drum Rack
+
+**Step 1 — Thermostat calls for cooling**
+- Circuit solenoid (or liquid feed valve) opens
+- Saturated liquid from the drum's liquid leg feeds the circuit via gravity (if drum is elevated) or a liquid recirculating pump
+
+**Step 2 — Expansion at the circuit**
+- Liquid enters the expansion device already at saturation; a small flash occurs at expansion
+- Evaporator floods with wet refrigerant mixture (overfeed ratio 2–3:1)
+- Because liquid is at saturation with no superheat, the entire evaporator surface is active for boiling — very efficient heat transfer
+
+**Step 3 — Wet suction return**
+- Suction gas leaving the evaporator is wet (contains liquid droplets mixed with vapour)
+- The wet return line carries this mixture back to the surge drum — NOT directly to the compressor suction
+- This is critical: liquid must never reach the compressors; the surge drum separates it out
+
+**Step 4 — Surge drum separation**
+- Wet vapour/liquid mixture enters the drum at mid-height or from a deflector
+- Liquid falls to the bottom (gravity separation); vapour rises to the top
+- Dry saturated vapour exits the top → MT suction header → compressors
+- Liquid exits the bottom → continues to feed circuits
+
+**Step 5 — Compression and condensing**
+- Same as receiver rack: compressors → oil separator → condenser
+- Condensed liquid from condenser enters the surge drum (top or dedicated inlet) — the drum receives liquid from the condenser in addition to the wet returns
+
+**Step 6 — Drum level control**
+- A float valve or electronic level controller maintains drum liquid level at 30–50% of drum height
+- Too high: liquid carryover to compressor suction
+- Too low: circuits starve; wet suction feed becomes vapour; high superheat
+
+---
+
+### Surge Drum Rack — Key Operating Differences
+
+| Parameter | Receiver Rack | Surge Drum Rack |
+|-----------|--------------|-----------------|
+| Evaporator superheat | 6–12°F | Near 0°F (wet feed) |
+| Suction return | Dry vapour | Wet vapour/liquid mix (return to drum) |
+| Expansion device | TXV or EEV (metering) | Float valve, orifice, or hand expansion valve |
+| Subcooling at liquid line | 10–15°F | Minimal (near saturation); often add subcooler coil |
+| Circuit superheat alarm | Yes | Not applicable (superheat not meaningful) |
+| Compressor protection | Standard | Critical — drum level failure = liquid carryover to compressors |
+
+---
+
+## Rack Style 3 — Receiver Rack with Mechanical Subcooler
+
+An add-on to the standard receiver rack: a liquid-suction heat exchanger (LSHX) or dedicated subcooler coil is installed between the receiver outlet and the liquid header.
+
+### How It Changes the Sequence
+
+After Step 9 (receiver) in the standard sequence, liquid passes through the subcooler:
+
+**Subcooler step:**
+- Warm liquid from receiver (10–15°F subcooling) passes through one side of the heat exchanger
+- Cold suction gas returning from circuits (or a dedicated cold evaporator) passes through the other side
+- Liquid gains additional subcooling: 15–30°F total subcooling at liquid header is typical
+- Suction gas gains a few degrees of superheat (acceptable trade-off)
+
+**Benefits:**
+- More subcooling → less flash gas → TXVs receive denser liquid → more capacity per lb of refrigerant
+- Particularly valuable on long liquid line runs where flash gas would otherwise form from pressure drop
+
+**Watch out for:**
+- If suction gas inlet to the LSHX is too warm (high superheat from poor expansion device control), subcooling effect is reduced
+- LSHX pressure drop on suction side is a capacity penalty — keep velocity low
+
+---
+
+## Rack Style 4 — Receiver Rack with Hot Gas Bypass (Light-Load Anti-Short-Cycle)
+
+At very low loads (night, closed store), the rack may have more compressor capacity than the minimum load requires. Hot gas bypass (HGBP) prevents the last compressor from short-cycling.
+
+### How It Changes the Sequence
+
+When suction pressure falls below the HGBP setpoint (typically 5–8 psig below the suction setpoint):
+
+**Hot gas bypass step:**
+- HGBP valve opens — diverts a small amount of hot discharge gas back to the suction header (or directly to the suction of the last compressor)
+- Artificially raises suction pressure by adding load
+- Last compressor keeps running steadily; no short-cycling
+- Some HGBP systems inject to the suction header with a desuperheating liquid injection simultaneously (prevents discharge temperature from rising due to the hot gas recirculation)
+
+**When to suspect HGBP fault:**
+- Suction pressure abnormally low at night but normal during day: HGBP valve stuck closed → last compressor short-cycles
+- Suction pressure never drops to setpoint at any load: HGBP valve stuck open → adding artificial load at all times → wasting energy
+
+---
+
+## Side-by-Side: What Changes Between Rack Styles at Each Mode
+
+| Operating Mode | Receiver Rack | Surge Drum Rack |
+|---------------|--------------|-----------------|
+| Normal cooling | Single-phase liquid feed via TXV/EEV; dry suction return | Overfeed liquid via float/orifice; wet suction return to drum |
+| Thermostat satisfied | LLS closes; suction pumps down; compressor stages off | Feed valve closes; drum level rises as overfeed returns |
+| Hot gas defrost | HGDS opens; hot gas reverses through coil; condensate drains to suction | Same; but defrost condensate drains to drum (not suction header directly) |
+| Startup | Crankcase heater warmup; LP reset; sequential staging | Same + verify drum liquid level before starting; low drum = liquid feed starvation immediately |
+| Low load | HGBP or compressor staging; floating suction raises | Same; drum level rises (less liquid being consumed); level controller throttles condensed liquid entry |
+| Power outage recovery | Check crankcase heaters; receiver will be full (liquid migrated during off period) | Check drum level; significant liquid migration may have entered drum and suction piping — open LLS slowly |
+
+---
+
+## Technician Reference: Pressure Checkpoints at Each Stage
+
+Use these pressure reference points to confirm the sequence is working:
+
+| Location | Expected Reading (R-448A) | What High Means | What Low Means |
+|----------|--------------------------|-----------------|----------------|
+| MT suction header | +18 to +28°F SST (≈30–42 psig) | Overcapacity / EPR too high | Undercapacity / EP too low / restriction |
+| LT suction header | −20 to −15°F SST (≈6–8 psig) | LT compressor undercapacity / LT EPR fault | LT compressor oversized / circuit starved |
+| Discharge header | 175–235 psig | Condenser fouled / fans failed / overcharge | Head pressure too low / head pressure valve fault |
+| Liquid header (subcooling) | 10–20°F | Overcharge | Low charge / condenser underperforming |
+| Across filter-drier | < 2 psig drop | Drier plugged | — |
+| Individual circuit EPR outlet | At setpoint SST ± 2°F | EPR stuck open | EPR stuck closed |
+| Compressor suction vs header | Should match within 1–2 psig | Suction valve failure (high) | Suction check valve stuck open (low) |
+`
+
 export const FILTER_DRIER_KNOWLEDGE = `
 # Filter-Drier Selection, Sizing & Burnout Cleanup
 
