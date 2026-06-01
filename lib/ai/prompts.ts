@@ -6897,7 +6897,7 @@ Understanding the sequence of events through a parallel rack — in every operat
 
 | Feature | Receiver Rack | Surge Drum Rack |
 |---------|--------------|-----------------|
-| Liquid storage | Full liquid receiver (flooded with subcooled liquid) | Surge drum at saturation pressure (liquid/vapour mixture) |
+| Liquid storage | Full liquid receiver (flooded with subcooled liquid) | Low-pressure receiver / surge drum at **suction pressure** (low side) |
 | Subcooling | From condenser + receiver; typically 10–15°F | Little or none from drum; subcooler coil often added |
 | Flash gas risk | Moderate (pressure drop in long liquid lines) | Low — liquid is close to saturated but drum absorbs flash |
 | Refrigerant feed | Single-phase liquid via TXV/EEV | Overfeed or gravity from drum; expansion at circuit level |
@@ -7096,67 +7096,88 @@ The most common defrost method on HFC parallel racks in supermarkets. Hot discha
 
 ---
 
-## Rack Style 2 — Surge Drum (Recirculating Liquid Feed) Rack
+## Rack Style 2 — Surge Drum (Liquid Recirculating) Rack
 
-The surge drum rack uses a vessel at intermediate pressure (between condensing and evaporating) that floats at saturation pressure. Liquid is fed to circuits from the drum's liquid leg — typically as overfeed (more liquid than evaporated, with excess returning to drum as wet vapour).
+A **surge drum** — also called a **low-pressure receiver (LPR)**, recirculator, suction accumulator, or knockout drum — is a **low-side vessel** that operates at **suction pressure**. It is NOT an intermediate-pressure vessel. It sits on the same pressure side as the compressor suction header.
 
-### Component Flow Path
+Reference: ASHRAE Refrigeration Handbook Ch. 4 – Liquid Overfeed Systems; IIAR – Applications of the Low Pressure Receiver to Small Commercial Systems.
 
-**Compressors** → Discharge Header → Oil Separator
-→ Condenser → **Surge Drum** (floats at MT suction pressure)
-  - Liquid outlet (bottom) → liquid feed pump or gravity → Liquid Header
-    → (each circuit) → Expansion valve → Evaporator → Wet suction return → **Surge Drum**
-  - Vapour outlet (top) → MT suction header → **Compressors**
+### Two Variants Found in Canadian Supermarkets
+
+**1 — Pump recirculating system:**
+A hermetic refrigerant pump takes liquid from the LPR (at suction pressure) and pushes it to cases at an overfeed ratio of 2:1 to 4:1. Pump must be rated for refrigerant service and suction-side pressure. The pump is the most critical component — cavitation or failure starves all circuits simultaneously.
+
+**2 — Gas-driven / CPR (Controlled Pressure Receiver):**
+No mechanical pump. The CPR vessel is held at a pressure slightly above suction — typically 50–75 psig for HFCs — using a hot gas bypass valve or pressure regulator. Liquid flows to cases by pressure differential alone. Common in smaller Canadian supermarket installations. (Reference: Docal CPR product line; Phillips Gas-Driven Recirculating System GDRS-03E)
+
+### Correct Component Flow Path
+
+**High side (same as any rack):**
+Compressors → Discharge Header → Oil Separator → Condenser → **High-Pressure Liquid Receiver**
+
+**Makeup line — high side feeds low side:**
+High-Pressure Receiver → **Liquid Makeup Valve** (float or electronic level control) → **Surge Drum / LPR** (at suction pressure)
+
+**Recirculating low-side circuit:**
+Surge Drum → Recirculating Pump or CPR pressure → Fixed Orifice or HEV per circuit → Evaporator → **Wet Suction Return** → Surge Drum
+Surge Drum vapour outlet (top) → Suction Header → Compressors
+
+**Critical — makeup liquid does NOT come directly from the condenser.** It enters the drum from the high-pressure receiver through a float-controlled or electronic makeup valve. When high-pressure liquid (~200 psig for HFCs at MT condensing) throttles into the low-pressure drum (~35 psig MT R-448A), it partially flashes. That flash vapour joins the suction header immediately — it is real compressor load. A stuck-open makeup valve will elevate suction pressure and look like an overcapacity or overcharge condition.
 
 ### Key Difference from Receiver Rack
 
-On a receiver rack, liquid is subcooled and single-phase at the expansion device — the TXV only handles sensible heat removal via expansion.
+On a **receiver rack**, liquid arrives at the TXV subcooled and single-phase. The TXV meters flow to maintain 6–12°F superheat. Suction return is dry vapour.
 
-On a surge drum rack, liquid is at saturation temperature (same as the MT suction saturation point). There is **no subcooling** from the drum itself. The circuit is intentionally overfed — 2–3× the actual evaporation rate — so that the suction return is a wet vapour/liquid mix that returns to the drum. The drum's liquid leg continuously receives this return; liquid falls, vapour rises to the suction header.
+On a **surge drum rack**, liquid leaves the drum at saturation temperature (equal to the suction saturation temperature). Each circuit is intentionally overfed — 2:1 to 4:1 — so suction return is a wet vapour/liquid mixture. That wet mixture returns to the drum (not to compressor suction) where gravity separation occurs.
 
 ### Sequence 2A — Normal Refrigeration on a Surge Drum Rack
 
 **Step 1 — Thermostat calls for cooling**
-- Circuit solenoid (or liquid feed valve) opens
-- Saturated liquid from the drum's liquid leg feeds the circuit via gravity (if drum is elevated) or a liquid recirculating pump
+- Circuit feed valve opens
+- Saturated liquid from the LPR flows to the circuit via pump (pump system) or pressure differential (CPR system)
 
 **Step 2 — Expansion at the circuit**
-- Liquid enters the expansion device already at saturation; a small flash occurs at expansion
-- Evaporator floods with wet refrigerant mixture (overfeed ratio 2–3:1)
-- Because liquid is at saturation with no superheat, the entire evaporator surface is active for boiling — very efficient heat transfer
+- Liquid enters a fixed orifice or hand expansion valve — already at saturation; small flash occurs at the orifice
+- Evaporator floods with wet refrigerant mixture (overfeed ratio 2:1–4:1)
+- Full evaporator surface wetted and active → more efficient heat transfer than DX
 
 **Step 3 — Wet suction return**
-- Suction gas leaving the evaporator is wet (contains liquid droplets mixed with vapour)
-- The wet return line carries this mixture back to the surge drum — NOT directly to the compressor suction
-- This is critical: liquid must never reach the compressors; the surge drum separates it out
+- Refrigerant leaving the evaporator is wet (liquid droplets + vapour)
+- Wet return line carries this mixture back to the surge drum — NOT to the compressor suction
+- If the drum level is too high or wet return piping is incorrect, liquid can reach the compressors
 
 **Step 4 — Surge drum separation**
-- Wet vapour/liquid mixture enters the drum at mid-height or from a deflector
-- Liquid falls to the bottom (gravity separation); vapour rises to the top
-- Dry saturated vapour exits the top → MT suction header → compressors
-- Liquid exits the bottom → continues to feed circuits
+- Wet vapour/liquid mixture enters drum at side inlet or deflector
+- Liquid falls to the bottom; dry saturated vapour rises to the top
+- Dry vapour exits top → suction header → compressors
+- Liquid remains in drum → recirculated to circuits
 
-**Step 5 — Compression and condensing**
-- Same as receiver rack: compressors → oil separator → condenser
-- Condensed liquid from condenser enters the surge drum (top or dedicated inlet) — the drum receives liquid from the condenser in addition to the wet returns
+**Step 5 — High side (same as receiver rack)**
+- Compressors → oil separator → condenser → high-pressure receiver
 
-**Step 6 — Drum level control**
-- A float valve or electronic level controller maintains drum liquid level at 30–50% of drum height
-- Too high: liquid carryover to compressor suction
-- Too low: circuits starve; wet suction feed becomes vapour; high superheat
+**Step 6 — Makeup liquid and drum level control**
+- As liquid in the drum is consumed (evaporated in cases), the level drops
+- Makeup valve (float or electronic) opens → high-pressure liquid throttles into drum at suction pressure → level recovers
+- Flash vapour from makeup goes directly to suction header — expected and normal; excessive makeup flow will raise suction pressure
+- Level setpoint: typically 30–50% of drum height
+  - Too high: liquid carryover risk to compressor suction → compressor damage
+  - Too low: circuits starve; pump cavitates; flash gas to suction increases
 
 ---
 
 ### Surge Drum Rack — Key Operating Differences
 
 | Parameter | Receiver Rack | Surge Drum Rack |
-|-----------|--------------|-----------------|
+|---|---|---|
+| Low-side vessel | None — receiver is high side | Surge drum / LPR at **suction pressure** |
 | Evaporator superheat | 6–12°F | Near 0°F (wet feed) |
-| Suction return | Dry vapour | Wet vapour/liquid mix (return to drum) |
-| Expansion device | TXV or EEV (metering) | Float valve, orifice, or hand expansion valve |
-| Subcooling at liquid line | 10–15°F | Minimal (near saturation); often add subcooler coil |
-| Circuit superheat alarm | Yes | Not applicable (superheat not meaningful) |
-| Compressor protection | Standard | Critical — drum level failure = liquid carryover to compressors |
+| Suction return | Dry vapour | Wet vapour/liquid mix → returns to drum |
+| Expansion device per circuit | TXV or EEV | Fixed orifice or hand expansion valve |
+| Liquid feed driver | High-side pressure (subcooled liquid) | Recirculating pump OR CPR gas pressure |
+| Subcooling | 10–15°F from receiver | None — saturated liquid from drum |
+| Superheat alarm | Yes — primary diagnostic | Not applicable (superheat not meaningful on flooded circuit) |
+| Compressor protection | Standard | Critical — drum level failure = liquid flood-back to compressors |
+| Flash gas on makeup | Minimal | Yes — generated when makeup liquid throttles from high to low side |
 
 ---
 
@@ -7208,12 +7229,12 @@ When suction pressure falls below the HGBP setpoint (typically 5–8 psig below 
 
 | Operating Mode | Receiver Rack | Surge Drum Rack |
 |---------------|--------------|-----------------|
-| Normal cooling | Single-phase liquid feed via TXV/EEV; dry suction return | Overfeed liquid via float/orifice; wet suction return to drum |
-| Thermostat satisfied | LLS closes; suction pumps down; compressor stages off | Feed valve closes; drum level rises as overfeed returns |
-| Hot gas defrost | HGDS opens; hot gas reverses through coil; condensate drains to suction | Same; but defrost condensate drains to drum (not suction header directly) |
-| Startup | Crankcase heater warmup; LP reset; sequential staging | Same + verify drum liquid level before starting; low drum = liquid feed starvation immediately |
-| Low load | HGBP or compressor staging; floating suction raises | Same; drum level rises (less liquid being consumed); level controller throttles condensed liquid entry |
-| Power outage recovery | Check crankcase heaters; receiver will be full (liquid migrated during off period) | Check drum level; significant liquid migration may have entered drum and suction piping — open LLS slowly |
+| Normal cooling | Single-phase liquid feed via TXV/EEV; dry suction return | Overfeed liquid via orifice/HEV; wet suction return to drum; pump or CPR pressure drives flow |
+| Thermostat satisfied | LLS closes; suction pumps down; compressor stages off | Feed valve closes; drum level rises as overfeed returns; pump continues circulating to drum |
+| Hot gas defrost | HGDS opens; hot gas reverses through coil; condensate drains to suction | Same sequence; defrost condensate drains back to drum — do not drain to suction header on a recirculating system |
+| Startup | Crankcase heater warmup; LP reset; sequential staging | Same + verify drum liquid level before starting; low level = immediate circuit starvation + pump cavitation |
+| Low load | HGBP or compressor staging; floating suction raises | Same; drum level rises (less being consumed); makeup valve throttles; monitor for high drum level at low load |
+| Power outage recovery | Check crankcase heaters; receiver will be full (liquid migrated during off period) | Check drum level first — liquid migration can flood drum during off period; open feed valves slowly on restart |
 
 ---
 
