@@ -206,7 +206,7 @@ Take superheat readings within 5°F of design conditions.
 ### Compressor Amperage (average draw)
 - Single-phase: 6–7 A/hp
 - Three-phase 208/230V: 2.5–3 A/hp
-- Three-phase 460V: 1.25–1.5 A/hp
+- Three-phase 575V: 1.0–1.2 A/hp (Canadian standard; US equivalent 460V ≈ 1.25–1.5 A/hp)
 
 ### Compressor BTU Output (approximate)
 - A/C: 1 hp ≈ 12,000 BTU/h
@@ -781,7 +781,7 @@ export const COPELAND_KNOWLEDGE = `
 - **Number** = capacity index (e.g. 38 in ZB38 ≈ 3-ton class); **K** multiplier = ×1,000 BTU/hr
 - **Generation:** K3 = older, K4, **K5 = current** (CoreSense Diagnostics standard on K5)
 - **E** = POE oil (required for all HFC/HFO refrigerants); **L** = less oil (shipped dry)
-- **Electrical after dash:** T = 3-phase, W = single-phase; F = 208–230V, D = 460V, M = 200–220V/50Hz
+- **Electrical after dash:** T = 3-phase, W = single-phase; F = 208–230V, Y = 575V (Canadian 3-phase standard), D = 460V (US), M = 200–220V/50Hz
 
 **ZB vs ZF — critical difference:**
 | | ZB (Medium-Temp) | ZF (Low-Temp) |
@@ -838,7 +838,7 @@ export const COPELAND_KNOWLEDGE = `
 - Older R-series: **3R, 4R, 4RA, 6R, 6RA** — same cylinder-count prefix, discontinued but widely in service
 - "Discus" = one-piece valve plate design (NOT individually serviceable reed valves)
 
-**Model number prefix decode:** Number = cylinder count; D = Discus valve; N = no unloaders; R = with unloaders; electrical suffix same convention as scroll (TFD = 3-phase 460V)
+**Model number prefix decode:** Number = cylinder count; D = Discus valve; N = no unloaders; R = with unloaders; electrical suffix same convention as scroll (TYD = 3-phase 575V Canadian standard; TFD = 3-phase 460V US)
 
 **Cylinder unloading — critical field knowledge:**
 - Each unloader holds the suction valve off its seat so the cylinder draws gas but cannot compress it
@@ -1984,7 +1984,8 @@ P = 1.732 × V_line × I_line × PF
 | 120V | ≈ 8.3 A per 1,000 W | — |
 | 240V | ≈ 4.2 A per 1,000 W | ≈ 2.4 A per 1,000 W |
 | 208V 3-ph | — | ≈ 2.8 A per 1,000 W |
-| 480V 3-ph | — | ≈ 1.2 A per 1,000 W |
+| 600V 3-ph | — | ≈ 1.0 A per 1,000 W |
+| 480V 3-ph (US) | — | ≈ 1.2 A per 1,000 W |
 
 **Heater Resistance Check (R = V² / P):**
 | Heater rating | Expected resistance |
@@ -2083,7 +2084,7 @@ Test each terminal (T1, T2, T3) to compressor shell. Warm motor should show HIGH
 
 **Control Voltage vs Line Voltage Sections:**
 Most wiring diagrams contain two distinct voltage sections on the same page:
-- **Line voltage section** (top or left): L1–L2 or L1–L2–L3 at 120/208/240/480V; compressor contactor power contacts, condenser fan contactors, heater contactors, transformer primary
+- **Line voltage section** (top or left): L1–L2 or L1–L2–L3 at 120/208/240V single-phase or 600V 3-phase (480V on US equipment); compressor contactor power contacts, condenser fan contactors, heater contactors, transformer primary
 - **Control voltage section** (lower or right): 24V AC (from transformer secondary) or 12V DC; thermostat, pressure switch contacts, relay coils, solenoid coils, EEV driver power
 - **Control transformer** appears at junction: primary wired to line voltage; secondary produces 24V
 
@@ -4172,7 +4173,7 @@ A VFD converts fixed-frequency AC to variable-frequency output, allowing motors 
 
 ### Power Section Basics
 Three stages: Rectifier (AC→DC) → DC Bus (filter/capacitors) → Inverter (DC→AC via PWM).
-DC bus voltage ≈ 1.35× line voltage. 480V system = ~650V DC bus.
+DC bus voltage ≈ 1.35× line voltage. 600V system = ~810V DC bus (Canadian standard). US 480V system = ~650V DC bus.
 Output is PWM at a carrier frequency (2–16 kHz); motor sees variable V/Hz ratio.
 V/Hz ratio held constant below base speed to maintain motor flux.
 
@@ -4707,7 +4708,7 @@ export const LENNOX_RTU_KNOWLEDGE = `
 - **H** = cooling (H = R-410A; C = R-22 legacy)
 - **120** = 120 = 10-ton nominal (MBH ÷ 12 for tons: 120 MBH ÷ 12 = 10 tons)
 - **H** = high-efficiency variant
-- **4** = 3-phase 460V
+- **4** = 3-phase 575V (Canadian standard); US equivalent is 460V — always verify unit nameplate
 - **B** = design sequence
 
 LCH is identical to LGH except L**C** = electric heat instead of gas. LGF/LCF follow the same convention with an F suffix indicating single-phase power.
@@ -5407,7 +5408,7 @@ export const TRANE_RTU_KNOWLEDGE = `
 - **F** = 2-stage gas heat
 - **3** = 3-phase
 - **E** = high-efficiency variant
-- **L** = 460V/60Hz/3-phase
+- **L** = 575V/60Hz/3-phase (Canadian standard; US equivalent is 460V) — always verify unit nameplate
 - **A** = design sequence
 
 **YSH (large Precedent):** YS = large, H = gas heat. Units ≥12.5 ton have top-accessible filter rack — remove top panel for filter access (distinct from smaller units' front access).
@@ -5862,7 +5863,7 @@ When outdoor air is cooler and/or drier than return air, a rooftop unit can cool
 - Measure output at transformer secondary terminals — should be 24–28VAC under full control load
 - < 22VAC under load: transformer is undersized or failing
 - Common transformer: 40VA or 75VA (verify current draw matches transformer rating)
-- Transformer primary: verify line voltage matches transformer primary tap (208, 230, or 460V)
+- Transformer primary: verify line voltage matches transformer primary tap (208, 230, 575, or 600V; US installations may use 460V tap)
 
 **Contactor contact resistance:**
 - Use low-resistance ohmmeter (DLRO or equivalent) — standard meters are not accurate at these levels
