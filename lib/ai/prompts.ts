@@ -563,9 +563,20 @@ export const SPORLAN_KNOWLEDGE = `
 ### Electronic Expansion Valves (EEVs)
 
 **Sporlan EEV families:**
-- **SEI / SEH series** — Stepper motor EEV; 1,596 total steps (0 = fully closed, 1,596 = fully open); 4-wire bipolar stepper; coil resistance ~23–47 Ω phase-to-phase; used with Sporlan electronic controllers
-- **SER / SERI series** — Refrigeration EEV for medium and low temperature; available in multiple capacities; same 1,596-step motor family
-- **SEHI series** — High-capacity version; same wiring and step count; used on large evaporators
+- **SEI-0.5 through SEI-11** — Stepper motor EEV; **1,596 total steps** (0 = fully closed); 4-wire bipolar stepper; coil resistance ~23–47 Ω phase-to-phase
+- **SEI-30** — Mid-capacity stepper EEV; **3,193 total steps** — sits between the small SEI (1,596) and the large SEI-50/SEH (6,386); same 4-wire bipolar motor family, same wiring; must be configured with 3,193 steps in the controller or the drive coupling will be stripped
+- **SEI-50 / SEH series** — Large-capacity stepper EEV; **6,386 total steps**; same wiring as smaller SEI
+- **SER / SERI series** — Refrigeration EEV for MT and LT; same 1,596-step motor family as small SEI
+- **SEHI series** — High-capacity; 6,386 steps; used on large evaporators
+
+**Sporlan EEV step count quick reference:**
+
+| Model | Max Steps |
+|---|---|
+| SEI-0.5, -1, -2, -3.5, -6, -8.5, -11 | 1,596 |
+| SEI-30 | 3,193 |
+| SEI-50, SEH, SEHI | 6,386 |
+| SER, SERI | 1,596 |
 
 **EEV troubleshooting:**
 - "Valve hunting" (suction pressure swings): superheat setpoint too tight; sensing lag; check bulb/transducer location
@@ -2235,7 +2246,7 @@ Micro Thermo Technologies (MTT) is a Parker Hannifin / Sporlan brand. Their MT-A
 - Lighting relay: 5A at 240 Vac, 2.4A ballast
 - Anti-sweat output: pulsed solid-state relay (SSR), 5V/15mA max
 
-**Supported EEVs:** Sporlan SEI-0.5, -1, -2, -3.5, -6, -8.5, -11, -30; SER-1.5, -6, -11, -20; SER-AA/A/B/C/D; SERI-G/J/K — configure step count in controller to match valve (1,596 steps for all SEI/SER/SERI); wrong step count strips the drive coupling
+**Supported EEVs:** Sporlan SEI-0.5, -1, -2, -3.5, -6, -8.5, -11, -30; SER-1.5, -6, -11, -20; SER-AA/A/B/C/D; SERI-G/J/K — configure step count to match valve: **SEI-0.5 through -11 = 1,596 steps; SEI-30 = 3,193 steps; SER/SERI = 1,596 steps**; wrong step count strips the drive coupling
 
 **"CDS Invalid" alarm on Micro Thermo Case Controller:**
 The Case Controller can also drive Sporlan CDS/CDST EPR valves. "Invalid" alarm means controller cannot confirm valve position. Steps:
