@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('documents')
     .select('id, title, category, status, page_count, file_size, file_name, equipment_id, source_type, created_at, equipment:equipment_id(name)')
-    .eq('status', 'READY')
+    .order('status')
     .order('category')
     .order('title')
 

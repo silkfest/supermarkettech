@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Home, ArrowLeft, BookOpen, Search, X, ExternalLink,
-  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw,
+  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw, Sparkles,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -59,6 +59,8 @@ export default function LibraryPage() {
   const [reindexing,   setReindexing]   = useState(false)
   const [reindexDone,  setReindexDone]  = useState(false)
   const [reindexError, setReindexError] = useState<string | null>(null)
+  const [processingDoc, setProcessingDoc] = useState<Record<string, 'loading' | 'done' | 'error'>>({})
+
 
   useEffect(() => {
     async function checkAuth() {
@@ -151,6 +153,19 @@ export default function LibraryPage() {
       setDocs(prev => prev.filter(d => d.id !== docId))
     } catch { /* silent */ }
     setDeletingId(null)
+  }
+
+  async function processDoc(docId: string) {
+    setProcessingDoc(p => ({ ...p, [docId]: 'loading' }))
+    try {
+      const res = await fetch(`/api/documents/${docId}/process`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed')
+      setProcessingDoc(p => ({ ...p, [docId]: 'done' }))
+      setTimeout(() => setProcessingDoc(p => { const n = { ...p }; delete n[docId]; return n }), 4000)
+    } catch {
+      setProcessingDoc(p => ({ ...p, [docId]: 'error' }))
+      setTimeout(() => setProcessingDoc(p => { const n = { ...p }; delete n[docId]; return n }), 4000)
+    }
   }
 
   return (
@@ -376,9 +391,35 @@ export default function LibraryPage() {
                   )}
                 </div>
 
-                {/* Admin actions: rename + delete */}
+                {/* Status badge for non-READY docs */}
+                {doc.status !== 'READY' && (
+                  <span className={`flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                    doc.status === 'PROCESSING'
+                      ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                      : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30'
+                  }`}>
+                    {doc.status}
+                  </span>
+                )}
+
+                {/* Admin actions: process + rename + delete */}
                 {isAdmin && (
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => processDoc(doc.id)}
+                      disabled={!!processingDoc[doc.id]}
+                      className="p-1.5 text-slate-300 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Generate knowledge topics from this manual"
+                    >
+                      {processingDoc[doc.id] === 'loading'
+                        ? <Loader2 size={14} className="animate-spin text-amber-500"/>
+                        : processingDoc[doc.id] === 'done'
+                          ? <Check size={14} className="text-emerald-500"/>
+                          : processingDoc[doc.id] === 'error'
+                            ? <AlertTriangle size={14} className="text-red-500"/>
+                            : <Sparkles size={14}/>
+                      }
+                    </button>
                     <button
                       onClick={() => { setEditingId(doc.id); setEditTitle(doc.title) }}
                       className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

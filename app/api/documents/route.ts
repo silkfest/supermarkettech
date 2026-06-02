@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { processDocumentBuffer, processDocumentByPath } from '@/lib/ai/ingest'
 
-// Allow up to 60 s so the async ingest (pdf-parse + Jina embed) has time to finish
-export const maxDuration = 60
+const EDGE_FN_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-document`
+
+async function triggerProcessing(documentId: string) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  await fetch(EDGE_FN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+    body: JSON.stringify({ documentId }),
+  }).catch(err => console.error('[triggerProcessing] fetch error', err))
+}
 
 export async function GET(req: NextRequest) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
@@ -151,9 +158,7 @@ export async function POST(req: NextRequest) {
 
     if (docError || !doc) return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
 
-    processDocumentByPath(doc.id, storagePath).catch(err =>
-      console.error(`[Ingest failed] doc=${doc.id}`, err)
-    )
+    triggerProcessing(doc.id)
 
     return NextResponse.json({ id: doc.id, title: doc.title, status: 'PROCESSING' }, { status: 201 })
   }
@@ -198,14 +203,7 @@ export async function POST(req: NextRequest) {
 
   if (docError || !doc) return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
 
-  // Kick off async ingestion (don't await — return immediately)
-  processDocument(doc.id, arrayBuf).catch(err =>
-    console.error(`[Ingest failed] doc=${doc.id}`, err)
-  )
+  triggerProcessing(doc.id)
 
   return NextResponse.json({ id: doc.id, title: doc.title, status: 'PROCESSING' }, { status: 201 })
-}
-
-async function processDocument(documentId: string, arrayBuf: ArrayBuffer) {
-  await processDocumentBuffer(documentId, arrayBuf)
 }
