@@ -76,6 +76,26 @@ All pages support both light and dark mode. Follow these conventions for semanti
 
 ---
 
+## Mobile Safe-Area Rule (iPhone notch / Dynamic Island)
+
+Every page with a sticky or fixed header **MUST** include the `safe-top` CSS class on that header element. This prevents the header from being obscured by the iPhone status bar, notch, or Dynamic Island.
+
+```css
+/* defined in app/globals.css */
+.safe-top { padding-top: env(safe-area-inset-top); }
+```
+
+The root layout (`app/layout.tsx`) sets `viewportFit: 'cover'` so safe-area insets are active.
+
+**Pattern to follow:**
+```tsx
+<div className="safe-top bg-white border-b border-slate-200 ... sticky top-0 z-10">
+```
+
+**Rule:** Any new page or layout with a sticky/fixed top header must add `safe-top` to that element before committing. Pages without a sticky header (full-scroll pages, modals only) don't need it.
+
+---
+
 ## New table rule
 Any new table created via `apply_migration` MUST receive explicit grants:
 ```sql

@@ -849,7 +849,7 @@ export default function ComponentRegistryPage() {
   return (
     <div className="min-h-[100dvh] bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" title="Dashboard">
           <Home size={20}/>
         </button>
