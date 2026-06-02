@@ -6933,8 +6933,6 @@ This is the rack found in the majority of North American supermarkets. Refrigera
   → EPR Valve (MT circuits only) → **Suction Header**
 → **Compressors** (cycle repeats)
 
-[diagram:rack-style-1]
-
 ---
 
 ### Sequence 1A — Normal Refrigeration (Cooling)
@@ -7148,8 +7146,6 @@ Receiver → Hand valve → Strainer → Solenoid valve → Sightglass → Capil
 - A small, controlled bleed of liquid from the receiver evaporates before entering the suction manifold
 - Ensures oil return from the receiver and prevents receiver from overfilling
 - The heat exchanger ensures liquid is fully evaporated before entering suction — liquid floodback through this circuit would cause compressor failure
-
-[diagram:rack-style-2]
 
 ### Sequence 2A — Normal Refrigeration on an Enviroguard Rack (Cool Weather)
 
