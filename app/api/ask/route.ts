@@ -6,7 +6,8 @@ export async function GET() {
 
   const { data: questions, error } = await supabase
     .from('team_questions')
-    .select('id, title, body, tags, created_at, users!user_id(name, role)')
+    .select('id, title, body, tags, created_at, is_pinned, users!user_id(name, role)')
+    .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -28,6 +29,7 @@ export async function GET() {
     body: q.body,
     tags: q.tags ?? [],
     created_at: q.created_at,
+    is_pinned: q.is_pinned ?? false,
     author: q.users as unknown as { name: string; role: string } | null,
     answer_count: countMap[q.id] ?? 0,
   }))

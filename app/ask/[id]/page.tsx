@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Tag, Clock, Send, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Tag, Clock, Send, CheckCircle2, Pin, PinOff, Trash2 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -29,7 +30,7 @@ const ROLE_BADGE: Record<string, string> = {
 interface Author { name: string; role: string }
 interface QuestionDetail {
   id: string; title: string; body: string; tags: string[]
-  created_at: string; author: Author | null
+  created_at: string; is_pinned: boolean; author: Author | null
 }
 interface Answer {
   id: string; body: string; is_accepted: boolean
@@ -47,6 +48,23 @@ export default function AskDetailPage() {
   const [answerBody, setAnswerBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [pinning, setPinning] = useState(false)
+  const [deletingQuestion, setDeletingQuestion] = useState(false)
+  const [deletingAnswer, setDeletingAnswer] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function init() {
+      const sb = getSupabaseBrowser()
+      const { data: { user } } = await sb.auth.getUser()
+      if (user) {
+        const { data: profile } = await sb.from('users').select('role').eq('id', user.id).single()
+        const role = (profile as { role?: string } | null)?.role ?? ''
+        setIsAdmin(role === 'admin' || role === 'manager')
+      }
+    }
+    init()
+  }, [])
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/ask/${id}`)
@@ -79,6 +97,43 @@ export default function AskDetailPage() {
       }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function togglePin() {
+    if (!question) return
+    setPinning(true)
+    try {
+      await fetch(`/api/ask/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_pinned: !question.is_pinned }),
+      })
+      setQuestion(q => q ? { ...q, is_pinned: !q.is_pinned } : q)
+    } finally {
+      setPinning(false)
+    }
+  }
+
+  async function handleDeleteQuestion() {
+    if (!confirm('Delete this question and all its answers?')) return
+    setDeletingQuestion(true)
+    try {
+      await fetch(`/api/ask/${id}`, { method: 'DELETE' })
+      router.push('/ask')
+    } finally {
+      setDeletingQuestion(false)
+    }
+  }
+
+  async function handleDeleteAnswer(answerId: string) {
+    if (!confirm('Delete this answer?')) return
+    setDeletingAnswer(answerId)
+    try {
+      await fetch(`/api/ask/${id}/answers/${answerId}`, { method: 'DELETE' })
+      setAnswers(prev => prev.filter(a => a.id !== answerId))
+    } finally {
+      setDeletingAnswer(null)
     }
   }
 
@@ -151,10 +206,43 @@ export default function AskDetailPage() {
           ) : question && (
             <>
               {/* Question card */}
-              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 md:p-6 mb-5">
-                <h1 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug mb-3">
-                  {question.title}
-                </h1>
+              <div className={`bg-white dark:bg-slate-900 rounded-lg border p-5 md:p-6 mb-5 ${
+                question.is_pinned
+                  ? 'border-amber-200 dark:border-amber-500/40'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    {question.is_pinned && (
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 mb-2">
+                        <Pin size={9} /> Pinned
+                      </div>
+                    )}
+                    <h1 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                      {question.title}
+                    </h1>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={togglePin}
+                        disabled={pinning}
+                        className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors disabled:opacity-50"
+                        title={question.is_pinned ? 'Unpin question' : 'Pin question'}
+                      >
+                        {question.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                      </button>
+                      <button
+                        onClick={handleDeleteQuestion}
+                        disabled={deletingQuestion}
+                        className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete question"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                   {question.body}
                 </p>
@@ -187,7 +275,7 @@ export default function AskDetailPage() {
                     {answers.map(a => (
                       <div
                         key={a.id}
-                        className={`bg-white dark:bg-slate-900 rounded-lg border p-4 md:p-5 ${
+                        className={`relative group/answer bg-white dark:bg-slate-900 rounded-lg border p-4 md:p-5 ${
                           a.is_accepted
                             ? 'border-emerald-300 dark:border-emerald-600'
                             : 'border-slate-200 dark:border-slate-700'
@@ -212,6 +300,16 @@ export default function AskDetailPage() {
                             {timeAgo(a.created_at)}
                           </span>
                         </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteAnswer(a.id)}
+                            disabled={deletingAnswer === a.id}
+                            className="absolute top-3 right-3 p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover/answer:opacity-100 disabled:opacity-50"
+                            title="Delete answer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
