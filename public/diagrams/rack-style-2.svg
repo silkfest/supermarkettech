@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:gn="http://www.goodnotes.com/gn-svg" width="980" height="720" viewBox="0 0 980 720">
+  <defs>
+    <marker id="s2-b" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0,8 4,0 8" fill="#2563eb"/>
+    </marker>
+    <marker id="s2-g" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0,8 4,0 8" fill="#15803d"/>
+    </marker>
+    <marker id="s2-r" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0,8 4,0 8" fill="#dc2626"/>
+    </marker>
+    <marker id="s2-p" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0,8 4,0 8" fill="#7c3aed"/>
+    </marker>
+    <marker id="s2-o" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0,8 4,0 8" fill="#ea580c"/>
+    </marker>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="490" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#1e293b">RACK STYLE 2 — Tyler Enviroguard (SPR Valve + Side Receiver + Bleed Circuit)</text>
+
+  <!-- CONDENSER (top) -->
+  <rect x="140" y="40" width="500" height="80" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+  <text x="230" y="38" text-anchor="middle" font-family="Arial" font-size="13" fill="#94a3b8">&#8595;</text>
+  <text x="320" y="38" text-anchor="middle" font-family="Arial" font-size="13" fill="#94a3b8">&#8595;</text>
+  <text x="390" y="38" text-anchor="middle" font-family="Arial" font-size="13" fill="#94a3b8">&#8595;</text>
+  <text x="500" y="38" text-anchor="middle" font-family="Arial" font-size="13" fill="#94a3b8">&#8595;</text>
+  <text x="590" y="38" text-anchor="middle" font-family="Arial" font-size="13" fill="#94a3b8">&#8595;</text>
+  <path d="M 160,53 H 620 V 65 H 160 V 77 H 620 V 89 H 160 V 101 H 620" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <text x="390" y="133" text-anchor="middle" font-family="Arial" font-size="10" font-weight="600" fill="#475569">CONDENSER — Pressure-Based Fan Control (head pressure maintained)</text>
+
+  <!-- Pipe: condenser → SPR -->
+  <line x1="390" y1="120" x2="390" y2="152" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="400" y="140" font-family="Arial" font-size="8" fill="#2563eb">liquid dropleg</text>
+
+  <!-- SPR VALVE -->
+  <rect x="220" y="152" width="340" height="68" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="390" y="178" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#15803d">SPR VALVE</text>
+  <text x="390" y="196" text-anchor="middle" font-family="Arial" font-size="10" fill="#166534">System Pressure Regulator — maintains head pressure</text>
+  <text x="390" y="212" text-anchor="middle" font-family="Arial" font-size="9" fill="#166534">Pilot &#8592; ambient air sensor · Opens when head pressure drops</text>
+
+  <!-- OVERFLOW: SPR → Receiver (purple dashed) -->
+  <line x1="560" y1="186" x2="680" y2="186" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#s2-p)"/>
+  <text x="565" y="176" font-family="Arial" font-size="8" fill="#7c3aed">SPR opens &#8594;</text>
+  <text x="565" y="200" font-family="Arial" font-size="8" fill="#7c3aed">overflow (winter)</text>
+
+  <!-- RECEIVER (side, purple, NOT inline) -->
+  <ellipse cx="760" cy="186" rx="75" ry="12" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="685" y="186" width="150" height="110" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <ellipse cx="760" cy="296" rx="75" ry="12" fill="#c4b5fd" stroke="#7c3aed" stroke-width="2"/>
+  <text x="760" y="224" text-anchor="middle" font-family="Arial" font-size="13" font-weight="700" fill="#5b21b6">RECEIVER</text>
+  <text x="760" y="242" text-anchor="middle" font-family="Arial" font-size="9" fill="#6d28d9">NOT in main flow path</text>
+  <text x="760" y="260" text-anchor="middle" font-family="Arial" font-size="9" fill="#6d28d9">Seasonal liquid buffer</text>
+  <text x="760" y="278" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#dc2626">Full = INVESTIGATE &#x26A0;</text>
+  <text x="760" y="294" text-anchor="middle" font-family="Arial" font-size="8" fill="#6d28d9">SPR should regulate level</text>
+
+  <!-- BLEED CIRCUIT: Receiver bottom → Suction Header (orange dashed) -->
+  <line x1="760" y1="308" x2="760" y2="430" stroke="#ea580c" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="772" y="360" font-family="Arial" font-size="8" fill="#ea580c" font-style="italic">bleed circuit</text>
+  <text x="772" y="374" font-family="Arial" font-size="8" fill="#ea580c" font-style="italic">cap. tube +</text>
+  <text x="772" y="388" font-family="Arial" font-size="8" fill="#ea580c" font-style="italic">heat exchanger</text>
+  <line x1="760" y1="430" x2="640" y2="430" stroke="#ea580c" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#s2-o)"/>
+  <text x="700" y="422" text-anchor="middle" font-family="Arial" font-size="8" fill="#ea580c" font-style="italic">&#8594; suction header</text>
+
+  <!-- MAIN FLOW: SPR closed → liquid manifold -->
+  <line x1="390" y1="220" x2="390" y2="248" stroke="#2563eb" stroke-width="2.5" marker-end="url(#s2-b)"/>
+  <text x="400" y="238" font-family="Arial" font-size="8" fill="#2563eb">main flow (SPR closed)</text>
+
+  <!-- LIQUID MANIFOLD -->
+  <rect x="100" y="248" width="540" height="28" rx="4" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+  <text x="370" y="267" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#1d4ed8">LIQUID MANIFOLD (with LLS &amp; TXV per circuit)</text>
+
+  <!-- Branch pipes to evaporators -->
+  <line x1="200" y1="276" x2="200" y2="298" stroke="#2563eb" stroke-width="2" marker-end="url(#s2-b)"/>
+  <line x1="370" y1="276" x2="370" y2="298" stroke="#2563eb" stroke-width="2" marker-end="url(#s2-b)"/>
+  <line x1="540" y1="276" x2="540" y2="298" stroke="#2563eb" stroke-width="2" marker-end="url(#s2-b)"/>
+  <text x="200" y="291" text-anchor="middle" font-family="Arial" font-size="8" fill="#475569">LLS&#8594;TXV</text>
+  <text x="370" y="291" text-anchor="middle" font-family="Arial" font-size="8" fill="#475569">LLS&#8594;TXV</text>
+  <text x="540" y="291" text-anchor="middle" font-family="Arial" font-size="8" fill="#475569">LLS&#8594;TXV</text>
+
+  <!-- EVAPORATOR 1 -->
+  <rect x="118" y="298" width="163" height="64" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <path d="M 132,311 H 267 V 326 H 132 V 341 H 267" stroke="#15803d" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <text x="200" y="357" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#15803d">EVAPORATOR 1</text>
+
+  <!-- EVAPORATOR 2 -->
+  <rect x="288" y="298" width="163" height="64" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <path d="M 302,311 H 437 V 326 H 302 V 341 H 437" stroke="#15803d" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <text x="370" y="357" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#15803d">EVAPORATOR 2</text>
+
+  <!-- EVAPORATOR 3 -->
+  <rect x="458" y="298" width="163" height="64" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <path d="M 472,311 H 607 V 326 H 472 V 341 H 607" stroke="#15803d" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <text x="540" y="357" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#15803d">EVAPORATOR 3</text>
+
+  <!-- Suction pipes to suction header -->
+  <line x1="200" y1="362" x2="200" y2="381" stroke="#15803d" stroke-width="2" marker-end="url(#s2-g)"/>
+  <line x1="370" y1="362" x2="370" y2="381" stroke="#15803d" stroke-width="2" marker-end="url(#s2-g)"/>
+  <line x1="540" y1="362" x2="540" y2="381" stroke="#15803d" stroke-width="2" marker-end="url(#s2-g)"/>
+
+  <!-- SUCTION HEADER -->
+  <rect x="100" y="381" width="540" height="28" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <text x="370" y="400" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#15803d">SUCTION HEADER</text>
+  <text x="648" y="400" font-family="Arial" font-size="8" fill="#ea580c" font-style="italic">&#8592; bleed in</text>
+
+  <!-- Suction header → compressors -->
+  <line x1="130" y1="409" x2="130" y2="435" stroke="#15803d" stroke-width="2.5"/>
+  <line x1="130" y1="435" x2="140" y2="435" stroke="#15803d" stroke-width="2.5" marker-end="url(#s2-g)"/>
+
+  <!-- COMPRESSORS -->
+  <rect x="100" y="435" width="210" height="80" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="205" y="463" text-anchor="middle" font-family="Arial" font-size="13" font-weight="700" fill="#92400e">COMPRESSORS</text>
+  <circle cx="145" cy="485" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="145" y="490" text-anchor="middle" font-family="Arial" font-size="9" fill="#92400e">C1</text>
+  <circle cx="205" cy="485" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="205" y="490" text-anchor="middle" font-family="Arial" font-size="9" fill="#92400e">C2</text>
+  <circle cx="265" cy="485" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="265" y="490" text-anchor="middle" font-family="Arial" font-size="9" fill="#92400e">C3</text>
+  <text x="205" y="510" text-anchor="middle" font-family="Arial" font-size="8" fill="#78350f">Hot gas discharge &#8594;</text>
+
+  <!-- Discharge: compressors → oil separator -->
+  <line x1="310" y1="473" x2="352" y2="473" stroke="#dc2626" stroke-width="2.5" marker-end="url(#s2-r)"/>
+  <text x="330" y="463" text-anchor="middle" font-family="Arial" font-size="8" fill="#dc2626">hot gas</text>
+
+  <!-- OIL SEPARATOR -->
+  <ellipse cx="382" cy="448" rx="28" ry="9" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/>
+  <rect x="354" y="448" width="56" height="68" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+  <ellipse cx="382" cy="516" rx="28" ry="9" fill="#fca5a5" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="382" y="478" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#991b1b">OIL</text>
+  <text x="382" y="494" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#991b1b">SEP.</text>
+
+  <!-- Oil sep → condenser (discharge header vertical) -->
+  <line x1="382" y1="439" x2="382" y2="150" stroke="#dc2626" stroke-width="2.5"/>
+  <line x1="382" y1="150" x2="420" y2="150" stroke="#dc2626" stroke-width="2.5"/>
+  <line x1="420" y1="150" x2="420" y2="120" stroke="#dc2626" stroke-width="2.5" marker-end="url(#s2-r)"/>
+  <text x="394" y="340" font-family="Arial" font-size="8" fill="#dc2626" transform="rotate(-90,394,340)">hot gas discharge header</text>
+
+  <!-- Oil return dashed -->
+  <line x1="382" y1="525" x2="382" y2="548" stroke="#92400e" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="382" y1="548" x2="205" y2="548" stroke="#92400e" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="205" y1="548" x2="205" y2="515" stroke="#92400e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#s2-g)"/>
+  <text x="293" y="562" text-anchor="middle" font-family="Arial" font-size="8" fill="#92400e" font-style="italic">oil return to crankcase</text>
+
+  <!-- LEGEND -->
+  <rect x="480" y="440" width="460" height="140" rx="4" fill="#fafafa" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="710" y="458" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#374151">LEGEND</text>
+  <line x1="495" y1="472" x2="525" y2="472" stroke="#2563eb" stroke-width="2.5"/>
+  <polygon points="523,468 531,472 523,476" fill="#2563eb"/>
+  <text x="535" y="476" font-family="Arial" font-size="9" fill="#374151">Liquid / main flow (high-side)</text>
+  <line x1="495" y1="490" x2="525" y2="490" stroke="#15803d" stroke-width="2.5"/>
+  <polygon points="523,486 531,490 523,494" fill="#15803d"/>
+  <text x="535" y="494" font-family="Arial" font-size="9" fill="#374151">Suction line (low-side)</text>
+  <line x1="495" y1="508" x2="525" y2="508" stroke="#dc2626" stroke-width="2.5"/>
+  <polygon points="523,504 531,508 523,512" fill="#dc2626"/>
+  <text x="535" y="512" font-family="Arial" font-size="9" fill="#374151">Hot gas discharge</text>
+  <line x1="495" y1="526" x2="525" y2="526" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,3"/>
+  <polygon points="523,522 531,526 523,530" fill="#7c3aed"/>
+  <text x="535" y="530" font-family="Arial" font-size="9" fill="#374151">SPR overflow &#8594; receiver (winter)</text>
+  <line x1="495" y1="544" x2="525" y2="544" stroke="#ea580c" stroke-width="2" stroke-dasharray="5,3"/>
+  <polygon points="523,540 531,544 523,548" fill="#ea580c"/>
+  <text x="535" y="548" font-family="Arial" font-size="9" fill="#374151">Bleed circuit (receiver &#8594; suction header)</text>
+  <line x1="495" y1="562" x2="525" y2="562" stroke="#92400e" stroke-width="2" stroke-dasharray="4,3"/>
+  <text x="535" y="566" font-family="Arial" font-size="9" fill="#374151">Oil return (crankcase)</text>
+  <text x="490" y="576" font-family="Arial" font-size="8" fill="#64748b" font-style="italic">Receiver full = INVESTIGATE (SPR should prevent overfill)</text>
+</svg>
