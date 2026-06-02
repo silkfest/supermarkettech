@@ -1,11 +1,12 @@
 'use client'
 import { useRouter, usePathname } from 'next/navigation'
-import { Layers, FlaskConical, GraduationCap } from 'lucide-react'
+import { Layers, FlaskConical, GraduationCap, HelpCircle } from 'lucide-react'
 
 const TABS = [
-  { label: 'Knowledge Base', href: '/knowledge',           icon: Layers,       match: /^\/knowledge/ },
-  { label: 'Rack Simulator', href: '/simulation',          icon: FlaskConical, match: /^\/simulation/ },
-  { label: 'Training',       href: '/apprentice/training', icon: GraduationCap,match: /^\/apprentice\/training/ },
+  { label: 'Knowledge Base', href: '/knowledge',           icon: Layers,        match: /^\/knowledge/ },
+  { label: 'Rack Simulator', href: '/simulation',          icon: FlaskConical,  match: /^\/simulation/ },
+  { label: 'Training',       href: '/apprentice/training', icon: GraduationCap, match: /^\/apprentice\/training/ },
+  { label: 'Ask the Team',   href: '/ask',                 icon: HelpCircle,    match: /^\/ask/ },
 ]
 
 export default function LearningTabBar({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
