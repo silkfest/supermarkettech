@@ -107,7 +107,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Zap',
     colorClass: 'violet',
     content: COPELAND_KNOWLEDGE,
-    manualKeywords: ['copeland', 'coresense'],
+    manualKeywords: ['copeland', 'coresense', 'emerson'],
     tags: ['Compressors', 'Scroll', 'Discus'],
     category: 'manufacturer',
   },
