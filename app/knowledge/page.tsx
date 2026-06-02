@@ -8,7 +8,7 @@ import {
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
-  BookOpen, Search, X,
+  BookOpen, Search, X, Sparkles,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
@@ -63,6 +63,53 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ManualCount { slug: string; count: number }
 type SearchMatch = 'topic' | 'manual' | 'both' | 'content'
+
+interface DynamicTopic {
+  id: string
+  slug: string
+  title: string
+  short_title: string | null
+  description: string
+  tags: string[]
+  icon_name: string | null
+  color_class: string | null
+  document_id: string | null
+  created_at: string
+}
+
+function DynamicTopicCard({ topic, onClick }: { topic: DynamicTopic; onClick: () => void }) {
+  const colors = COLOR_MAP[topic.color_class ?? ''] ?? COLOR_MAP.amber
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-600 transition-all group"
+    >
+      <div className="flex items-start gap-3 mb-2">
+        <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${colors.bg} ${colors.text}`}>
+          {ICON_MAP[topic.icon_name ?? ''] ?? <BookOpen size={22} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+            {topic.title}
+          </p>
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 mt-0.5">
+            <Sparkles size={9} /> From Manual
+          </span>
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3 line-clamp-3">
+        {topic.description}
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {(topic.tags ?? []).map(tag => (
+          <span key={tag} className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded border ${colors.tag}`}>
+            {tag}
+          </span>
+        ))}
+      </div>
+    </button>
+  )
+}
 
 // ── Topic card ────────────────────────────────────────────────────────────────
 function TopicCard({
@@ -133,6 +180,16 @@ export default function KnowledgePage() {
   const [query, setQuery] = useState('')
   const [docMatchSlugs, setDocMatchSlugs] = useState<string[]>([])
   const [contentMatches, setContentMatches] = useState<ContentMatch[]>([])
+  const [dynamicTopics, setDynamicTopics] = useState<DynamicTopic[]>([])
+  const [dynamicLoading, setDynamicLoading] = useState(true)
+
+  // Fetch dynamic (DB-generated) topics
+  useEffect(() => {
+    fetch('/api/knowledge/dynamic')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: DynamicTopic[]) => { setDynamicTopics(Array.isArray(data) ? data : []); setDynamicLoading(false) })
+      .catch(() => setDynamicLoading(false))
+  }, [])
 
   // Fetch manual counts for all topics
   useEffect(() => {
@@ -203,6 +260,14 @@ export default function KnowledgePage() {
       })()
     : null
 
+  const filteredDynamic: DynamicTopic[] | null = q
+    ? dynamicTopics.filter(t =>
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        (t.tags ?? []).some(tag => tag.toLowerCase().includes(q))
+      )
+    : null
+
   const manufacturerTopics = TOPICS.filter(t => t.category === 'manufacturer')
   const hvacTopics = TOPICS.filter(t => t.category === 'hvac')
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
@@ -253,12 +318,12 @@ export default function KnowledgePage() {
         {filteredTopics !== null ? (
           /* Search results */
           <>
-            {/* Topic cards */}
+            {/* Static topic cards */}
             <section>
               <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                {filteredTopics.length} topic{filteredTopics.length !== 1 ? 's' : ''} for &ldquo;{query.trim()}&rdquo;
+                {filteredTopics.length + (filteredDynamic?.length ?? 0)} topic{filteredTopics.length + (filteredDynamic?.length ?? 0) !== 1 ? 's' : ''} for &ldquo;{query.trim()}&rdquo;
               </p>
-              {filteredTopics.length === 0 && contentMatches.length === 0 ? (
+              {filteredTopics.length === 0 && contentMatches.length === 0 && (filteredDynamic?.length ?? 0) === 0 ? (
                 <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
                   <p className="text-sm text-slate-500 dark:text-slate-400">No results match that search.</p>
                   <button onClick={() => setQuery('')} className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
@@ -279,6 +344,20 @@ export default function KnowledgePage() {
                 </div>
               ) : null}
             </section>
+
+            {/* Dynamic topic results */}
+            {(filteredDynamic?.length ?? 0) > 0 && (
+              <section>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                  From your manuals
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredDynamic!.map(topic => (
+                    <DynamicTopicCard key={topic.slug} topic={topic} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Content excerpts */}
             {contentMatches.length > 0 && (
@@ -354,6 +433,40 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+
+            {/* From Your Manuals */}
+            {(dynamicLoading || dynamicTopics.length > 0) && (
+              <section>
+                <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Sparkles size={11} /> From Your Manuals
+                </h2>
+                {dynamicLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 animate-pulse">
+                        <div className="flex items-start gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
+                            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-1/2" />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded" />
+                          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-4/5" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {dynamicTopics.map(topic => (
+                      <DynamicTopicCard key={topic.slug} topic={topic} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </div>
