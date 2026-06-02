@@ -27,14 +27,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       body: question.body,
       tags: question.tags ?? [],
       created_at: question.created_at,
-      author: question.users as { name: string; role: string } | null,
+      author: question.users as unknown as { name: string; role: string } | null,
     },
     answers: (answers ?? []).map(a => ({
       id: a.id,
       body: a.body,
       is_accepted: a.is_accepted,
       created_at: a.created_at,
-      author: a.users as { name: string; role: string } | null,
+      author: a.users as unknown as { name: string; role: string } | null,
     })),
   })
 }

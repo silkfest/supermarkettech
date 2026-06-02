@@ -28,7 +28,7 @@ export async function GET() {
     body: q.body,
     tags: q.tags ?? [],
     created_at: q.created_at,
-    author: q.users as { name: string; role: string } | null,
+    author: q.users as unknown as { name: string; role: string } | null,
     answer_count: countMap[q.id] ?? 0,
   }))
 
