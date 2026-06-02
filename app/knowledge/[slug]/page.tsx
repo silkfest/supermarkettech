@@ -6,7 +6,6 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
   FileText,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
   BookOpen,
@@ -18,6 +17,7 @@ import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import TopicFigures from '@/components/knowledge/TopicFigures'
 
 interface RelatedManual {
   id: string
@@ -25,6 +25,14 @@ interface RelatedManual {
   created_at: string
   source_type: string
   source_url: string | null
+}
+
+interface TopicFigure {
+  id: string
+  page_number: number
+  caption: string | null
+  description: string | null
+  url: string
 }
 
 export default function KnowledgeTopicPage() {
@@ -35,6 +43,7 @@ export default function KnowledgeTopicPage() {
 
   const [manuals, setManuals] = useState<RelatedManual[]>([])
   const [manualsLoading, setManualsLoading] = useState(true)
+  const [figures, setFigures] = useState<TopicFigure[]>([])
   const [tocOpen, setTocOpen] = useState(false)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
 
@@ -47,6 +56,10 @@ export default function KnowledgeTopicPage() {
         setManualsLoading(false)
       })
       .catch(() => setManualsLoading(false))
+    fetch(`/api/knowledge/${slug}/figures`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: TopicFigure[]) => setFigures(Array.isArray(data) ? data : []))
+      .catch(() => {})
   }, [slug, topic])
 
   if (!topic) {
@@ -200,6 +213,9 @@ export default function KnowledgeTopicPage() {
           <div className="bg-white rounded-lg border border-slate-200 p-5 md:p-8">
             <MarkdownContent content={topic.content} />
           </div>
+
+          {/* Figures from manuals */}
+          <TopicFigures figures={figures} />
 
           {/* Related manuals — mobile (shown below content) */}
           {manuals.length > 0 && (
