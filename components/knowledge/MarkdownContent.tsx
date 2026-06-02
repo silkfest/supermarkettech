@@ -4,9 +4,11 @@ import React from 'react'
 import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
 import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
 
-const DIAGRAM_REGISTRY: Record<string, React.ReactNode> = {
-  'rack-style-1': <RackStyle1Diagram />,
-  'rack-style-2': <RackStyle2Diagram />,
+export type OpenPdfFn = (url: string, title: string) => void
+
+const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode> = {
+  'rack-style-1': (openPdf) => <RackStyle1Diagram openPdf={openPdf} />,
+  'rack-style-2': (openPdf) => <RackStyle2Diagram openPdf={openPdf} />,
 }
 
 // ── Inline formatter ──────────────────────────────────────────────────────────
@@ -106,7 +108,7 @@ function renderTable(rows: string[], key: number): React.ReactNode {
 }
 
 // ── Main markdown renderer ────────────────────────────────────────────────────
-export function renderMarkdown(content: string): React.ReactNode[] {
+export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.ReactNode[] {
   const lines = content.split('\n')
   const nodes: React.ReactNode[] = []
   let i = 0
@@ -166,8 +168,8 @@ export function renderMarkdown(content: string): React.ReactNode[] {
     const diagramMatch = trimmed.match(/^\[diagram:([a-z0-9-]+)\]$/)
     if (diagramMatch) {
       flushList()
-      const diagram = DIAGRAM_REGISTRY[diagramMatch[1]]
-      if (diagram) nodes.push(<React.Fragment key={nodes.length}>{diagram}</React.Fragment>)
+      const factory = DIAGRAM_REGISTRY[diagramMatch[1]]
+      if (factory) nodes.push(<React.Fragment key={nodes.length}>{factory(onOpenPdf)}</React.Fragment>)
       i++
       continue
     }
@@ -290,7 +292,7 @@ export function extractSections(content: string): { id: string; title: string }[
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function MarkdownContent({ content }: { content: string }) {
-  const nodes = renderMarkdown(content)
+export default function MarkdownContent({ content, onOpenPdf }: { content: string; onOpenPdf?: OpenPdfFn }) {
+  const nodes = renderMarkdown(content, onOpenPdf)
   return <div className="prose-knowledge">{nodes}</div>
 }

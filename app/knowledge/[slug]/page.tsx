@@ -124,20 +124,53 @@ export default function KnowledgeTopicPage() {
           onClick={() => setTocOpen(!tocOpen)}
           className="w-full flex items-center justify-between py-3 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
         >
-          <span className="font-medium">Contents ({sections.length} sections)</span>
+          <span className="font-medium">
+            Contents
+            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">
+              · {sections.length} sections{!manualsLoading && manuals.length > 0 ? ` · ${manuals.length} manual${manuals.length === 1 ? '' : 's'}` : ''}
+            </span>
+          </span>
           {tocOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         {tocOpen && (
-          <div className="pb-3 space-y-0.5">
-            {sections.map(section => (
-              <button
-                key={section.id}
-                onClick={() => scrollToSection(section.id)}
-                className="block w-full text-left text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-              >
-                {section.title}
-              </button>
-            ))}
+          <div className="pb-3">
+            <div className="space-y-0.5 mb-2">
+              {sections.map(section => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className="block w-full text-left text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                >
+                  {section.title}
+                </button>
+              ))}
+            </div>
+            {manuals.length > 0 && (
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
+                <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 mb-1">
+                  Related Manuals
+                </p>
+                <div className="space-y-0.5">
+                  {manuals.map(manual => {
+                    const isWeb = manual.source_type === 'WEB' && manual.source_url
+                    const href = isWeb ? manual.source_url! : `/api/pdf?docId=${manual.id}`
+                    return (
+                      <button
+                        key={manual.id}
+                        onClick={() => { setPdfViewer({ url: href, title: manual.title }); setTocOpen(false) }}
+                        className="flex items-center gap-1.5 w-full text-left text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                      >
+                        {isWeb
+                          ? <Globe size={10} className="flex-shrink-0 opacity-60" />
+                          : <FileText size={10} className="flex-shrink-0 opacity-60" />
+                        }
+                        <span className="truncate">{manual.title}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -198,7 +231,10 @@ export default function KnowledgeTopicPage() {
         {/* Main content */}
         <main className="flex-1 min-w-0">
           <div className="bg-white rounded-lg border border-slate-200 p-5 md:p-8">
-            <MarkdownContent content={topic.content} />
+            <MarkdownContent
+              content={topic.content}
+              onOpenPdf={(url, title) => setPdfViewer({ url, title })}
+            />
           </div>
 
           {/* Related manuals — mobile (shown below content) */}

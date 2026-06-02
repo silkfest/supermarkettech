@@ -1,56 +1,40 @@
 'use client'
 
-import { useState } from 'react'
-import { X, ZoomIn } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
+import type { OpenPdfFn } from '../MarkdownContent'
 
-export function RackStyle2Diagram() {
-  const [open, setOpen] = useState(false)
+const MANUAL_ID = '2cc44006-12d6-460d-8766-99570caae0fe'
+const MANUAL_TITLE = 'Tyler MSD Parallel Compressors & Enviroguard'
+
+export function RackStyle2Diagram({ openPdf }: { openPdf?: OpenPdfFn }) {
+  const url = `/api/pdf?docId=${MANUAL_ID}`
+
+  function handleClick() {
+    if (openPdf) {
+      openPdf(url, MANUAL_TITLE)
+    } else {
+      window.open(url, '_blank')
+    }
+  }
 
   return (
-    <>
-      <figure className="my-6">
-        <figcaption className="text-center text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          Rack Style 2 — Tyler Enviroguard
-        </figcaption>
-        <div
-          className="relative group cursor-zoom-in"
-          onClick={() => setOpen(true)}
-          role="button"
-          aria-label="Click to expand diagram"
-        >
-          <img
-            src="/diagrams/rack-style-2.svg"
-            alt="Rack Style 2 — Tyler Enviroguard SPR valve, side receiver, and bleed circuit schematic"
-            className="w-full max-w-3xl mx-auto block border border-slate-200 rounded-lg bg-white"
-          />
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="bg-black/50 text-white rounded-full px-3 py-1.5 flex items-center gap-1.5 text-xs font-medium">
-              <ZoomIn size={14} /> Tap to expand
-            </div>
-          </div>
-        </div>
-      </figure>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
-        >
-          <button
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-            onClick={() => setOpen(false)}
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
-          <img
-            src="/diagrams/rack-style-2.svg"
-            alt="Rack Style 2 — Tyler Enviroguard SPR valve, side receiver, and bleed circuit schematic"
-            className="max-w-full max-h-full rounded-lg bg-white"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </>
+    <div className="my-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 flex items-center gap-4">
+      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
+        <BookOpen size={18} className="text-green-600 dark:text-green-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
+          Rack Style 2 Schematic
+        </p>
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{MANUAL_TITLE}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">SPR valve, side receiver, bleed circuit — full Enviroguard P&amp;ID</p>
+      </div>
+      <button
+        onClick={handleClick}
+        className="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+      >
+        Open Manual
+      </button>
+    </div>
   )
 }
