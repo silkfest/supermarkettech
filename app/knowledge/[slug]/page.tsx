@@ -203,7 +203,10 @@ export default function KnowledgeTopicPage() {
                       return (
                         <button
                           key={manual.id}
-                          onClick={() => { setPdfViewer({ url: href, title: manual.title }); setTocOpen(false) }}
+                          onClick={() => {
+                            if (isWeb) { window.open(href, '_blank', 'noopener,noreferrer') }
+                            else { setPdfViewer({ url: href, title: manual.title }); setTocOpen(false) }
+                          }}
                           className="flex items-center gap-1.5 w-full text-left text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                         >
                           {isWeb ? <Globe size={10} className="flex-shrink-0 opacity-60" /> : <FileText size={10} className="flex-shrink-0 opacity-60" />}
@@ -250,7 +253,7 @@ export default function KnowledgeTopicPage() {
                         return (
                           <button
                             key={manual.id}
-                            onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                            onClick={() => isWeb ? window.open(href, '_blank', 'noopener,noreferrer') : setPdfViewer({ url: href, title: manual.title })}
                             className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
                           >
                             {isWeb ? <Globe size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" /> : <FileText size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />}
@@ -284,7 +287,7 @@ export default function KnowledgeTopicPage() {
                   return (
                     <button
                       key={manual.id}
-                      onClick={() => setPdfViewer({ url: href, title: manual.title })}
+                      onClick={() => isWeb ? window.open(href, '_blank', 'noopener,noreferrer') : setPdfViewer({ url: href, title: manual.title })}
                       className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
                     >
                       <div className="flex items-center gap-2 min-w-0">
