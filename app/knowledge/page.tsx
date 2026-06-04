@@ -268,8 +268,12 @@ export default function KnowledgePage() {
       )
     : null
 
-  const manufacturerTopics = TOPICS.filter(t => t.category === 'manufacturer')
-  const hvacTopics = TOPICS.filter(t => t.category === 'hvac')
+  const compressorTopics    = TOPICS.filter(t => t.category === 'compressors')
+  const controllerTopics   = TOPICS.filter(t => t.category === 'controllers')
+  const displayCaseTopics  = TOPICS.filter(t => t.category === 'display-cases')
+  const selfContainedTopics = TOPICS.filter(t => t.category === 'self-contained')
+  const rackTopics         = TOPICS.filter(t => t.category === 'rack-systems')
+  const hvacTopics         = TOPICS.filter(t => t.category === 'hvac')
   const fundamentalsTopics = TOPICS.filter(t => t.category === 'fundamentals')
 
   return (
@@ -388,19 +392,62 @@ export default function KnowledgePage() {
           </>
         ) : (
           <>
-            {/* Manufacturer Reference */}
+            {/* Rack Systems */}
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                Manufacturer Reference
+                Rack Systems
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {manufacturerTopics.map(topic => (
-                  <TopicCard
-                    key={topic.slug}
-                    topic={topic}
-                    manualCount={getCount(topic.slug)}
-                    onClick={() => router.push(`/knowledge/${topic.slug}`)}
-                  />
+                {rackTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                ))}
+              </div>
+            </section>
+
+            {/* Compressors */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Compressors
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {compressorTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                ))}
+              </div>
+            </section>
+
+            {/* Controllers */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Controllers
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {controllerTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                ))}
+              </div>
+            </section>
+
+            {/* Display Cases */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Display Cases
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {displayCaseTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
+                ))}
+              </div>
+            </section>
+
+            {/* Self Contained */}
+            <section>
+              <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Self Contained
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {selfContainedTopics.map(topic => (
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
                 ))}
               </div>
             </section>
@@ -424,12 +471,7 @@ export default function KnowledgePage() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {fundamentalsTopics.map(topic => (
-                  <TopicCard
-                    key={topic.slug}
-                    topic={topic}
-                    manualCount={getCount(topic.slug)}
-                    onClick={() => router.push(`/knowledge/${topic.slug}`)}
-                  />
+                  <TopicCard key={topic.slug} topic={topic} manualCount={getCount(topic.slug)} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
                 ))}
               </div>
             </section>
