@@ -4518,7 +4518,7 @@ Product literature: heatcraftrpd.com/resources/literature
 
 ---
 
-### Fan Motors
+#### Fan Motors
 - **Shaded pole** (small coolers, <1/30 HP): 2–5W; must match CW or CCW rotation; reversed motor = 50–60% airflow loss
 - **PSC (Permanent Split Capacitor)** (1/30–1/4 HP): capacitor failure is #1 fault; match µF and voltage rating exactly; run capacitor separate from start capacitor
 - **ECM (Electronically Commutated)** (newer units, up to 1/3 HP): variable speed; smart module; not field-repairable — replace full motor/module assembly
@@ -6004,7 +6004,7 @@ export const AAON_RTU_KNOWLEDGE = `
 
 AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop units sold under the AAON brand and distributed in some regions as CES (Climate Equipment Solutions) or Flo RTUs. Units are built-to-order with a wide option matrix. Key model families used in commercial/supermarket settings:
 
-## Model Families
+### Model Families
 
 **RN Series — 6 to 70 tons**
 - Most common AAON unit in supermarket and light-industrial settings
@@ -6027,7 +6027,7 @@ AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop u
 - Horizontal-discharge for ground-level or side-wall mounting
 - Same compressor and control platform as RN
 
-## AAON Modular Control System (MCS)
+### AAON Modular Control System (MCS)
 
 AAON uses a proprietary control platform called MCS (Modular Control System). All AAON RTUs shipped since ~2010 use MCS; older units may have legacy Proctor-Jones or Microtech controls.
 
@@ -6045,7 +6045,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - BACnet device instance: configurable via MCS menu
 - All MCS points are mappable; AAON publishes full BACnet/Modbus point lists per model
 
-## MCS Fault Codes — Common A & B Codes
+### MCS Fault Codes — Common A & B Codes
 
 | Code | Fault | Reset Type |
 |------|-------|-----------|
@@ -6071,7 +6071,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 
 **Manual reset procedure:** Navigate to Main menu → Diagnostics → Reset Lockouts, or cycle power (30-second minimum off) — note that cycling power does NOT reset manual-reset faults on all models; use menu reset.
 
-## Compressor Configuration
+### Compressor Configuration
 
 - Scroll compressors throughout: Copeland ZP/ZF or Danfoss/Maneurop MT/TT series
 - Tandem compressors (two compressors, one circuit) on 10–25 ton models
@@ -6092,7 +6092,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - Charge only as liquid (invert cylinder) — do not charge vapor-phase
 - Same superheat/subcooling targets as R-410A
 
-## Economizer
+### Economizer
 
 - Integrated economizer standard on most configurations
 - Actuator: Belimo or equivalent spring-return 0–10VDC actuator (24VAC power)
@@ -6102,7 +6102,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - C01 fault: actuator did not reach commanded position — check actuator wiring, actuator end-switch, mechanical binding of damper
 - Economizer override test: MCS menu → Outputs → Economizer → manually command to 100% open and verify damper physically opens
 
-## Fan System
+### Fan System
 
 **Belt-drive (RQ 2–6 ton, some RN models):**
 - V-belt tension: 1/2" deflection per foot of span at manufacturer-specified force
@@ -6116,7 +6116,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - VFD reset: MCS menu → Reset Lockouts or cycle 24VAC control power to VFD
 - Minimum VFD speed: 20 Hz default (do not reduce below 15 Hz — motor overheating risk)
 
-## Gas Heat Section
+### Gas Heat Section
 
 - Modulating gas valve (0–100%) or staged (two-position: low/high fire) depending on model
 - Ignition: direct-spark igniter or hot surface igniter (HSI) — see unit nameplate
@@ -6124,7 +6124,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 - B11 lockout (failed ignition): verify gas supply pressure (3.5" WC min for natural gas at manifold), check igniter gap (1/8" for spark, 1/4–3/8" for HSI), verify flame sensor rod is clean and positioned correctly
 - Heat exchanger inspection: AAON uses stainless steel or aluminized steel — inspect annually with mirror and light; cracked HX = unit shutdown, tag out
 
-## Seasonal Startup Checklist (AAON RTU)
+### Seasonal Startup Checklist (AAON RTU)
 
 1. Check and replace filters (1" MERV-8 standard, 2" optional)
 2. Inspect and clean evaporator and condenser coils — use coil cleaner, low-pressure rinse
@@ -6136,7 +6136,7 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 8. Check all electrical connections for tightness (torque spec per terminal label)
 9. Verify condensate drain is clear and draining
 
-## CES / Flo RTU Notes
+### CES / Flo RTU Notes
 
 - **CES (Climate Equipment Solutions)**: Regional distributor of AAON units in certain US markets. Units are AAON-manufactured with CES branding on the label. Service procedures, parts, and controls are identical to AAON RN/RQ. CES part numbers cross-reference directly to AAON part numbers.
 - **Flo RTU**: AAON-based units distributed under the Flo brand in select markets. Same platform — MCS controls, AAON compressors, identical service access and wiring. When troubleshooting Flo units, reference AAON RN or RQ IOM for the equivalent tonnage.
@@ -6158,7 +6158,7 @@ The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** u
 - 5 = Design series 5
 - BX03 = Factory option codes and minor revision
 
-## Model Series Overview
+### Model Series Overview
 
 | Series | Compressor Type | Tonnage Range | Notes |
 |--------|----------------|---------------|-------|
@@ -6171,7 +6171,7 @@ The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** u
 - Compressors: typically two Copeland Discus or scroll compressors per circuit (four compressors total on 40-ton unit)
 - Each circuit has its own TXV, filter-drier, sight glass, service valves, and pressure controls
 
-## Refrigerant & Charging
+### Refrigerant & Charging
 
 **R-410A units (RAUCC — series 5 and later):**
 - Circuit A and Circuit B charged independently
@@ -6187,7 +6187,7 @@ The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** u
 - Do NOT top off R-22 with R-410A or blended refrigerants without full system retrofit
 - Polyol ester (POE) oil required if converting from mineral oil to R-410A — full flush required
 
-## Compressor Service
+### Compressor Service
 
 **Scroll compressor (RAUCC):**
 - Minimum off time: 5 minutes before restart (allow crankcase equalisation)
@@ -6201,7 +6201,7 @@ The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** u
 - If one compressor fails, the circuit loses ~50% capacity and may still operate on remaining compressor
 - Tandem equalisation line: must be level and unobstructed — oil migration causes failure of lead compressor
 
-## Controls — ReliaTel (RTOM/RTRM)
+### Controls — ReliaTel (RTOM/RTRM)
 
 Older RAUCC units use Trane's ReliaTel control module (same platform as Precedent RTUs). Newer RAUJ uses Tracer controls or optional DDC.
 
@@ -6221,7 +6221,7 @@ Older RAUCC units use Trane's ReliaTel control module (same platform as Preceden
 - DDC controller (SS-SVX007A) replaces RTOM for building automation integration
 - All compressor staging, alarms, and setpoints accessible via Tracer TU software
 
-## Condenser Fan System
+### Condenser Fan System
 
 - Propeller fans, belt-drive or direct-drive depending on model
 - Fan cycling: multiple fans with pressure-actuated cycling for low-ambient head pressure control
@@ -6233,14 +6233,14 @@ Older RAUCC units use Trane's ReliaTel control module (same platform as Preceden
 - High head pressure fault (4 flash): check all fans operational, check condenser coil for fouling, check ambient temp vs. design limits (unit rated to 115°F ambient max)
 - Low head pressure in cold weather: normal — fans will cycle off to maintain minimum head pressure; LP fault in cold weather is usually not a charge issue
 
-## Condenser Coil Maintenance
+### Condenser Coil Maintenance
 
 - Clean at minimum annually — coil fouling is the leading cause of high head pressure and compressor failure
 - Cleaning: apply Coil Safe or Nu-Brite with low-pressure spray (20–30 PSI max on aluminium fin) — flush from air side out (inside-out direction)
 - Fin damage: bent fins reduce airflow — use fin comb to straighten; replace coil section if damage is severe
 - Coil replacement: RAUCC40 uses factory-specific coil geometry — order via Trane part number from nameplate; aftermarket coils available from Emergent Coils, Colmac
 
-## Common Field Issues — RAUCC
+### Common Field Issues — RAUCC
 
 | Symptom | Likely Cause | Check |
 |---------|-------------|-------|
@@ -6411,7 +6411,7 @@ Dixell (a Schneider Electric brand) manufactures electronic controllers widely u
 - **XC series** — advanced case controllers with multi-probe inputs, EEV support, and Modbus/RS-485
 - **XW series** — rack-level and system controllers for condensing units and small systems
 
-## XR Series — Common Models
+### XR Series — Common Models
 
 | Model | Probes | Relays | Key Use |
 |-------|--------|--------|---------|
@@ -6422,7 +6422,7 @@ Dixell (a Schneider Electric brand) manufactures electronic controllers widely u
 | XR60C | 2 | 4 | Enhanced alarm + anti-condensate heater relay |
 | XR70C | 2 (+ optional) | 3 | Condensing unit control; pressure input capable |
 
-## XC Series — Advanced Case Controllers
+### XC Series — Advanced Case Controllers
 
 | Model | Description |
 |-------|-------------|
@@ -6432,7 +6432,7 @@ Dixell (a Schneider Electric brand) manufactures electronic controllers widely u
 | XC660C | Full case control; glass heat, door switch, lighting relay |
 | XC1008D | Multi-circuit; controls up to 8 cases from one controller |
 
-## Parameter Navigation
+### Parameter Navigation
 
 **Entering programming mode (most XR/XC models):**
 - Hold **SET** for 5 seconds → enters first parameter
@@ -6445,7 +6445,7 @@ Dixell (a Schneider Electric brand) manufactures electronic controllers widely u
 - **DEF** button (if present) — manually trigger defrost cycle
 - Display returns to normal after ~30 seconds of inactivity
 
-## Key Parameters (XR Series)
+### Key Parameters (XR Series)
 
 | Code | Description | Typical Range |
 |------|-------------|---------------|
@@ -6471,7 +6471,7 @@ Dixell (a Schneider Electric brand) manufactures electronic controllers widely u
 | Ad | Alarm delay after startup or door open | 0–240 min |
 | PbC | Probe type: 0=NTC, 1=PT100, 2=PT1000 | 0, 1, or 2 |
 
-## Alarm and Error Codes
+### Alarm and Error Codes
 
 | Code | Meaning | Action |
 |------|---------|--------|
@@ -6498,7 +6498,7 @@ Infinite resistance = open (wiring break or probe failed open). Near-zero = shor
 **PT1000 probe:**
 - 0°C = 1000Ω, increases ~3.85Ω per °C. At −20°C ≈ 923Ω; at 20°C ≈ 1078Ω.
 
-## Defrost Configuration
+### Defrost Configuration
 
 **Electric defrost (dFt = 0):**
 - Compressor off, electric heater relay ON
@@ -6517,18 +6517,18 @@ Infinite resistance = open (wiring break or probe failed open). Near-zero = shor
 - Only suitable for MT (medium temp) cases, typically ≥0°C setpoint
 - d8 and dt still apply as safety limits
 
-## Manual Defrost
+### Manual Defrost
 Press **DEF** button (if equipped) to start a defrost cycle immediately.
 On models without a DEF button: enter parameters and toggle a manual-start parameter (typically \`Mn\` or \`MdF\` = 1).
 
-## Communication (RS-485 / Modbus)
+### Communication (RS-485 / Modbus)
 - Most XC series and XR60C/XR70C support RS-485 Modbus RTU
 - Default baud rate: **9600 bps**, 8-N-1
 - Address set via \`Add\` parameter (1–247)
 - Wired daisy-chain: A+ to A+, B− to B−, common ground; terminate last device with 120Ω resistor
 - Controllers appear as Modbus slave nodes on Xweb500 / third-party BMS
 
-## Wiring Notes
+### Wiring Notes
 
 **Probe inputs (2-wire NTC or PT1000):**
 - Polarity-insensitive; any order on terminals
@@ -6544,7 +6544,7 @@ On models without a DEF button: enter parameters and toggle a manual-start param
 - Most XR series: 115/230 VAC ±10%, 50/60 Hz
 - Some XC series: 24 VAC/DC option — verify label before wiring
 
-## Firmware / Reset Procedures
+### Firmware / Reset Procedures
 
 **Factory reset (most models):**
 1. Enter programming mode (hold SET 5 sec)
@@ -6557,7 +6557,7 @@ On models without a DEF button: enter parameters and toggle a manual-start param
 - Check supply voltage; Dixell controllers are sensitive to voltage brownouts and spikes
 - A suppressor (MOV) across the supply is recommended on noisy circuits
 
-## Troubleshooting Table
+### Troubleshooting Table
 
 | Symptom | Likely Cause | Check |
 |---------|-------------|-------|
@@ -6578,7 +6578,7 @@ export const KYSOR_WARREN_KNOWLEDGE = `
 ## Overview
 Kysor Warren is a major supermarket display case manufacturer, now a brand under Daikin Applied. Cases are found in stores across North America under the Kysor Warren name and occasionally under earlier GE Commercial Food Service branding. Product lines span medium-temperature (MT) and low-temperature (LT) applications: open multi-deck merchandisers, coffin/island cases, reach-in glass-door cases, and service counter cases.
 
-## Product Line Summary
+### Product Line Summary
 
 | Series | Type | Temp Class | Typical Application |
 |--------|------|-----------|---------------------|
@@ -6615,7 +6615,7 @@ Kysor Warren is a major supermarket display case manufacturer, now a brand under
 - LT cases: fans typically off during electric defrost; delay 3–10 min after defrost before restart
 - Evaporator fan delay relay or controller parameter (Fdt on Dixell) prevents blowing warm air into case after defrost
 
-## Anti-Condensate (Anti-Sweat) Heaters
+### Anti-Condensate (Anti-Sweat) Heaters
 
 Heaters prevent moisture condensing on glass doors, mullions (stiles), and case rails in humid store environments.
 
@@ -6637,7 +6637,7 @@ Heaters prevent moisture condensing on glass doors, mullions (stiles), and case 
 - Open heater: infinite resistance → replace element or door assembly
 - Tripped breaker on heater circuit: check for moisture in wire connections; individual heaters shorted
 
-## Defrost Systems
+### Defrost Systems
 
 **MT cases (multi-deck, service):**
 - Most run off-cycle (natural) defrost — compressor cycles, fan continues, frost melts at ambient
@@ -6656,7 +6656,7 @@ Heaters prevent moisture condensing on glass doors, mullions (stiles), and case 
 - Drain pan slope: should pitch toward drain outlet; improperly installed cases can pool water and leak to floor
 - Condensate evaporator tray (some MT cases): small tray under evaporator evaporates water passively — clean periodically to prevent mold/odor
 
-## Case Controllers
+### Case Controllers
 
 Kysor Warren cases use a range of controllers depending on model year and configuration:
 
@@ -6677,7 +6677,7 @@ Kysor Warren cases use a range of controllers depending on model year and config
 - Simple 7-segment display, limited external programming
 - Factory-set defrosts; contact Daikin/Kysor Warren tech support for parameter access
 
-## Refrigerant Connections
+### Refrigerant Connections
 
 **Liquid line connection:**
 - Located at back of case (most models) or bottom-rear access panel
@@ -6693,7 +6693,7 @@ Kysor Warren cases use a range of controllers depending on model year and config
 - TXV sensing bulb clamped to suction outlet of evaporator coil; ensure good contact and insulated
 - EEV cases (newer): Dixell XC560D controller drives stepper motor valve
 
-## Common Faults and Diagnosis
+### Common Faults and Diagnosis
 
 | Symptom | Likely Cause | Check |
 |---------|-------------|-------|
@@ -6708,7 +6708,7 @@ Kysor Warren cases use a range of controllers depending on model year and config
 | Compressor short-cycling on rack | Case solenoid valve chattering or TXV hunting causing suction pressure swings | Inspect solenoid coil; check TXV superheat stability |
 | Noisy fan (rattling) | Ice on fan blade, failed bearing, blade rubbing shroud | Inspect during run; case may need early defrost to clear ice |
 
-## Energy and Maintenance Notes
+### Energy and Maintenance Notes
 
 - **Night covers / anti-condensate curtains**: Roll-down or rigid covers reduce refrigeration load 25–40% overnight. Check track condition; torn or missing covers significantly increase energy use and morning pull-down time
 - **LED lighting**: Newer EcoShine LED retrofits run cooler than fluorescent T8/T12 — reduces heat load in case. Ballast removal required for direct-wire LED; confirm wiring type before replacement
