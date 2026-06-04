@@ -106,6 +106,38 @@ Otherwise the table will be inaccessible to the app (even with RLS disabled).
 
 ---
 
+## Knowledge Base Content Standards
+
+All knowledge topic content lives in `lib/ai/prompts.ts` as exported template-literal strings. The custom markdown renderer in `components/knowledge/MarkdownContent.tsx` has specific rules — follow these to keep pages consistent and professional.
+
+### Heading Structure
+- `## Title` — **first heading only**, becomes the page H2 title. Only one per topic.
+- `### Section Name` — main sections. These populate the TOC sidebar and are required for the Related Manuals sidebar to render. Every topic **must** have at least one `### ` heading.
+- `#### Sub-heading` — sub-sections within a section (smaller, no TOC entry).
+- Never use a second `## ` heading — subsequent `## ` headings are silently dropped by the renderer.
+
+### No Sources Blocks
+Do **not** add `*Sources: ...*` citation lines to topic content. Manuals and references belong in the Related Manuals section (DB documents linked via `manualKeywords`). Sources text clutters the page and becomes outdated.
+
+### No Code Fences
+The renderer does **not** support triple-backtick code fences (` ``` `). They render as literal `` ``` `` characters on screen. Never use them. Instead:
+- Lists of items → `- bullet` or `1. numbered list`
+- Wiring / terminal descriptions → bullet points or plain paragraphs
+- ASCII diagrams → remove; use `[diagram:name]` for SVG components or `![alt](url)` for images
+- Checklist items → `- ` bullet list (use `- [ ]` style if desired, but plain `- ` is fine)
+
+### Images
+Use `![alt text](url)` on its own line. Optionally add a caption: `![alt](url "Caption text")`.
+- Prefer **Wikimedia Commons** for free-to-use technical/refrigeration images (no copyright issues)
+- Wikimedia Commons direct image URLs: `https://upload.wikimedia.org/wikipedia/commons/...`
+- Do not hotlink from manufacturer sites or Google Images
+
+### Diagrams
+Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownContent.tsx`. Insert with `[diagram:key-name]` on its own line. Currently registered:
+- `rack-style-1`, `rack-style-2`, `paragon-timer`, `compressor-terminals`, `ice-harvest-cycle`
+
+---
+
 ## Remaining Backlog
 
 ### Phase 2 — Feature integrations
