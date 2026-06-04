@@ -28,6 +28,8 @@ BEHAVIOURAL RULES:
 export const REFRIGERATION_KNOWLEDGE = `
 ## CO₂ (R-744) Transcritical Rack Systems — Operating Principles
 
+![R-134a log P-h pressure-enthalpy diagram](https://upload.wikimedia.org/wikipedia/commons/7/79/Log_ph_Plot_-_R134a.svg "Pressure-enthalpy (log P-h) diagram — the core tool for analysing vapour compression refrigeration cycles")
+
 **The transcritical cycle:**
 CO₂ has a critical point at 31.1°C / 87.8°F, 73.8 bar / 1070 psi. When ambient is below ~25°C the system can condense (subcritical). Above that the system operates transcritically — the high-side CO₂ never condenses; instead the gas cooler cools it as a gas. High-side pressure must be actively controlled (not determined by saturation) — this is the most critical operating parameter.
 
@@ -535,6 +537,10 @@ Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defr
 export const SPORLAN_KNOWLEDGE = `
 ## Sporlan Product Knowledge — Supermarket & Commercial Refrigeration
 
+![Parker Hannifin logo — Sporlan is a Parker Hannifin brand](https://upload.wikimedia.org/wikipedia/commons/9/9e/Parker_Hannifin.svg)
+
+![Thermostatic expansion valve (TXV) cross-section](https://upload.wikimedia.org/wikipedia/commons/9/96/Thermostatic_expansion_valve.svg "TXV cross-section — Sporlan O/OB series operates on this same bulb-and-diaphragm principle")
+
 ### Thermostatic Expansion Valves (TXVs)
 
 **Body families:**
@@ -782,6 +788,10 @@ If programmed with the wrong count (e.g., entering 6,386 steps for a CDS-7), the
 export const COPELAND_KNOWLEDGE = `
 ## Copeland / Emerson Compressor Knowledge — Supermarket & Commercial Refrigeration
 
+![Emerson Electric logo](https://upload.wikimedia.org/wikipedia/commons/5/50/Logo_Emerson.svg)
+
+![Scroll compressor cross-section diagram](https://upload.wikimedia.org/wikipedia/commons/7/70/Scroll_scrollcrompressor.svg "Copeland ZB/ZF series uses a fixed and orbiting scroll design like this")
+
 ---
 
 ### Copeland Scroll Compressors — ZB / ZF Series
@@ -997,6 +1007,8 @@ Replaces compressor oil sight glass. Controls oil fill solenoid and signals E2 o
 export const HUSSMANN_KNOWLEDGE = `
 ## Hussmann Product Knowledge — Display Cases & Rack Systems
 
+![Commercial supermarket refrigerated display cases](https://upload.wikimedia.org/wikipedia/commons/a/af/Cold_Storage_Cabinets.jpg "Commercial refrigerated display cases — Hussmann RL, RM, and FW series are installed in configurations like this")
+
 ---
 
 ### Display Case Model Families
@@ -1171,6 +1183,8 @@ Protocol is Hussmann's distributed refrigeration system — smaller rack modules
 
 export const DANFOSS_KNOWLEDGE = `
 ## Danfoss Product Knowledge — Supermarket & CO₂ Refrigeration
+
+![Danfoss logo](https://upload.wikimedia.org/wikipedia/commons/f/f2/Danfoss-Logo.svg)
 
 ---
 
@@ -1387,6 +1401,8 @@ The Danfoss "Booster MWT" (Medium/Low Temperature) is a pre-packaged CO₂ trans
 
 export const ARNEG_KNOWLEDGE = `
 ## Arneg Product Knowledge — Supermarket Display Cases & Refrigeration
+
+![Commercial supermarket refrigerated display cases](https://upload.wikimedia.org/wikipedia/commons/a/af/Cold_Storage_Cabinets.jpg "Commercial refrigerated display cases — Arneg Oslo, Venice, and Trinidad series are installed in configurations like this")
 
 Arneg S.p.A. is an Italian refrigeration manufacturer (founded 1962, Tribano, Padova, Italy) producing display cases, cold rooms, and remote refrigeration systems for supermarkets and foodservice worldwide. Their cases are widely deployed in North America, Europe, and Latin America on both HFC and CO₂ remote rack systems.
 
@@ -2853,6 +2869,8 @@ The Carnot startup sheet is stored inside the electrical cabinet — all setpoin
 export const EMERSON_E2_E3_KNOWLEDGE = `
 ## Emerson E2 / E3 Supervisory Store Controllers
 
+![Emerson Electric logo](https://upload.wikimedia.org/wikipedia/commons/5/50/Logo_Emerson.svg)
+
 ### Product Overview
 | Controller | Generation | Display | OS | Key Use Case |
 |------------|-----------|---------|-----|--------------|
@@ -3647,6 +3665,8 @@ CO₂ refrigeration uses different defrost strategies depending on the temperatu
 export const WALK_IN_KNOWLEDGE = `
 ## Walk-In Cooler and Freezer Troubleshooting
 
+![Walk-in cold room interior with ceiling-mounted evaporators](https://upload.wikimedia.org/wikipedia/commons/c/c6/Cold_Room.jpg "Walk-in cold room with ceiling-mounted unit coolers — typical of the installations covered in this guide")
+
 Walk-ins are some of the most common service calls in commercial refrigeration. Most problems fall into five categories: temperature not maintaining, unit cooler icing, defrost failures, drain/water issues, and door/envelope problems.
 
 ---
@@ -4178,6 +4198,8 @@ Before touching gauges or tools, always work through these three layers in order
 export const VFD_KNOWLEDGE = `
 ## VFDs (Variable Frequency Drives) — Supermarket Refrigeration
 
+![Variable frequency drive (VFD)](https://upload.wikimedia.org/wikipedia/commons/8/85/Siemens_VFD.jpg "Variable frequency drive — used on condenser fans, evaporator fans, and compressor motors in modern rack systems")
+
 A VFD converts fixed-frequency AC to variable-frequency output, allowing motors to run at adjustable speeds. In commercial refrigeration: condenser fan arrays (head pressure floating), evaporator fans (energy/noise), and compressor motors on some systems.
 
 ---
@@ -4379,6 +4401,8 @@ R-448A and R-449A compressors run 5–15°F hotter discharge temperature than R-
 export const TYLER_HILL_PHOENIX_KNOWLEDGE = `
 ## Tyler Display Cases & Hill Phoenix — Supermarket Refrigeration
 
+![Commercial supermarket refrigerated display cases](https://upload.wikimedia.org/wikipedia/commons/a/af/Cold_Storage_Cabinets.jpg "Supermarket refrigerated display cases — typical of Tyler open multideck and Hill Phoenix installations")
+
 ---
 
 ## TYLER (CARRIER COMMERCIAL REFRIGERATION)
@@ -4486,6 +4510,8 @@ The Advansor rack is a complete CO₂ transcritical booster system manufactured 
 export const HEATCRAFT_BOHN_KNOWLEDGE = `
 ## Heatcraft Refrigeration Products — Bohn / Larkin / Climate Control
 
+![Walk-in cold room with ceiling-mounted unit coolers](https://upload.wikimedia.org/wikipedia/commons/c/c6/Cold_Room.jpg "Walk-in cold room — Bohn and Larkin unit coolers are commonly installed in configurations like this")
+
 Heatcraft Refrigeration Products (HRP) is the commercial refrigeration division of Lennox International, manufacturing unit coolers, condensing units, and remote condensers under four brand names:
 - **Bohn** — widest product range; dominant in North America
 - **Larkin** — walk-in cooler/freezer, industrial
@@ -4580,6 +4606,8 @@ Product literature: heatcraftrpd.com/resources/literature
 
 export const BITZER_KNOWLEDGE = `
 ## Bitzer Compressors — Supermarket Refrigeration
+
+![Bitzer semi-hermetic compressor in condensing unit](https://upload.wikimedia.org/wikipedia/commons/d/dc/Cold_Room_Condensing_Unit_-_Bitzer_Compressor.jpg "Bitzer semi-hermetic compressor integrated into a multi-fan condensing unit — typical of Ecoline applications")
 
 ---
 
@@ -4702,6 +4730,10 @@ Always back-seat after service.
 
 export const LENNOX_RTU_KNOWLEDGE = `
 ## Lennox Commercial Rooftop Units — Field Reference
+
+![Lennox International logo](https://upload.wikimedia.org/wikipedia/commons/7/77/Lennox_International_logo.svg)
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop packaged units — Lennox LGH/LCH series are installed in configurations like this")
 
 ---
 
@@ -4998,6 +5030,10 @@ Always return DIP 8 to OFF (Normal) after testing.
 export const CARRIER_RTU_KNOWLEDGE = `
 ## Carrier Commercial Rooftop Units — Field Reference
 
+![Carrier Corporation logo](https://upload.wikimedia.org/wikipedia/commons/8/8f/Logo_of_the_Carrier_Corporation.svg)
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop packaged units — Carrier WeatherExpert series")
+
 ---
 
 ### Model Families Overview
@@ -5205,6 +5241,10 @@ The WeatherExpert integrated economizer uses motorized damper with full modulati
 export const YORK_RTU_KNOWLEDGE = `
 ## York / Johnson Controls Commercial Rooftop Units — Field Reference
 
+![Johnson Controls logo](https://upload.wikimedia.org/wikipedia/commons/4/46/Johnson_Controls_old_logo.svg)
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop packaged units — York Predator and Sunline series")
+
 ---
 
 ### Model Families Overview (Johnson Controls)
@@ -5398,6 +5438,10 @@ The Quantum board is York's standard RTU controller across Predator and most Sun
 
 export const TRANE_RTU_KNOWLEDGE = `
 ## Trane Commercial Rooftop Units — Field Reference
+
+![Trane Technologies logo](https://upload.wikimedia.org/wikipedia/commons/9/9b/TraneTechnologieslogo.svg)
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop packaged units — Trane Precedent and Sintesis series")
 
 ---
 
@@ -5630,6 +5674,8 @@ Before condemning either board, perform these checks:
 
 export const RTU_HVAC_DIAGNOSTICS_KNOWLEDGE = `
 ## RTU Fault Diagnosis — Cross-Manufacturer Field Reference
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop packaged units — the type covered in this cross-manufacturer troubleshooting guide")
 
 ---
 
@@ -6002,6 +6048,10 @@ Perform before first cooling season startup after any period > 4 weeks without c
 export const AAON_RTU_KNOWLEDGE = `
 # AAON / CES / Flo Rooftop Unit Knowledge Base
 
+![AAON Inc. logo](https://upload.wikimedia.org/wikipedia/commons/e/e8/AAON_Logo.svg)
+
+![Commercial rooftop packaged HVAC units](https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG "Commercial rooftop units — AAON RN and RQ series are installed in similar configurations")
+
 AAON Inc. (Tulsa, OK) manufactures high-efficiency commercial packaged rooftop units sold under the AAON brand and distributed in some regions as CES (Climate Equipment Solutions) or Flo RTUs. Units are built-to-order with a wide option matrix. Key model families used in commercial/supermarket settings:
 
 ### Model Families
@@ -6145,6 +6195,8 @@ AAON uses a proprietary control platform called MCS (Modular Control System). Al
 
 export const TRANE_RAUC_KNOWLEDGE = `
 # Trane RAUC / RAUCC Split-System Air-Cooled Condensing Units
+
+![Trane Technologies logo](https://upload.wikimedia.org/wikipedia/commons/9/9b/TraneTechnologieslogo.svg)
 
 The Trane RAUC and RAUCC series are **commercial air-cooled condensing units** used in split-system configurations. Unlike packaged RTUs, these units contain only the compressor(s) and condenser coil — they mount outdoors and connect to a separate indoor evaporator coil or air handler. Common in supermarkets, big-box retail, and light-industrial applications.
 
@@ -6575,6 +6627,8 @@ On models without a DEF button: enter parameters and toggle a manual-start param
 export const KYSOR_WARREN_KNOWLEDGE = `
 # Kysor Warren Display Cases — Supermarket Refrigeration Reference
 
+![Supermarket refrigerated display cases](https://upload.wikimedia.org/wikipedia/commons/a/af/Cold_Storage_Cabinets.jpg "Supermarket refrigerated display cases — Kysor Warren EcoFlex and C-Series cases are installed in configurations like this")
+
 ## Overview
 Kysor Warren is a major supermarket display case manufacturer, now a brand under Daikin Applied. Cases are found in stores across North America under the Kysor Warren name and occasionally under earlier GE Commercial Food Service branding. Product lines span medium-temperature (MT) and low-temperature (LT) applications: open multi-deck merchandisers, coffin/island cases, reach-in glass-door cases, and service counter cases.
 
@@ -6719,6 +6773,8 @@ Kysor Warren cases use a range of controllers depending on model year and config
 
 export const HEAT_RECLAIM_KNOWLEDGE = `
 # Heat Reclaim Systems — Supermarket Refrigeration Reference
+
+![Shell-and-tube heat exchanger](https://upload.wikimedia.org/wikipedia/commons/c/cc/Shell_heat_exchanger_LS.JPG "Shell-and-tube heat exchanger — used as desuperheater and heat reclaim coil in supermarket refrigeration systems")
 
 ## Overview
 Heat reclaim captures the heat normally rejected by the refrigeration system's condenser and redirects it for useful purposes — most commonly space heating and domestic hot water. A typical supermarket rack system rejects 150–300 kW of heat to atmosphere; heat reclaim can recover 30–80% of that, dramatically reducing gas/electric heating costs in colder climates.
@@ -7534,6 +7590,8 @@ Less common in the field; tests a refrigerant liquid sample rather than oil. Use
 export const SOLENOID_VALVE_KNOWLEDGE = `
 # Solenoid Valve Troubleshooting — Coil Testing, Manual Operation & Field Diagnosis
 
+![Solenoid valve cross-section diagram](https://upload.wikimedia.org/wikipedia/commons/6/6f/Solenoid_Valve.svg "Solenoid valve cross-section — showing coil, plunger, and valve seat; direct-acting type")
+
 Solenoid valves are found everywhere on a commercial refrigeration system: liquid lines, hot gas defrost lines, oil return lines, EPR bypass circuits, and pump-down controls. When one fails, it usually presents as a case not cooling, a case overcooling, or a compressor cycling issue. Knowing how to quickly confirm whether the valve, coil, or control signal is at fault saves hours.
 
 ---
@@ -7751,6 +7809,7 @@ Standard brass solenoid valves are NOT rated for CO₂ pressures. CO₂ transcri
 export const A2L_REFRIGERANTS_KNOWLEDGE = `
 ## A2L Refrigerants — Field Guide for Canadian Technicians
 
+![Refrigerant cylinder](https://upload.wikimedia.org/wikipedia/commons/e/ef/Freon_134a_refrigerant_for_car_AC_001.jpg "Refrigerant cylinders — colour coding varies by type; R-454B uses a teal cylinder, A2L refrigerants require leak-aware handling")
 
 ### What Are A2L Refrigerants?
 ASHRAE 34 classifies refrigerants by toxicity (A = lower, B = higher) and flammability (1 = none, 2L = lower, 2 = flammable, 3 = highly flammable). **A2L = lower toxicity, mildly flammable** — this is the critical new class entering commercial refrigeration and HVAC.
@@ -7859,6 +7918,7 @@ Canada's **HFC Phase-Down Regulations** (in force since 2019, updated 2021) cap 
 export const TECUMSEH_KNOWLEDGE = `
 ## Tecumseh Compressors — Field Service Guide
 
+![Hermetic compressor terminal box detail](https://upload.wikimedia.org/wikipedia/commons/7/74/Hermetic_compressor_feedthrough.jpg "Hermetic compressor — Tecumseh AE and AJ series use this style of sealed construction")
 
 ### Product Families Overview
 
@@ -7988,6 +8048,7 @@ When replacing a failed Tecumseh compressor:
 export const CAREL_CONTROLLERS_KNOWLEDGE = `
 ## Carel Controllers — Field Service Guide
 
+![Carel Industries logo](https://upload.wikimedia.org/wikipedia/commons/2/22/Carel_Industries_Logo.svg)
 
 ### Product Family Overview
 
@@ -8127,6 +8188,7 @@ Key pRack parameters for HFC multiplex rack (refer to pRack application guide fo
 export const ICE_MACHINES_KNOWLEDGE = `
 ## Ice Machines — Manitowoc & Hoshizaki Field Service Guide
 
+![Manitowoc Q210 commercial ice machine](https://upload.wikimedia.org/wikipedia/commons/e/ef/Manitowoc_Q210_ice_machine.JPG "Manitowoc Q210 modular cube ice maker — representative of the machines covered in this guide")
 
 ### Ice Production Fundamentals
 
@@ -8496,6 +8558,7 @@ Expected resistance = V² ÷ W. Examples: a 120V/30W element = 480Ω; a 240V/30W
 export const EMBRACO_SECOP_KNOWLEDGE = `
 ## Embraco & Secop Compressors — Field Service Guide
 
+![Embraco hermetic compressor](https://upload.wikimedia.org/wikipedia/commons/f/fa/Embraco_compressor.jpg "Embraco (Nidec) hermetic compressor — used in reach-in coolers, display case doors, and beverage merchandisers")
 
 ### Company Background
 - **Embraco** (now Nidec Global Appliance): Brazilian manufacturer, historically the dominant supplier of small hermetic compressors for commercial refrigeration, beverage merchandisers, reach-in coolers, and display case doors. Widely used in commercial applications up to ~1.5 HP.
@@ -8613,6 +8676,7 @@ Embraco and Secop compressors are **replace, not repair** — hermetic welded ca
 export const ZERO_ZONE_KNOWLEDGE = `
 ## Zero Zone Display Cases — Field Service Guide
 
+![Open multi-deck supermarket display cases](https://upload.wikimedia.org/wikipedia/commons/a/af/Cold_Storage_Cabinets.jpg "Open multi-deck refrigerated display cases — Zero Zone Series 20/26/30/40 cases are installed in configurations like this")
 
 ### Company Overview
 Zero Zone (headquartered in North Prairie, Wisconsin) manufactures open and closed multi-deck refrigerated display cases widely used in US and Canadian supermarkets. Major retail chains using Zero Zone equipment include Kroger, Safeway/Sobeys affiliates, and regional independents. Zero Zone was acquired by Daikin in 2020.
@@ -8707,6 +8771,7 @@ NiCr heater wire is embedded in the mullion frame between the glass and the stor
 export const TRUE_MANUFACTURING_KNOWLEDGE = `
 ## True Manufacturing — Walk-In & Reach-In Service Guide
 
+![Commercial glass-door reach-in display refrigerators](https://upload.wikimedia.org/wikipedia/commons/3/36/ExpensiveRefrigerators.JPG "Commercial glass-door reach-in coolers — True GDM and T-series are common in deli, dairy, and beverage applications")
 
 ### Company Overview
 True Manufacturing (Springfield, Missouri) is one of North America's largest manufacturers of commercial refrigeration equipment. Their equipment is common in delis, bakeries, convenience stores, and supermarket backrooms. True focuses on reach-in display coolers/freezers, pass-through cases, and back-of-house walk-in systems.
