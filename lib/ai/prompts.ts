@@ -5253,6 +5253,8 @@ export const YORK_RTU_KNOWLEDGE = `
 |---|---|---|---|
 | ZJ | Predator | Gas/electric 3-phase | 3–25 ton |
 | ZR | Predator | Cooling only, 3-phase | 3–25 ton |
+| ZXG | Predator (current gen) | Gas/electric 3-phase, dual-circuit | 7.5–25 ton |
+| ZXH | Predator (current gen) | High-efficiency gas/electric | 7.5–25 ton |
 | DJSC | Sunline 2000 | Gas/electric, older mid-range | 3–12.5 ton |
 | DJFC | Sunline | Gas heat, older light commercial | 3–7.5 ton |
 | LX | — | High efficiency commercial | 7.5–25 ton |
@@ -5301,6 +5303,99 @@ The Quantum board is York's standard RTU controller across Predator and most Sun
 5. To clear fault history: hold RESET button for 10 seconds
 
 **OptiView controls** (larger LX series): full touchscreen interface. Access diagnostics via: Menu → Diagnostics → Fault History. OptiView stores last 10 faults with timestamp and sensor values at time of fault.
+
+---
+
+### ZXG Model Decode
+
+**Example: ZXG08F2C3A41B1111A3**
+- **ZXG** = Predator commercial gas/electric RTU, current production
+- **08** = capacity code (cross-reference York capacity table — larger ZXG units are dual-compressor circuit)
+- **F** = R-410A refrigerant
+- **2** = 208/230V, 3-phase, 60 Hz
+- **C3A4** = factory-installed configuration options
+- **1B / 1111A3** = cabinet variant and manufacturing sequence
+
+ZXG units use the **Simplicity SE** control platform (SE-SPU1002-10 board), not the older Quantum board. Dual-compressor ZXG units have independent refrigerant circuits — one circuit can run while the other is locked out.
+
+**York serial number decode (ZXG era):** first letter = manufacturing plant (N = Norman, OK; W = Wichita), followed by year/week code, then sequence number.
+
+---
+
+### Simplicity SE Control Board (SE-SPU1002-10)
+
+The SE-SPU1002-10 (Simplicity SE Processing Unit, Johnson Controls) is the current-generation RTU controller found on ZXG, ZXH, and ZXL series Predator units. It replaces the older Quantum board.
+
+**Board identification:** white label on board reads "SE-SPU1002-10 / JOHNSON CONTROLS, INC." A USB-A port is visible on the lower face of the board — this is the primary field service interface.
+
+**Key connector labels on SE-SPU1002-10 (visible on board face):**
+- **RAH** — Return Air Humidity sensor input
+- **DCT** — Discharge Cooling Temperature sensor
+- **PRS** — Pressure transducer / switch inputs
+- **OFS** — Outdoor Fan Start / speed output
+- **APS** — Air Pressure Switch (supply fan proving)
+
+**USB port uses:**
+- Download fault log to USB drive (insert drive → LED flashes → remove → open `fault_log.csv`)
+- Upload firmware updates (download `.bin` file from JCI TechDirect portal, load via USB drive)
+- Connect JCI field laptop with Simplicity SE configuration software for parameter setup
+
+#### SE-SPU Board LED Indicators
+
+Unlike the Quantum board's blink-count system, the Simplicity SE communicates fault detail via RS-485 to the thermostat display. Board LEDs indicate general status only:
+- **Green LED (Power):** steady on = 24VAC supply OK; off = no power to board
+- **Green/Amber LED (Status):** steady green = normal run; amber flash = active alarm; off = standby
+- **Red LED (Fault):** steady red = hard lockout active; flashing = soft fault/alert; off = no fault
+
+Full fault descriptions, sensor values at time of fault, and timestamps are shown on the Simplicity SE thermostat display — not decoded from board LED blink patterns.
+
+#### Simplicity SE Fault Codes and Fixes
+
+**Compressor / Cooling Faults:**
+
+| Fault Message | Cause | Field Fix |
+|---|---|---|
+| Low Pressure Trip | Suction pressure fell below LP switch cutout (~100 psig R-410A). Low charge, restricted metering device, dirty evaporator, or low airflow. | Verify suction pressure (target 115–130 psig at 70°F ambient). Check filter static. Inspect TXV/EEV. Check for refrigerant leak with electronic detector. |
+| High Pressure Trip | Discharge pressure exceeded HP switch cutout (~590 psig R-410A). Dirty condenser coil, failed condenser fan, refrigerant overcharge, or extreme ambient. | Clean condenser coil. Verify all condenser fans spinning (check contactors and capacitors). Check subcooling spec (10–15°F for TXV). |
+| Low Pressure Lockout | 3 LP trips within 1 hour. System locked on "Loss of Charge" or LP Lockout. | Board will not auto-reset — manual reset required (hold RESET on thermostat or cycle 24V power). Locate and repair leak before resetting. |
+| High Pressure Lockout | HP switch opened. Hard lockout — manual reset only. | Reset only after confirming cause is corrected. HP lockout on a new or recently-serviced unit: check refrigerant charge (overcharge). |
+| Compressor Overtemperature | Discharge line temperature sensor reading > 225°F. Low charge or failed condenser fan most common cause. | Verify charge and condenser operation. Check discharge temp sensor resistance: NTC ~10 kΩ at 77°F — replace if open or shorted. |
+| Compressor No-Start / Proof Failure | Contactor pulled but current sensor did not confirm compressor started. | Check line voltage at compressor terminals (should be within 10% of nameplate). Check contactor for pitted contacts. Check compressor winding resistance (T1–T2, T2–T3, T1–T3 — should be < 2Ω each, balanced). |
+
+**Heating Faults:**
+
+| Fault Message | Cause | Field Fix |
+|---|---|---|
+| Draft Pressure Fault | Inducer draft switch not closing. Inducer not running, blocked flue, flooded condensate trap, or cracked inducer wheel. | Verify inducer running (2,800–3,200 RPM). Check flue for bird/wasp nests. Inspect condensate drain — flooded trap creates back-pressure against inducer. Test draft switch: apply −0.35" W.C. via manometer — contacts should close. |
+| Ignition Failure / Lockout | Failed to prove flame in 3 attempts. Gas supply issue, failed hot surface igniter (HSI), weak flame sensor signal, or wrong gas pressure. | Check manifold gas pressure: 3.5" W.C. natural / 10.0" W.C. propane. Inspect HSI — glowing orange within 15–17 sec is normal; black/cracked = replace. Clean flame sensor rod with fine steel wool (carbon buildup causes weak µA signal). Soft lockout auto-resets after 1 hour. |
+| High Limit Fault | Heat exchanger temperature exceeded high-limit switch setpoint (~175–200°F). Insufficient airflow. | Check filter static pressure drop (> 0.5" W.C. = replace filter). Verify supply blower is running and belt (if belt-drive) is not slipping. Check blower wheel for buildup. High-limit switch is auto-reset — confirm cause before assuming switch failed. |
+| Rollout Fault | Rollout limit switch opened. Flame escaping combustion chamber — heat exchanger integrity issue. | Manual reset required: press red button on burner box. **Do not reset repeatedly without investigating** — rollout trips indicate a cracked heat exchanger or combustion gas path problem. CO risk. |
+
+**Sensor / Communication Faults:**
+
+| Fault Message | Cause | Field Fix |
+|---|---|---|
+| OAT Sensor Fault | Outdoor air temperature sensor open circuit or shorted | Check sensor resistance at board connector: NTC thermistor ~10 kΩ at 77°F. Inspect sensor wiring for chafing (common near sheet metal edges). |
+| DAT Sensor Fault | Discharge air temperature sensor out of range | Check sensor at DCT connector. Confirm sensor is seated in discharge duct properly. |
+| Thermostat Comm Fault | Loss of RS-485 communication between SE-SPU board and Simplicity SE thermostat | Check 4-conductor cable between board and thermostat: pins 1/2 = RS-485 COMM+/COMM−; pins 3/4 = 24VAC power feed to thermostat. Verify polarity (reversed COMM+/− = no communication). Check for cable damage or water ingress in thermostat conduit. |
+| Control Config Fault | Board parameters unconfigured or corrupted | Connect USB drive and download fault log first. Reconnect field laptop with Simplicity SE utility or re-run commissioning wizard from thermostat: Menu → Setup → Unit Configuration. Reload firmware via USB if config corruption is suspected. |
+
+#### Accessing Fault History on Simplicity SE
+
+**Via thermostat display:**
+1. Press **MENU** on Simplicity SE thermostat
+2. Navigate to: **Service** → **Diagnostics** → **Fault History**
+3. Stores last 10 faults with: fault name, date/time, sensor readings at fault, compressor hours at fault, reset method used
+
+**Via USB drive:**
+1. Insert USB drive into SE-SPU1002-10 USB-A port
+2. Green Status LED flashes rapidly during transfer (5–15 sec)
+3. Remove drive — open `fault_log.csv` on any computer
+4. Fault log contains: fault code, timestamp, sensor snapshot, runtime data
+
+**Manual reset methods:**
+- **Soft lockout** (LP, ignition): thermostat RESET button, or auto-resets after 1 hour
+- **Hard lockout** (HP, rollout): cycle 24VAC power to board, OR hold RESET on thermostat for 10 seconds
 
 ---
 
