@@ -3,12 +3,18 @@
 import React from 'react'
 import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
 import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
+import { ParagonTimerDiagram } from './diagrams/ParagonTimerDiagram'
+import { CompressorTerminalDiagram } from './diagrams/CompressorTerminalDiagram'
+import { IceHarvestCycleDiagram } from './diagrams/IceHarvestCycleDiagram'
 
 export type OpenPdfFn = (url: string, title: string) => void
 
 const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode> = {
   'rack-style-1': (openPdf) => <RackStyle1Diagram openPdf={openPdf} />,
   'rack-style-2': (openPdf) => <RackStyle2Diagram openPdf={openPdf} />,
+  'paragon-timer': () => <ParagonTimerDiagram />,
+  'compressor-terminals': () => <CompressorTerminalDiagram />,
+  'ice-harvest-cycle': () => <IceHarvestCycleDiagram />,
 }
 
 // ── Inline formatter ──────────────────────────────────────────────────────────
@@ -257,6 +263,31 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
         flushList()
         listBuffer = { type: 'ol', items: [itemText] }
       }
+      i++
+      continue
+    }
+
+    // ── Image ──  ![alt](url)  or  ![alt](url "caption")
+    const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)$/)
+    if (imgMatch) {
+      flushList()
+      const [, alt, src, caption] = imgMatch
+      nodes.push(
+        <figure key={nodes.length} className="my-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 max-w-full"
+            loading="lazy"
+          />
+          {(caption || alt) && (
+            <figcaption className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center italic">
+              {caption || alt}
+            </figcaption>
+          )}
+        </figure>
+      )
       i++
       continue
     }
