@@ -7751,7 +7751,6 @@ Standard brass solenoid valves are NOT rated for CO₂ pressures. CO₂ transcri
 export const A2L_REFRIGERANTS_KNOWLEDGE = `
 ## A2L Refrigerants — Field Guide for Canadian Technicians
 
-*Sources: ASHRAE Standard 34 (2022), ASHRAE Standard 15 (2022), Environment and Climate Change Canada (ECCC) HFC Phase-Down Regulations (SOR/2021-166), manufacturer refrigerant data sheets from Honeywell, Chemours, and Daikin.*
 
 ### What Are A2L Refrigerants?
 ASHRAE 34 classifies refrigerants by toxicity (A = lower, B = higher) and flammability (1 = none, 2L = lower, 2 = flammable, 3 = highly flammable). **A2L = lower toxicity, mildly flammable** — this is the critical new class entering commercial refrigeration and HVAC.
@@ -7775,15 +7774,11 @@ Canada's **HFC Phase-Down Regulations** (in force since 2019, updated 2021) cap 
 - **Existing equipment can continue using HFCs** — phase-down affects new equipment manufacturing and bulk imports, not retrofit of existing systems
 
 ### Equipment Using A2L Refrigerants (New Equipment, 2025+)
-\`\`\`
-HFC Phase-Down Timeline (Canada/Kigali Aligned)
-─────────────────────────────────────────────────
-2019-2024:   Transition refrigerants (R-448A, R-449A) phase in
-2025:        All new HVAC RTUs use R-454B or R-466A
-2025-2026:   New commercial refrigeration uses R-454C
-2027+:       R-448A availability tightens significantly
-2036:        85% reduction target from 2011-2013 baseline
-\`\`\`
+- **2019-2024:** Transition refrigerants (R-448A, R-449A) phase in
+- **2025:** All new HVAC RTUs use R-454B or R-466A
+- **2025-2026:** New commercial refrigeration uses R-454C
+- **2027+:** R-448A availability tightens significantly
+- **2036:** 85% reduction target from 2011-2013 baseline
 
 ### Safety Requirements — What Changes in the Field
 
@@ -7864,29 +7859,24 @@ HFC Phase-Down Timeline (Canada/Kigali Aligned)
 export const TECUMSEH_KNOWLEDGE = `
 ## Tecumseh Compressors — Field Service Guide
 
-*Sources: Tecumseh Products Company Technical Information Manual TM-002 (Hermetic Compressors), Tecumseh AJ/AE Application Guide AG-10, Tecumseh Compressor Model Number Guide, Tecumseh field service bulletins FSB-001 through FSB-018.*
 
 ### Product Families Overview
 
-\`\`\`
-Tecumseh Compressor Families
-──────────────────────────────────────────────────────
-Hermetic (welded — not field-serviceable internally):
-  AE / AEA   – Small hermetic, R-404A / R-448A / R-134a LT/MT commercial
-  AJ / AJA   – Medium hermetic, HFC commercial refrigeration
-  TAJ        – High-efficiency hermetic (R-449A optimized)
-  TFH        – R-404A/R-448A hermetic, 1.5–5 HP range
-  AG / AGA   – R-134a medium-temperature hermetic
-  AWA        – R-22 legacy (phased out — for replacement reference only)
-  NE / NEK   – Small hermetic, beverage coolers / reach-in doors
+**Hermetic (welded — not field-serviceable internally):**
+- **AE / AEA** — Small hermetic, R-404A / R-448A / R-134a LT/MT commercial
+- **AJ / AJA** — Medium hermetic, HFC commercial refrigeration
+- **TAJ** — High-efficiency hermetic (R-449A optimized)
+- **TFH** — R-404A/R-448A hermetic, 1.5–5 HP range
+- **AG / AGA** — R-134a medium-temperature hermetic
+- **AWA** — R-22 legacy (phased out — for replacement reference only)
+- **NE / NEK** — Small hermetic, beverage coolers / reach-in doors
 
-Semi-Hermetic (bolted — field-serviceable):
-  RKA        – Reciprocating semi-hermetic, 3–15 HP rack applications
-  TSK        – Reciprocating semi-hermetic (parallel rack use)
+**Semi-Hermetic (bolted — field-serviceable):**
+- **RKA** — Reciprocating semi-hermetic, 3–15 HP rack applications
+- **TSK** — Reciprocating semi-hermetic (parallel rack use)
 
-CO₂ Models:
-  CAJ        – CO₂ hermetic (R-744), used in small secondary circuits
-\`\`\`
+**CO₂ Models:**
+- **CAJ** — CO₂ hermetic (R-744), used in small secondary circuits
 
 ### Model Number Decode
 **Example: AEA4460YXA**
@@ -7916,13 +7906,10 @@ CO₂ Models:
 **Three start configurations exist on Tecumseh hermetics:**
 
 **1. RSIR (Resistance Start, Induction Run) — start relay + start capacitor**
-\`\`\`
-Supply ──[Overload]──[Run winding (R-C)]
-                   ──[Start winding (R-S)] ──[Start cap] ──[Start relay coil]
-                                            └─ [Relay contact]─┘
-Relay coil in parallel with run winding. When motor speeds up, back-EMF opens relay.
-Test: Start cap (µF rating on label ±10%), relay coil ~30-60Ω
-\`\`\`
+- Supply runs through overload protector to common terminal
+- Run winding (C→R) and start winding (C→S) both energized at start
+- Start relay coil in parallel with run winding; back-EMF opens the relay as motor speeds up
+- **Test:** Start cap (µF within ±10% of label), relay coil resistance ~30–60Ω
 
 **2. CSIR (Capacitor Start, Induction Run) — start relay + run capacitor**
 - Larger motors (1/2 HP+). Run capacitor stays in circuit continuously.
@@ -7943,22 +7930,11 @@ Test: Start cap (µF rating on label ±10%), relay coil ~30-60Ω
 
 [diagram:compressor-terminals]
 
-\`\`\`
-Standard Hermetic Motor Terminals (bottom of compressor):
-    C ──── Common
-    R ──── Run winding
-    S ──── Start winding
-
-With PSC cap:
-    Supply L1 ──[Overload]── C
-    Supply L2 ──────────────── R ──[Run Cap]── S
-
-Test winding resistance (motor at ambient temperature):
-    C to R = Run winding resistance (lowest)
-    C to S = Start winding resistance (medium)
-    R to S = Total (highest — sum of above)
-    Any terminal to ground = ∞Ω (open = motor grounded/failed)
-\`\`\`
+**Winding resistance test (motor at ambient temperature):**
+- **C to R** = Run winding resistance (lowest reading)
+- **C to S** = Start winding resistance (medium reading)
+- **R to S** = Total (highest — sum of the two above)
+- **Any terminal to ground** = ∞Ω; anything less indicates a grounded/failed motor
 
 ### Common Failure Modes & Diagnosis
 
@@ -7975,15 +7951,11 @@ Test winding resistance (motor at ambient temperature):
 ### Suction Service Valve Procedures (Semi-Hermetics)
 Semi-hermetic Tecumseh (RKA/TSK) have suction and discharge service valves.
 
-\`\`\`
-Service Valve Positions:
-  Fully back-seated (CCW) = open to system, port closed
-  Mid-position (cracked off back-seat) = open to system AND gauge port (normal service position)
-  Fully front-seated (CW) = system closed, gauge port open (isolates compressor)
+- **Fully back-seated (CCW):** open to system, gauge port closed
+- **Mid-position (cracked off back-seat):** open to system AND gauge port — normal service position
+- **Fully front-seated (CW):** system closed, gauge port open — isolates compressor for service
 
-NEVER run a compressor with suction service valve front-seated — compressor will be starved
-and fail immediately (internal temperatures spike within seconds).
-\`\`\`
+**Warning:** Never run a compressor with the suction service valve front-seated — the compressor will be starved and fail immediately.
 
 ### Application Guide — Refrigerant Compatibility
 | Tecumseh Series | Primary Refrigerant | Compatible Substitutes |
@@ -8016,50 +7988,22 @@ When replacing a failed Tecumseh compressor:
 export const CAREL_CONTROLLERS_KNOWLEDGE = `
 ## Carel Controllers — Field Service Guide
 
-*Sources: Carel IR33 Installation and User Manual (+030220791), Carel pCO5+ Technical Manual (+030220340), Carel pRack Application Guide (+030220793), Carel pStep and MX EEV Driver Manual (+030220338), Carel pGD Touch Interface Manual (+030220260).*
 
 ### Product Family Overview
 
-\`\`\`
-Carel Controller Families Used in Commercial Refrigeration:
-──────────────────────────────────────────────────────────────
-IR33 Series        – Simple temperature controller for cases/walk-ins/condensing units
-                     Variants: IR33F (full), IR33E (compact), IR33Z (EEV version)
-
-pCO5+              – Programmable micro-controller, used in CO₂ racks (Hill Phoenix
-                     Advansor, Chill-Con, custom CO₂ systems), large condensing units
-
-pRack              – Pre-configured rack controller based on pCO5+ platform
-                     Purpose-built for HFC/CO₂ parallel rack management
-
-pStep / MX         – EEV stepper motor drivers (external module connected to pCO/IR33Z)
-                     pStep = older RS485 stepper driver
-                     MX = newer CAN-bus stepper driver, mounts on valve body
-
-pGD Touch          – 4.3" touchscreen display/interface for pCO5+ systems
-PGDE / PGD0        – Smaller display units (older systems)
-
-EVD Evolution      – Smart EEV driver with integrated superheat algorithm
-                     Standalone or connected to pCO/IR33
-\`\`\`
+| Family | Description |
+|---|---|
+| **IR33 Series** | Simple temperature controller for cases/walk-ins/condensing units. Variants: IR33F (full), IR33E (compact), IR33Z (EEV version) |
+| **pCO5+** | Programmable micro-controller used in CO₂ racks (Hill Phoenix Advansor, Chill-Con), large condensing units |
+| **pRack** | Pre-configured rack controller based on pCO5+ platform; purpose-built for HFC/CO₂ parallel rack management |
+| **pStep / MX** | EEV stepper motor drivers. pStep = older RS485 driver; MX = newer CAN-bus driver, mounts on valve body |
+| **pGD Touch** | 4.3" touchscreen display/interface for pCO5+ systems |
+| **EVD Evolution** | Smart EEV driver with integrated superheat algorithm; standalone or connected to pCO/IR33 |
 
 ### IR33 Series — Quick Reference
 
 **Physical Layout:**
-\`\`\`
-IR33 Front Panel:
-┌─────────────────────────────┐
-│  [SET] [▲] [▼] [AUX/MAN]   │  ← Navigation buttons
-│                              │
-│    [PROBE 1 TEMP DISPLAY]    │  ← Main display
-│    [PROBE 2 / SETPOINT]      │  ← Secondary display
-│                              │
-│  ● Compressor LED            │
-│  ● Defrost LED               │
-│  ● Alarm LED                 │
-│  ● Aux/Fan LED               │
-└─────────────────────────────┘
-\`\`\`
+The IR33 front panel has four buttons (SET, ▲, ▼, AUX/MAN), a main temperature display, a secondary setpoint/probe display, and four status LEDs: Compressor, Defrost, Alarm, and Aux/Fan.
 
 **Key IR33 Parameters:**
 
@@ -8103,13 +8047,12 @@ IR33 Front Panel:
 The pCO5+ is a programmable controller — the user interface and parameters depend entirely on the application software loaded (e.g., Hill Phoenix Advansor software vs. Carel pRack software).
 
 **Hardware identification:**
-\`\`\`
-pCO5+ variants (by I/O count — check sticker on unit):
-  pCO5+ SMALL    – 9AI, 5AO, 14DI, 7DO
-  pCO5+ MEDIUM   – 15AI, 8AO, 23DI, 13DO
-  pCO5+ LARGE    – 22AI, 12AO, 34DI, 16DO
-  pCO5+ EXTRALARGE – 29AI, 14AO, 45DI, 18DO
-\`\`\`
+| Variant | Analog In | Analog Out | Digital In | Digital Out |
+|---|---|---|---|---|
+| SMALL | 9 | 5 | 14 | 7 |
+| MEDIUM | 15 | 8 | 23 | 13 |
+| LARGE | 22 | 12 | 34 | 16 |
+| EXTRALARGE | 29 | 14 | 45 | 18 |
 
 **pGD Touch Screen Navigation (standard across applications):**
 - **Home** button: return to main status screen
@@ -8126,12 +8069,10 @@ The pCO5+ has a USB port and/or SD card slot (depending on version). Application
 ### pStep / MX EEV Drivers — Commissioning
 
 **EEV Driver Wiring (pStep RS485):**
-\`\`\`
-pStep ──RS485 bus──> pCO5+ or IR33Z controller
-pStep Motor terminals: M1, M2, M3, M4 → to EEV motor coils
-Power: 12V DC from controller or separate supply
-Address DIP switches on pStep must match controller configuration
-\`\`\`
+- Connected to pCO5+ or IR33Z via RS485 bus
+- Motor terminals M1–M4 wire to EEV stepper coils
+- Power: 12V DC from controller or separate supply
+- Address DIP switches on pStep must match controller configuration
 
 **MX (CAN-bus, newer systems):**
 - Mounts directly on Carel EEV valve body
@@ -8186,26 +8127,12 @@ Key pRack parameters for HFC multiplex rack (refer to pRack application guide fo
 export const ICE_MACHINES_KNOWLEDGE = `
 ## Ice Machines — Manitowoc & Hoshizaki Field Service Guide
 
-*Sources: Manitowoc Ice Indigo NXT Service Manual (Part 000002285), Manitowoc QD+ Service Manual (000002040), Hoshizaki KM Service Manual (73186), Hoshizaki KML Service Manual (73220), NSF/ANSI 12 Ice Machine Standard.*
 
 ### Ice Production Fundamentals
 
 [diagram:ice-harvest-cycle]
 
-\`\`\`
-Basic Cube Ice Machine Cycle:
-──────────────────────────────────────────────────────────
-        FREEZE CYCLE              HARVEST CYCLE
-Water → Evaporator plate → Ice → Hot gas release → Ice falls
-Pump circulates water over evaporator. When ice reaches target
-thickness, harvest starts: hot gas (or electric grid) warms
-evaporator, ice releases, falls into bin.
-──────────────────────────────────────────────────────────
-Typical cycle time:
-  Freeze: 12-25 min (varies with water/air temp, load)
-  Harvest: 2-5 min
-  Full cycle: 14-30 min
-\`\`\`
+Typical cycle times: freeze 12–25 min (varies with water/air temp and load), harvest 2–5 min, full cycle 14–30 min.
 
 **Ice machine capacity ratings (AHRI standard):**
 - Rated at 21°C (70°F) air, 21°C (70°F) inlet water — capacity drops significantly in summer
@@ -8213,7 +8140,7 @@ Typical cycle time:
 
 ---
 
-## Manitowoc Ice Machines
+### Manitowoc Ice Machines
 
 ### Indigo NXT Series — Diagnostics (Current Production)
 
@@ -8278,7 +8205,7 @@ Hold **SELECT** button for 5 seconds to enter Service Mode. Options:
 
 ---
 
-## Hoshizaki Ice Machines
+### Hoshizaki Ice Machines
 
 ### KM Series — Diagnostic Overview
 
@@ -8328,18 +8255,15 @@ On KM series: put machine in service mode (hold **SERVICE** switch on control bo
 
 **Mandatory cleaning frequency:** Every 6 months minimum (NSF/ANSI 12 requirement).
 
-\`\`\`
-Cleaning Procedure (general — refer to specific model manual):
 1. Remove all ice from bin — do not use cleaning chemicals with ice present
-2. Press CLEAN / wash button (or per model procedure)
+2. Press CLEAN / wash button (or follow model-specific procedure)
 3. Add manufacturer-approved ice machine cleaner to reservoir
-4. Machine runs cleaning cycle (recirculates cleaner 20-30 min)
-5. Rinse cycle (machine purges cleaner with fresh water)
+4. Machine runs cleaning cycle (recirculates cleaner 20–30 min)
+5. Rinse cycle — machine purges cleaner with fresh water
 6. Add sanitizer (Manitowoc or Hoshizaki approved — typically quaternary ammonium)
 7. Run sanitizer cycle
 8. Machine returns to normal ice production
 9. Discard first batch of ice after cleaning
-\`\`\`
 
 **Water quality:** Scale buildup is the #1 cause of ice machine service calls. Water hardness >180 ppm (10 grains/gal) requires water treatment (scale inhibitor or softener). Check with customer on water quality history.
 
@@ -8358,7 +8282,6 @@ Superheat at suction: 5-8K. Subcooling at liquid line: 4-8K. Flat charge curves 
 export const RANCO_PARAGON_KNOWLEDGE = `
 ## Ranco & Paragon Controls — Legacy Equipment Service Guide
 
-*Sources: Ranco Controls Catalog and Application Data, Emerson (now Ranco) Application Notes AN-10 and AN-15, Paragon Electric Controls Catalog 8145 and 8145-20, Intermatic T-100 Series Manual.*
 
 ### Ranco Temperature Controls
 
@@ -8374,21 +8297,9 @@ Ranco thermostats are found on millions of older condensing units, walk-in coole
 | C35-718 | Walk-in freezer | −40 to −7°C | Fixed ~4°C |
 
 **O-Series Physical Layout:**
-\`\`\`
-Ranco O-Series Thermostat Wiring:
-┌─────────────────────────────┐
-│  1 (COM) ──────────────┐    │
-│  2 (N/O cut-in)        │    │  SPDT switch
-│  3 (N/C cut-out)───────┘    │  (most units use COM + N/C)
-│                              │
-│  [RANGE dial]   [DIFF dial]  │
-│  Capillary bulb connection   │
-└─────────────────────────────┘
-For cooling control (compressor):
-  COM → one side of compressor contactor coil
-  N/C (or cut-out) → other side of power supply
-  Compressor ON when temp ABOVE setpoint
-\`\`\`
+**Terminals:** 1 (COM), 2 (N/O cut-in), 3 (N/C cut-out) — SPDT switch; most cooling applications use COM and N/C (cut-out).
+
+**For cooling control (compressor):** wire COM to one side of the compressor contactor coil, N/C to the power supply. Compressor energizes when temperature rises above setpoint.
 
 **Setting Ranco Controls:**
 - **Range dial:** sets the cut-out point (where compressor turns OFF as temperature drops to setpoint)
@@ -8427,35 +8338,13 @@ Paragon timers are mechanical cam-based defrost timers found on virtually all ol
 
 [diagram:paragon-timer]
 
-\`\`\`
-Paragon 8145 Timer Dial Face:
-       12 (noon/midnight)
-    11  │  1
-  10    │    2
-9 ──────●────── 3     ● = current time pointer
-  8     │    4
-    7   │  5
-        6 (6hr)
-
-Pins (96 total, 15 min apart):
-  PULL OUT pin = start defrost at that time
-  PUSH IN pin  = end defrost at that time
-  Example: Pull at 2:00AM, Push at 2:30AM = 30 min defrost starting at 2:00AM
-\`\`\`
+The 8145 dial has 96 pins spaced 15 minutes apart. **Pull out** a pin to start a defrost at that time; **push in** a pin to end it. Example: pull at 2:00 AM, push at 2:30 AM = 30-minute defrost starting at 2:00 AM.
 
 **Paragon 8145 Wiring:**
-\`\`\`
-Terminal Layout:
-  1 (L1/Hot) ──── Power input
-  2 (N/Neutral) ── Neutral
-  3 (Comp/Fan) ──── Normal operation circuit (energized except during defrost)
-  4 (Defrost) ──── Defrost circuit (energized during defrost pin activation)
-
-Walk-in Typical:
-  T1-T2 = 208/240V supply
-  T3 = compressor contactor + evaporator fan motors (off during defrost)
-  T4 = defrost heaters (on during defrost)
-\`\`\`
+- **T1 (L1/Hot):** power input
+- **T2 (Neutral):** neutral
+- **T3 (Comp/Fan):** normal operation circuit — energized except during defrost (compressor contactor + fan motors)
+- **T4 (Defrost):** defrost circuit — energized when defrost pins are active (heaters)
 
 **Setting Defrost Schedule:**
 1. Remove dial face (usually friction-fit or one screw)
@@ -8496,7 +8385,6 @@ Similar to Paragon — mechanical cam timer for HVAC/refrigeration defrost duty.
 export const ANTI_SWEAT_HEATER_KNOWLEDGE = `
 ## Anti-Sweat Heater Controls — Energy Management & Service
 
-*Sources: Hussmann Corporation DASH Rack Controller Application Manual (R-DASH-TECH), Emerson E2 Anti-Sweat Heater Control Application Note (026-1610), DOE/Lawrence Berkeley National Laboratory Report LBNL-3926E (Supermarket Refrigeration Energy Study), Heatcraft Display Case ASH Guidelines.*
 
 ### What Are Anti-Sweat Heaters?
 
@@ -8507,18 +8395,12 @@ Display case glass doors and mullion (frame) heaters maintain the door frame and
 - Electrical hazards from water intrusion
 
 **ASH Energy Impact:**
-\`\`\`
-Typical ASH energy consumption for a supermarket:
-  Open multi-deck cases: 10-20W per linear foot of frame
-  Glass door reach-in cases (per door): 25-60W
-  Coffin case front rail: 15-30W per linear foot
+- Open multi-deck cases: 10–20W per linear foot of frame
+- Glass door reach-in cases: 25–60W per door
+- Coffin case front rail: 15–30W per linear foot
+- **Total in a typical 5,000 sq ft grocery: 8–15 kW continuous = 70,000–130,000 kWh/year**
 
-Total ASH load in a typical 5,000 sq ft grocery: 8-15 kW continuous
-= 70,000 – 130,000 kWh/year
-
-Smart ASH control (humidity-based) reduces this by 30-60% by
-only running heaters when dew point conditions require it.
-\`\`\`
+Humidity-based smart control reduces this by 30–60% by only running heaters when dew point conditions require it.
 
 ### Types of Anti-Sweat Heater Control
 
@@ -8538,15 +8420,13 @@ only running heaters when dew point conditions require it.
 - Turns heaters off when dew point is well below door frame temperature
 - Most energy efficient; ENERGY STAR certification typically requires this
 
-\`\`\`
-Dew Point Calculation (simplified):
-  Store air: 22°C, 50% RH → Dew Point ≈ 11°C
-  Store air: 22°C, 70% RH → Dew Point ≈ 16°C
-  Store air: 22°C, 90% RH → Dew Point ≈ 20°C
+| Store Conditions | Approximate Dew Point |
+|---|---|
+| 22°C, 50% RH | ≈ 11°C |
+| 22°C, 70% RH | ≈ 16°C |
+| 22°C, 90% RH | ≈ 20°C |
 
-If door frame temperature stays above dew point → no heaters needed.
-If dew point approaches frame temperature → turn heaters on.
-\`\`\`
+If door frame temperature stays above the dew point, heaters are not needed. Turn them on when dew point approaches frame temperature.
 
 ### Emerson E2 Anti-Sweat Heater Control
 
@@ -8575,50 +8455,21 @@ Navigation path: *Home → Circuit Setup → ASH Control Setup*
 
 In DASH-equipped stores, ASH is managed through the rack controller:
 
-\`\`\`
-DASH ASH Control Screen (typical):
-  ASH Zone 1: Dairy cases, aisle 3    Status: OFF (RH = 48%)
-  ASH Zone 2: Frozen aisle, aisle 4   Status: ON  (RH = 67%)
-  ASH Zone 3: Produce mist section     Status: ON  (RH = 72%)
-
-  Store RH sensor: 52% (at sensor height)
-  Dew Point calculated: 11.5°C
-  ASH Off Threshold: <55% RH
-  ASH On Threshold: >60% RH
-\`\`\`
+The DASH ASH screen shows each zone's name, current status (ON/OFF), and the measured RH at that zone. Store-wide RH, calculated dew point, and the on/off RH thresholds (typically off <55%, on >60%) are shown at the bottom.
 
 ### Wiring — Typical ASH Circuit
 
-\`\`\`
-Simple ASH Zone Wiring:
-                        ┌── Door 1 heater (30W) ──┐
-120V supply ─[ASH relay]┤── Door 2 heater (30W) ──┤── Neutral
-                        └── Door 3 heater (30W) ──┘
-
-ASH relay coil: 24V AC from controller output
-Heaters in parallel — if one fails, others continue
-
-Multi-door case ASH circuit:
-  Each door frame: 2 strips (left and right mullion)
-  Each strip: typically NiCr resistance wire
-  Total per door: 25-50W at 120V or 208/240V
-  Check voltage: verify controller output voltage matches heater rating
-\`\`\`
+120V supply feeds an ASH relay (coil powered by 24V AC from the controller). The relay output feeds all door heaters wired in parallel — if one heater fails, the others continue running. Each door frame typically has two mullion heater strips (left and right) totalling 25–50W per door at 120V or 208/240V. Always verify the heater voltage rating matches the supply.
 
 ### Heater Resistance Testing
 
 Each heater element can be tested with a multimeter in ohms mode (circuit de-energized):
 
-\`\`\`
-Heater element resistance = V² / W
-  120V, 30W element: 120² / 30 = 480Ω
-  240V, 30W element: 240² / 30 = 1920Ω
-  120V, 50W element: 120² / 50 = 288Ω
+Expected resistance = V² ÷ W. Examples: a 120V/30W element = 480Ω; a 240V/30W element = 1920Ω; a 120V/50W element = 288Ω.
 
-Open circuit (∞Ω) = broken heater wire — replace element
-Short circuit (<50Ω) = failed insulation — check for moisture
-High resistance (+20% from calculated) = element deteriorating
-\`\`\`
+- **Open circuit (∞Ω):** broken heater wire — replace element
+- **Short circuit (<50Ω):** failed insulation — check for moisture ingress
+- **High resistance (+20% above calculated):** element deteriorating
 
 ### Common ASH Faults
 
@@ -8645,7 +8496,6 @@ High resistance (+20% from calculated) = element deteriorating
 export const EMBRACO_SECOP_KNOWLEDGE = `
 ## Embraco & Secop Compressors — Field Service Guide
 
-*Sources: Embraco Technical Handbook TH-001 (Hermetic Compressors), Secop Application Manual SD-AM-001 (HBP/LBP Series), Secop Technical Service Bulletin TSB-2018-03, Embraco Model Identification Guide.*
 
 ### Company Background
 - **Embraco** (now Nidec Global Appliance): Brazilian manufacturer, historically the dominant supplier of small hermetic compressors for commercial refrigeration, beverage merchandisers, reach-in coolers, and display case doors. Widely used in commercial applications up to ~1.5 HP.
@@ -8674,42 +8524,34 @@ export const EMBRACO_SECOP_KNOWLEDGE = `
 ### Model Number Identification
 
 **Embraco example: FFII12HBK**
-\`\`\`
-FF = family (FF = commercial HFC low-temp)
-I  = generation I
-12 = capacity code (BTU/hr at ARI-540 conditions)
-H  = refrigerant (H = R-404A, T = R-134a, E = R-290)
-B  = voltage (B = 208-230/1/60)
-K  = lubricant (K = polyolester POE)
-\`\`\`
+| Position | Code | Meaning |
+|---|---|---|
+| FF | Family | FF = commercial HFC low-temp |
+| I | Generation | I = first generation |
+| 12 | Capacity | BTU/hr at ARI-540 conditions |
+| H | Refrigerant | H=R-404A, T=R-134a, E=R-290 |
+| B | Voltage | B=208-230/1/60 |
+| K | Lubricant | K=polyolester POE |
 
 **Secop example: SC15CX.2**
-\`\`\`
-SC = family (SC = standard commercial)
-15 = displacement (cc)
-C  = refrigerant (C = R-134a, GX = R-404A)
-.2 = efficiency variant (higher number = higher EER)
-\`\`\`
+| Position | Code | Meaning |
+|---|---|---|
+| SC | Family | SC = standard commercial |
+| 15 | Displacement | cc |
+| C | Refrigerant | C=R-134a, GX=R-404A |
+| .2 | Variant | higher number = higher EER |
 
 ### Start Components — Embraco/Secop
 
 Most small Embraco and Secop compressors use one of:
 
 **1. PTC Starter (Positive Temperature Coefficient device)**
-\`\`\`
-PTC replaces traditional start relay:
-  - Plugs onto S (start) terminal
-  - At room temp: low resistance — allows start winding current
-  - As current passes, PTC heats up → high resistance — disconnects start winding
-  - Self-resetting, no moving parts
-  - Must cool down (~3-5 min) before another start attempt — if repeated starting is
-    needed, PTC may be too hot to allow starting
+- Plugs onto the S (start) terminal — replaces traditional start relay
+- At room temperature: low resistance (~10–30Ω), allowing start winding current
+- As current passes, PTC heats up → resistance goes high, disconnecting the start winding
+- Self-resetting, no moving parts — must cool down ~3–5 min before another start attempt
 
-Testing PTC:
-  At room temperature: 10-30Ω (check datasheet for specific value)
-  After energized (hot): > 10kΩ
-  Failed PTC: either open (∞Ω cold) or shorted (low resistance when hot)
-\`\`\`
+**Testing PTC:** Cold resistance: 10–30Ω (check datasheet). Hot (after running): >10kΩ. Failed PTC: either open (∞Ω cold) or shorted (stays low resistance when hot).
 
 **2. Electronic Relay (Embraco ASIC / EMS Relay)**
 Some larger Embraco models use an electronic starting relay module that replaces PTC + capacitor.
@@ -8721,18 +8563,11 @@ Larger Embraco FFI / NJ series — same as standard PSC compressors.
 
 [diagram:compressor-terminals]
 
-\`\`\`
-Standard 3-terminal hermetic (same as Tecumseh):
-  C = Common
-  R = Run winding (measured C-R: lowest resistance)
-  S = Start winding (measured C-S: middle resistance)
-
-Typical winding resistance (small Embraco NE/NJ):
-  C-R: 5-15Ω
-  C-S: 10-30Ω
-  R-S: 15-40Ω
-  Any terminal to ground: ∞Ω
-\`\`\`
+**Typical winding resistance (small Embraco NE/NJ):**
+- C to R: 5–15Ω (run winding — lowest)
+- C to S: 10–30Ω (start winding — middle)
+- R to S: 15–40Ω (total — highest)
+- Any terminal to ground: ∞Ω (anything less = grounded motor)
 
 ### Replacement Selection
 
@@ -8778,33 +8613,19 @@ Embraco and Secop compressors are **replace, not repair** — hermetic welded ca
 export const ZERO_ZONE_KNOWLEDGE = `
 ## Zero Zone Display Cases — Field Service Guide
 
-*Sources: Zero Zone Display Case Installation and Service Manual (Series 20/30/40 Multi-Deck), Zero Zone Model 26/38 Service Reference, Zero Zone Controller Setup Guide (Dixell XR/XW based), Zero Zone Engineering Bulletin EB-ASH-001.*
 
 ### Company Overview
 Zero Zone (headquartered in North Prairie, Wisconsin) manufactures open and closed multi-deck refrigerated display cases widely used in US and Canadian supermarkets. Major retail chains using Zero Zone equipment include Kroger, Safeway/Sobeys affiliates, and regional independents. Zero Zone was acquired by Daikin in 2020.
 
 ### Product Family Overview
 
-\`\`\`
-Zero Zone Display Case Families:
-──────────────────────────────────────────────────────────
-Multi-Deck Cases (Open):
-  Series 20   – Standard MT multi-deck, produce/dairy/deli
-  Series 26   – Enhanced MT, higher display density
-  Series 30   – LT frozen multi-deck, 2-3 tier
-  Series 40   – Double-duty (MT top, LT bottom)
+**Multi-Deck (Open):** Series 20 (MT produce/dairy/deli), Series 26 (enhanced MT), Series 30 (LT frozen 2-3 tier), Series 40 (MT top / LT bottom)
 
-Glass Door Cases (Closed):
-  Series TM   – Tall multi-tier glass door, frozen
-  Series PM   – Produce/deli, 1-2 tier glass door
+**Glass Door (Closed):** Series TM (tall multi-tier frozen), Series PM (produce/deli 1-2 tier)
 
-Coffin Cases:
-  Series 38   – Standard LT coffin
-  Series 48   – Wide coffin (dual compressor zone)
+**Coffin Cases:** Series 38 (standard LT), Series 48 (wide coffin, dual zone)
 
-Specialty:
-  Series FG   – Floral/greenhouse glass door
-\`\`\`
+**Specialty:** Series FG (floral/greenhouse glass door)
 
 ### Case Identification — Name Plate Information
 Zero Zone name plate is typically located inside the case end cap (lift the merchandising end panel). Contains:
@@ -8838,18 +8659,7 @@ Zero Zone name plate is typically located inside the case end cap (lift the merc
 ### Defrost System Details
 
 **Electric Defrost (most LT cases):**
-\`\`\`
-Typical Zero Zone LT coffin defrost wiring:
-
-  Defrost heater circuit:
-  L1 ──[Timer/controller defrost output]──[Heater elements]──[Thermal limiter]── L2
-
-  Thermal limiter: auto-reset at ~+65°C (coffin cases)
-                   manual-reset if limiter exceeds +82°C (safety backup)
-
-  Heater elements: embedded in coil fins
-  Total wattage per 4ft section: 750W–1500W (check nameplate)
-\`\`\`
+Heater elements are embedded in the coil fins and wired in series with a thermal limiter: auto-reset at ~+65°C; a manual-reset backup trips at ~+82°C. Total heater wattage is 750–1500W per 4 ft section (check nameplate).
 
 **Hot Gas Defrost (Series 20/26 open multi-deck):**
 - Hot gas supplied from rack to case defrost header
@@ -8879,15 +8689,7 @@ Zero Zone glass door cases use door frame heaters controlled by either:
 3. **External ASH controller** wired to case heater circuit
 
 Door frame heater locations:
-\`\`\`
-Glass Door Case Cross-Section (top view of mullion):
-
-  [Glass] [Mullion frame] [Heater wire embedded in frame] [Store side]
-
-  Mullion heater: typically 25-40W per mullion, NiCr wire
-  Bottom frame heater: 15-25W per linear foot
-  Top header heater: 20-30W
-\`\`\`
+NiCr heater wire is embedded in the mullion frame between the glass and the store side. Typical ratings: mullion heater 25–40W each, bottom frame heater 15–25W per linear foot, top header heater 20–30W.
 
 ### Common Zero Zone Faults
 
@@ -8905,30 +8707,17 @@ Glass Door Case Cross-Section (top view of mullion):
 export const TRUE_MANUFACTURING_KNOWLEDGE = `
 ## True Manufacturing — Walk-In & Reach-In Service Guide
 
-*Sources: True Manufacturing Service Manual (GDM/T/TM Series, Pub. 062450), True Walk-In Cooler/Freezer Installation Guide (Pub. 100350), True Refrigeration Technical Bulletin TB-019 (Defrost System), True Parts Catalog (Pub. 090120).*
 
 ### Company Overview
 True Manufacturing (Springfield, Missouri) is one of North America's largest manufacturers of commercial refrigeration equipment. Their equipment is common in delis, bakeries, convenience stores, and supermarket backrooms. True focuses on reach-in display coolers/freezers, pass-through cases, and back-of-house walk-in systems.
 
 ### Product Family Overview
 
-\`\`\`
-True Reach-In Series:
-  T-xx     – Solid door reach-in refrigerators/freezers (T-19, T-35, T-49, T-72)
-  GDM-xx   – Glass door merchandisers (GDM-5, GDM-10, GDM-33, GDM-49, GDM-72)
-  TUC-xx   – Undercounter refrigerators (TUC-27, TUC-48)
-  TSSU-xx  – Sandwich/prep units
-  T-23F    – Reach-in freezer
+**Reach-In:** T-xx solid door (T-19, T-35, T-49, T-72), GDM-xx glass door merchandisers, TUC-xx undercounter, TSSU-xx sandwich/prep, T-23F reach-in freezer
 
-True Walk-In Series:
-  THWD     – Heated wire door walk-in systems
-  TOAM     – Outdoor walk-in systems
-  Custom   – True builds custom walk-in systems to order
+**Walk-In:** THWD (heated wire door), TOAM (outdoor), custom built-to-order
 
-True Display Cases:
-  TDBD-xx  – True display island coffin cases (produce/deli)
-  THD-xx   – Horizontal display
-\`\`\`
+**Display Cases:** TDBD-xx island coffin (produce/deli), THD-xx horizontal display
 
 ### Compressor & Refrigeration System
 
@@ -8946,25 +8735,7 @@ True uses a **condensing unit mounted on top** of the cabinet (reach-in) or a se
 
 True uses a **non-standard wiring layout** that surprises techs used to other brands. Key differences:
 
-\`\`\`
-True Reach-In Wiring Schematic (simplified):
-
-  L1 ─────────────────────────────────── L1 bus
-       │               │           │
-     [Master          [Fans]    [Defrost
-      thermostat]              heaters]
-       │
-     [Compressor
-      contactor]
-       │
-     [Overload/start
-      components]
-
-True uses a MASTER THERMOSTAT that controls the compressor contactor.
-A separate DEFROST TIMER controls the defrost cycle.
-Unlike rack-connected cases, True reach-ins are self-contained —
-there is no rack controller or store supervisory integration.
-\`\`\`
+True uses a **master thermostat** that controls the compressor contactor, with a separate **defrost timer** for the defrost cycle. Fans and defrost heaters are wired in parallel on the L1 bus. Unlike rack-connected cases, True reach-ins are self-contained — there is no rack controller or store supervisory integration.
 
 **Defrost Timer Location:** In True reach-ins, the defrost timer is located in the **electrical control box** mounted above the compressor deck (top of unit, right side typically). Access by removing the top grille panel.
 
@@ -8982,15 +8753,7 @@ True reach-in models have a **fan delay switch** or **fan speed controller** nea
 **Door Heaters (Glass Door Models):**
 True glass door freezers have **door frame wire heaters** around each door opening. These prevent frost formation on door frames. Unlike ASH-controlled systems in large display cases, True door heaters are typically always-on or thermostat-only controlled.
 
-\`\`\`
-True GDM Door Heater Circuit:
-  L1 ──[Door heater switch/thermostat]──[Door frame heaters]── N
-
-  Each door: 2 heater wires (left and right frame)
-  Typical wattage: 40-60W per door
-  Test: disconnect and measure resistance = V² / W
-  Common failure: broken wire at door hinge flex point
-\`\`\`
+Each door has two heater wires (left and right frame) controlled by a simple switch or thermostat, typically 40–60W per door. To test: disconnect and measure resistance (expected = V² ÷ W). **Most common failure point:** broken wire at the door hinge flex point.
 
 ### Temperature Control
 
@@ -9009,24 +8772,7 @@ True GDM Door Heater Circuit:
 
 True top-mounted condensing units have the condenser coil **immediately above the compressor** with a single condenser fan pulling air through from the back. The condenser is **notoriously easy to neglect** because it's hidden under the top grille.
 
-\`\`\`
-True Reach-In Condenser Airflow:
-
-  [Top grille] ← Air discharge
-       │
-  [Condenser coil]
-       │
-  [Condenser fan]
-       │
-  [Compressor]
-
-  Air enters from BOTTOM of unit at floor level, passes up through
-  the machine compartment, through the condenser, exits top grille.
-
-  Common problem: floor-level air intake draws in dust, food particles,
-  and debris — condenser coils should be cleaned EVERY 90 DAYS in
-  commercial kitchen environments.
-\`\`\`
+Air enters at floor level, passes up through the machine compartment, through the condenser coil, and exits through the top grille. The floor-level intake draws in dust, food particles, and debris — clean condenser coils **every 90 days** in commercial kitchen environments.
 
 **Condenser cleaning:** Remove top grille (usually 2-4 screws), vacuum or brush coil from discharge side, blow through with compressed air. Check for compressor discharge temperatures >80°C which indicate dirty condenser.
 
@@ -9056,99 +8802,91 @@ True walk-in coolers/freezers use a remote unit cooler in the box connected to a
 export const COMMISSIONING_KNOWLEDGE = `
 ## System Commissioning & Startup Checklists
 
-*Sources: ASHRAE Refrigeration Handbook (SI Edition), Copeland Application Engineering Bulletin AE-1300, Hussmann Commissioning Manual, Emerson E2 Startup Procedure APS-E2-001, Danfoss AK Commissioning Guide 520H0345, RSES Technical Institute Refrigeration Service Guide.*
 
 ### Pre-Startup Safety Checklist (All Systems)
 Before energizing any refrigeration system for the first time:
 
-\`\`\`
-□ Electrical:
-  □ Verify all disconnects are open (off) before connecting power
-  □ Verify voltage at supply panel matches equipment nameplate (208/240/460/600V)
-  □ Check phase rotation on 3-phase equipment (compressors and fans)
-     Phase rotation tester or rotation indicator on compressor drive
-  □ Verify all terminal lugs are tight (check after first 24-hour run too)
-  □ Verify grounding conductor connected
-  □ Verify all control wiring complete and per wiring diagram
+- Electrical:
+- Verify all disconnects are open (off) before connecting power
+- Verify voltage at supply panel matches equipment nameplate (208/240/460/600V)
+- Check phase rotation on 3-phase equipment (compressors and fans)
+Phase rotation tester or rotation indicator on compressor drive
+- Verify all terminal lugs are tight (check after first 24-hour run too)
+- Verify grounding conductor connected
+- Verify all control wiring complete and per wiring diagram
 
-□ Mechanical:
-  □ All refrigerant piping brazes visually inspected
-  □ All service valves confirmed in correct position (back-seated / open)
-  □ All access panels and covers installed
-  □ Compressor crankcase oil level verified (semi-hermeticss only)
-  □ All vibration isolators installed (compressors, piping)
+- Mechanical:
+- All refrigerant piping brazes visually inspected
+- All service valves confirmed in correct position (back-seated / open)
+- All access panels and covers installed
+- Compressor crankcase oil level verified (semi-hermeticss only)
+- All vibration isolators installed (compressors, piping)
 
-□ Refrigerant Circuit:
-  □ System pressure-tested with dry nitrogen (no refrigerant during pressure test)
-  □ Leak test completed — see procedure below
-  □ System evacuated to <500 microns (200 microns recommended)
-  □ Correct refrigerant identified and cylinders on site
-\`\`\`
+- Refrigerant Circuit:
+- System pressure-tested with dry nitrogen (no refrigerant during pressure test)
+- Leak test completed — see procedure below
+- System evacuated to <500 microns (200 microns recommended)
+- Correct refrigerant identified and cylinders on site
 
 ### Nitrogen Pressure Test Procedure
 
-\`\`\`
 Step 1: Isolate the system
-  Close compressor suction and discharge service valves (front-seated).
-  All solenoid valves in open position (energize coils manually or use
-  manual stem).
+Close compressor suction and discharge service valves (front-seated).
+All solenoid valves in open position (energize coils manually or use
+manual stem).
 
 Step 2: Pressurize with dry nitrogen
-  LT systems (R-404A / R-448A): test to 28 bar / 400 psi
-  MT systems: test to 21 bar / 300 psi
-  CO₂ systems: test per manufacturer specification (typically 60-80 bar)
-  HVAC/RTU refrigerant side: 21 bar / 300 psi (R-410A / R-454B)
+LT systems (R-404A / R-448A): test to 28 bar / 400 psi
+MT systems: test to 21 bar / 300 psi
+CO₂ systems: test per manufacturer specification (typically 60-80 bar)
+HVAC/RTU refrigerant side: 21 bar / 300 psi (R-410A / R-454B)
 
 Step 3: Initial pressure soak
-  Hold at test pressure for minimum 30 minutes with no pressure loss.
-  Temperature changes cause pressure variation — compensate for temp change:
-  +1 psi per +1°F ambient rise is normal (thermal effect only).
+Hold at test pressure for minimum 30 minutes with no pressure loss.
+Temperature changes cause pressure variation — compensate for temp change:
++1 psi per +1°F ambient rise is normal (thermal effect only).
 
 Step 4: Leak detection
-  Spray all braze joints, flare fittings, valve connections with Leak-Tec or
-  similar leak detection solution (or use electronic leak detector).
-  Pay attention to: evaporator coil headers, brazes behind insulation, valve bodies.
+Spray all braze joints, flare fittings, valve connections with Leak-Tec or
+similar leak detection solution (or use electronic leak detector).
+Pay attention to: evaporator coil headers, brazes behind insulation, valve bodies.
 
 Step 5: Repair and re-test
-  Any leak found: repair with nitrogen purge while brazing.
-  Re-test to full pressure after ALL repairs.
-  Final: 30-minute hold with zero pressure loss.
-\`\`\`
+Any leak found: repair with nitrogen purge while brazing.
+Re-test to full pressure after ALL repairs.
+Final: 30-minute hold with zero pressure loss.
 
 ### Evacuation Procedure
 
-\`\`\`
-□ Connect micron gauge to dedicated port (not manifold gauge port — manifold gauges
-  restrict vacuum and give false readings)
-□ Evacuate from BOTH high and low side simultaneously for faster evacuation
-□ Use 2-stage vacuum pump, >6 CFM capacity for commercial systems
-□ Change vacuum pump oil before every evacuation if pump has been used recently
-□ Target: <500 microns (200 microns preferred — better moisture removal)
+- Connect micron gauge to dedicated port (not manifold gauge port — manifold gauges
+restrict vacuum and give false readings)
+- Evacuate from BOTH high and low side simultaneously for faster evacuation
+- Use 2-stage vacuum pump, >6 CFM capacity for commercial systems
+- Change vacuum pump oil before every evacuation if pump has been used recently
+- Target: <500 microns (200 microns preferred — better moisture removal)
 
 Triple evacuation for superior moisture removal:
-  1. Pull to 2000 microns
-  2. Break vacuum with dry nitrogen to 2 psi
-  3. Pull to 1000 microns
-  4. Break with nitrogen to 2 psi
-  5. Final pull to 200-500 microns
-  6. Isolate pump and hold: vacuum should RISE no faster than 200 microns/min
-     (if faster: moisture still in system, or small leak)
-\`\`\`
+1. Pull to 2000 microns
+2. Break vacuum with dry nitrogen to 2 psi
+3. Pull to 1000 microns
+4. Break with nitrogen to 2 psi
+5. Final pull to 200-500 microns
+6. Isolate pump and hold: vacuum should RISE no faster than 200 microns/min
+(if faster: moisture still in system, or small leak)
 
 ---
 
 ### HFC Parallel Rack — Initial Startup
 
-\`\`\`
 PRE-START CHECKS:
-□ Suction group configurations verified in rack controller
-□ Setpoints entered: suction SP, head pressure SP, safety lockout pressures
-□ All case solenoids: verify open (liquid line solenoids energized / open during startup)
-□ Hot gas bypass valve (if equipped): verify closed
-□ Oil level in sight glass: verify at 1/2 to 2/3 level (semi-hermeticss only)
-□ Crankcase heaters: confirm energized for minimum 4 hours before initial start
-   Purpose: drives refrigerant out of compressor oil before first start
-   Skipping this = liquid slug on first start = compressor failure
+- Suction group configurations verified in rack controller
+- Setpoints entered: suction SP, head pressure SP, safety lockout pressures
+- All case solenoids: verify open (liquid line solenoids energized / open during startup)
+- Hot gas bypass valve (if equipped): verify closed
+- Oil level in sight glass: verify at 1/2 to 2/3 level (semi-hermeticss only)
+- Crankcase heaters: confirm energized for minimum 4 hours before initial start
+Purpose: drives refrigerant out of compressor oil before first start
+Skipping this = liquid slug on first start = compressor failure
 
 INITIAL START SEQUENCE:
 1. Start with ONE compressor only. Do not start all compressors simultaneously.
@@ -9159,14 +8897,13 @@ INITIAL START SEQUENCE:
 6. Allow system to pull down for 2-4 hours before setting final setpoints
 
 FIRST-START CHARGING PROCEDURE:
-□ Add refrigerant in liquid phase to liquid line (king valve open, add through
-  gauge port or Schrader valve)
-□ Avoid adding vapour to suction — risk of diluting oil in crankcase
-□ Charge until suction superheat reaches target (5-10K) at design conditions
-□ Verify subcooling at liquid line: 5-10K minimum
-□ Check oil separator sight glass — should show clear or slight foam during running
-□ Verify each case is receiving refrigerant: check supply and return temperatures
-\`\`\`
+- Add refrigerant in liquid phase to liquid line (king valve open, add through
+gauge port or Schrader valve)
+- Avoid adding vapour to suction — risk of diluting oil in crankcase
+- Charge until suction superheat reaches target (5-10K) at design conditions
+- Verify subcooling at liquid line: 5-10K minimum
+- Check oil separator sight glass — should show clear or slight foam during running
+- Verify each case is receiving refrigerant: check supply and return temperatures
 
 **Rack Setpoint Commissioning Guide:**
 | Parameter | Low-Temp Setting | Medium-Temp Setting |
@@ -9184,26 +8921,25 @@ FIRST-START CHARGING PROCEDURE:
 
 CO₂ startup requires specific precautions due to high operating pressures.
 
-\`\`\`
 CRITICAL SAFETY CHECKS BEFORE CO₂ STARTUP:
-□ CO₂ leak detector installed and operational (alarm tested)
-□ All personnel briefed on CO₂ IDLH (50,000 ppm / 5%) and evacuation procedure
-□ Ventilation in machinery room confirmed operational
-□ Emergency shutoff / dump system functional (where installed)
-□ All CO₂-rated components confirmed (PRVs set, piping rated for >100 bar service)
+- CO₂ leak detector installed and operational (alarm tested)
+- All personnel briefed on CO₂ IDLH (50,000 ppm / 5%) and evacuation procedure
+- Ventilation in machinery room confirmed operational
+- Emergency shutoff / dump system functional (where installed)
+- All CO₂-rated components confirmed (PRVs set, piping rated for >100 bar service)
 
 PRE-CHARGE PRESSURE TEST (CO₂-specific):
-□ High side (gas cooler loop): test to 90 bar (1305 psi) with nitrogen
-□ Low side (LT loop): test to 55 bar (800 psi) with nitrogen
-□ Verify all HP relief valves (PRVs) are installed and set correctly
-   Typical: HP PRV set at 130-140 bar; secondary PRV at 120 bar
+- High side (gas cooler loop): test to 90 bar (1305 psi) with nitrogen
+- Low side (LT loop): test to 55 bar (800 psi) with nitrogen
+- Verify all HP relief valves (PRVs) are installed and set correctly
+Typical: HP PRV set at 130-140 bar; secondary PRV at 120 bar
 
 CO₂ INITIAL CHARGE:
-□ CO₂ charge must be added in LIQUID phase (from bottom dip tube cylinder)
-□ Target: flash tank at ~35-40 bar during initial charge
-□ Do NOT overcharge — flash tank level control must be visible before adding more
-□ Check compressor oil levels after first hour of operation — CO₂ migration
-  during off period is more aggressive than HFC
+- CO₂ charge must be added in LIQUID phase (from bottom dip tube cylinder)
+- Target: flash tank at ~35-40 bar during initial charge
+- Do NOT overcharge — flash tank level control must be visible before adding more
+- Check compressor oil levels after first hour of operation — CO₂ migration
+during off period is more aggressive than HFC
 
 FIRST-START SEQUENCE:
 1. Energize rack controller — verify all inputs reading correctly
@@ -9214,22 +8950,20 @@ FIRST-START SEQUENCE:
 6. Start LT (booster) compressors — monitor flash tank level
 7. Open LT expansion valves — monitor LT suction pressure
 8. Allow full pull-down: 4-8 hours typical for a supermarket
-\`\`\`
 
 ---
 
 ### Walk-In Cooler / Freezer — Initial Startup
 
-\`\`\`
 PRE-START CHECKS:
-□ Unit cooler mounting confirmed — adequate clearance per manufacturer spec
-□ Drain line pitched toward drain (min 1:50 slope)
-□ Drain line insulated (freezer drains must be heat-traced or insulated to prevent freezing)
-□ Door gaskets seated properly on all doors
-□ Floor heater (freezer) energized — allow 24 hours before initial freeze-down
-   Purpose: prevents floor heater cable from being encased in ice
-□ Crankcase heater energized minimum 4 hours before start (remote condensing unit)
-□ Thermostat and defrost timer set to initial values
+- Unit cooler mounting confirmed — adequate clearance per manufacturer spec
+- Drain line pitched toward drain (min 1:50 slope)
+- Drain line insulated (freezer drains must be heat-traced or insulated to prevent freezing)
+- Door gaskets seated properly on all doors
+- Floor heater (freezer) energized — allow 24 hours before initial freeze-down
+Purpose: prevents floor heater cable from being encased in ice
+- Crankcase heater energized minimum 4 hours before start (remote condensing unit)
+- Thermostat and defrost timer set to initial values
 
 INITIAL STARTUP:
 1. Verify suction and discharge service valves open (back-seated)
@@ -9241,37 +8975,34 @@ INITIAL STARTUP:
 7. Verify fan motor rotation — wrong rotation gives significantly less airflow
 
 DEFROST SETUP (Initial):
-□ Set defrost start times: avoid peak trading hours
-□ MT cooler: 2-3 defrosts per day, 20-30 min duration
-□ LT freezer: 3-4 defrosts per day, 30-45 min duration
-□ Verify drip time: 3-5 min after heater shuts off before fans restart
-□ Verify drain is running freely: inspect after first defrost cycle
+- Set defrost start times: avoid peak trading hours
+- MT cooler: 2-3 defrosts per day, 20-30 min duration
+- LT freezer: 3-4 defrosts per day, 30-45 min duration
+- Verify drip time: 3-5 min after heater shuts off before fans restart
+- Verify drain is running freely: inspect after first defrost cycle
 
 TEMPERATURE LOG — Pull-Down Record:
 Document the following every 2 hours during initial pull-down:
-  □ Box air temperature (supply and return)
-  □ Suction pressure and saturation temperature
-  □ Discharge pressure and saturation temperature
-  □ Superheat
-  □ Subcooling (at liquid line)
+- Box air temperature (supply and return)
+- Suction pressure and saturation temperature
+- Discharge pressure and saturation temperature
+- Superheat
+- Subcooling (at liquid line)
 This becomes the baseline commissioning record for warranty and future service.
-\`\`\`
 
 ### Post-Startup Verification Checklist (24 Hours After Initial Start)
 
-\`\`\`
-□ All setpoints verified in final position
-□ Temperature log reviewed — pull-down completed to setpoint
-□ All defrost cycles verified (observed one full defrost and re-freeze)
-□ Refrigerant charge confirmed: superheat 5-8K, subcooling 5-10K
-□ All electrical connections re-torqued (heat cycling loosens terminals)
-□ No active alarms on any controller
-□ Oil level sight glass: oil visible in glass at running condition
-□ Condensate drain flowing freely (no backup)
-□ All case and cooler temperatures within ±2°C of setpoint
-□ Customer/owner walked through controller operation and alarm response
-□ Startup documentation signed off and filed (copy left with equipment)
-\`\`\`
+- All setpoints verified in final position
+- Temperature log reviewed — pull-down completed to setpoint
+- All defrost cycles verified (observed one full defrost and re-freeze)
+- Refrigerant charge confirmed: superheat 5-8K, subcooling 5-10K
+- All electrical connections re-torqued (heat cycling loosens terminals)
+- No active alarms on any controller
+- Oil level sight glass: oil visible in glass at running condition
+- Condensate drain flowing freely (no backup)
+- All case and cooler temperatures within ±2°C of setpoint
+- Customer/owner walked through controller operation and alarm response
+- Startup documentation signed off and filed (copy left with equipment)
 `
 
 export interface BuildSystemPromptOptions {
