@@ -609,7 +609,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'ClipboardCheck',
     colorClass: 'emerald',
     content: COMMISSIONING_KNOWLEDGE,
-    manualKeywords: [],
+    manualKeywords: ['startup', 'start up', 'commissioning', 'pre startup'],
     tags: ['Commissioning', 'Startup', 'Pressure Test', 'Evacuation', 'CO₂'],
     category: 'fundamentals',
   },
