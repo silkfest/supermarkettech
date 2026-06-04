@@ -9175,21 +9175,57 @@ export interface BuildSystemPromptOptions {
 }
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
-  const parts = [EXPERT_IDENTITY, REFRIGERATION_KNOWLEDGE, SPORLAN_KNOWLEDGE, COPELAND_KNOWLEDGE, HUSSMANN_KNOWLEDGE, DANFOSS_KNOWLEDGE, ARNEG_KNOWLEDGE, KEEPRITE_KNOWLEDGE, MATH_AND_ELECTRICAL_KNOWLEDGE, MICRO_THERMO_KNOWLEDGE, EVAPCO_LMP_KNOWLEDGE, PENN_CONTROLS_KNOWLEDGE, CARNOT_KNOWLEDGE, EMERSON_E2_E3_KNOWLEDGE, WALK_IN_KNOWLEDGE, PARALLEL_RACK_KNOWLEDGE, VFD_KNOWLEDGE, REFRIGERANT_RETROFIT_KNOWLEDGE, TYLER_HILL_PHOENIX_KNOWLEDGE, HEATCRAFT_BOHN_KNOWLEDGE, BITZER_KNOWLEDGE, BIG_PICTURE_METHODOLOGY]
+  const { staticContent, dynamicContent } = buildSystemPromptParts(opts)
+  return [staticContent, dynamicContent].join('\n\n')
+}
+
+// Splits the system prompt into a large static block (ideal for prompt caching)
+// and a small dynamic block (equipment context, retrieved docs, mode).
+export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
+  staticContent: string
+  dynamicContent: string
+} {
+  const staticContent = [
+    EXPERT_IDENTITY,
+    REFRIGERATION_KNOWLEDGE,
+    SPORLAN_KNOWLEDGE,
+    COPELAND_KNOWLEDGE,
+    HUSSMANN_KNOWLEDGE,
+    DANFOSS_KNOWLEDGE,
+    ARNEG_KNOWLEDGE,
+    KEEPRITE_KNOWLEDGE,
+    MATH_AND_ELECTRICAL_KNOWLEDGE,
+    MICRO_THERMO_KNOWLEDGE,
+    EVAPCO_LMP_KNOWLEDGE,
+    PENN_CONTROLS_KNOWLEDGE,
+    CARNOT_KNOWLEDGE,
+    EMERSON_E2_E3_KNOWLEDGE,
+    WALK_IN_KNOWLEDGE,
+    PARALLEL_RACK_KNOWLEDGE,
+    VFD_KNOWLEDGE,
+    REFRIGERANT_RETROFIT_KNOWLEDGE,
+    TYLER_HILL_PHOENIX_KNOWLEDGE,
+    HEATCRAFT_BOHN_KNOWLEDGE,
+    BITZER_KNOWLEDGE,
+    BIG_PICTURE_METHODOLOGY,
+    FORMAT_INSTRUCTIONS,
+  ].join('\n\n')
+
+  const dynamicParts: string[] = []
 
   if (opts.equipment) {
-    parts.push(buildEquipmentContext(
+    dynamicParts.push(buildEquipmentContext(
       opts.equipment,
       opts.readings,
       opts.recentLogs,
       opts.activeAlarms
     ))
   } else {
-    parts.push('No specific unit selected. If the technician describes a specific unit, the refrigerant type and manufacturer significantly affect diagnosis — ask only if it matters to the answer.')
+    dynamicParts.push('No specific unit selected. If the technician describes a specific unit, the refrigerant type and manufacturer significantly affect diagnosis — ask only if it matters to the answer.')
   }
 
   if (opts.retrievedContext) {
-    parts.push(
+    dynamicParts.push(
       `--- RETRIEVED MANUAL EXCERPTS ---\n` +
       `The following passages were retrieved from your uploaded manuals and are AUTHORITATIVE for this query.\n` +
       `Prioritise this content in your answer. Cite the manual title when you draw from it.\n\n` +
@@ -9197,8 +9233,7 @@ export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
     )
   }
 
-  parts.push(MODE_INSTRUCTIONS[opts.mode])
-  parts.push(FORMAT_INSTRUCTIONS)
+  dynamicParts.push(MODE_INSTRUCTIONS[opts.mode])
 
-  return parts.join('\n\n')
+  return { staticContent, dynamicContent: dynamicParts.join('\n\n') }
 }
