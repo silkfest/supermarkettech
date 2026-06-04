@@ -5336,8 +5336,8 @@ The SE-SPU1002-10 (Simplicity SE Processing Unit, Johnson Controls) is the curre
 - **APS** — Air Pressure Switch (supply fan proving)
 
 **USB port uses:**
-- Download fault log to USB drive (insert drive → LED flashes → remove → open `fault_log.csv`)
-- Upload firmware updates (download `.bin` file from JCI TechDirect portal, load via USB drive)
+- Download fault log to USB drive (insert drive → LED flashes → remove → open fault_log.csv)
+- Upload firmware updates (download .bin file from JCI TechDirect portal, load via USB drive)
 - Connect JCI field laptop with Simplicity SE configuration software for parameter setup
 
 #### SE-SPU Board LED Indicators
@@ -5390,7 +5390,7 @@ Full fault descriptions, sensor values at time of fault, and timestamps are show
 **Via USB drive:**
 1. Insert USB drive into SE-SPU1002-10 USB-A port
 2. Green Status LED flashes rapidly during transfer (5–15 sec)
-3. Remove drive — open `fault_log.csv` on any computer
+3. Remove drive — open fault_log.csv on any computer
 4. Fault log contains: fault code, timestamp, sensor snapshot, runtime data
 
 **Manual reset methods:**
