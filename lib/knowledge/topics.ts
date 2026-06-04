@@ -57,7 +57,7 @@ export interface KnowledgeTopic {
   content: string            // full markdown string
   manualKeywords: string[]   // for DB search (ILIKE match on document title or manufacturer)
   tags: string[]
-  category: 'manufacturer' | 'fundamentals' | 'hvac'
+  category: 'fundamentals' | 'hvac' | 'compressors' | 'controllers' | 'display-cases' | 'self-contained' | 'rack-systems'
 }
 
 export const TOPICS: KnowledgeTopic[] = [
@@ -107,7 +107,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: SPORLAN_KNOWLEDGE,
     manualKeywords: ['sporlan'],
     tags: ['Valves', 'EEV', 'TXV', 'Solenoids'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'copeland',
@@ -119,7 +119,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: COPELAND_KNOWLEDGE,
     manualKeywords: ['copeland', 'coresense', 'emerson'],
     tags: ['Compressors', 'Scroll', 'Discus'],
-    category: 'manufacturer',
+    category: 'compressors',
   },
   {
     slug: 'hussmann',
@@ -131,7 +131,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: HUSSMANN_KNOWLEDGE,
     manualKeywords: ['hussmann'],
     tags: ['Cases', 'Racks', 'CO₂', 'KoolGas'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'danfoss',
@@ -143,7 +143,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: DANFOSS_KNOWLEDGE,
     manualKeywords: ['danfoss'],
     tags: ['Controls', 'CO₂', 'EEV', 'Valves'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'arneg',
@@ -155,7 +155,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: ARNEG_KNOWLEDGE,
     manualKeywords: ['arneg'],
     tags: ['Cases', 'Dixell', 'Carel'],
-    category: 'manufacturer',
+    category: 'display-cases',
   },
   {
     slug: 'keeprite',
@@ -167,7 +167,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: KEEPRITE_KNOWLEDGE,
     manualKeywords: ['keeprite', 'keep-rite', 'klp', 'klv'],
     tags: ['Unit Coolers', 'Walk-In', 'Condensing Units'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'micro-thermo',
@@ -179,7 +179,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: MICRO_THERMO_KNOWLEDGE,
     manualKeywords: ['microthermo', 'micro-thermo', 'micro thermo', 'mt-alliance', 'mt alliance', '70-mta', '74-mta', '100-50-10', '70-phw'],
     tags: ['Controls', 'LonWorks', 'Case Controllers'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'evapco-lmp',
@@ -191,7 +191,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: EVAPCO_LMP_KNOWLEDGE,
     manualKeywords: ['evapco', 'lmp', 'evapco lmp', 'systems lmp'],
     tags: ['CO₂', 'Transcritical', 'Racks', 'Booster'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'penn-controls',
@@ -203,7 +203,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: PENN_CONTROLS_KNOWLEDGE,
     manualKeywords: ['penn', 'penn controls', 'a421', 'a19', 'p70', 'johnson controls'],
     tags: ['Temperature Controls', 'Pressure Controls', 'A421', 'P70'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'tyler-hill-phoenix',
@@ -215,7 +215,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TYLER_HILL_PHOENIX_KNOWLEDGE,
     manualKeywords: ['tyler', 'hill phoenix', 'hillphoenix', 'advansor'],
     tags: ['Cases', 'CO₂', 'Advansor', 'Tyler'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'heatcraft-bohn',
@@ -227,7 +227,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: HEATCRAFT_BOHN_KNOWLEDGE,
     manualKeywords: ['heatcraft', 'bohn', 'larkin', 'climate control'],
     tags: ['Unit Coolers', 'Walk-In', 'Defrost', 'Bohn'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'bitzer',
@@ -239,7 +239,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: BITZER_KNOWLEDGE,
     manualKeywords: ['bitzer'],
     tags: ['Compressors', 'CO₂', 'Ecoline', 'INT69'],
-    category: 'manufacturer',
+    category: 'compressors',
   },
   {
     slug: 'temprite',
@@ -251,7 +251,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TEMPRITE_KNOWLEDGE,
     manualKeywords: ['temprite'],
     tags: ['Oil Separator', 'Oil Management', 'Rack', 'Temprite'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'carnot',
@@ -263,7 +263,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: CARNOT_KNOWLEDGE,
     manualKeywords: ['carnot'],
     tags: ['CO₂', 'Transcritical', 'Ejector', 'Booster'],
-    category: 'manufacturer',
+    category: 'rack-systems',
   },
   {
     slug: 'emerson-e2-e3',
@@ -275,7 +275,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: EMERSON_E2_E3_KNOWLEDGE,
     manualKeywords: ['emerson e2', 'emerson e3', 'emerson supervisory', 'supervisory control e', 'cpc', 'multiflex', 'computer process controls', 'einstein'],
     tags: ['Store Controller', 'E2', 'E3', 'CPC', 'MultiFlex'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'vfd',
@@ -467,7 +467,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: KYSOR_WARREN_KNOWLEDGE,
     manualKeywords: ['kysor warren', 'kysor', 'ecoflex', 'ecoshine'],
     tags: ['Display Cases', 'Kysor Warren', 'Daikin', 'MT/LT Cases'],
-    category: 'manufacturer',
+    category: 'display-cases',
   },
   {
     slug: 'dixell',
@@ -479,7 +479,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: DIXELL_KNOWLEDGE,
     manualKeywords: ['dixell', 'xr series', 'xc series', 'xw series', 'xr30c', 'xr40c'],
     tags: ['Case Controller', 'Dixell', 'XR', 'XC', 'Modbus'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'aaon-rtu',
@@ -515,7 +515,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TECUMSEH_KNOWLEDGE,
     manualKeywords: ['tecumseh', 'ae series', 'aj series', 'tfh', 'taj', 'rka'],
     tags: ['Compressors', 'Hermetic', 'PSC', 'Start Components'],
-    category: 'manufacturer',
+    category: 'compressors',
   },
   {
     slug: 'carel-controllers',
@@ -527,7 +527,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: CAREL_CONTROLLERS_KNOWLEDGE,
     manualKeywords: ['carel', 'ir33', 'pco5', 'pco5+', 'prack', 'pstep', 'pgd', 'evd evolution'],
     tags: ['Controllers', 'IR33', 'pCO5+', 'EEV', 'CO₂'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'ice-machines',
@@ -539,7 +539,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: ICE_MACHINES_KNOWLEDGE,
     manualKeywords: ['manitowoc', 'hoshizaki', 'ice machine', 'indigo nxt', 'km series', 'kml'],
     tags: ['Ice Machines', 'Manitowoc', 'Hoshizaki', 'Harvest Cycle'],
-    category: 'manufacturer',
+    category: 'self-contained',
   },
   {
     slug: 'ranco-paragon',
@@ -551,7 +551,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: RANCO_PARAGON_KNOWLEDGE,
     manualKeywords: ['ranco', 'paragon', 'defrost timer', '8145', 'intermatic', 'grasslin'],
     tags: ['Thermostat', 'Defrost Timer', 'Legacy Controls', 'Paragon'],
-    category: 'manufacturer',
+    category: 'controllers',
   },
   {
     slug: 'anti-sweat-heaters',
@@ -575,7 +575,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: EMBRACO_SECOP_KNOWLEDGE,
     manualKeywords: ['embraco', 'secop', 'ne series', 'nj series', 'sc series', 'ffi', 'ptc relay'],
     tags: ['Compressors', 'Hermetic', 'PTC', 'Reach-In'],
-    category: 'manufacturer',
+    category: 'compressors',
   },
   {
     slug: 'zero-zone',
@@ -587,7 +587,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: ZERO_ZONE_KNOWLEDGE,
     manualKeywords: ['zero zone', 'zerozone', 'series 20', 'series 26', 'series 30'],
     tags: ['Display Cases', 'Zero Zone', 'Daikin', 'Multi-Deck'],
-    category: 'manufacturer',
+    category: 'display-cases',
   },
   {
     slug: 'true-manufacturing',
@@ -599,7 +599,7 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TRUE_MANUFACTURING_KNOWLEDGE,
     manualKeywords: ['true manufacturing', 'gdm', 't-49', 't-72', 'thwd', 'true refrigeration'],
     tags: ['Reach-In', 'Walk-In', 'True', 'GDM'],
-    category: 'manufacturer',
+    category: 'self-contained',
   },
   {
     slug: 'commissioning',
