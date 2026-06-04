@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { buildSystemPrompt } from '@/lib/ai/prompts'
+import { buildSystemPromptParts } from '@/lib/ai/prompts'
 import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ComponentLink } from '@/types'
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     console.log(JSON.stringify({ rag: false, reason: 'JINA_API_KEY not set' }))
   }
 
-  const systemPrompt = buildSystemPrompt({
+  const { staticContent, dynamicContent } = buildSystemPromptParts({
     mode: mode as ChatMode,
     equipment: ctx?.equipment,
     readings: ctx?.snapshot,
@@ -108,6 +108,10 @@ export async function POST(req: NextRequest) {
     activeAlarms: ctx?.alarms,
     retrievedContext: retrievedContext || undefined,
   })
+  const systemBlocks = [
+    { type: 'text' as const, text: staticContent, cache_control: { type: 'ephemeral' as const } },
+    { type: 'text' as const, text: dynamicContent },
+  ]
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -115,9 +119,9 @@ export async function POST(req: NextRequest) {
       let fullContent = ''
       try {
         const claudeStream = anthropic.messages.stream({
-          model: 'claude-haiku-4-5',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2048,
-          system: systemPrompt,
+          system: systemBlocks,
           messages: [
             ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
             { role: 'user', content: message },
