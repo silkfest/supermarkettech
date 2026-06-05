@@ -182,6 +182,7 @@ export default function KnowledgePage() {
   const [contentMatches, setContentMatches] = useState<ContentMatch[]>([])
   const [dynamicTopics, setDynamicTopics] = useState<DynamicTopic[]>([])
   const [dynamicLoading, setDynamicLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState<string>('all')
 
   // Fetch dynamic (DB-generated) topics
   useEffect(() => {
@@ -311,6 +312,34 @@ export default function KnowledgePage() {
             </button>
           )}
         </div>
+
+        {/* Category filter pills — hidden during search */}
+        {!query && (
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5 scrollbar-hide -mx-4 px-4 md:-mx-6 md:px-6">
+            {[
+              { key: 'all',            label: 'All' },
+              { key: 'rack-systems',   label: 'Rack Systems' },
+              { key: 'compressors',    label: 'Compressors' },
+              { key: 'controllers',    label: 'Controllers' },
+              { key: 'display-cases',  label: 'Display Cases' },
+              { key: 'self-contained', label: 'Self Contained' },
+              { key: 'hvac',           label: 'HVAC' },
+              { key: 'fundamentals',   label: 'Fundamentals' },
+            ].map(cat => (
+              <button
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key)}
+                className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                  activeCategory === cat.key
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Learning tab bar */}
@@ -393,6 +422,7 @@ export default function KnowledgePage() {
         ) : (
           <>
             {/* Rack Systems */}
+            {(activeCategory === 'all' || activeCategory === 'rack-systems') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Rack Systems
@@ -403,8 +433,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* Compressors */}
+            {(activeCategory === 'all' || activeCategory === 'compressors') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Compressors
@@ -415,8 +447,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* Controllers */}
+            {(activeCategory === 'all' || activeCategory === 'controllers') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Controllers
@@ -427,8 +461,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* Display Cases */}
+            {(activeCategory === 'all' || activeCategory === 'display-cases') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Display Cases
@@ -439,8 +475,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* Self Contained */}
+            {(activeCategory === 'all' || activeCategory === 'self-contained') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Self Contained
@@ -451,8 +489,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* HVAC */}
+            {(activeCategory === 'all' || activeCategory === 'hvac') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Commercial HVAC
@@ -463,8 +503,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* Fundamentals */}
+            {(activeCategory === 'all' || activeCategory === 'fundamentals') && (
             <section>
               <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 Fundamentals
@@ -475,9 +517,10 @@ export default function KnowledgePage() {
                 ))}
               </div>
             </section>
+            )}
 
             {/* From Your Manuals */}
-            {(dynamicLoading || dynamicTopics.length > 0) && (
+            {activeCategory === 'all' && (dynamicLoading || dynamicTopics.length > 0) && (
               <section>
                 <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Sparkles size={11} /> From Your Manuals
