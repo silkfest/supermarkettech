@@ -1,14 +1,14 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
-  BookOpen, Search, X, Sparkles,
+  BookOpen, Search, X, Sparkles, SlidersHorizontal, ChevronDown,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
@@ -183,6 +183,29 @@ export default function KnowledgePage() {
   const [dynamicTopics, setDynamicTopics] = useState<DynamicTopic[]>([])
   const [dynamicLoading, setDynamicLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<string>('all')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  const CATEGORIES = [
+    { key: 'all',            label: 'All Topics' },
+    { key: 'rack-systems',   label: 'Rack Systems' },
+    { key: 'compressors',    label: 'Compressors' },
+    { key: 'controllers',    label: 'Controllers' },
+    { key: 'display-cases',  label: 'Display Cases' },
+    { key: 'self-contained', label: 'Self Contained' },
+    { key: 'hvac',           label: 'HVAC' },
+    { key: 'fundamentals',   label: 'Fundamentals' },
+  ]
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   // Fetch dynamic (DB-generated) topics
   useEffect(() => {
@@ -293,53 +316,65 @@ export default function KnowledgePage() {
           <span className="text-slate-300 dark:text-slate-600">/</span>
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Learning</span>
         </div>
-        {/* Search bar */}
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search topics, manuals, model numbers…"
-            className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Category filter pills — hidden during search */}
-        {!query && (
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5 scrollbar-hide -mx-4 px-4 md:-mx-6 md:px-6">
-            {[
-              { key: 'all',            label: 'All' },
-              { key: 'rack-systems',   label: 'Rack Systems' },
-              { key: 'compressors',    label: 'Compressors' },
-              { key: 'controllers',    label: 'Controllers' },
-              { key: 'display-cases',  label: 'Display Cases' },
-              { key: 'self-contained', label: 'Self Contained' },
-              { key: 'hvac',           label: 'HVAC' },
-              { key: 'fundamentals',   label: 'Fundamentals' },
-            ].map(cat => (
+        {/* Search bar + category filter */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search topics, manuals, model numbers…"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700"
+            />
+            {query && (
               <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
-                className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                  activeCategory === cat.key
+                onClick={() => setQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Category dropdown — hidden while searching */}
+          {!query && (
+            <div ref={filterRef} className="relative flex-shrink-0">
+              <button
+                onClick={() => setFilterOpen(v => !v)}
+                className={`flex items-center gap-1.5 h-full px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  activeCategory !== 'all'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
                 }`}
               >
-                {cat.label}
+                <SlidersHorizontal size={13} />
+                <span className="hidden sm:inline">
+                  {CATEGORIES.find(c => c.key === activeCategory)?.label ?? 'All Topics'}
+                </span>
+                <ChevronDown size={11} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
               </button>
-            ))}
-          </div>
-        )}
+
+              {filterOpen && (
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-20 py-1 overflow-hidden">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat.key}
+                      onClick={() => { setActiveCategory(cat.key); setFilterOpen(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                        activeCategory === cat.key
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Learning tab bar */}
