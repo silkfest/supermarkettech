@@ -44,6 +44,7 @@ import {
   EMBRACO_SECOP_KNOWLEDGE,
   ZERO_ZONE_KNOWLEDGE,
   TRUE_MANUFACTURING_KNOWLEDGE,
+  PROOFER_RETARDER_KNOWLEDGE,
   COMMISSIONING_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
@@ -599,6 +600,18 @@ export const TOPICS: KnowledgeTopic[] = [
     content: TRUE_MANUFACTURING_KNOWLEDGE,
     manualKeywords: ['true manufacturing', 'gdm', 't-49', 't-72', 'thwd', 'true refrigeration'],
     tags: ['Reach-In', 'Walk-In', 'True', 'GDM'],
+    category: 'self-contained',
+  },
+  {
+    slug: 'proofer-retarders',
+    title: 'Bakery Proofer-Retarders — Wabash & Hobart',
+    shortTitle: 'Proofer-Retarders',
+    description: 'Wabash/Hobart PW and RPW proofer-retarder cabinets: model number decode, proof vs. retard mode operation, PCB1 control board and heat relay (HR1/HR2) circuits, diagnosing heaters running during retard mode (welded relay contacts), refrigeration system, HI-LIMIT safety switches, and common faults.',
+    iconName: 'Flame',
+    colorClass: 'orange',
+    content: PROOFER_RETARDER_KNOWLEDGE,
+    manualKeywords: ['wabash', 'hobart', 'proofer', 'retarder', 'rpw', 'proofer-retarder', 'baxter'],
+    tags: ['Bakery', 'Proofer', 'Retarder', 'Wabash', 'Hobart', 'Self-Contained'],
     category: 'self-contained',
   },
   {

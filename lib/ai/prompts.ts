@@ -8958,6 +8958,106 @@ True walk-in coolers/freezers use a remote unit cooler in the box connected to a
 - Drain: floor drain inside box (freezer) or drain pan (cooler) — ensure proper pitch to drain
 `
 
+// ── Bakery Proofer-Retarders ──────────────────────────────────────────────────
+export const PROOFER_RETARDER_KNOWLEDGE = `
+## Bakery Proofer-Retarders — Wabash & Hobart PW/RPW Service Guide
+
+![Industrial bakery proofing cabinet](https://upload.wikimedia.org/wikipedia/commons/4/4d/Bread_proofing_cabinet.jpg "Combination proofer-retarder cabinets hold dough at controlled temperature and humidity before baking")
+
+### What a Proofer-Retarder Does
+
+A proofer-retarder is a dual-purpose cabinet built into in-store and commissary bakeries. It runs in two opposing modes from the same enclosure:
+
+- **Proof mode (heat + humidity):** Holds dough at roughly 35–43°C (95–110°F) with high relative humidity (80–95%) so yeast activity finishes the rise before baking. Heating elements and a water/steam system create the warm, moist environment.
+- **Retard mode (refrigeration):** Holds shaped dough at roughly 1–7°C (34–45°F) to slow fermentation overnight or over a weekend, then automatically (or on a timed schedule) transitions into proof mode so product is ready to bake on a set schedule.
+
+Because both a heating/humidity system and a refrigeration system live in the same cabinet and share one control board, most service calls come down to figuring out which system — heat side or refrigeration side — is misbehaving, and whether the fault is in the control logic, the contactor/relay hardware, or the load itself.
+
+### Manufacturer Background
+
+This equipment is most commonly seen badged as **Wabash** or **Hobart Bakery Systems** (Orting, Washington), and is built and supported today under **ITW Food Equipment Group**, which also owns the **Hobart / Hobart Baxter** (Troy, Ohio) brand. Don't be surprised to find overlapping nameplates and manuals — the same physical cabinet has been sold and documented under more than one of these names depending on the era and the channel it was sold through. When pulling a manual, search by all of: Wabash, Hobart, Hobart Baxter, ITW Food Equipment Group, and the model/ML number on the nameplate.
+
+### Model Number Decode
+
+Nameplate model numbers follow a pattern that tells you the cabinet configuration before you even open the door:
+
+- **PW** — Proofer (heat/humidity only, no refrigeration deck)
+- **RPW** — Retarder-Proofer (combination unit with both refrigeration and heat/humidity systems)
+- **Number (1S, 2S, 3S, 2E…)** — cabinet width/door configuration; a **2** generally indicates a double-wide cabinet with two compartments and two air ducts, a **1** a single-wide
+- **Suffix letters (e.g., S, E, SEFAAR)** — voltage, options, and factory configuration code; cross-reference the full suffix string against the manual's nameplate decode table for the exact electrical and accessory configuration
+
+A nameplate reading **RPW2S** therefore decodes as a double-wide retarder-proofer combination cabinet — exactly the kind of unit covered by the "UNITS 2 WIDE W/ 2 AIR DUCTS" wiring schematic family (Hobart Bakery Systems print 01-101697-00002).
+
+Also record from the nameplate: ML number, serial number, refrigerant type and charge, maximum evaporator pressure, voltage/phase, full-load amperage per leg, and heater wattage — you will need all of these to order parts and to safely verify the electrical system.
+
+### Refrigeration System
+
+The retarder side is a self-contained mechanical refrigeration system, similar in principle to a reach-in cooler but built to also tolerate the heat cycle running in the same airspace:
+
+- **Refrigerant:** Most commonly **R-404A**, charge typically in the 4–6 lb range — always confirm against the nameplate, as later production may use an A1 replacement blend
+- **Compressor:** Hermetic, sized for the cabinet volume; mounted in a machine compartment isolated from the conditioned space
+- **Condenser:** Air-cooled, with its own fan motor — treat condenser cleaning the same as any self-contained reach-in (see True Manufacturing topic): floor-level intakes in bakery environments load up fast with flour dust, which insulates the coil and drives high head pressure
+- **Evaporator / unit cooler:** Mounted in the cabinet ceiling or rear wall, with its own fan(s) to circulate air across the product
+- **Maximum evaporator pressure:** Stamped on the nameplate (commonly around 300 PSIG for R-404A applications) — this is a design limit for the low side components, not an operating target; use it to sanity-check gauge readings and to confirm you're charged with the correct refrigerant
+
+During retard mode, the compressor, condenser fan, and evaporator fan cycle under the control board's command exactly like a standard walk-in or reach-in system. During proof mode the refrigeration system is normally locked out entirely — which is why unexpected compressor operation alongside heater operation is the first sign something in the mode-switching logic (or the relay hardware underneath it) isn't doing what the board thinks it's doing.
+
+### Heat & Humidity System — How It's Wired
+
+The heat side of an RPW cabinet is built from a small number of repeating elements per duct/compartment:
+
+- **Heating elements:** Resistive elements (commonly rated around 2200W each at 240V), wired in pairs per circuit and protected by their own fuses (commonly 25A) ahead of the relay contacts
+- **Heat relays (HR1, HR2 on the schematic):** One relay per heating circuit/compartment. The relay **coil** is a low-voltage circuit driven directly by the control board (PCB1) — when the board calls for heat, it energizes the coil, and the board's onboard LED for that output lights to show the command was issued
+- **Heat relay contacts:** A separate, electrically isolated set of contacts on the same relay switches the actual 240V line voltage to the heater elements (commonly drawn on the print as the A1 to B2/B3 contact path). This is the load side — it carries real current to the heating elements and is completely separate from the LED/coil circuit
+- **Fan relays (FR1, FR2, FR3):** Drive the air duct fan motors that circulate hot, humid air across the product during proof mode and distribute conditioned air during retard mode
+- **Water solenoid (WS1):** Admits water to a steam-generating element or atomizer to maintain humidity during proof mode — a common source of "low humidity" complaints when it sticks closed or scales up
+- **HI-LIMIT switches:** Manual-reset, fixed-setpoint thermal safety switches wired in series with the heater circuit. They open on an over-temperature condition regardless of what the control board is doing, and must be manually reset (usually a small red button on the switch body) once the cabinet has cooled
+- **Safety relay (SR1):** A supervisory relay that the control board and/or HI-LIMIT string uses to remove power from the heat circuit on a fault condition — treat it as part of the safety chain, not just a convenience relay
+
+### PCB1 Control Board
+
+PCB1 is the brain of the cabinet — it reads the cabinet's temperature/humidity sensors, runs the proof/retard schedule (including any "ready by" time-of-day scheduling features), and drives every relay coil described above (heat relays, fan relays, water solenoid, and the refrigeration contactor). Each output the board commands typically has a corresponding status LED on the board face, which is the fastest way to see what the board *thinks* it's doing.
+
+**Critical concept for diagnosis:** the LED only reports the **coil-side command** — it tells you the board energized (or didn't energize) the relay coil. It tells you nothing about whether the **load-side contacts** actually opened or closed in response. A relay can receive no coil signal (LED off) and still pass current through its load contacts if those contacts are mechanically stuck or welded closed. This single fact explains the majority of "the board says it's off, but the load is still running" service calls on this equipment — not just on the heat side, but on fan and refrigeration outputs too.
+
+### Diagnosing Heaters That Run During Retarder Mode
+
+This is one of the more common — and more confusing — complaints on RPW cabinets, because the symptom looks like a control board problem but is usually a hardware problem downstream of the board.
+
+**Symptom:** Compressor is running (cabinet correctly in retard mode), the heat-relay LED on PCB1 is **off** (board is not commanding heat), but amp clamp on the heater circuit reads current (e.g., ~7A) — the elements are clearly energized.
+
+**What this tells you:** Since the LED is off, PCB1 is not energizing the HR coil. Since the elements are still drawing current, 240V is reaching them anyway. The only way both of those things can be true at once is if the **load-side contacts of the heat relay are closed independent of the coil** — in other words, the contacts are welded or mechanically stuck closed. This is a very well-known failure mode for relays that switch resistive heating loads over thousands of cycles: the high inrush current of a cold resistive element causes contact arcing and pitting every time the relay closes, and over years of service the contact faces can fuse together in the closed position.
+
+**How to confirm it (do this with the cabinet in retard mode, heat call should be inactive):**
+
+1. **Check the coil side first.** With the heat-relay LED off, measure the control voltage at the relay coil terminals. You should read **no voltage** (or only a tiny bleed voltage) — confirming the board genuinely isn't calling for heat.
+2. **Then check the load side.** With the meter still in hand, measure across the relay's load contacts (or directly at the heater element terminals) for line voltage, and confirm current draw on the heater circuit with a clamp meter. If you measure **240V present and current flowing** to the elements while the coil reads no voltage, the contacts are stuck/welded closed — the relay itself has failed mechanically, and the control board is not at fault.
+
+**Why this matters beyond the inconvenience:** running the heating elements continuously while the compressor is also running means the refrigeration system is fighting a heat load it was never designed to handle during retard mode. Expect high amp draw, long compressor run times, elevated cabinet temperatures (which can put dough food-safety into question), and accelerated wear on the compressor from the extra load. Don't treat this as "it'll sort itself out" — it's an active safety and product-quality issue.
+
+**Recommended repair:** Replace the failed heat relay (and, as good practice, its counterpart on the other heating circuit — if one relay has reached end-of-life from years of identical duty cycles, the other is usually not far behind). After replacement, re-run the same two-step voltage check in both proof and retard mode to confirm the coil and load sides now track together, and verify the HI-LIMIT switches are not tripped (they may have been activated by the excess heat and need a manual reset).
+
+### Common Faults
+
+| Fault | Symptom | Likely Cause | Diagnosis |
+|---|---|---|---|
+| Heaters run during retard mode | Compressor on, heat-relay LED off, current present at elements | Welded/stuck heat relay contacts | Compare coil-side vs. load-side voltage on the suspect relay; replace relay if contacts stay closed with no coil signal |
+| No heat in proof mode | Cabinet won't reach proof temperature, heat-relay LED is on | Open heater element, blown element fuse, failed relay coil/contacts in the open direction, tripped HI-LIMIT | Check fuse continuity, measure element resistance, confirm relay closes when LED is lit, check/reset HI-LIMIT |
+| Low humidity in proof mode | Dough surface dries out, slow or uneven proof | Water solenoid (WS1) stuck closed, scaled steam element, low water supply pressure | Check for water delivery when solenoid is energized; descale steam-generating element; verify inlet water supply |
+| HI-LIMIT keeps tripping | Heat cycles shut down, manual-reset button popped | Airflow restriction (duct fan failure), stuck-closed heat relay overheating the compartment, sensor drift on PCB1 | Verify duct fan operation first (airflow loss is the most common trigger); rule out a stuck relay before assuming the switch itself is bad |
+| Compressor short-cycling or running long in retard mode | High amp draw, box not pulling down | Stuck heat relay adding heat load, dirty condenser, low charge, door seal leak | Rule out a stuck-closed heat relay first (it mimics low charge by keeping the box from pulling down); then check condenser and charge |
+| Cabinet won't switch modes on schedule | Stuck in proof or retard regardless of programmed schedule | PCB1 schedule/clock fault, failed mode-select relay, sensor fault feeding bad data to the board | Verify board's clock/schedule settings; confirm board is issuing the mode-change command (LEDs) before suspecting the board itself |
+| Uneven proofing across cabinet | One side/duct proofs faster than the other | Failed fan relay (FR1/FR2/FR3) or duct fan motor on one side | Confirm each duct fan runs when its relay is commanded; check fan motor winding resistance if it doesn't |
+
+### Maintenance & Service Tips
+
+- **Condenser and airflow:** Bakery environments are dusty with flour and load condensers and filters faster than a typical backroom. Inspect and clean on a tighter interval than you would for a standard reach-in.
+- **Relay inspection on PM visits:** Because the welded-contact failure mode is so common on this equipment, it's worth proactively checking coil-vs-load voltage agreement on the heat relays during scheduled PM visits — catching a relay that's starting to stick (intermittent agreement) before it fails fully saves an emergency call and protects the compressor from the extra runtime.
+- **HI-LIMIT switches are manual-reset by design:** If you find one tripped, don't just reset it and walk away — find out *why* it tripped. Resetting a HI-LIMIT without finding the root cause (stuck relay, failed fan, sensor fault) just delays the next nuisance trip or, worse, masks a real overheat condition.
+- **Document the suffix code:** The full suffix string on the nameplate (e.g., SEFAAR) encodes voltage and factory options that affect which wiring print and parts list apply. Record it whenever you open a ticket — it saves time when ordering parts or pulling the correct schematic later.
+- **Cross-reference brand names when searching for documentation:** Because this line has been sold and supported under Wabash, Hobart, Hobart Baxter, and ITW Food Equipment Group branding at different times, search all of those names (plus the model and ML numbers) when looking for a manual or wiring print — the right document may be filed under a brand name other than the one on your nameplate.
+`
+
 // ── Commissioning Checklists ──────────────────────────────────────────────────
 export const COMMISSIONING_KNOWLEDGE = `
 ## System Commissioning & Startup Checklists
