@@ -386,7 +386,7 @@ export default function EquipmentDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className={`text-sm ${equip.notes ? 'text-slate-700' : 'text-slate-400 italic'}`}>
+              <p className={`text-sm whitespace-pre-wrap ${equip.notes ? 'text-slate-700' : 'text-slate-400 italic'}`}>
                 {equip.notes || 'No notes'}
               </p>
             )}
