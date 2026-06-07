@@ -76,13 +76,15 @@ export async function GET(req: NextRequest) {
 
   // docEntries: [[docId, filePath], ...] — preserves order for index-matched signed URL response
   const docEntries: [string, string][] = []
+  const sourceUrlByDocId: Record<string, string> = {}
   if (docIds.length > 0) {
     const { data: docs } = await supabase
       .from('documents')
-      .select('id, file_name')
+      .select('id, file_name, source_url')
       .in('id', docIds)
     for (const d of docs ?? []) {
       if (d.file_name) docEntries.push([d.id, d.file_name])
+      else if (d.source_url) sourceUrlByDocId[d.id] = d.source_url
     }
   }
 
@@ -101,6 +103,7 @@ export async function GET(req: NextRequest) {
 
   function resolveManualUrl(c: { document_id?: string | null; manual_url?: string | null }): string {
     if (c.document_id && signedUrlByDocId[c.document_id]) return signedUrlByDocId[c.document_id]
+    if (c.document_id && sourceUrlByDocId[c.document_id]) return sourceUrlByDocId[c.document_id]
     return c.manual_url ?? ''
   }
 
