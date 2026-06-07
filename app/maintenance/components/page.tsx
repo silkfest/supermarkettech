@@ -754,6 +754,7 @@ export default function ComponentRegistryPage() {
   const [showAdd,          setShowAdd]          = useState(false)
   const [userRole,         setUserRole]         = useState<UserRole | null>(null)
   const [highlightId,      setHighlightId]      = useState<string | null>(null)
+  const [equipmentFilter,  setEquipmentFilter]  = useState<{ id: string; name: string } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isAdmin = userRole === 'admin' || userRole === 'manager'
@@ -772,10 +773,12 @@ export default function ComponentRegistryPage() {
     checkRole()
   }, [])
 
-  const fetchAll = useCallback(async (initialHighlightId?: string | null) => {
+  const fetchAll = useCallback(async (initialHighlightId?: string | null, equipmentId?: string | null) => {
     setLoading(true)
     try {
-      const data = await fetch('/api/components').then(r => r.json())
+      const params = new URLSearchParams()
+      if (equipmentId) params.set('equipmentId', equipmentId)
+      const data = await fetch(`/api/components${params.toString() ? `?${params}` : ''}`).then(r => r.json())
       if (Array.isArray(data)) {
         setAllComponents(data)
         setTypes(Array.from(new Set(data.map((c: ComponentRecord) => c.type))).sort() as string[])
@@ -809,20 +812,26 @@ export default function ComponentRegistryPage() {
     setLoading(false)
   }, [])
 
-  // On mount: read ?highlight= deep-link from URL (set by chat component-link chips)
+  // On mount: read ?highlight= and ?equipmentId= deep-links from URL
+  // (set by chat component-link chips and the equipment detail page's "Components" button)
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('highlight')
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('highlight')
+    const eqId = params.get('equipmentId')
+    const eqName = params.get('equipmentName')
     if (id) setHighlightId(id)
-    fetchAll(id)
+    if (eqId) setEquipmentFilter({ id: eqId, name: eqName || 'this unit' })
+    fetchAll(id, eqId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const fetchFiltered = useCallback(async (q: string, t: string, system: string, area: string) => {
+  const fetchFiltered = useCallback(async (q: string, t: string, system: string, area: string, equipmentId?: string | null) => {
     const params = new URLSearchParams()
-    if (q)      params.set('q', q)
-    if (t)      params.set('type', t)
-    if (system) params.set('systemType', system)
-    if (area)   params.set('systemArea', area)
+    if (q)          params.set('q', q)
+    if (t)          params.set('type', t)
+    if (system)     params.set('systemType', system)
+    if (area)       params.set('systemArea', area)
+    if (equipmentId) params.set('equipmentId', equipmentId)
     try {
       const data = await fetch(`/api/components?${params}`).then(r => r.json())
       if (Array.isArray(data)) setComponents(data)
@@ -831,12 +840,18 @@ export default function ComponentRegistryPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeSystem, activeArea), 280)
+    debounceRef.current = setTimeout(() => fetchFiltered(query, activeType, activeSystem, activeArea, equipmentFilter?.id), 280)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, activeType, activeSystem, activeArea, fetchFiltered])
+  }, [query, activeType, activeSystem, activeArea, equipmentFilter, fetchFiltered])
 
-  // highlightId (from ?highlight= deep-link) also forces the flat list view so the card is in the DOM
-  const inFilterMode = !!(query || activeType || activeSystem || activeArea || highlightId)
+  function clearEquipmentFilter() {
+    setEquipmentFilter(null)
+    router.replace('/maintenance/components')
+    fetchAll(highlightId)
+  }
+
+  // highlightId (from ?highlight= deep-link) and equipmentFilter also force the flat list view
+  const inFilterMode = !!(query || activeType || activeSystem || activeArea || highlightId || equipmentFilter)
 
   function handleEditSaved(updated: Partial<ComponentRecord>) {
     const patch = (list: ComponentRecord[]) =>
@@ -979,6 +994,11 @@ export default function ComponentRegistryPage() {
           /* ── Filtered results ── */
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
+              {equipmentFilter && (
+                <button onClick={clearEquipmentFilter} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-full">
+                  <Package size={11}/> {equipmentFilter.name} <X size={11}/>
+                </button>
+              )}
               {activeArea && (() => {
                 const a = AREA_OPTIONS.find(o => o.value === activeArea)
                 return a ? (
@@ -1002,7 +1022,11 @@ export default function ComponentRegistryPage() {
 
             {components.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-sm text-slate-500">No components match your search.</p>
+                <p className="text-sm text-slate-500">
+                  {equipmentFilter && !(query || activeType || activeSystem || activeArea)
+                    ? 'No components linked to this unit yet.'
+                    : 'No components match your search.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">

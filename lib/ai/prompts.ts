@@ -4086,6 +4086,10 @@ function buildEquipmentContext(
   if (equipment.refrigerant)   lines.push(`Refrigerant: ${equipment.refrigerant}`)
   if (equipment.location)      lines.push(`Location: ${equipment.location}`)
   if (equipment.installed_at)  lines.push(`Installed: ${new Date(equipment.installed_at).toLocaleDateString()}`)
+  if (equipment.specs && equipment.specs.length > 0) {
+    lines.push('Nameplate / Specifications:')
+    equipment.specs.forEach(s => lines.push(`  - ${s.label}: ${s.value}`))
+  }
   if (equipment.notes)         lines.push(`Notes: ${equipment.notes}`)
   lines.push(`Current status: ${equipment.status}`)
 
