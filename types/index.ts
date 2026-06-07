@@ -16,6 +16,11 @@ export interface User {
   created_at: string
 }
 
+export interface EquipmentSpec {
+  label: string
+  value: string
+}
+
 export interface Equipment {
   id: string
   store_id: string
@@ -28,6 +33,7 @@ export interface Equipment {
   location?: string | null
   status: EquipmentStatus
   notes?: string | null
+  specs?: EquipmentSpec[] | null
   created_at: string
   // Joined / enriched
   active_alarms?: AlarmEvent[]

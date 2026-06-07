@@ -42,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ('installedAt'   in body) update.installed_at   = body.installedAt || null
   if ('location'      in body) update.location       = body.location
   if ('notes'         in body) update.notes          = body.notes
+  if ('specs'         in body) update.specs          = body.specs
   if ('status'        in body) update.status         = body.status
 
   const { data, error } = await supabase

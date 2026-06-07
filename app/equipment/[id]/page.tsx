@@ -7,7 +7,7 @@ import {
   ArrowLeft, Package, Wrench, Pencil, Check, X,
   Building2, MapPin, Calendar, Thermometer, Tag, StickyNote,
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
-  FileText, ExternalLink, Loader2,
+  FileText, ExternalLink, Loader2, ListChecks, Plus,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import EditableRow from '@/components/EditableRow'
@@ -26,6 +26,7 @@ interface EquipmentDetail {
   installed_at: string | null
   location: string
   notes: string
+  specs: { label: string; value: string }[] | null
   status: string
   updated_at: string
   // joined
@@ -107,6 +108,10 @@ export default function EquipmentDetailPage() {
   const [saving, setSaving] = useState(false)
   const [savedField, setSavedField] = useState<string | null>(null)
 
+  const [editingSpecs, setEditingSpecs] = useState(false)
+  const [specsDraft, setSpecsDraft] = useState<{ label: string; value: string }[]>([])
+  const [savingSpecs, setSavingSpecs] = useState(false)
+
   const [documents, setDocuments] = useState<DocRow[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
 
@@ -153,6 +158,23 @@ export default function EquipmentDetailPage() {
     }
     setEditField(null)
     setSaving(false)
+  }
+
+  async function saveSpecs(rows: { label: string; value: string }[]) {
+    if (!equip) return
+    const cleaned = rows.filter(r => r.label.trim() || r.value.trim())
+    setSavingSpecs(true)
+    const res = await fetch(`/api/equipment/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ specs: cleaned }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setEquip(prev => prev ? { ...prev, ...updated } : prev)
+      setEditingSpecs(false)
+    }
+    setSavingSpecs(false)
   }
 
   if (loading) return (
@@ -353,6 +375,74 @@ export default function EquipmentDetailPage() {
             </div>
           </div>
 
+          {/* Specifications */}
+          <div className="px-4 py-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <ListChecks size={13}/> Specifications
+              </div>
+              {isAdmin && !editingSpecs && (
+                <button
+                  onClick={() => {
+                    setSpecsDraft(equip.specs && equip.specs.length ? equip.specs.map(s => ({ ...s })) : [{ label: '', value: '' }])
+                    setEditingSpecs(true)
+                  }}
+                  className="p-1 rounded-md hover:bg-slate-100 text-slate-400">
+                  <Pencil size={12}/>
+                </button>
+              )}
+            </div>
+            {editingSpecs ? (
+              <div className="flex flex-col gap-2">
+                {specsDraft.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      value={row.label}
+                      onChange={e => setSpecsDraft(d => d.map((r, j) => j === i ? { ...r, label: e.target.value } : r))}
+                      placeholder="Label (e.g. Compressor Voltage)"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <input
+                      value={row.value}
+                      onChange={e => setSpecsDraft(d => d.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
+                      placeholder="Value (e.g. 575V / 3-ph / 60Hz)"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <button onClick={() => setSpecsDraft(d => d.filter((_, j) => j !== i))}
+                      className="p-1.5 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 flex-shrink-0">
+                      <X size={13}/>
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button onClick={() => setSpecsDraft(d => [...d, { label: '', value: '' }])}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg hover:bg-slate-50">
+                    <Plus size={12}/> Add row
+                  </button>
+                  <div className="flex-1"/>
+                  <button onClick={() => saveSpecs(specsDraft)} disabled={savingSpecs}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    <Check size={12}/> Save
+                  </button>
+                  <button onClick={() => setEditingSpecs(false)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : equip.specs && equip.specs.length > 0 ? (
+              <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                {equip.specs.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
+                    <span className="text-xs text-slate-500 flex-1">{s.label}</span>
+                    <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic">No specifications added</p>
+            )}
+          </div>
+
           {/* Notes */}
           <div className="px-4 py-3 border-t border-slate-100">
             <div className="flex items-center justify-between mb-1.5">
@@ -402,7 +492,7 @@ export default function EquipmentDetailPage() {
             <ClipboardList size={15} className="text-purple-500"/> Individual Report
           </button>
           <button
-            onClick={() => router.push(`/maintenance/components?search=${encodeURIComponent(equip.name)}`)}
+            onClick={() => router.push(`/maintenance/components?equipmentId=${equip.id}&equipmentName=${encodeURIComponent(equip.name)}`)}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
           >
             <Package size={15} className="text-blue-500"/> Components

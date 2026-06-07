@@ -45,8 +45,9 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const q    = searchParams.get('q')?.toLowerCase().trim() ?? ''
-  const type = searchParams.get('type')?.trim() ?? ''
+  const q           = searchParams.get('q')?.toLowerCase().trim() ?? ''
+  const type        = searchParams.get('type')?.trim() ?? ''
+  const equipmentId = searchParams.get('equipmentId')?.trim() ?? ''
 
   const supabase = getSupabaseServer()
 
@@ -265,6 +266,7 @@ export async function GET(req: NextRequest) {
       c.partNumber.toLowerCase().includes(q)
     )
   }
+  if (equipmentId) out = out.filter(c => c.equipmentId === equipmentId)
   if (type)        out = out.filter(c => c.type === type)
   if (defrostType) out = out.filter(c => c.defrostType === defrostType)
   if (loadCategory) out = out.filter(c => c.loadCategory === loadCategory)

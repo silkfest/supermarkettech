@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
 
   const docs = rows.map(doc => ({
     ...doc,
-    url: doc.file_name ? (signedUrlMap[doc.file_name] ?? null) : null,
+    url: doc.file_name ? (signedUrlMap[doc.file_name] ?? null) : (doc.source_url ?? null),
   }))
 
   return NextResponse.json(docs)
