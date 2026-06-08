@@ -502,37 +502,34 @@ export default function ProtocolRackASimulatorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <LearningTabBar />
 
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <button onClick={() => router.push('/simulation')}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
-            <ChevronLeft size={18} />
+      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/simulation')}
+          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+          <ChevronLeft size={20} />
+        </button>
+        <div className="flex items-baseline gap-0.5">
+          <span className="text-lg font-bold text-blue-400">Cold</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">Protocol Rack — Unit A</span>
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {activeFaultCount > 0 && (
+            <span className="text-xs bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
+              {activeFaultCount} fault{activeFaultCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          <button onClick={resetAll}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
+            <RotateCcw size={13} />
+            Reset
           </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Rack Simulator</p>
-            <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-              Hussmann Protocol Rack — Unit A
-            </h1>
-            <p className="text-xs text-slate-400">Fortino's Mall Rd · R-448A · 6 Copeland EVI Scrolls · 575V · LT Frozen Food</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeFaultCount > 0 && (
-              <span className="text-xs bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
-                {activeFaultCount} fault{activeFaultCount !== 1 ? 's' : ''}
-              </span>
-            )}
-            <button onClick={resetAll}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-              <RotateCcw size={13} />
-              Reset
-            </button>
-          </div>
         </div>
       </div>
 
+      <LearningTabBar />
       <div className="max-w-6xl mx-auto w-full px-4 py-4 space-y-4">
 
         {/* Scenario banner */}
