@@ -117,9 +117,11 @@ manufacturer assumption that was hard to spot and correct once merged together.
 
 **Per circuit, create BOTH:**
 1. An `equipment` row:
-   - `name`: short functional label + circuit, e.g. `"FF Doors A1"` or `"Brema A2"` — describe
-     *what the system is/does* (the user's framing) plus the circuit ID, not a generic
-     "Display Case — <model>" label.
+   - `name`: short **functional** label + circuit, e.g. `"FF Doors A1"`, `"FF Doors A2"` — name
+     by what the system *does* (the user's framing — e.g. "Frozen Food" doors), not by brand/model,
+     so mixed-manufacturer circuits serving the same function stay consistently named (Fortino's
+     Remote Header A has both Hillphoenix ORZ and Arneg Brema units across its FF Doors circuits;
+     all are named "FF Doors A<n>" — manufacturer/model live in their own fields, not the name).
    - `equipment_type`: `'display_case'`
    - `manufacturer` / `model`: from the nameplate/legend MODEL column (trust the nameplate over
      assumptions about "who usually supplies this site" — see the ORZ/Hillphoenix vs. Arneg
