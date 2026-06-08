@@ -541,7 +541,7 @@ function ReportViewContent() {
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap items-center gap-2 no-print">
+        <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap items-center gap-2 no-print">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard">
               <Home size={18} />

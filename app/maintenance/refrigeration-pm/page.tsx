@@ -982,7 +982,7 @@ function RefrigerationPMContent() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
+      <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard"><Home size={18} /></button>
           <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><ArrowLeft size={18} /></button>

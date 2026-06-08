@@ -10,6 +10,7 @@ interface EquipmentInfo {
   model: string | null
   refrigerant: string | null
   specs: { label: string; value: string }[] | null
+  stores: { name: string; address: string } | null
 }
 
 /** Returns the current local time in the format datetime-local inputs expect (YYYY-MM-DDTHH:mm) */
@@ -45,9 +46,12 @@ function IndividualReportContent() {
   useEffect(() => {
     if (!equipmentId) return
     fetch(`/api/equipment/${equipmentId}`).then(r => r.json()).then(d => {
-      if (d?.id) setEquipment({ name: d.name, manufacturer: d.manufacturer, model: d.model, refrigerant: d.refrigerant, specs: d.specs })
+      if (!d?.id) return
+      setEquipment({ name: d.name, manufacturer: d.manufacturer, model: d.model, refrigerant: d.refrigerant, specs: d.specs, stores: d.stores })
+      // Auto-fill the store from the linked equipment's site — only when creating fresh (don't clobber an edited report's saved value)
+      if (!editId && d.stores?.name) setStoreName(d.stores.name)
     })
-  }, [equipmentId])
+  }, [equipmentId, editId])
 
   useEffect(() => {
     if (editId) {
@@ -129,7 +133,7 @@ function IndividualReportContent() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
+      <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard"><Home size={18}/></button>
           <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><ArrowLeft size={18}/></button>
