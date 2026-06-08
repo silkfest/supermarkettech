@@ -7,11 +7,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const supabase = getSupabaseServer()
 
-  const [equipResult, pmResult] = await Promise.all([
+  const [equipResult, pmResult, individualResult] = await Promise.all([
     supabase.from('equipment').select('*, stores(name, address)').eq('id', id).single(),
     supabase
       .from('pm_reports')
       .select('id, store_name, performed_at, report_type')
+      .eq('equipment_id', id)
+      .order('performed_at', { ascending: false })
+      .limit(20),
+    supabase
+      .from('individual_reports')
+      .select('id, store_name, performed_at, issue_explanation')
       .eq('equipment_id', id)
       .order('performed_at', { ascending: false })
       .limit(20),
@@ -22,6 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({
     ...equipResult.data,
     pm_history: pmResult.data ?? [],
+    individual_reports: individualResult.data ?? [],
   })
 }
 
