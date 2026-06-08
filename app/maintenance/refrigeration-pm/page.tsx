@@ -210,6 +210,15 @@ function extractVoltage(value: string | null): string {
   return match ? match[0].replace(/\s+/g, '') : ''
 }
 
+function findRackType(specs: EquipmentSpec[] | null): RackType {
+  const val = findSpec(specs, 'rack', 'type')?.trim().toUpperCase() ?? ''
+  if (val === 'LT') return 'LT'
+  if (val === 'MT') return 'MT'
+  if (val === 'DT') return 'DT'
+  return ''
+}
+
+
 /** Finds the compressor-count spec specifically (e.g. "Compressors": "6 total — ...") — distinct from
  *  "Compressor Supply"/"Compressor MCA / MOPD" specs, which also contain the word "compressor" but
  *  describe electrical ratings, not how many compressors are on the rack */
@@ -229,6 +238,7 @@ function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
     rackManufacturer: e.manufacturer ?? '',
     compressorManufacturer: findSpec(specs, 'compressor', 'manufacturer') ?? '',
     refrigerant: normaliseRefrigerant(e.refrigerant),
+    rackType: findRackType(specs),
     compressorCount: findCompressorCount(specs) ?? base.compressorCount,
     suctionPressureSetpoint: findSpec(specs, 'suction', 'setpoint') ?? findSpec(specs, 'suction', 'set point') ?? '',
     dischargePressureSetpoint: findSpec(specs, 'discharge', 'setpoint') ?? findSpec(specs, 'discharge', 'set point') ?? '',
