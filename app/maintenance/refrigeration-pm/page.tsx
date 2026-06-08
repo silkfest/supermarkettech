@@ -210,6 +210,15 @@ function extractVoltage(value: string | null): string {
   return match ? match[0].replace(/\s+/g, '') : ''
 }
 
+/** Finds the compressor-count spec specifically (e.g. "Compressors": "6 total — ...") — distinct from
+ *  "Compressor Supply"/"Compressor MCA / MOPD" specs, which also contain the word "compressor" but
+ *  describe electrical ratings, not how many compressors are on the rack */
+function findCompressorCount(specs: EquipmentSpec[] | null): number | null {
+  if (!specs) return null
+  const spec = specs.find(s => s.label.toLowerCase().includes('compressor') && /^\d+\s*total\b/i.test(s.value))
+  return spec ? parseLeadingInt(spec.value, 2, 8) : null
+}
+
 /** Best-effort pre-fill of a rack tab from a linked equipment record — fields left blank when the spec sheet doesn't have a confident match (tech fills those in on site) */
 function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
   const base = createRack()
@@ -218,8 +227,9 @@ function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
     ...base,
     tabDisplayName: e.name,
     rackManufacturer: e.manufacturer ?? '',
+    compressorManufacturer: findSpec(specs, 'compressor', 'manufacturer') ?? '',
     refrigerant: normaliseRefrigerant(e.refrigerant),
-    compressorCount: parseLeadingInt(findSpec(specs, 'compressor'), 2, 8) ?? base.compressorCount,
+    compressorCount: findCompressorCount(specs) ?? base.compressorCount,
     suctionPressureSetpoint: findSpec(specs, 'suction', 'setpoint') ?? findSpec(specs, 'suction', 'set point') ?? '',
     dischargePressureSetpoint: findSpec(specs, 'discharge', 'setpoint') ?? findSpec(specs, 'discharge', 'set point') ?? '',
     controlVoltage: extractVoltage(findSpec(specs, 'control', 'voltage') ?? findSpec(specs, 'control', 'circuit')),
