@@ -584,13 +584,6 @@ export default function EquipmentDetailPage() {
           </div>
         )}
 
-        {equip.pm_history.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 bg-white border border-dashed border-slate-200 rounded-2xl text-slate-400">
-            <Wrench size={24} className="mb-2 opacity-30"/>
-            <p className="text-sm">No PM history yet</p>
-          </div>
-        )}
-
         {/* Individual Reports */}
         {equip.individual_reports.length > 0 && (
           <div>
