@@ -4,6 +4,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, X, Camera, Loader2, Home } from 'lucide-react'
 
 interface Photo { url: string; label: string }
+interface EquipmentInfo {
+  name: string
+  manufacturer: string | null
+  model: string | null
+  refrigerant: string | null
+  specs: { label: string; value: string }[] | null
+}
 
 /** Returns the current local time in the format datetime-local inputs expect (YYYY-MM-DDTHH:mm) */
 function toLocalISO(date = new Date()) {
@@ -29,10 +36,18 @@ function IndividualReportContent() {
   const [parts, setParts] = useState<string[]>([])
   const [newPart, setNewPart] = useState('')
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [equipment, setEquipment] = useState<EquipmentInfo | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!equipmentId) return
+    fetch(`/api/equipment/${equipmentId}`).then(r => r.json()).then(d => {
+      if (d?.id) setEquipment({ name: d.name, manufacturer: d.manufacturer, model: d.model, refrigerant: d.refrigerant, specs: d.specs })
+    })
+  }, [equipmentId])
 
   useEffect(() => {
     if (editId) {
@@ -137,6 +152,47 @@ function IndividualReportContent() {
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
+
+        {/* Reporting on this equipment — pulled from the linked case/system record */}
+        {equipment && (
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-6">
+            <h2 className="text-sm font-semibold text-slate-800 mb-3">Reporting On</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 mb-3">
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Unit</p>
+                <p className="text-sm text-slate-800">{equipment.name}</p>
+              </div>
+              {equipment.manufacturer && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Manufacturer</p>
+                  <p className="text-sm text-slate-800">{equipment.manufacturer}</p>
+                </div>
+              )}
+              {equipment.model && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Model</p>
+                  <p className="text-sm text-slate-800">{equipment.model}</p>
+                </div>
+              )}
+              {equipment.refrigerant && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Refrigerant</p>
+                  <p className="text-sm text-slate-800">{equipment.refrigerant}</p>
+                </div>
+              )}
+            </div>
+            {equipment.specs && equipment.specs.length > 0 && (
+              <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                {equipment.specs.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
+                    <span className="text-xs text-slate-500 flex-1">{s.label}</span>
+                    <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Store Info */}
         <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-6">

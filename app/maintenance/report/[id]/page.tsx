@@ -361,9 +361,33 @@ function IndividualView({ data }: { data: Record<string, any> }) {
   const issue = data.issue_explanation as string | null | undefined
   const steps = data.steps_taken as string | null | undefined
   const next = data.whats_next as string | null | undefined
+  const equipment = data.equipment as Record<string, any> | null | undefined
+  const specs = (equipment?.specs as Array<{ label: string; value: string }>) ?? []
 
   return (
     <div className="space-y-5">
+      {equipment && (
+        <SectionCard title="Equipment">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 mb-3">
+            <Field label="Unit" value={equipment.name} />
+            <Field label="Manufacturer" value={equipment.manufacturer} />
+            <Field label="Model" value={equipment.model} />
+            <Field label="Serial" value={equipment.serial_number} />
+            <Field label="Refrigerant" value={equipment.refrigerant} />
+            <Field label="Location" value={equipment.location} />
+          </div>
+          {specs.length > 0 && (
+            <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+              {specs.map((s, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
+                  <span className="text-xs text-slate-500 flex-1">{s.label}</span>
+                  <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
       {issue && (
         <SectionCard title="Issue / Complaint">
           <p className="text-sm text-slate-800 whitespace-pre-wrap">{issue}</p>
