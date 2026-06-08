@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, Home } from 'lucide-react'
 
@@ -20,6 +20,16 @@ interface Equipment {
   serialNumber: string
   refrigerantType: RefrigerantType
   voltage: VoltageType
+}
+
+interface HvacEquipmentInfo {
+  id: string
+  name: string
+  manufacturer: string | null
+  model: string | null
+  serial_number: string | null
+  refrigerant: string | null
+  specs: { label: string; value: string }[] | null
 }
 
 interface Deficiency {
@@ -99,6 +109,12 @@ function HvacPMContent() {
   // Equipment
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [collapsedEquipment, setCollapsedEquipment] = useState<Record<string, boolean>>({})
+
+  // HVAC unit records on file for the selected site — reference only (manufacturer/model/
+  // serial/refrigerant/specs); the PM form's equipment "type" classification (Air Handler,
+  // RTU, etc.) isn't stored on the equipment record so it can't be safely auto-filled
+  const [siteHvacUnits, setSiteHvacUnits] = useState<HvacEquipmentInfo[]>([])
+  const fetchedHvacForStoreRef = useRef<string | null>(null)
   const [showTypeModal, setShowTypeModal] = useState(false)
   const [pendingType, setPendingType] = useState<EquipmentType>('')
   const [serviceAreaInput, setServiceAreaInput] = useState('')
@@ -139,6 +155,21 @@ function HvacPMContent() {
     }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pull HVAC unit records on file for the selected site, for reference (manufacturer/
+  // model/serial/refrigerant/specs) — surfaced so the tech can see "model info" while
+  // adding equipment entries below. Not auto-filled into entries: the PM form's equipment
+  // "type" (Air Handler, RTU, Exhaust Fan, …) isn't captured on the equipment record, so
+  // there's no reliable way to match a catalog unit to a specific entry.
+  useEffect(() => {
+    if (!storeId) return
+    if (fetchedHvacForStoreRef.current === storeId) return
+    fetchedHvacForStoreRef.current = storeId
+    fetch(`/api/stores/${storeId}`).then(r => r.ok ? r.json() : null).then(d => {
+      const units: HvacEquipmentInfo[] = (d?.equipment ?? []).filter((e: { equipment_type: string }) => e.equipment_type === 'hvac')
+      setSiteHvacUnits(units)
+    }).catch(() => {})
+  }, [storeId])
 
   // Load existing report
   useEffect(() => {
@@ -395,6 +426,40 @@ function HvacPMContent() {
             </div>
           )}
         </div>
+
+        {/* ── HVAC Units On Record (reference) ── */}
+        {siteHvacUnits.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-sm font-semibold text-slate-800">HVAC Units on Record at this Site ({siteHvacUnits.length})</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Pulled from the equipment catalog — reference for model/serial/refrigerant info while filling in equipment below</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {siteHvacUnits.map(u => (
+                <div key={u.id} className="px-6 py-4">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                    <p className="text-sm font-medium text-slate-800">{u.name}</p>
+                    {(u.manufacturer || u.model) && (
+                      <span className="text-xs text-slate-400">{[u.manufacturer, u.model].filter(Boolean).join(' · ')}</span>
+                    )}
+                    {u.serial_number && <span className="text-xs text-slate-400">SN {u.serial_number}</span>}
+                    {u.refrigerant && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">{u.refrigerant}</span>}
+                  </div>
+                  {u.specs && u.specs.length > 0 && (
+                    <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                      {u.specs.map((s, i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
+                          <span className="text-xs text-slate-500 flex-1">{s.label}</span>
+                          <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Equipment Data ── */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
