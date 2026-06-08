@@ -1601,6 +1601,22 @@ export default function SimulationPage() {
           <div className="flex-1 overflow-y-auto p-3 md:p-4 pb-24 md:pb-4">
             <div className="max-w-4xl mx-auto space-y-3">
 
+            {/* ── Protocol Rack A link ── */}
+            <button
+              onClick={() => router.push('/simulation/protocol-rack-a')}
+              className="w-full text-left bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl px-4 py-3 hover:border-blue-400 dark:hover:border-blue-400 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Hussmann Protocol Rack — Unit A</p>
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                    Fortino&apos;s Mall Rd · R-448A · 6 Copeland EVI Scrolls · LT Frozen Food · 9 active circuits
+                  </p>
+                </div>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium ml-3 flex-shrink-0">Open →</span>
+              </div>
+            </button>
+
             {/* ── OAT Slider ── */}
             <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
