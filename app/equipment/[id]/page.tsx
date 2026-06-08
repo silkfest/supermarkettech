@@ -562,51 +562,44 @@ export default function EquipmentDetailPage() {
           )}
         </div>
 
-        {/* PM History */}
-        {equip.pm_history.length > 0 && (
+        {/* Service History — PM reports and individual reports combined into one spot, newest first */}
+        {(equip.pm_history.length + equip.individual_reports.length) > 0 && (
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
-              PM history ({equip.pm_history.length})
+              Service history ({equip.pm_history.length + equip.individual_reports.length})
             </p>
             <div className="flex flex-col gap-2">
-              {equip.pm_history.map(pm => (
-                <div key={pm.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <Wrench size={14} className="text-slate-500"/>
+              {[
+                ...equip.pm_history.map(pm => ({ kind: 'pm' as const, ...pm })),
+                ...equip.individual_reports.map(r => ({ kind: 'individual' as const, ...r })),
+              ]
+                .sort((a, b) => +new Date(b.performed_at) - +new Date(a.performed_at))
+                .map(entry => entry.kind === 'pm' ? (
+                  <div key={`pm-${entry.id}`} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                      <Wrench size={14} className="text-slate-500"/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800">{fmtPmType(entry.report_type)}</p>
+                      <p className="text-xs text-slate-400">{fmtDate(entry.performed_at)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800">{fmtPmType(pm.report_type)}</p>
-                    <p className="text-xs text-slate-400">{fmtDate(pm.performed_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Individual Reports */}
-        {equip.individual_reports.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
-              Individual reports ({equip.individual_reports.length})
-            </p>
-            <div className="flex flex-col gap-2">
-              {equip.individual_reports.map(r => (
-                <button
-                  key={r.id}
-                  onClick={() => router.push(`/maintenance/report/${r.id}?type=individual&report_type=`)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:border-purple-300 hover:shadow-sm transition-all"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
-                    <ClipboardList size={14} className="text-purple-500"/>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{r.issue_explanation || 'Individual Report'}</p>
-                    <p className="text-xs text-slate-400">{fmtDate(r.performed_at)}</p>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-300 flex-shrink-0"/>
-                </button>
-              ))}
+                ) : (
+                  <button
+                    key={`ir-${entry.id}`}
+                    onClick={() => router.push(`/maintenance/report/${entry.id}?type=individual&report_type=`)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:border-purple-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                      <ClipboardList size={14} className="text-purple-500"/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{entry.issue_explanation || 'Individual Report'}</p>
+                      <p className="text-xs text-slate-400">{fmtDate(entry.performed_at)}</p>
+                    </div>
+                    <ChevronRight size={14} className="text-slate-300 flex-shrink-0"/>
+                  </button>
+                ))}
             </div>
           </div>
         )}
@@ -614,4 +607,3 @@ export default function EquipmentDetailPage() {
     </div>
   )
 }
-
