@@ -530,7 +530,6 @@ export default function ProtocolRackASimulatorPage() {
       </div>
 
       <LearningTabBar />
-
       <div className="max-w-6xl mx-auto w-full px-4 py-4 space-y-4">
 
         {/* Scenario banner */}
