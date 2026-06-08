@@ -218,6 +218,7 @@ function findRackType(specs: EquipmentSpec[] | null): RackType {
   return ''
 }
 
+
 /** Finds the compressor-count spec specifically (e.g. "Compressors": "6 total — ...") — distinct from
  *  "Compressor Supply"/"Compressor MCA / MOPD" specs, which also contain the word "compressor" but
  *  describe electrical ratings, not how many compressors are on the rack */
