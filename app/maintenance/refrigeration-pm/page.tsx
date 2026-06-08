@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, BookOpen, Home } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
@@ -169,6 +169,62 @@ const createConventional = (systemIdentifier: string): UnitData => ({
   lpSetPoints: [],
   ofcTripTime: [],
 })
+
+// ─── Equipment auto-fill (from rack records linked to the selected site) ─────
+
+interface EquipmentSpec { label: string; value: string }
+
+interface RackEquipmentInfo {
+  id: string
+  name: string
+  manufacturer: string | null
+  model: string | null
+  refrigerant: string | null
+  specs: EquipmentSpec[] | null
+}
+
+const RACK_REFRIGERANTS: RefrigerantType[] = ['R-404A', 'R-448A', 'R-449A', 'R-507', 'R-407A', 'R-407C', 'R-22', 'R-134a', 'R-744']
+
+/** Finds the value of the first spec whose label contains every keyword (case-insensitive) */
+function findSpec(specs: EquipmentSpec[] | null, ...keywords: string[]): string | null {
+  if (!specs) return null
+  const label = (s: EquipmentSpec) => s.label.toLowerCase()
+  return specs.find(s => keywords.every(k => label(s).includes(k)))?.value ?? null
+}
+
+/** Matches a free-text refrigerant string (e.g. "R448A") against the form's strict union by comparing alphanumerics only */
+function normaliseRefrigerant(raw: string | null): RefrigerantType {
+  if (!raw) return ''
+  const norm = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return RACK_REFRIGERANTS.find(r => r.replace(/[^A-Z0-9]/g, '') === norm) ?? ''
+}
+
+function parseLeadingInt(value: string | null, min: number, max: number): number | null {
+  const match = value?.match(/\d+/)
+  if (!match) return null
+  return Math.min(max, Math.max(min, parseInt(match[0], 10)))
+}
+
+function extractVoltage(value: string | null): string {
+  const match = value?.match(/\d+(?:\/\d+)*\s*V/i)
+  return match ? match[0].replace(/\s+/g, '') : ''
+}
+
+/** Best-effort pre-fill of a rack tab from a linked equipment record — fields left blank when the spec sheet doesn't have a confident match (tech fills those in on site) */
+function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
+  const base = createRack()
+  const specs = e.specs
+  return {
+    ...base,
+    tabDisplayName: e.name,
+    rackManufacturer: e.manufacturer ?? '',
+    refrigerant: normaliseRefrigerant(e.refrigerant),
+    compressorCount: parseLeadingInt(findSpec(specs, 'compressor'), 2, 8) ?? base.compressorCount,
+    suctionPressureSetpoint: findSpec(specs, 'suction', 'setpoint') ?? findSpec(specs, 'suction', 'set point') ?? '',
+    dischargePressureSetpoint: findSpec(specs, 'discharge', 'setpoint') ?? findSpec(specs, 'discharge', 'set point') ?? '',
+    controlVoltage: extractVoltage(findSpec(specs, 'control', 'voltage') ?? findSpec(specs, 'control', 'circuit')),
+  }
+}
 
 // ─── Checklist ────────────────────────────────────────────────────────────────
 
@@ -805,6 +861,10 @@ function RefrigerationPMContent() {
   const [units, setUnits] = useState<UnitData[]>([createRack()])
   const [activeUnitId, setActiveUnitId] = useState<string>('')
 
+  // Rack records on file for the selected site — used to pre-fill rack tabs (compressor count, refrigerant, setpoints, model info)
+  const [rackEquipment, setRackEquipment] = useState<RackEquipmentInfo[]>([])
+  const autoFilledStoreRef = useRef<string | null>(null)
+
   // Add unit modals
   const [showAddConventionalModal, setShowAddConventionalModal] = useState(false)
   const [newSysId, setNewSysId] = useState('')
@@ -851,6 +911,31 @@ function RefrigerationPMContent() {
     }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pull rack records on file for the selected site — pre-fill rack tabs with their
+  // manufacturer/refrigerant/compressor count/setpoints (best effort) and surface the
+  // full spec sheet for reference. Cases/display circuits are intentionally excluded —
+  // only equipment_type 'rack' feeds the auto-fill. Runs once per site, and only while
+  // the rack tabs are still untouched (won't clobber a tech's in-progress entries) or
+  // when creating fresh (not editing an existing report).
+  useEffect(() => {
+    if (!storeId || editId) return
+    if (autoFilledStoreRef.current === storeId) return
+    autoFilledStoreRef.current = storeId
+    fetch(`/api/stores/${storeId}`).then(r => r.ok ? r.json() : null).then(d => {
+      const racks: RackEquipmentInfo[] = (d?.equipment ?? []).filter((e: { equipment_type: string }) => e.equipment_type === 'rack')
+      setRackEquipment(racks)
+      if (!racks.length) return
+      setUnits(prev => {
+        const pristine = prev.length === 1 && prev[0].unitType === 'rack'
+          && !prev[0].rackManufacturer && !prev[0].compressorManufacturer && !prev[0].refrigerant
+        if (!pristine) return prev
+        const filled = racks.map(buildRackUnitFromEquipment)
+        setActiveUnitId(filled[0].id)
+        return filled
+      })
+    }).catch(() => {})
+  }, [storeId, editId])
 
   // Load existing report
   useEffect(() => {
@@ -1117,6 +1202,39 @@ function RefrigerationPMContent() {
           )}
         </div>
 
+        {/* ── Racks On Record (reference — used to pre-fill the tabs below) ── */}
+        {rackEquipment.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-sm font-semibold text-slate-800">Racks on Record at this Site ({rackEquipment.length})</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Pulled from the equipment catalog and used to pre-fill the rack tabs below — verify against the unit on site</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {rackEquipment.map(r => (
+                <div key={r.id} className="px-6 py-4">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                    <p className="text-sm font-medium text-slate-800">{r.name}</p>
+                    {(r.manufacturer || r.model) && (
+                      <span className="text-xs text-slate-400">{[r.manufacturer, r.model].filter(Boolean).join(' · ')}</span>
+                    )}
+                    {r.refrigerant && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{r.refrigerant}</span>}
+                  </div>
+                  {r.specs && r.specs.length > 0 && (
+                    <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                      {r.specs.map((s, i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
+                          <span className="text-xs text-slate-500 flex-1">{s.label}</span>
+                          <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Rack / Unit Tabs ── */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
@@ -1141,7 +1259,7 @@ function RefrigerationPMContent() {
           <div className="flex overflow-x-auto border-b border-slate-200 bg-white">
             {units.map((u, idx) => {
               const label = u.unitType === 'rack'
-                ? rackLabel(units, idx)
+                ? (u.tabDisplayName || rackLabel(units, idx))
                 : u.systemIdentifier || `Conv ${idx + 1}`
               return (
                 <button
