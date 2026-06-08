@@ -81,23 +81,23 @@ const COMP_SPECS = [
 type Mfr = 'ORZ' | 'BREMA' | 'SPARE'
 interface Circuit {
   id: string; mfr: Mfr; doors: number; doorConfig: string
-  designMBH: number; evapTargetF: number; active: boolean
+  designMBH: number; evapTargetF: number; caseTargetF: number; active: boolean
   defrostsPerDay: number; defrostMaxMin: number
 }
 
 const CIRCUITS: Circuit[] = [
-  { id: 'A1',  mfr: 'ORZ',   doors:  9, doorConfig: '4+5',     designMBH:  9.54, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A2',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
-  { id: 'A3',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
-  { id: 'A4',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
-  { id: 'A5',  mfr: 'BREMA', doors:  8, doorConfig: '3+5',     designMBH:  9.28, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
-  { id: 'A6',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A7',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A8',  mfr: 'ORZ',   doors: 16, doorConfig: '3+3+5+5', designMBH: 16.96, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A9',  mfr: 'BREMA', doors: 12, doorConfig: '3+4+5',   designMBH: 13.92, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
-  { id: 'A10', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A11', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
-  { id: 'A12', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A1',  mfr: 'ORZ',   doors:  9, doorConfig: '4+5',     designMBH:  9.54, evapTargetF: -15, caseTargetF:  -5, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A2',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, caseTargetF: -10, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A3',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, caseTargetF: -10, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A4',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, caseTargetF: -10, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A5',  mfr: 'BREMA', doors:  8, doorConfig: '3+5',     designMBH:  9.28, evapTargetF: -20, caseTargetF: -10, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A6',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, caseTargetF:  -5, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A7',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, caseTargetF:  -5, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A8',  mfr: 'ORZ',   doors: 16, doorConfig: '3+3+5+5', designMBH: 16.96, evapTargetF: -15, caseTargetF:  -5, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A9',  mfr: 'BREMA', doors: 12, doorConfig: '3+4+5',   designMBH: 13.92, evapTargetF: -20, caseTargetF: -10, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A10', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, caseTargetF: -10, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A11', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, caseTargetF: -10, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A12', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, caseTargetF: -10, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
 ]
 // Active load: 105.70 MBH  |  Total incl. spares: 132.70 MBH
 
@@ -263,11 +263,13 @@ const BASE_APPROACH =  20   // °F (clean coil, all fans)
 
 interface Alarm { code: string; severity: 'WARNING' | 'CRITICAL'; message: string }
 
+type CompStatus = 'RUNNING' | 'STANDBY' | 'TRIPPED'
+
 interface RackResult {
   sst: number; suctionPsig: number; suctionGasTemp: number; suctionSH: number
   condensingBubble: number; dischargePsig: number; dischargeTemp: number; dischargeSH: number
   compressionRatio: number; subcooling: number
-  compRunning: boolean[]; compAmps: number[]; totalAmps: number
+  compRunning: boolean[]; compStatus: CompStatus[]; compAmps: number[]; totalAmps: number
   hpCtrlActive: boolean; approachDelta: number
   totalLoadMBH: number; totalCapMBH: number; loadRatio: number
   circuitCaseTemps: number[]
@@ -277,13 +279,10 @@ interface RackResult {
 
 function computeRack(f: FaultState, ambient: number): RackResult {
   // ── Compressor capacity ────────────────────────────────────────────────────
-  const compRunning = [!f.comp1Failed, !f.comp2Failed, !f.comp3Failed, !f.comp4Failed, !f.comp5Failed, !f.comp6Failed]
-  const runningCount = compRunning.filter(Boolean).length
+  const compFailed = [f.comp1Failed, f.comp2Failed, f.comp3Failed, f.comp4Failed, f.comp5Failed, f.comp6Failed]
 
   // Demand cooling loss: ~15 % capacity reduction + severe discharge temp spike
   const dcFactor = f.demandCoolingFailed ? 0.85 : 1.0
-  const totalCapMBH = COMP_SPECS.reduce((sum, c, i) =>
-    sum + (compRunning[i] ? c.designMBH * dcFactor : 0), 0)
 
   // ── Condenser ──────────────────────────────────────────────────────────────
   let approach = BASE_APPROACH
@@ -319,32 +318,49 @@ function computeRack(f: FaultState, ambient: number): RackResult {
     const defStuck  = defKey ? f[defKey]  : false
 
     if (defStuck) {
-      // Hot gas stuck — pumps heat back into case, adds partial spurious load
-      totalLoadMBH += c.designMBH * 0.25  // reduced net cooling load
-      circuitCaseTemps.push(18)           // case warming rapidly
+      totalLoadMBH += c.designMBH * 0.25
+      circuitCaseTemps.push(c.caseTargetF + 28)  // warming rapidly from HG stuck on
       circuitStatuses.push('DEF_STUCK')
     } else if (txvFailed) {
-      // TXV not feeding — circuit starved, minimal load drawn
       totalLoadMBH += c.designMBH * 0.08
-      circuitCaseTemps.push(12)
+      circuitCaseTemps.push(c.caseTargetF + 22)  // warming from starved circuit
       circuitStatuses.push('TXV_FAIL')
     } else {
       totalLoadMBH += c.designMBH
-      circuitCaseTemps.push(0)
+      circuitCaseTemps.push(c.caseTargetF)
       circuitStatuses.push('OK')
     }
   }
 
+  // ── Compressor staging ─────────────────────────────────────────────────────
+  // Protocol rack sequences: C1(Lead) → C2(Lag-1A) → C3(Lag-1B) → C4(Lag-2A) → C5(Lag-2B) → C6(Lag-2C)
+  // Controller stages on compressors until running capacity meets load; rest go to STANDBY.
+  const stagedOn = new Set<number>()
+  let stagedCapMBH = 0
+  for (let i = 0; i < COMP_SPECS.length; i++) {
+    if (compFailed[i]) continue
+    if (stagedCapMBH < totalLoadMBH) {
+      stagedOn.add(i)
+      stagedCapMBH += COMP_SPECS[i].designMBH * dcFactor
+    }
+  }
+
+  type CompStatus = 'RUNNING' | 'STANDBY' | 'TRIPPED'
+  const compStatus: CompStatus[] = COMP_SPECS.map((_, i) =>
+    compFailed[i] ? 'TRIPPED' : stagedOn.has(i) ? 'RUNNING' : 'STANDBY'
+  )
+  const compRunning = compStatus.map(s => s === 'RUNNING')
+  const runningCount = compRunning.filter(Boolean).length
+  const totalCapMBH = COMP_SPECS.reduce((sum, c, i) => sum + (compRunning[i] ? c.designMBH * dcFactor : 0), 0)
+
   // ── SST deviation from setpoint ────────────────────────────────────────────
-  // Protocol controller stages compressors to hold suction at setpoint.
-  // If load exceeds capacity, suction rises. If greatly underloaded, falls slightly.
   let sstDev = 0
   if (runningCount === 0) {
-    sstDev = 45   // no refrigeration — suction rises toward case temp
+    sstDev = 45
   } else {
     const ratio = totalLoadMBH / totalCapMBH
-    if (ratio > 1.0)  sstDev =  (ratio - 1.0) * 40  // overloaded — suction climbs
-    else if (ratio < 0.55) sstDev = (ratio - 0.55) * 4  // underloaded — suction dips slightly
+    if (ratio > 1.0) sstDev = (ratio - 1.0) * 40
+    else             sstDev = (ratio - 1.0) * 3   // slight pulldown when capacity > load
   }
 
   const sst         = OPERATING_SST + sstDev
@@ -398,8 +414,8 @@ function computeRack(f: FaultState, ambient: number): RackResult {
   if (f.demandCoolingFailed)
     alarms.push({ code: 'DC-FAIL', severity: 'CRITICAL', message: 'Demand cooling offline — liquid injection to EVI intermediate stage lost. All 6 compressors at shutdown risk.' })
 
-  compRunning.forEach((r, i) => {
-    if (!r) alarms.push({ code: `C${i + 1}-TRIP`, severity: 'CRITICAL', message: `Compressor ${i + 1} (${COMP_SPECS[i].model}, ${COMP_SPECS[i].group}) not running.` })
+  compStatus.forEach((s, i) => {
+    if (s === 'TRIPPED') alarms.push({ code: `C${i + 1}-TRIP`, severity: 'CRITICAL', message: `Compressor ${i + 1} (${COMP_SPECS[i].model}, ${COMP_SPECS[i].group}) tripped on safety.` })
   })
 
   const stuckCount = CIRCUITS.filter(c => c.active && c.id in CIRCUIT_DEF_FAULT && f[CIRCUIT_DEF_FAULT[c.id]]).length
@@ -422,15 +438,15 @@ function computeRack(f: FaultState, ambient: number): RackResult {
   if (suctionSH >= 32)
     alarms.push({ code: 'HI-SH', severity: 'WARNING', message: `High suction superheat — ${Math.round(suctionSH)} °F (EVI target 10–15 °F). Check charge, TXVs, drier.` })
 
-  const casesWarm = circuitCaseTemps.filter((t, i) => CIRCUITS[i].active && t >= 10).length
+  const casesWarm = circuitCaseTemps.filter((t, i) => CIRCUITS[i].active && t >= CIRCUITS[i].caseTargetF + 15).length
   if (casesWarm > 0)
-    alarms.push({ code: 'CASE-TEMP', severity: casesWarm >= 4 ? 'CRITICAL' : 'WARNING', message: `${casesWarm} circuit(s) above 10 °F — food safety threshold.` })
+    alarms.push({ code: 'CASE-TEMP', severity: casesWarm >= 4 ? 'CRITICAL' : 'WARNING', message: `${casesWarm} circuit(s) significantly above target — frozen food at risk.` })
 
   return {
     sst, suctionPsig, suctionGasTemp, suctionSH,
     condensingBubble: condensing, dischargePsig, dischargeTemp, dischargeSH,
     compressionRatio, subcooling,
-    compRunning, compAmps, totalAmps,
+    compRunning, compStatus, compAmps, totalAmps,
     hpCtrlActive: hpCtrl, approachDelta: approach,
     totalLoadMBH, totalCapMBH, loadRatio: runningCount > 0 ? totalLoadMBH / totalCapMBH : 99,
     circuitCaseTemps, circuitStatuses,
@@ -689,13 +705,15 @@ export default function ProtocolRackASimulatorPage() {
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {COMP_SPECS.map((comp, i) => {
-              const running = result.compRunning[i]
-              const amps    = result.compAmps[i]
+              const status = result.compStatus[i]
+              const amps   = result.compAmps[i]
+              const cardCls = status === 'TRIPPED'
+                ? 'bg-red-50 dark:bg-red-500/5 border-red-300 dark:border-red-500/40'
+                : status === 'STANDBY'
+                ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 opacity-70'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
               return (
-                <div key={comp.id} className={`rounded-xl border p-3 transition-all ${
-                  running
-                    ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                    : 'bg-red-50 dark:bg-red-500/5 border-red-300 dark:border-red-500/40'}`}>
+                <div key={comp.id} className={`rounded-xl border p-3 transition-all ${cardCls}`}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{comp.id}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${GROUP_COLOR[comp.group]}`}>
@@ -704,9 +722,15 @@ export default function ProtocolRackASimulatorPage() {
                   </div>
                   <p className="text-xs font-mono text-slate-600 dark:text-slate-400 mb-1">{comp.model}</p>
                   <div className="flex items-center gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${running ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    <span className={`text-xs font-medium ${running ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {running ? `${amps.toFixed(1)} A` : 'TRIPPED'}
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                      status === 'RUNNING' ? 'bg-emerald-500' :
+                      status === 'STANDBY' ? 'bg-slate-400' : 'bg-red-500'}`} />
+                    <span className={`text-xs font-medium ${
+                      status === 'RUNNING' ? 'text-emerald-600 dark:text-emerald-400' :
+                      status === 'STANDBY' ? 'text-slate-500 dark:text-slate-400' :
+                      'text-red-600 dark:text-red-400'}`}>
+                      {status === 'RUNNING' ? `${amps.toFixed(1)} A` :
+                       status === 'STANDBY' ? 'STANDBY' : 'TRIPPED'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{comp.designMBH} MBH</p>
@@ -725,8 +749,10 @@ export default function ProtocolRackASimulatorPage() {
             {CIRCUITS.map((c, i) => {
               const status   = result.circuitStatuses[i]
               const caseTemp = result.circuitCaseTemps[i]
-              const isWarm   = c.active && caseTemp >= 10
-              const isWarn   = c.active && caseTemp >= 5 && caseTemp < 10
+              const warnF    = c.caseTargetF + 8
+              const critF    = c.caseTargetF + 15
+              const isWarm   = c.active && caseTemp >= critF
+              const isWarn   = c.active && caseTemp >= warnF && caseTemp < critF
 
               const borderCls = !c.active
                 ? 'border-slate-100 dark:border-slate-700/50'
@@ -770,12 +796,12 @@ export default function ProtocolRackASimulatorPage() {
                         <div className="flex items-center gap-1">
                           <div className={`w-1.5 h-1.5 rounded-full ${isWarm ? 'bg-red-500' : isWarn ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                           <span className={`text-xs font-medium ${isWarm ? 'text-red-600 dark:text-red-400' : isWarn ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {caseTemp === 0 ? '0' : caseTemp.toFixed(0)} °F
+                            {caseTemp.toFixed(0)} °F
                           </span>
                         </div>
                       )}
                       {(status === 'DEF_STUCK' || status === 'TXV_FAIL') && (
-                        <p className={`text-xs font-bold mt-0.5 ${caseTemp >= 10 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        <p className={`text-xs font-bold mt-0.5 ${isWarm ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
                           ~{caseTemp.toFixed(0)} °F
                         </p>
                       )}
