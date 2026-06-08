@@ -106,6 +106,43 @@ Otherwise the table will be inaccessible to the app (even with RLS disabled).
 
 ---
 
+## Display Case / Circuit Cataloging Standard
+
+When entering display-case (or similar multi-circuit) data from a store's display case
+schedule / legend drawing (e.g. Hussmann drawing "RHDR-A" style schedules listing SYS / SIZE / MODEL
+per circuit), catalog **one entry per circuit** — never one grouped entry covering a circuit range.
+This was established while cataloging Fortino's Mall Rd (drawing 352892, Remote Header A,
+circuits A1–A9) after an initial grouped "circuits #A2–#A9" entry turned out to bake in a wrong
+manufacturer assumption that was hard to spot and correct once merged together.
+
+**Per circuit, create BOTH:**
+1. An `equipment` row:
+   - `name`: short functional label + circuit, e.g. `"FF Doors A1"` or `"Brema A2"` — describe
+     *what the system is/does* (the user's framing) plus the circuit ID, not a generic
+     "Display Case — <model>" label.
+   - `equipment_type`: `'display_case'`
+   - `manufacturer` / `model`: from the nameplate/legend MODEL column (trust the nameplate over
+     assumptions about "who usually supplies this site" — see the ORZ/Hillphoenix vs. Arneg
+     correction in this same dataset as a cautionary example)
+   - `specs` (jsonb array of `{label, value}`): always include a `"Doors"` entry decoding the
+     legend's SIZE column, e.g. SIZE `"9 (4,5)"` → `{"label": "Doors", "value": "9 total — 4-door + 5-door sections"}`,
+     plus a `"Circuit"` entry, e.g. `{"label": "Circuit", "value": "#A1 (Remote Header A)"}`
+   - `notes`: cite the drawing number, store name, SYS/SIZE/MODEL values verbatim from the
+     legend, the door breakdown, defrost type if known, and flag any manufacturer correction
+     made from the nameplate
+2. A matching `manual_components` catalog row (`type: 'Display Doors'`, `system_area: 'Display Doors'`,
+   `system_type: 'HFC'`, `status: 'active'`) with `equipment_id` pointing at the new equipment row
+   and `document_id` pointing at the manufacturer's install/operations manual. **Multiple circuits
+   of the same model should all reference the same manual `document_id`** — don't duplicate the
+   document row, just add another catalog row pointing to it.
+
+This keeps each circuit individually correctable (manufacturer, door count, manual link) without
+having to untangle a grouped record later, and ensures every circuit shows up as its own entry on
+the store equipment page (see "New table rule" above on why `equipment` rows — not just
+`manual_components` rows — are required for store-page visibility).
+
+---
+
 ## Knowledge Base Content Standards
 
 All knowledge topic content lives in `lib/ai/prompts.ts` as exported template-literal strings. The custom markdown renderer in `components/knowledge/MarkdownContent.tsx` has specific rules — follow these to keep pages consistent and professional.
