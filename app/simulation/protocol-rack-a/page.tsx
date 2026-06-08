@@ -73,9 +73,10 @@ const COMP_SPECS = [
 
 // ── Circuit definitions ────────────────────────────────────────────────────────
 // Remote Header A — Fortino's Mall Rd (Hussmann drawing 352892)
-// All circuits: HG defrost | 4×/day | 45 min max
-// Defrost frequency/duration: industry standard pending confirmation from
-// Hillphoenix ORZ and Arneg Brema installation manuals.
+// All circuits: HG (hot gas) defrost
+// ORZ  (Hillphoenix): 1×/day · 15 min failsafe — per ORZ installation manual
+// BREMA (Arneg):      2×/day · 15 min failsafe — per Brema installation manual
+// Normal termination is temperature-based; 15 min is the time-limit failsafe.
 
 type Mfr = 'ORZ' | 'BREMA' | 'SPARE'
 interface Circuit {
@@ -85,18 +86,18 @@ interface Circuit {
 }
 
 const CIRCUITS: Circuit[] = [
-  { id: 'A1',  mfr: 'ORZ',   doors:  9, doorConfig: '4+5',         designMBH:  9.54, evapTargetF: -15, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A2',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',         designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A3',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',         designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A4',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',         designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A5',  mfr: 'BREMA', doors:  8, doorConfig: '3+5',         designMBH:  9.28, evapTargetF: -20, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A6',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',         designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A7',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',         designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A8',  mfr: 'ORZ',   doors: 16, doorConfig: '3+3+5+5',     designMBH: 16.96, evapTargetF: -15, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A9',  mfr: 'BREMA', doors: 12, doorConfig: '3+4+5',       designMBH: 13.92, evapTargetF: -20, active: true,  defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A10', mfr: 'SPARE', doors:  0, doorConfig: '—',           designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A11', mfr: 'SPARE', doors:  0, doorConfig: '—',           designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 4, defrostMaxMin: 45 },
-  { id: 'A12', mfr: 'SPARE', doors:  0, doorConfig: '—',           designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 4, defrostMaxMin: 45 },
+  { id: 'A1',  mfr: 'ORZ',   doors:  9, doorConfig: '4+5',     designMBH:  9.54, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A2',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A3',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A4',  mfr: 'BREMA', doors: 10, doorConfig: '5+5',     designMBH: 11.60, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A5',  mfr: 'BREMA', doors:  8, doorConfig: '3+5',     designMBH:  9.28, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A6',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A7',  mfr: 'ORZ',   doors: 10, doorConfig: '5+5',     designMBH: 10.60, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A8',  mfr: 'ORZ',   doors: 16, doorConfig: '3+3+5+5', designMBH: 16.96, evapTargetF: -15, active: true,  defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A9',  mfr: 'BREMA', doors: 12, doorConfig: '3+4+5',   designMBH: 13.92, evapTargetF: -20, active: true,  defrostsPerDay: 2, defrostMaxMin: 15 },
+  { id: 'A10', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A11', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
+  { id: 'A12', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
 ]
 // Active load: 105.70 MBH  |  Total incl. spares: 132.70 MBH
 
@@ -790,10 +791,8 @@ export default function ProtocolRackASimulatorPage() {
             })}
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 px-1">
-            A1/A6–A8: Hillphoenix ORZ (−15 °F evap) · A2–A5/A9: Arneg Brema (−20 °F evap) · All HG defrost · 4×/day · 45 min max†
-          </p>
-          <p className="text-xs text-slate-300 dark:text-slate-600 px-1">
-            † Defrost frequency/duration based on industry standard — confirm against ORZ and Brema installation manuals.
+            A1/A6–A8: Hillphoenix ORZ · −15 °F evap · HG defrost 1×/day · 15 min failsafe &nbsp;|&nbsp;
+            A2–A5/A9: Arneg Brema · −20 °F evap · HG defrost 2×/day · 15 min failsafe
           </p>
         </div>
 
@@ -943,19 +942,24 @@ export default function ProtocolRackASimulatorPage() {
                 </div>
               </div>
 
-              {/* Defrost note */}
-              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3">
-                <div className="flex items-start gap-2">
-                  <Info size={13} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Defrost settings — pending manual confirmation</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300">
-                      This simulator uses 4 defrosts/day at 45 min max (industry standard for HG defrost on LT frozen food cases)
-                      pending confirmation from the Hillphoenix ORZ and Arneg Brema installation manuals.
-                      Update this file once actual commissioning data is available.
-                    </p>
-                  </div>
+              {/* Defrost schedule */}
+              <div className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">Defrost Schedule (HG — all circuits)</p>
+                <div className="space-y-1">
+                  {[
+                    ['ORZ (A1, A6, A7, A8)', '1× per day · 15 min time-limit failsafe'],
+                    ['BREMA (A2, A3, A4, A5, A9)', '2× per day · 15 min time-limit failsafe'],
+                    ['Termination (both)', 'Temperature-based (primary) — 15 min cuts over if not terminated'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex gap-2 text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 w-44 flex-shrink-0">{label}</span>
+                      <span className="text-slate-700 dark:text-slate-200">{value}</span>
+                    </div>
+                  ))}
                 </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                  Source: Hillphoenix ORZ installation manual · Arneg Brema installation manual
+                </p>
               </div>
             </div>
           )}
