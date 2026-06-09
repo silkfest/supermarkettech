@@ -4,9 +4,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Home, RotateCcw, AlertTriangle, CheckCircle2, XCircle,
-  Thermometer, Gauge, Zap, Activity, Wind, ChevronLeft, Info,
-  Snowflake, Settings,
+  RotateCcw, AlertTriangle, CheckCircle2, XCircle,
+  Activity, Wind, ChevronLeft, Clock,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 
@@ -60,8 +59,8 @@ const dewTempFrom = (psig: number) => ptInterpReverse(psig, R448A_DEW)
 // ── Compressor specs ───────────────────────────────────────────────────────────
 // Hussmann Protocol Rack — Unit A — Fortino's Mall Rd
 // 575 V / 3-ph / 60 Hz  |  R-448A  |  LT Frozen Food  |  Design: −25 °F SST
-// Total design capacity: 132.70 MBH (Copeland demand cooling required on all)
-
+// C1 ZFD25KVE = digital scroll (Lead) → modulates 10–100% to trim capacity
+// C2–C6 = standard EVI scrolls (Lag) → fully on or off
 const COMP_SPECS = [
   { id: 'C1', model: 'ZFD25KVE', group: 'Lead',  designMBH: 30.0, rla: 10.5 },
   { id: 'C2', model: 'ZF25KVE',  group: 'Lag-1', designMBH: 23.5, rla:  9.0 },
@@ -76,8 +75,6 @@ const COMP_SPECS = [
 // All circuits: HG (hot gas) defrost
 // ORZ  (Hillphoenix): 1×/day · 15 min failsafe — per ORZ installation manual
 // BREMA (Arneg):      2×/day · 15 min failsafe — per Brema installation manual
-// Normal termination is temperature-based; 15 min is the time-limit failsafe.
-
 type Mfr = 'ORZ' | 'BREMA' | 'SPARE'
 interface Circuit {
   id: string; mfr: Mfr; doors: number; doorConfig: string
@@ -99,7 +96,6 @@ const CIRCUITS: Circuit[] = [
   { id: 'A11', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, caseTargetF: -10, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
   { id: 'A12', mfr: 'SPARE', doors:  0, doorConfig: '—',       designMBH:  9.00, evapTargetF: -20, caseTargetF: -10, active: false, defrostsPerDay: 1, defrostMaxMin: 15 },
 ]
-// Active load: 105.70 MBH  |  Total incl. spares: 132.70 MBH
 
 // ── Fault types ────────────────────────────────────────────────────────────────
 type FaultKey =
@@ -132,7 +128,6 @@ const INITIAL_FAULTS: FaultState = {
   filterDrierRestricted: false,
 }
 
-// per-circuit TXV and defrost fault lookup
 const CIRCUIT_TXV_FAULT: Record<string, FaultKey> = {
   A1: 'a1TxvFailed', A2: 'a2TxvFailed', A3: 'a3TxvFailed', A4: 'a4TxvFailed', A5: 'a5TxvFailed',
   A6: 'a6TxvFailed', A7: 'a7TxvFailed', A8: 'a8TxvFailed', A9: 'a9TxvFailed',
@@ -148,48 +143,64 @@ interface FaultDef {
 }
 
 const FAULT_DEFS: FaultDef[] = [
-  { key: 'comp1Failed', group: 'Compressors', label: 'C1 ZFD25KVE failed (Lead)',       hint: 'Lead EVI scroll offline — 30 MBH capacity lost immediately. Lag-1 & Lag-2 load up.' },
-  { key: 'comp2Failed', group: 'Compressors', label: 'C2 ZF25KVE failed (Lag-1A)',      hint: 'One Lag-1 scroll down. C3 carries the Lag-1 group alone; 23.5 MBH lost.' },
-  { key: 'comp3Failed', group: 'Compressors', label: 'C3 ZF25KVE failed (Lag-1B)',      hint: 'Second Lag-1 scroll down. Full Lag-1 group offline — 47 MBH lost total if C2 also failed.' },
-  { key: 'comp4Failed', group: 'Compressors', label: 'C4 ZF18KVE failed (Lag-2A)',      hint: 'First Lag-2 scroll offline. C5 & C6 continue; 18.6 MBH lost.' },
+  { key: 'comp1Failed', group: 'Compressors', label: 'C1 ZFD25KVE failed (Lead)',       hint: 'Lead digital scroll offline — its modulation range lost immediately. Lag-1 & Lag-2 must cover the full load without C1\'s trimming.' },
+  { key: 'comp2Failed', group: 'Compressors', label: 'C2 ZF25KVE failed (Lag-1A)',      hint: 'One Lag-1 scroll down. C3 carries the Lag-1 group alone; 23.5 MBH lost. C1 modulation increases to compensate.' },
+  { key: 'comp3Failed', group: 'Compressors', label: 'C3 ZF25KVE failed (Lag-1B)',      hint: 'Second Lag-1 down. Full Lag-1 group offline — 47 MBH lost total if C2 also failed. C1 and Lag-2 must carry load.' },
+  { key: 'comp4Failed', group: 'Compressors', label: 'C4 ZF18KVE failed (Lag-2A)',      hint: 'First Lag-2 scroll offline. C5 & C6 continue; 18.6 MBH lost. C1 modulation may increase to compensate.' },
   { key: 'comp5Failed', group: 'Compressors', label: 'C5 ZF18KVE failed (Lag-2B)',      hint: 'Second Lag-2 down. Only C6 remains in group; 37.2 MBH lost if C4 also failed.' },
-  { key: 'comp6Failed', group: 'Compressors', label: 'C6 ZF18KVE failed (Lag-2C)',      hint: 'Full Lag-2 group offline — all three 18K scrolls down. 55.8 MBH lost.' },
+  { key: 'comp6Failed', group: 'Compressors', label: 'C6 ZF18KVE failed (Lag-2C)',      hint: 'Full Lag-2 group offline — all three 18K scrolls down. 55.8 MBH lost. Significant suction rise.' },
   { key: 'demandCoolingFailed', group: 'Compressors', label: 'Demand cooling system failed', hint: 'All 6 EVI scrolls require liquid injection to intermediate stage. Loss = discharge temps spike to 200 °F+. Protect compressors immediately.' },
-  { key: 'dirtyCondenser',  group: 'Condenser', label: 'Dirty condenser coil',      hint: 'Fouled coil raises approach ΔT — condensing and discharge pressure rise.' },
-  { key: 'fan1Failed',      group: 'Condenser', label: 'Condenser fan #1 failed',   hint: 'Reduced airflow — head pressure rises ~12 psig.' },
-  { key: 'fan2Failed',      group: 'Condenser', label: 'Condenser fan #2 failed',   hint: 'Both fans out: severe head pressure rise — approach ΔT +30 °F.' },
-  { key: 'undercharge',     group: 'Charge', label: 'Undercharge (~20%)',            hint: 'High suction SH, low subcooling — EVI intermediate stage fed poorly, discharge temp rises. Cases struggle.', mutuallyExcludes: ['overcharge'] },
-  { key: 'overcharge',      group: 'Charge', label: 'Overcharge (~15%)',             hint: 'High head pressure, high subcooling, low SH — liquid carryover risk to EVI scrolls.', mutuallyExcludes: ['undercharge'] },
-  { key: 'filterDrierRestricted', group: 'Charge', label: 'Filter drier restricted', hint: 'ΔT across drier — all 9 circuits liquid-starved. High SH, cases warming.' },
-  // A1–A9 TXV faults
-  { key: 'a1TxvFailed',  group: 'Circuit TXV', label: 'A1 ORZ (9 doors) — TXV not feeding',   hint: 'A1 starved — coil overheats, 9.54 MBH load drops off suction. Suction falls; case warms.' },
-  { key: 'a2TxvFailed',  group: 'Circuit TXV', label: 'A2 BREMA (10 doors) — TXV not feeding', hint: 'A2 starved — 11.60 MBH off suction. TXV bulb or equalizer suspect.' },
-  { key: 'a3TxvFailed',  group: 'Circuit TXV', label: 'A3 BREMA (10 doors) — TXV not feeding', hint: 'A3 starved — twin to A2; check for common liquid supply issue.' },
-  { key: 'a4TxvFailed',  group: 'Circuit TXV', label: 'A4 BREMA (10 doors) — TXV not feeding', hint: 'A4 starved — if A2, A3 & A4 all fail, suspect upstream liquid restriction.' },
-  { key: 'a5TxvFailed',  group: 'Circuit TXV', label: 'A5 BREMA (8 doors) — TXV not feeding',  hint: 'A5 starved — 9.28 MBH lost; combined with A2–A4 TXV issues, check liquid main.' },
-  { key: 'a6TxvFailed',  group: 'Circuit TXV', label: 'A6 ORZ (10 doors) — TXV not feeding',   hint: 'A6 starved — 10.60 MBH off suction. Check liquid solenoid operation.' },
-  { key: 'a7TxvFailed',  group: 'Circuit TXV', label: 'A7 ORZ (10 doors) — TXV not feeding',   hint: 'A7 starved — twin to A6. Verify TXV bulb clamped on suction line.' },
-  { key: 'a8TxvFailed',  group: 'Circuit TXV', label: 'A8 ORZ (16 doors) — TXV not feeding',   hint: 'A8 is the largest circuit (16.96 MBH). TXV failure here has the biggest single-circuit impact.' },
-  { key: 'a9TxvFailed',  group: 'Circuit TXV', label: 'A9 BREMA (12 doors) — TXV not feeding',  hint: 'A9 starved — 13.92 MBH off suction. Second-largest circuit.' },
-  // A1–A9 defrost faults
+  { key: 'dirtyCondenser',  group: 'Condenser', label: 'Dirty condenser coil',      hint: 'Fouled coil raises approach ΔT — condensing and discharge pressure rise. Head pressure goes up; subcooling may increase slightly from liquid backup.' },
+  { key: 'fan1Failed',      group: 'Condenser', label: 'Condenser fan #1 failed',   hint: 'Reduced airflow — head pressure rises ~12 psig. Approach ΔT up ~9 °F. Compressor amps increase.' },
+  { key: 'fan2Failed',      group: 'Condenser', label: 'Condenser fan #2 failed',   hint: 'Both fans out: severe head pressure rise — approach ΔT +30 °F. Discharge temps spike. Risk of HPCO.' },
+  { key: 'undercharge',     group: 'Charge', label: 'Undercharge (~20%)',            hint: 'High SH on all circuits, near-zero subcooling — EVI intermediate fed poorly, discharge temp rises. Flash gas in liquid line; cases struggle.', mutuallyExcludes: ['overcharge'] },
+  { key: 'overcharge',      group: 'Charge', label: 'Overcharge (~15%)',             hint: 'High head pressure, high subcooling, low SH — liquid carryover risk to EVI scrolls. High discharge pressure drives up comp amps.', mutuallyExcludes: ['undercharge'] },
+  { key: 'filterDrierRestricted', group: 'Charge', label: 'Filter drier restricted', hint: 'ΔT across drier — all 9 circuits liquid-starved. High SH on every circuit, cases warming. Subcooling drops downstream of restriction.' },
+  { key: 'a1TxvFailed',  group: 'Circuit TXV', label: 'A1 ORZ (9 doors) — TXV not feeding',   hint: 'A1 starved — coil SH very high, 9.54 MBH load drops off suction. Suction falls; case warms. Check TXV bulb and external equalizer.' },
+  { key: 'a2TxvFailed',  group: 'Circuit TXV', label: 'A2 BREMA (10 doors) — TXV not feeding', hint: 'A2 starved — 11.60 MBH off suction. High SH. TXV bulb or equalizer suspect.' },
+  { key: 'a3TxvFailed',  group: 'Circuit TXV', label: 'A3 BREMA (10 doors) — TXV not feeding', hint: 'A3 starved — twin to A2; check for common liquid supply issue if both starved.' },
+  { key: 'a4TxvFailed',  group: 'Circuit TXV', label: 'A4 BREMA (10 doors) — TXV not feeding', hint: 'A4 starved — if A2, A3 & A4 all fail, suspect upstream liquid restriction or low head.' },
+  { key: 'a5TxvFailed',  group: 'Circuit TXV', label: 'A5 BREMA (8 doors) — TXV not feeding',  hint: 'A5 starved — 9.28 MBH lost. Combined with A2–A4 TXV issues, check liquid main and filter drier.' },
+  { key: 'a6TxvFailed',  group: 'Circuit TXV', label: 'A6 ORZ (10 doors) — TXV not feeding',   hint: 'A6 starved — 10.60 MBH off suction. High SH. Check liquid solenoid and TXV operation.' },
+  { key: 'a7TxvFailed',  group: 'Circuit TXV', label: 'A7 ORZ (10 doors) — TXV not feeding',   hint: 'A7 starved — twin to A6. Verify TXV bulb clamped tightly on suction line.' },
+  { key: 'a8TxvFailed',  group: 'Circuit TXV', label: 'A8 ORZ (16 doors) — TXV not feeding',   hint: 'A8 is the largest circuit (16.96 MBH). TXV failure here has the biggest single-circuit suction impact.' },
+  { key: 'a9TxvFailed',  group: 'Circuit TXV', label: 'A9 BREMA (12 doors) — TXV not feeding',  hint: 'A9 starved — 13.92 MBH off suction. Second-largest circuit; high SH, case warms quickly.' },
   { key: 'a1DefrostStuck',  group: 'Circuit Defrost', label: 'A1 ORZ (9 doors) — HG defrost stuck on',   hint: 'Hot gas circulating through A1 coil — case warms, suction rises. Net load spike on rack.' },
-  { key: 'a2DefrostStuck',  group: 'Circuit Defrost', label: 'A2 BREMA (10 doors) — HG defrost stuck on', hint: 'A2 won\'t terminate. Suction rises; rack compressors load up to try to compensate.' },
-  { key: 'a3DefrostStuck',  group: 'Circuit Defrost', label: 'A3 BREMA (10 doors) — HG defrost stuck on', hint: 'A3 stuck in defrost — combined with A2, rack suction rises significantly.' },
+  { key: 'a2DefrostStuck',  group: 'Circuit Defrost', label: 'A2 BREMA (10 doors) — HG defrost stuck on', hint: 'A2 won\'t terminate. Suction rises; rack compressors load up.' },
+  { key: 'a3DefrostStuck',  group: 'Circuit Defrost', label: 'A3 BREMA (10 doors) — HG defrost stuck on', hint: 'A3 stuck in defrost — combined with A2, suction rises significantly.' },
   { key: 'a4DefrostStuck',  group: 'Circuit Defrost', label: 'A4 BREMA (10 doors) — HG defrost stuck on', hint: 'A4 plus A2/A3 stuck = 3 of 4 Brema circuits in defrost. Frozen food at risk.' },
-  { key: 'a5DefrostStuck',  group: 'Circuit Defrost', label: 'A5 BREMA (8 doors) — HG defrost stuck on',  hint: 'A5 stuck in defrost — 8-door section warming. Check defrost termination thermostat.' },
+  { key: 'a5DefrostStuck',  group: 'Circuit Defrost', label: 'A5 BREMA (8 doors) — HG defrost stuck on',  hint: 'A5 stuck in defrost. Check defrost termination thermostat.' },
   { key: 'a6DefrostStuck',  group: 'Circuit Defrost', label: 'A6 ORZ (10 doors) — HG defrost stuck on',   hint: 'A6 stuck — hot gas through ORZ coil. Check pressure-termination or time-limit setting.' },
-  { key: 'a7DefrostStuck',  group: 'Circuit Defrost', label: 'A7 ORZ (10 doors) — HG defrost stuck on',   hint: 'A7 stuck — paired with A6, two ORZ circuits in defrost. Suction high.' },
+  { key: 'a7DefrostStuck',  group: 'Circuit Defrost', label: 'A7 ORZ (10 doors) — HG defrost stuck on',   hint: 'A7 stuck — paired with A6, two ORZ circuits in defrost. Suction elevated.' },
   { key: 'a8DefrostStuck',  group: 'Circuit Defrost', label: 'A8 ORZ (16 doors) — HG defrost stuck on',   hint: 'A8 is the largest circuit. Stuck defrost here causes the biggest single-circuit suction rise.' },
   { key: 'a9DefrostStuck',  group: 'Circuit Defrost', label: 'A9 BREMA (12 doors) — HG defrost stuck on',  hint: 'A9 stuck — 12-door section. Second highest load impact of any single circuit.' },
 ]
 
 const FAULT_GROUPS = ['Compressors', 'Condenser', 'Charge', 'Circuit TXV', 'Circuit Defrost']
 
+// ── Time-of-day load curve ─────────────────────────────────────────────────────
+// Approximates door-opening infiltration load variation over a typical supermarket day.
+interface DayPeriod { label: string; mult: number }
+
+function loadPeriod(hour: number): DayPeriod {
+  if (hour >= 2  && hour < 6)  return { label: 'Night setback',    mult: 0.72 }
+  if (hour >= 6  && hour < 9)  return { label: 'Morning pulldown', mult: 1.10 }
+  if (hour >= 9  && hour < 17) return { label: 'Daytime steady',   mult: 1.00 }
+  if (hour >= 17 && hour < 21) return { label: 'Evening peak',     mult: 1.12 }
+  return                               { label: 'Late / overnight', mult: 0.83 }
+}
+
+function formatHour(h: number): string {
+  const suffix = h < 12 ? 'am' : 'pm'
+  const display = h % 12 === 0 ? 12 : h % 12
+  return `${display}:00 ${suffix}`
+}
+
 // ── Scenarios ──────────────────────────────────────────────────────────────────
 interface Scenario {
   id: string; name: string; description: string
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
-  ambient?: number; faults: Partial<FaultState>; answer: FaultKey[]
+  ambient?: number; timeOfDay?: number; faults: Partial<FaultState>; answer: FaultKey[]
 }
 
 const SCENARIOS: Scenario[] = [
@@ -197,7 +208,7 @@ const SCENARIOS: Scenario[] = [
     id: 'lead_comp_down',
     name: 'Lead Compressor Down',
     difficulty: 'Beginner',
-    description: 'Call at 2 AM — Protocol Rack A is alarming. The controller shows only 5 of 6 compressors active and suction is running 4 psig above setpoint. Case temps starting to climb. Which compressor failed, and why does losing this one hurt more than losing a Lag-2 unit?',
+    description: 'Call at 2 AM — Protocol Rack A is alarming. The controller shows only 5 of 6 compressors active and suction is running above setpoint. Case temps starting to climb. Which compressor failed, and why does losing the Lead hurt differently than losing a Lag unit?',
     faults: { comp1Failed: true },
     answer: ['comp1Failed'],
   },
@@ -213,7 +224,7 @@ const SCENARIOS: Scenario[] = [
     id: 'lag2_all_down',
     name: 'Full Lag-2 Group Offline',
     difficulty: 'Intermediate',
-    description: 'Three separate safety trips took out C4, C5, and C6 overnight — all ZF18KVE units. Suction is 3 psig above setpoint and the frozen food cases are at 4 °F. The lead and Lag-1 group are running fine. How much capacity has been lost, and which circuits will warm first?',
+    description: 'Three separate safety trips took out C4, C5, and C6 overnight — all ZF18KVE units. Suction is above setpoint and the frozen food cases are warming. The Lead and Lag-1 group are running. How much capacity has been lost, and how does C1 respond to carry more of the load?',
     faults: { comp4Failed: true, comp5Failed: true, comp6Failed: true },
     answer: ['comp4Failed', 'comp5Failed', 'comp6Failed'],
   },
@@ -221,7 +232,7 @@ const SCENARIOS: Scenario[] = [
     id: 'a8_txv_failed',
     name: 'Largest Circuit Starved',
     difficulty: 'Beginner',
-    description: 'Circuit A8 case temps are rising while suction is running lower than setpoint. The 16-door ORZ section isn\'t pulling down. All other circuits look normal. What is the single fault causing this, and what does the drop in suction tell you about where the problem is?',
+    description: 'Circuit A8 case temps are rising while suction is running lower than setpoint. The 16-door ORZ section isn\'t pulling down — superheat on A8 is very high while other circuits read normal. What is the single fault causing this?',
     faults: { a8TxvFailed: true },
     answer: ['a8TxvFailed'],
   },
@@ -229,8 +240,9 @@ const SCENARIOS: Scenario[] = [
     id: 'multiple_defrosts',
     name: 'Four Circuits Stuck in Defrost',
     difficulty: 'Advanced',
-    description: 'Monday morning: Frozen food cases are all warm. Suction is running significantly above setpoint. Four circuits (A2, A3, A4, A9) — all Brema units — are stuck in defrost and won\'t terminate. Head pressure is also elevated from the load spike. What is the likely common cause?',
+    description: 'Monday morning store opening: Frozen food cases are all warm. Suction is significantly above setpoint. Four circuits (A2, A3, A4, A9) — all Brema units — are stuck in defrost and won\'t terminate. Head pressure is also elevated from the load spike. What is the likely common cause?',
     ambient: 70,
+    timeOfDay: 8,
     faults: { a2DefrostStuck: true, a3DefrostStuck: true, a4DefrostStuck: true, a9DefrostStuck: true },
     answer: ['a2DefrostStuck', 'a3DefrostStuck', 'a4DefrostStuck', 'a9DefrostStuck'],
   },
@@ -238,8 +250,9 @@ const SCENARIOS: Scenario[] = [
     id: 'undercharge_winter',
     name: 'Winter — Racks Struggling Despite Cold',
     difficulty: 'Intermediate',
-    description: 'It\'s January, OAT is 5 °F. HP control is holding condensing at minimum. Despite the cold ambient helping head pressure, suction superheat is very high (38 °F) and subcooling is near zero. Cases are 4–6 °F warmer than normal. A slow R-448A leak went undetected.',
+    description: 'It\'s 3 AM in January, OAT is 5 °F. HP control is holding condensing at minimum. Despite the cold ambient helping head pressure, superheat is very high on every circuit and subcooling is near zero. Cases are warmer than normal. A slow R-448A leak went undetected.',
     ambient: 5,
+    timeOfDay: 3,
     faults: { undercharge: true },
     answer: ['undercharge'],
   },
@@ -247,41 +260,46 @@ const SCENARIOS: Scenario[] = [
     id: 'dirty_condenser_summer',
     name: 'High Head — Summer Service Call',
     difficulty: 'Beginner',
-    description: 'OAT is 85 °F. Head pressure is 35 psig above what the PT chart predicts for the measured condensing temperature. Discharge temps are elevated. The rack was last serviced in fall. Compressors are all running and amps are slightly high.',
+    description: 'Evening peak at 85 °F OAT. Head pressure is 35 psig above what the PT chart predicts for the measured condensing temperature. Discharge temps are elevated. The rack was last serviced in fall. Compressors are all running and amps are slightly high.',
     ambient: 85,
+    timeOfDay: 19,
     faults: { dirtyCondenser: true, fan1Failed: true },
     answer: ['dirtyCondenser', 'fan1Failed'],
   },
 ]
 
 // ── Compute engine ─────────────────────────────────────────────────────────────
-// Design: −25 °F SST  |  Operating setpoint: −21 °F SST  |  Store ambient: 70 °F
-// HP control floor: condensing bubble ≥ 80 °F (ensures liquid supply at low ambient)
-const OPERATING_SST = -21   // °F
-const HP_CTRL_MIN   =  80   // °F condensing bubble
-const BASE_APPROACH =  20   // °F (clean coil, all fans)
+// Design: −25 °F SST  |  Operating setpoint: −21 °F SST  |  HP control floor: 80 °F condensing
+const OPERATING_SST = -21
+const HP_CTRL_MIN   =  80
+const BASE_APPROACH =  20
+const C1_MIN_MOD    = 0.10   // ZFD25KVE minimum modulation (10%)
+const BASE_CIRCUIT_SH = 8    // °F — TXV target SH for LT display cases
 
 interface Alarm { code: string; severity: 'WARNING' | 'CRITICAL'; message: string }
-
 type CompStatus = 'RUNNING' | 'STANDBY' | 'TRIPPED'
 
 interface RackResult {
   sst: number; suctionPsig: number; suctionGasTemp: number; suctionSH: number
   condensingBubble: number; dischargePsig: number; dischargeTemp: number; dischargeSH: number
   compressionRatio: number; subcooling: number
-  compRunning: boolean[]; compStatus: CompStatus[]; compAmps: number[]; totalAmps: number
+  compRunning: boolean[]; compStatus: CompStatus[]; compAmps: number[]
+  c1Modulation: number        // 0.10–1.00 (digital scroll modulation %)
+  totalAmps: number
   hpCtrlActive: boolean; approachDelta: number
-  totalLoadMBH: number; totalCapMBH: number; loadRatio: number
+  totalLoadMBH: number; totalCapMBH: number; fullCapMBH: number
+  loadRatio: number           // totalLoadMBH / fullCapMBH (fraction of max available)
+  stagingStatus: string
   circuitCaseTemps: number[]
+  circuitSuperheatF: number[] // per-circuit SH; NaN = not applicable (defrost/spare)
   circuitStatuses: ('OK' | 'TXV_FAIL' | 'DEF_STUCK' | 'SPARE')[]
   alarms: Alarm[]
 }
 
-function computeRack(f: FaultState, ambient: number): RackResult {
-  // ── Compressor capacity ────────────────────────────────────────────────────
-  const compFailed = [f.comp1Failed, f.comp2Failed, f.comp3Failed, f.comp4Failed, f.comp5Failed, f.comp6Failed]
+function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackResult {
+  const period = loadPeriod(timeOfDay)
 
-  // Demand cooling loss: ~15 % capacity reduction + severe discharge temp spike
+  // ── Demand cooling ─────────────────────────────────────────────────────────
   const dcFactor = f.demandCoolingFailed ? 0.85 : 1.0
 
   // ── Condenser ──────────────────────────────────────────────────────────────
@@ -291,104 +309,158 @@ function computeRack(f: FaultState, ambient: number): RackResult {
   if (fansFailed === 1) approach += 9
   if (fansFailed === 2) approach += 24
 
-  const rawCond  = ambient + approach
+  const rawCond = ambient + approach
   const hpCtrl  = rawCond < HP_CTRL_MIN
   let condensing = Math.max(rawCond, HP_CTRL_MIN)
   if (f.overcharge) condensing += 14
 
   // ── Charge effects ─────────────────────────────────────────────────────────
-  let suctionSH = 12     // °F EVI scroll target superheat (~10–15 °F)
-  let subcooling = 16    // °F
-  if (f.undercharge)            { suctionSH += 22; subcooling -= 11 }
-  if (f.overcharge)             { suctionSH -= 8;  subcooling += 18 }
-  if (f.filterDrierRestricted)  { suctionSH += 10; subcooling -= 6  }
+  let suctionSH  = 12
+  let subcooling = 16
+  if (f.undercharge)           { suctionSH += 22; subcooling -= 11 }
+  if (f.overcharge)            { suctionSH -= 8;  subcooling += 18 }
+  if (f.filterDrierRestricted) { suctionSH += 10; subcooling -= 6  }
 
-  // ── Circuit load calculation ───────────────────────────────────────────────
+  // ── Per-circuit SH base ────────────────────────────────────────────────────
+  // Individual circuit SH (at case outlet) before mixing into suction header
+  let baseCircSH = BASE_CIRCUIT_SH
+  if (f.undercharge)           baseCircSH += 12
+  if (f.overcharge)            baseCircSH = Math.max(0, baseCircSH - 4)
+  if (f.filterDrierRestricted) baseCircSH += 16
+
+  // ── Circuit load + per-circuit data ───────────────────────────────────────
   let totalLoadMBH = 0
-  const circuitCaseTemps: number[] = []
+  const circuitCaseTemps: number[]  = []
+  const circuitSuperheatF: number[] = []
   const circuitStatuses: ('OK' | 'TXV_FAIL' | 'DEF_STUCK' | 'SPARE')[] = []
 
   for (const c of CIRCUITS) {
     if (!c.active) {
-      circuitCaseTemps.push(0); circuitStatuses.push('SPARE'); continue
+      circuitCaseTemps.push(0)
+      circuitSuperheatF.push(NaN)
+      circuitStatuses.push('SPARE')
+      continue
     }
-    const txvKey = CIRCUIT_TXV_FAULT[c.id]
-    const defKey = CIRCUIT_DEF_FAULT[c.id]
-    const txvFailed = txvKey ? f[txvKey] : false
-    const defStuck  = defKey ? f[defKey]  : false
+    const txvFailed = CIRCUIT_TXV_FAULT[c.id] ? f[CIRCUIT_TXV_FAULT[c.id]] : false
+    const defStuck  = CIRCUIT_DEF_FAULT[c.id] ? f[CIRCUIT_DEF_FAULT[c.id]] : false
 
     if (defStuck) {
-      totalLoadMBH += c.designMBH * 0.25
-      circuitCaseTemps.push(c.caseTargetF + 28)  // warming rapidly from HG stuck on
+      totalLoadMBH += c.designMBH * period.mult * 0.25
+      circuitCaseTemps.push(c.caseTargetF + 28)
+      circuitSuperheatF.push(NaN)
       circuitStatuses.push('DEF_STUCK')
     } else if (txvFailed) {
-      totalLoadMBH += c.designMBH * 0.08
-      circuitCaseTemps.push(c.caseTargetF + 22)  // warming from starved circuit
+      totalLoadMBH += c.designMBH * period.mult * 0.08
+      circuitCaseTemps.push(c.caseTargetF + 22)
+      circuitSuperheatF.push(38 + Math.max(0, baseCircSH - BASE_CIRCUIT_SH))  // starved
       circuitStatuses.push('TXV_FAIL')
     } else {
-      totalLoadMBH += c.designMBH
+      totalLoadMBH += c.designMBH * period.mult
       circuitCaseTemps.push(c.caseTargetF)
+      circuitSuperheatF.push(baseCircSH)
       circuitStatuses.push('OK')
     }
   }
 
-  // ── Compressor staging ─────────────────────────────────────────────────────
-  // Protocol rack sequences: C1(Lead) → C2(Lag-1A) → C3(Lag-1B) → C4(Lag-2A) → C5(Lag-2B) → C6(Lag-2C)
-  // Controller stages on compressors until running capacity meets load; rest go to STANDBY.
-  const stagedOn = new Set<number>()
-  let stagedCapMBH = 0
-  for (let i = 0; i < COMP_SPECS.length; i++) {
-    if (compFailed[i]) continue
-    if (stagedCapMBH < totalLoadMBH) {
-      stagedOn.add(i)
-      stagedCapMBH += COMP_SPECS[i].designMBH * dcFactor
+  // ── Compressor staging — Protocol rack with digital scroll Lead ────────────
+  // C1 (ZFD25KVE) modulates 10–100% to trim load.
+  // Lag units (C2–C6) are fully on or off; staged on when C1 at 100% can't cover remaining load.
+  const compFailed = [f.comp1Failed, f.comp2Failed, f.comp3Failed, f.comp4Failed, f.comp5Failed, f.comp6Failed]
+  const compRunning: boolean[] = [false, false, false, false, false, false]
+  let c1Modulation = 1.0
+
+  if (!compFailed[0]) {
+    const c1MaxMBH = COMP_SPECS[0].designMBH * dcFactor
+    let lagCapMBH = 0
+    for (let i = 1; i < COMP_SPECS.length; i++) {
+      if (compFailed[i]) continue
+      // Stage this Lag if C1 at full + already-staged Lags still can't meet load
+      if (c1MaxMBH + lagCapMBH < totalLoadMBH) {
+        compRunning[i] = true
+        lagCapMBH += COMP_SPECS[i].designMBH * dcFactor
+      }
+    }
+    compRunning[0] = true
+    c1Modulation = Math.min(1.0, Math.max(C1_MIN_MOD, (totalLoadMBH - lagCapMBH) / c1MaxMBH))
+  } else {
+    // C1 failed — stage Lags in sequence until capacity meets load
+    let stagedCap = 0
+    for (let i = 1; i < COMP_SPECS.length; i++) {
+      if (compFailed[i]) continue
+      if (stagedCap < totalLoadMBH) {
+        compRunning[i] = true
+        stagedCap += COMP_SPECS[i].designMBH * dcFactor
+      }
     }
   }
 
-  type CompStatus = 'RUNNING' | 'STANDBY' | 'TRIPPED'
   const compStatus: CompStatus[] = COMP_SPECS.map((_, i) =>
-    compFailed[i] ? 'TRIPPED' : stagedOn.has(i) ? 'RUNNING' : 'STANDBY'
+    compFailed[i] ? 'TRIPPED' : compRunning[i] ? 'RUNNING' : 'STANDBY'
   )
-  const compRunning = compStatus.map(s => s === 'RUNNING')
-  const runningCount = compRunning.filter(Boolean).length
-  const totalCapMBH = COMP_SPECS.reduce((sum, c, i) => sum + (compRunning[i] ? c.designMBH * dcFactor : 0), 0)
+  const runningCount  = compRunning.filter(Boolean).length
+
+  // C1 delivers modulated capacity; Lags deliver full design capacity
+  const c1ActualMBH = compRunning[0] ? COMP_SPECS[0].designMBH * dcFactor * c1Modulation : 0
+  const lagActualMBH = COMP_SPECS.slice(1).reduce((sum, c, i) =>
+    sum + (compRunning[i + 1] ? c.designMBH * dcFactor : 0), 0)
+  const totalCapMBH = c1ActualMBH + lagActualMBH
+
+  // Max possible capacity from all non-failed compressors (for load% gauge)
+  const fullCapMBH = COMP_SPECS.reduce((sum, c, i) =>
+    sum + (compFailed[i] ? 0 : c.designMBH * dcFactor), 0)
 
   // ── SST deviation from setpoint ────────────────────────────────────────────
   let sstDev = 0
   if (runningCount === 0) {
     sstDev = 45
   } else {
-    const ratio = totalLoadMBH / totalCapMBH
+    const ratio = totalCapMBH > 0 ? totalLoadMBH / totalCapMBH : 99
     if (ratio > 1.0) sstDev = (ratio - 1.0) * 40
-    else             sstDev = (ratio - 1.0) * 3   // slight pulldown when capacity > load
+    else             sstDev = (ratio - 1.0) * 3
   }
 
-  const sst         = OPERATING_SST + sstDev
-  const suctionPsig = dewPsig(sst)
+  const sst            = OPERATING_SST + sstDev
+  const suctionPsig    = dewPsig(sst)
   const suctionGasTemp = sst + suctionSH
 
   // ── Discharge ──────────────────────────────────────────────────────────────
   condensing = Math.max(condensing, sst + 30)
-  const dischargePsig = bubblePsig(condensing)
-
-  // Demand cooling loss → severe discharge superheat rise
+  const dischargePsig  = bubblePsig(condensing)
   const baseDischargeSH = f.demandCoolingFailed ? 110 : 48
   const dischargeSH     = baseDischargeSH + Math.max(0, condensing - 85) * 0.3
   const dischargeTemp   = condensing + dischargeSH
-
   const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
 
   // ── Amps ───────────────────────────────────────────────────────────────────
   let ampsMult = 1.0
-  if (f.undercharge)    ampsMult *= 0.93
-  if (f.overcharge)     ampsMult *= 1.08
-  if (f.dirtyCondenser) ampsMult *= 1.06
-  if (fansFailed === 1) ampsMult *= 1.04
-  if (fansFailed === 2) ampsMult *= 1.10
-  if (f.demandCoolingFailed) ampsMult *= 1.04  // slight amp rise from inefficiency
+  if (f.undercharge)         ampsMult *= 0.93
+  if (f.overcharge)          ampsMult *= 1.08
+  if (f.dirtyCondenser)      ampsMult *= 1.06
+  if (fansFailed === 1)      ampsMult *= 1.04
+  if (fansFailed === 2)      ampsMult *= 1.10
+  if (f.demandCoolingFailed) ampsMult *= 1.04
 
-  const compAmps  = COMP_SPECS.map((c, i) => compRunning[i] ? Math.round(c.rla * ampsMult * 10) / 10 : 0)
+  const compAmps  = COMP_SPECS.map((c, i) => {
+    if (!compRunning[i]) return 0
+    // C1 amps scale with modulation (digital scroll draws ~linearly with load)
+    const modFactor = i === 0 ? (0.4 + 0.6 * c1Modulation) : 1.0
+    return Math.round(c.rla * ampsMult * modFactor * 10) / 10
+  })
   const totalAmps = compAmps.reduce((a, b) => a + b, 0)
+
+  // ── Staging status ─────────────────────────────────────────────────────────
+  const anyLagRunning = compRunning.slice(1).some(Boolean)
+  const anyLagStandby = compStatus.slice(1).some(s => s === 'STANDBY')
+  let stagingStatus: string
+  if (runningCount === 0) {
+    stagingStatus = 'All offline'
+  } else if (!compFailed[0] && c1Modulation >= 0.92 && anyLagStandby) {
+    stagingStatus = 'Stage-on imminent (~2–4 min)'
+  } else if (!compFailed[0] && c1Modulation <= 0.18 && anyLagRunning) {
+    stagingStatus = 'Stage-off pending (~3–5 min)'
+  } else {
+    stagingStatus = 'Staging stable'
+  }
 
   // ── Alarms ─────────────────────────────────────────────────────────────────
   const alarms: Alarm[] = []
@@ -398,11 +470,11 @@ function computeRack(f: FaultState, ambient: number): RackResult {
 
   if (suctionPsig <= 2.5)
     alarms.push({ code: 'LPCO', severity: 'CRITICAL', message: `Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig. Compressors tripping on low pressure.` })
-  else if (suctionPsig <= dewPsig(-25) + 0.5)  // near/below design SST
-    alarms.push({ code: 'LP-W', severity: 'WARNING', message: `Suction near design floor — ${suctionPsig.toFixed(1)} psig (design: ${dewPsig(-25).toFixed(1)} psig / −25 °F SST). Check for over-cooling or undercharge.` })
+  else if (suctionPsig <= dewPsig(-25) + 0.5)
+    alarms.push({ code: 'LP-W', severity: 'WARNING', message: `Suction near design floor — ${suctionPsig.toFixed(1)} psig (design: ${dewPsig(-25).toFixed(1)} psig / −25 °F SST).` })
 
   if (dischargePsig >= 350)
-    alarms.push({ code: 'HPCO', severity: 'CRITICAL', message: `High Pressure Cutout — ${Math.round(dischargePsig)} psig (R-448A bubble). All compressors tripped.` })
+    alarms.push({ code: 'HPCO', severity: 'CRITICAL', message: `High Pressure Cutout — ${Math.round(dischargePsig)} psig. All compressors tripped.` })
   else if (dischargePsig >= 295)
     alarms.push({ code: 'HP-HIGH', severity: 'WARNING', message: `High discharge pressure — ${Math.round(dischargePsig)} psig. Approach ΔT: ${approach.toFixed(0)} °F.` })
 
@@ -446,15 +518,17 @@ function computeRack(f: FaultState, ambient: number): RackResult {
     sst, suctionPsig, suctionGasTemp, suctionSH,
     condensingBubble: condensing, dischargePsig, dischargeTemp, dischargeSH,
     compressionRatio, subcooling,
-    compRunning, compStatus, compAmps, totalAmps,
+    compRunning, compStatus, compAmps, c1Modulation, totalAmps,
     hpCtrlActive: hpCtrl, approachDelta: approach,
-    totalLoadMBH, totalCapMBH, loadRatio: runningCount > 0 ? totalLoadMBH / totalCapMBH : 99,
-    circuitCaseTemps, circuitStatuses,
+    totalLoadMBH, totalCapMBH, fullCapMBH,
+    loadRatio: fullCapMBH > 0 ? totalLoadMBH / fullCapMBH : 0,
+    stagingStatus,
+    circuitCaseTemps, circuitSuperheatF, circuitStatuses,
     alarms,
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── UI helpers ─────────────────────────────────────────────────────────────────
 const MFR_COLOR: Record<Mfr, string> = {
   ORZ:   'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
   BREMA: 'bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',
@@ -462,7 +536,7 @@ const MFR_COLOR: Record<Mfr, string> = {
 }
 
 const GROUP_COLOR: Record<string, string> = {
-  Lead:  'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400',
+  Lead:   'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400',
   'Lag-1': 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
   'Lag-2': 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 }
@@ -470,20 +544,20 @@ const GROUP_COLOR: Record<string, string> = {
 // ── Main page component ────────────────────────────────────────────────────────
 export default function ProtocolRackASimulatorPage() {
   const router = useRouter()
-  const [faults, setFaults]   = useState<FaultState>(INITIAL_FAULTS)
-  const [ambient, setAmbient] = useState(70)
+  const [faults, setFaults]       = useState<FaultState>(INITIAL_FAULTS)
+  const [ambient, setAmbient]     = useState(70)
+  const [timeOfDay, setTimeOfDay] = useState(14)   // 2pm default — daytime steady
   const [activeGroup, setActiveGroup] = useState<string>(FAULT_GROUPS[0])
-  const [scenarioMode, setScenarioMode] = useState<boolean>(false)
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
   const [scenarioRevealed, setScenarioRevealed] = useState(false)
   const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'info'>('faults')
 
-  const result = useMemo(() => computeRack(faults, ambient), [faults, ambient])
+  const result = useMemo(() => computeRack(faults, ambient, timeOfDay), [faults, ambient, timeOfDay])
+  const period = loadPeriod(timeOfDay)
 
   function toggleFault(key: FaultKey) {
     setFaults(prev => {
       const next = { ...prev, [key]: !prev[key] }
-      // mutual exclusion
       const def = FAULT_DEFS.find(d => d.key === key)
       if (def?.mutuallyExcludes && !prev[key]) {
         for (const ex of def.mutuallyExcludes) next[ex] = false
@@ -494,9 +568,9 @@ export default function ProtocolRackASimulatorPage() {
 
   function loadScenario(s: Scenario) {
     setFaults({ ...INITIAL_FAULTS, ...s.faults })
-    if (s.ambient !== undefined) setAmbient(s.ambient)
+    if (s.ambient   !== undefined) setAmbient(s.ambient)
+    if (s.timeOfDay !== undefined) setTimeOfDay(s.timeOfDay)
     setActiveScenario(s)
-    setScenarioMode(true)
     setScenarioRevealed(false)
     setActiveTab('faults')
   }
@@ -504,17 +578,14 @@ export default function ProtocolRackASimulatorPage() {
   function resetAll() {
     setFaults(INITIAL_FAULTS)
     setAmbient(70)
-    setScenarioMode(false)
+    setTimeOfDay(14)
     setActiveScenario(null)
     setScenarioRevealed(false)
   }
 
-  const critAlarms = result.alarms.filter(a => a.severity === 'CRITICAL')
-  const warnAlarms = result.alarms.filter(a => a.severity === 'WARNING')
   const activeFaultCount = Object.values(faults).filter(Boolean).length
-
-  const runningCount = result.compRunning.filter(Boolean).length
-  const loadPct      = result.totalCapMBH > 0 ? Math.min(result.loadRatio * 100, 200) : 0
+  const runningCount     = result.compRunning.filter(Boolean).length
+  const loadPct          = result.loadRatio * 100
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
@@ -599,7 +670,7 @@ export default function ProtocolRackASimulatorPage() {
               {result.suctionPsig.toFixed(1)} <span className="text-sm font-normal">psig</span>
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{result.sst.toFixed(1)} °F SST (dew)</p>
-            <p className="text-xs text-slate-400">SH: {result.suctionSH.toFixed(0)} °F</p>
+            <p className="text-xs text-slate-400">SH: {result.suctionSH.toFixed(0)} °F (mixed)</p>
           </div>
 
           {/* Discharge */}
@@ -616,7 +687,7 @@ export default function ProtocolRackASimulatorPage() {
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{result.condensingBubble.toFixed(1)} °F sat (bubble)</p>
             <p className={`text-xs mt-0.5 ${result.dischargeTemp >= 225 ? 'text-red-600 dark:text-red-400 font-semibold' : result.dischargeTemp >= 200 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
-              DT: {Math.round(result.dischargeTemp)} °F
+              DT: {Math.round(result.dischargeTemp)} °F · SC: {result.subcooling.toFixed(1)} °F
             </p>
           </div>
 
@@ -633,41 +704,58 @@ export default function ProtocolRackASimulatorPage() {
               {runningCount} <span className="text-sm font-normal">/ 6</span>
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{result.totalAmps.toFixed(1)} A total (575V)</p>
-            <p className="text-xs text-slate-400">{result.totalCapMBH.toFixed(1)} MBH cap.</p>
+            <p className="text-xs text-slate-400">CR: {result.compressionRatio.toFixed(2)}:1</p>
           </div>
 
-          {/* System load */}
+          {/* System load — % of full available capacity */}
           <div className={`bg-white dark:bg-slate-800 rounded-xl p-3 border ${
-            result.loadRatio > 1.2 ? 'border-red-300 dark:border-red-500/40' :
-            result.loadRatio > 0.95 ? 'border-amber-300 dark:border-amber-500/40' :
+            loadPct > 95 ? 'border-red-300 dark:border-red-500/40' :
+            loadPct > 80 ? 'border-amber-300 dark:border-amber-500/40' :
             'border-slate-200 dark:border-slate-700'}`}>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">System Load</p>
             <p className={`text-xl font-bold ${
-              result.loadRatio > 1.2 ? 'text-red-600 dark:text-red-400' :
-              result.loadRatio > 0.95 ? 'text-amber-600 dark:text-amber-400' :
+              loadPct > 95 ? 'text-red-600 dark:text-red-400' :
+              loadPct > 80 ? 'text-amber-600 dark:text-amber-400' :
               'text-slate-900 dark:text-white'}`}>
               {Math.min(loadPct, 199).toFixed(0)}<span className="text-sm font-normal">%</span>
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{result.totalLoadMBH.toFixed(1)} / {result.totalCapMBH.toFixed(1)} MBH</p>
-            <p className="text-xs text-slate-400">SC: {result.subcooling.toFixed(1)} °F</p>
+            <p className="text-xs text-slate-400 mt-0.5">{result.totalLoadMBH.toFixed(1)} of {result.fullCapMBH.toFixed(1)} MBH</p>
+            <p className="text-xs text-slate-400">{period.label} · {period.mult.toFixed(2)}×</p>
           </div>
         </div>
 
-        {/* Ambient slider */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center gap-4">
-          <Wind size={15} className="text-slate-400 flex-shrink-0" />
-          <div className="flex-1 flex items-center gap-3">
-            <span className="text-xs text-slate-500 dark:text-slate-400 w-28 flex-shrink-0">Ambient / OAT</span>
-            <input type="range" min={-20} max={110} value={ambient}
-              onChange={e => setAmbient(Number(e.target.value))}
-              className="flex-1 accent-blue-600" />
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 w-14 text-right">
-              {ambient} °F
+        {/* Context sliders — Ambient + Time of day */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 space-y-3">
+          <div className="flex items-center gap-4">
+            <Wind size={15} className="text-slate-400 flex-shrink-0" />
+            <div className="flex-1 flex items-center gap-3">
+              <span className="text-xs text-slate-500 dark:text-slate-400 w-24 flex-shrink-0">Ambient / OAT</span>
+              <input type="range" min={-20} max={110} value={ambient}
+                onChange={e => setAmbient(Number(e.target.value))}
+                className="flex-1 accent-blue-600" />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 w-14 text-right">
+                {ambient} °F
+              </span>
+            </div>
+            {result.hpCtrlActive && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">HP ctrl active</span>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <Clock size={15} className="text-slate-400 flex-shrink-0" />
+            <div className="flex-1 flex items-center gap-3">
+              <span className="text-xs text-slate-500 dark:text-slate-400 w-24 flex-shrink-0">Time of day</span>
+              <input type="range" min={0} max={23} value={timeOfDay}
+                onChange={e => setTimeOfDay(Number(e.target.value))}
+                className="flex-1 accent-violet-600" />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 w-14 text-right">
+                {formatHour(timeOfDay)}
+              </span>
+            </div>
+            <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 text-right">
+              {period.label} · {period.mult.toFixed(2)}×
             </span>
           </div>
-          {result.hpCtrlActive && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">HP ctrl active</span>
-          )}
         </div>
 
         {/* Alarms */}
@@ -700,13 +788,24 @@ export default function ProtocolRackASimulatorPage() {
 
         {/* Compressor bank */}
         <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 px-1">
-            Compressor Bank — Protocol Sequencing
-          </p>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Compressor Bank — Protocol Sequencing
+            </p>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              result.stagingStatus === 'All offline'
+                ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400'
+                : result.stagingStatus.startsWith('Stage-on') || result.stagingStatus.startsWith('Stage-off')
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
+              {result.stagingStatus}
+            </span>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {COMP_SPECS.map((comp, i) => {
               const status = result.compStatus[i]
               const amps   = result.compAmps[i]
+              const isC1   = i === 0
               const cardCls = status === 'TRIPPED'
                 ? 'bg-red-50 dark:bg-red-500/5 border-red-300 dark:border-red-500/40'
                 : status === 'STANDBY'
@@ -720,19 +819,37 @@ export default function ProtocolRackASimulatorPage() {
                       {comp.group}
                     </span>
                   </div>
-                  <p className="text-xs font-mono text-slate-600 dark:text-slate-400 mb-1">{comp.model}</p>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                      status === 'RUNNING' ? 'bg-emerald-500' :
-                      status === 'STANDBY' ? 'bg-slate-400' : 'bg-red-500'}`} />
-                    <span className={`text-xs font-medium ${
-                      status === 'RUNNING' ? 'text-emerald-600 dark:text-emerald-400' :
-                      status === 'STANDBY' ? 'text-slate-500 dark:text-slate-400' :
-                      'text-red-600 dark:text-red-400'}`}>
-                      {status === 'RUNNING' ? `${amps.toFixed(1)} A` :
-                       status === 'STANDBY' ? 'STANDBY' : 'TRIPPED'}
-                    </span>
-                  </div>
+                  <p className="text-xs font-mono text-slate-600 dark:text-slate-400 mb-1.5">{comp.model}</p>
+                  {status === 'RUNNING' && (
+                    <>
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          {amps.toFixed(1)} A
+                        </span>
+                      </div>
+                      {isC1 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-0.5">
+                          {Math.round(result.c1Modulation * 100)}% mod
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        DT: {Math.round(result.dischargeTemp)} °F
+                      </p>
+                    </>
+                  )}
+                  {status === 'STANDBY' && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">STANDBY</span>
+                    </div>
+                  )}
+                  {status === 'TRIPPED' && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">TRIPPED</span>
+                    </div>
+                  )}
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{comp.designMBH} MBH</p>
                 </div>
               )
@@ -749,10 +866,13 @@ export default function ProtocolRackASimulatorPage() {
             {CIRCUITS.map((c, i) => {
               const status   = result.circuitStatuses[i]
               const caseTemp = result.circuitCaseTemps[i]
+              const sh       = result.circuitSuperheatF[i]
               const warnF    = c.caseTargetF + 8
               const critF    = c.caseTargetF + 15
               const isWarm   = c.active && caseTemp >= critF
               const isWarn   = c.active && caseTemp >= warnF && caseTemp < critF
+              const shHigh   = !isNaN(sh) && sh >= 20
+              const shCrit   = !isNaN(sh) && sh >= 35
 
               const borderCls = !c.active
                 ? 'border-slate-100 dark:border-slate-700/50'
@@ -787,23 +907,32 @@ export default function ProtocolRackASimulatorPage() {
                       <p className="text-xs text-slate-500 dark:text-slate-400">{c.doors} doors ({c.doorConfig})</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{c.designMBH.toFixed(2)} MBH</p>
                       {status === 'DEF_STUCK' && (
-                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">HG defrost stuck</p>
+                        <>
+                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">HG defrost stuck</p>
+                          <p className="text-xs font-bold text-red-600 dark:text-red-400">~{caseTemp.toFixed(0)} °F</p>
+                        </>
                       )}
                       {status === 'TXV_FAIL' && (
-                        <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">TXV not feeding</p>
+                        <>
+                          <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">TXV not feeding</p>
+                          <p className="text-xs font-bold mt-0.5 text-amber-600 dark:text-amber-400">~{caseTemp.toFixed(0)} °F</p>
+                          <p className={`text-xs font-medium ${shCrit ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                            SH: {sh.toFixed(0)} °F ↑
+                          </p>
+                        </>
                       )}
                       {status === 'OK' && (
-                        <div className="flex items-center gap-1">
-                          <div className={`w-1.5 h-1.5 rounded-full ${isWarm ? 'bg-red-500' : isWarn ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                          <span className={`text-xs font-medium ${isWarm ? 'text-red-600 dark:text-red-400' : isWarn ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {caseTemp.toFixed(0)} °F
-                          </span>
-                        </div>
-                      )}
-                      {(status === 'DEF_STUCK' || status === 'TXV_FAIL') && (
-                        <p className={`text-xs font-bold mt-0.5 ${isWarm ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                          ~{caseTemp.toFixed(0)} °F
-                        </p>
+                        <>
+                          <div className="flex items-center gap-1">
+                            <div className={`w-1.5 h-1.5 rounded-full ${isWarm ? 'bg-red-500' : isWarn ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                            <span className={`text-xs font-medium ${isWarm ? 'text-red-600 dark:text-red-400' : isWarn ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                              {caseTemp.toFixed(0)} °F
+                            </span>
+                          </div>
+                          <p className={`text-xs mt-0.5 ${shCrit ? 'text-red-600 dark:text-red-400 font-semibold' : shHigh ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                            SH: {sh.toFixed(0)} °F
+                          </p>
+                        </>
                       )}
                     </>
                   ) : (
@@ -821,7 +950,6 @@ export default function ProtocolRackASimulatorPage() {
 
         {/* Bottom tab panel */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-          {/* Tab bar */}
           <div className="flex border-b border-slate-200 dark:border-slate-700">
             {(['faults', 'scenarios', 'info'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
@@ -837,7 +965,6 @@ export default function ProtocolRackASimulatorPage() {
           {/* Faults panel */}
           {activeTab === 'faults' && (
             <div className="p-4">
-              {/* Group tabs */}
               <div className="flex gap-1 flex-wrap mb-4">
                 {FAULT_GROUPS.map(g => {
                   const active = activeGroup === g
@@ -885,7 +1012,7 @@ export default function ProtocolRackASimulatorPage() {
                       ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-300 dark:border-violet-500/40'
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                   onClick={() => loadScenario(s)}>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{s.name}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       s.difficulty === 'Beginner'     ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
@@ -895,6 +1022,9 @@ export default function ProtocolRackASimulatorPage() {
                     </span>
                     {s.ambient !== undefined && (
                       <span className="text-xs text-slate-400">OAT {s.ambient} °F</span>
+                    )}
+                    {s.timeOfDay !== undefined && (
+                      <span className="text-xs text-slate-400">{formatHour(s.timeOfDay)}</span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{s.description}</p>
@@ -937,8 +1067,8 @@ export default function ProtocolRackASimulatorPage() {
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">R-448A Temperature Glide</p>
                   <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3 mb-3">
                     <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-                      R-448A has a ~10–15 °F temperature glide, meaning bubble point ≠ dew point at the same pressure.
-                      The gauge reads the same pressure whether you're measuring bubble or dew, but the temperatures differ.
+                      R-448A has a ~10–15 °F temperature glide. Bubble point ≠ dew point at the same pressure —
+                      the gauge reads the same either way, but the saturation temperatures differ.
                     </p>
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-blue-800 dark:text-blue-300">At −21 °F SST (operating setpoint):</p>
@@ -949,19 +1079,56 @@ export default function ProtocolRackASimulatorPage() {
                     </div>
                   </div>
 
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Compressor Groups</p>
-                  <div className="space-y-1.5">
-                    {[
-                      { group: 'Lead (on 1st, off last)', comps: 'C1 — ZFD25KVE (dual EVI)', mbh: '30.0 MBH', note: '~23% of total capacity' },
-                      { group: 'Lag-1 (on 2nd)', comps: 'C2/C3 — ZF25KVE × 2', mbh: '47.0 MBH', note: '~35% of total capacity' },
-                      { group: 'Lag-2 (on 3rd)', comps: 'C4/C5/C6 — ZF18KVE × 3', mbh: '55.8 MBH', note: '~42% of total capacity' },
-                    ].map(r => (
-                      <div key={r.group} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2">
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{r.group}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{r.comps} · {r.mbh} · {r.note}</p>
-                      </div>
-                    ))}
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Digital Scroll — C1 ZFD25KVE</p>
+                  <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      The Lead compressor (C1) is a <strong>digital/dual EVI scroll</strong> that modulates capacity
+                      from 10–100% by rapidly cycling the scroll unloader solenoid. The Protocol controller uses
+                      C1 to continuously trim system capacity before staging Lag units on or off.
+                      This keeps SST stable and minimises compressor cycling.
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+                      Amps scale approximately linearly with modulation (40% at min → 100% at full load).
+                    </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Compressor groups */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Compressor Groups</p>
+                <div className="space-y-1.5">
+                  {[
+                    { group: 'Lead — modulates first, off last', comps: 'C1 — ZFD25KVE (digital EVI)', mbh: '10–30.0 MBH', note: '10–100% modulation range' },
+                    { group: 'Lag-1 — on 2nd, off 2nd', comps: 'C2/C3 — ZF25KVE × 2', mbh: '23.5 MBH each', note: 'Staged on sequentially' },
+                    { group: 'Lag-2 — on 3rd, off 1st', comps: 'C4/C5/C6 — ZF18KVE × 3', mbh: '18.6 MBH each', note: 'Staged on sequentially' },
+                  ].map(r => (
+                    <div key={r.group} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2">
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{r.group}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{r.comps} · {r.mbh} · {r.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time-of-day load curve */}
+              <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 rounded-xl p-3">
+                <p className="text-xs font-semibold text-violet-700 dark:text-violet-300 mb-2">Time-of-Day Load Curve</p>
+                <div className="space-y-1">
+                  {[
+                    ['2 am – 6 am',  'Night setback',    '0.72×', 'Store closed — minimal door infiltration'],
+                    ['6 am – 9 am',  'Morning pulldown', '1.10×', 'Store opening — heavy traffic, warm product'],
+                    ['9 am – 5 pm',  'Daytime steady',   '1.00×', 'Normal trading — baseline load'],
+                    ['5 pm – 9 pm',  'Evening peak',     '1.12×', 'Busiest period — maximum door openings'],
+                    ['9 pm – 2 am',  'Late / overnight', '0.83×', 'Store closing — load tapering down'],
+                  ].map(([time, label, mult, note]) => (
+                    <div key={time} className="flex gap-2 text-xs">
+                      <span className="text-violet-500 dark:text-violet-400 w-24 flex-shrink-0">{time}</span>
+                      <span className="text-violet-700 dark:text-violet-300 w-32 flex-shrink-0 font-medium">{label}</span>
+                      <span className="text-violet-600 dark:text-violet-400 w-10 flex-shrink-0">{mult}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{note}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
