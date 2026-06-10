@@ -1,4 +1,5 @@
 import { getSupabaseServer } from '@/lib/supabase/client'
+import { TOPICS } from '@/lib/knowledge/topics'
 
 function slugify(text: string): string {
   return text
@@ -37,6 +38,15 @@ export async function ensureKnowledgeTopicForDocument(
   if (!doc?.title) return
 
   const title = doc.title
+
+  // Skip creating a stub if this manual is already surfaced via a curated topic's
+  // "Related Manuals" section (same title-vs-manualKeywords match used there) —
+  // a separate auto-generated stub would just duplicate that curated content.
+  const titleLower = title.toLowerCase()
+  const overlapsCuratedTopic = TOPICS.some(topic =>
+    topic.manualKeywords.some(kw => titleLower.includes(kw.toLowerCase()))
+  )
+  if (overlapsCuratedTopic) return
   const label = [component.manufacturer, component.model].filter(Boolean).join(' ')
   const shortTitle = (label || title).slice(0, 60)
   const slug = `${slugify(title) || 'manual'}-${documentId.slice(0, 8)}`
