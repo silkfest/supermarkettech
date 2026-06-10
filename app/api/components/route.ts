@@ -289,7 +289,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   const {
-    type, manufacturer, model, serial, manualTitle, manualUrl,
+    type, manufacturer, model, serial, manualTitle, manualUrl, documentId,
     storeName, refrigerant, installDate, oilType, status,
     notes, lastServiceDate, assetTag, troubleshooting,
     defrostType, loadCategory, supplier, partNumber, systemType, systemArea,
@@ -324,6 +324,7 @@ export async function POST(req: NextRequest) {
       part_number:        partNumber      ?? '',
       system_type:        systemType      ?? 'Both',
       system_area:        systemArea      ?? '',
+      document_id:        documentId      || null,
     })
     .select()
     .single()
@@ -332,6 +333,7 @@ export async function POST(req: NextRequest) {
     console.error('[components POST] error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
   return NextResponse.json(data)
 }
 
@@ -368,6 +370,7 @@ export async function PATCH(req: NextRequest) {
   if ('partNumber'      in fields) update.part_number        = fields.partNumber
   if ('systemType'      in fields) update.system_type        = fields.systemType
   if ('systemArea'      in fields) update.system_area        = fields.systemArea
+  if ('documentId'      in fields) update.document_id        = fields.documentId || null
 
   const { data, error } = await supabase
     .from('manual_components')
@@ -380,5 +383,6 @@ export async function PATCH(req: NextRequest) {
     console.error('[components PATCH] error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
   return NextResponse.json(data)
 }

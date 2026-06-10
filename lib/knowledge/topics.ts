@@ -46,6 +46,12 @@ import {
   TRUE_MANUFACTURING_KNOWLEDGE,
   PROOFER_RETARDER_KNOWLEDGE,
   COMMISSIONING_KNOWLEDGE,
+  PLATE_HEAT_EXCHANGER_KNOWLEDGE,
+  RELIEF_VALVE_KNOWLEDGE,
+  PRESSURE_SWITCH_KNOWLEDGE,
+  GAS_COOLER_KNOWLEDGE,
+  PRESSURE_REGULATOR_KNOWLEDGE,
+  STANDBY_POWER_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -142,7 +148,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Cpu',
     colorClass: 'rose',
     content: DANFOSS_KNOWLEDGE,
-    manualKeywords: ['danfoss'],
+    manualKeywords: ['danfoss', 'boostermwt'],
     tags: ['Controls', 'CO₂', 'EEV', 'Valves'],
     category: 'rack-systems',
   },
@@ -250,7 +256,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Layers',
     colorClass: 'orange',
     content: TEMPRITE_KNOWLEDGE,
-    manualKeywords: ['temprite'],
+    manualKeywords: ['temprite', 'traxoil', 'trax-oil', 'kriwan', 'oil regulator'],
     tags: ['Oil Separator', 'Oil Management', 'Rack', 'Temprite'],
     category: 'rack-systems',
   },
@@ -322,7 +328,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Warehouse',
     colorClass: 'slate',
     content: WALK_IN_KNOWLEDGE,
-    manualKeywords: [],
+    manualKeywords: ['refplus_evap', 'unit cooler'],
     tags: ['Walk-In', 'Cooler', 'Freezer', 'Troubleshooting'],
     category: 'fundamentals',
   },
@@ -346,7 +352,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Layers',
     colorClass: 'pink',
     content: PARALLEL_RACK_KNOWLEDGE,
-    manualKeywords: [],
+    manualKeywords: ['msd-parallel', 'enviroguard', 'parallel compressors'],
     tags: ['Racks', 'HFC', 'Multiplex', 'Oil Management'],
     category: 'fundamentals',
   },
@@ -430,7 +436,7 @@ export const TOPICS: KnowledgeTopic[] = [
     iconName: 'Filter',
     colorClass: 'teal',
     content: FILTER_DRIER_KNOWLEDGE,
-    manualKeywords: ['sporlan catch-all', 'henry filter', 'henry drier', 'catch-all', 'filter drier', 'desiccant', 'acid test', 'burnout'],
+    manualKeywords: ['sporlan catch-all', 'henry filter', 'henry drier', 'catch-all', 'filter drier', 'desiccant', 'acid test', 'burnout', 'hydac'],
     tags: ['Filter Drier', 'Burnout', 'Acid Test', 'Henry', 'Sporlan'],
     category: 'fundamentals',
   },
@@ -626,8 +632,120 @@ export const TOPICS: KnowledgeTopic[] = [
     tags: ['Commissioning', 'Startup', 'Pressure Test', 'Evacuation', 'CO₂'],
     category: 'fundamentals',
   },
+  {
+    slug: 'plate-heat-exchangers',
+    title: 'Brazed Plate Heat Exchangers (SWEP & Alfa Laval)',
+    shortTitle: 'Plate Heat Exchangers',
+    description: 'BPHE subcoolers, economizers, and heat reclaim exchangers from SWEP (U-Pressure, double-wall) and Alfa Laval (CB, AXP, AC series): construction, CO₂ pressure classes, installation, freeze protection, fouling, and replacement matching.',
+    iconName: 'Layers',
+    colorClass: 'cyan',
+    content: PLATE_HEAT_EXCHANGER_KNOWLEDGE,
+    manualKeywords: ['swep', 'alfa laval', 'brazed plate', '84021', '84027'],
+    tags: ['SWEP', 'Alfa Laval', 'Economizer', 'Heat Exchanger', 'CO₂'],
+    category: 'rack-systems',
+  },
+  {
+    slug: 'pressure-relief-valves',
+    title: 'Pressure Relief Valves',
+    shortTitle: 'Relief Valves',
+    description: 'Relief valve duty on receivers, flash tanks, and vessels per CSA B52 / ASHRAE 15 — Farris, Superior, and LESER valves: set pressure vs design pressure, dual relief manifolds, vent line rules, replacement after discharge, and post-relief-event checklist.',
+    iconName: 'Gauge',
+    colorClass: 'red',
+    content: RELIEF_VALVE_KNOWLEDGE,
+    manualKeywords: ['relief valve', 'farris', 'leser'],
+    tags: ['Pressure Relief Valve', 'Safety', 'CSA B52', 'CO₂'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'pressure-switches',
+    title: 'Pressure Switches & Gauges (HPCO / LPCO)',
+    shortTitle: 'Pressure Switches',
+    description: 'Mechanical safety pressure controls — Ashcroft A-Series, Sensata PS80-2X, and Winters gauges: HPCO/LPCO roles, nameplate ranges and differentials, safe HPCO test procedure, safety-string wiring, and common switch faults.',
+    iconName: 'ToggleRight',
+    colorClass: 'amber',
+    content: PRESSURE_SWITCH_KNOWLEDGE,
+    manualKeywords: ['pressure switch', 'pressure gauge', 'ashcroft', 'sensata'],
+    tags: ['HPCO / MPCO', 'Pressure Transducer', 'Safety Controls', 'Ashcroft', 'Sensata'],
+    category: 'controllers',
+  },
+  {
+    slug: 'gas-coolers',
+    title: 'CO₂ Gas Coolers & Adiabatic Cooling',
+    shortTitle: 'Gas Coolers',
+    description: 'Transcritical CO₂ gas coolers and Güntner hydroBLU™ adiabatic cooling systems (plus REFPLUS units): why exit temperature drives efficiency, adiabatic pad and water-quality care, seasonal shutdown, PM checklist, and high-pressure troubleshooting.',
+    iconName: 'Wind',
+    colorClass: 'teal',
+    content: GAS_COOLER_KNOWLEDGE,
+    manualKeywords: ['gas cooler', 'guntner', 'adiabatic', 'hydroblu'],
+    tags: ['Gas Cooler', 'Adiabatic System', 'CO₂', 'Guntner', 'REFPLUS'],
+    category: 'rack-systems',
+  },
+  {
+    slug: 'pressure-regulators',
+    title: 'Pressure Regulators & Rack Service Valves',
+    shortTitle: 'Pressure Regulators',
+    description: 'Parker Refrigerating Specialties A8/A9 inlet and outlet regulators (EPR, receiver pressure duty) and Mueller ball and transducer access valves: selection, adjustment with gauges, installation and brazing precautions, and troubleshooting hunting or drift.',
+    iconName: 'Sliders',
+    colorClass: 'indigo',
+    content: PRESSURE_REGULATOR_KNOWLEDGE,
+    manualKeywords: ['pressure regulator', 'refrigerating specialties', 'mueller'],
+    tags: ['Pressure Regulator', 'Check Valve', 'EPR', 'Parker', 'Mueller'],
+    category: 'fundamentals',
+  },
+  {
+    slug: 'standby-power',
+    title: 'Standby Power — Generators, ATS & UPS',
+    shortTitle: 'Standby Power',
+    description: 'The store backup power chain from a refrigeration perspective: Generac RTS service-rated transfer switches (transfer timing, dark-time expectations), CyberPower AVR/standby UPS units on rack controls, post-outage service checklist, and what belongs on which backup.',
+    iconName: 'Zap',
+    colorClass: 'yellow',
+    content: STANDBY_POWER_KNOWLEDGE,
+    manualKeywords: ['generac', 'cyberpower', 'transfer switch', 'uninterruptible'],
+    tags: ['Generator', 'UPS', 'Transfer Switch', 'Other'],
+    category: 'fundamentals',
+  },
 ]
 
 export function getTopicBySlug(slug: string): KnowledgeTopic | undefined {
   return TOPICS.find(t => t.slug === slug)
+}
+
+export interface RelatedTopicMatch {
+  slug: string
+  title: string
+  shortTitle: string
+  iconName: string
+  colorClass: string
+}
+
+/** Suggests Knowledge Base topics related to a Components Directory entry, matching
+ *  manufacturer/model against each topic's manualKeywords and type/systemArea against tags. */
+export function findRelatedTopics(
+  component: { manufacturer?: string | null; model?: string | null; type?: string | null; systemArea?: string | null },
+  limit = 4
+): RelatedTopicMatch[] {
+  const manufacturer = (component.manufacturer ?? '').toLowerCase()
+  const model        = (component.model ?? '').toLowerCase()
+  const type         = (component.type ?? '').toLowerCase()
+
+  if (!manufacturer && !model && !type) return []
+
+  const matches: RelatedTopicMatch[] = []
+  for (const topic of TOPICS) {
+    const kwHit = topic.manualKeywords.some(kw => {
+      const k = kw.toLowerCase()
+      return (!!manufacturer && manufacturer.includes(k)) || (!!model && model.includes(k))
+    })
+    // Exact (case-insensitive) match only — substring matching let generic tags like
+    // "Rack" match unrelated types like "Rack Controller" (e.g. Temprite suggested for
+    // a Danfoss controller just because both relate to "Rack"). systemArea is excluded
+    // entirely since nearly every component's area is "Rack", making it too generic to
+    // be a useful signal here.
+    const tagHit = !kwHit && topic.tags.some(tag => !!type && type === tag.toLowerCase())
+    if (kwHit || tagHit) {
+      matches.push({ slug: topic.slug, title: topic.title, shortTitle: topic.shortTitle, iconName: topic.iconName, colorClass: topic.colorClass })
+      if (matches.length >= limit) break
+    }
+  }
+  return matches
 }

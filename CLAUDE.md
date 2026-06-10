@@ -147,6 +147,32 @@ the store equipment page (see "New table rule" above on why `equipment` rows —
 
 ## Knowledge Base Content Standards
 
+### Manual → Knowledge Base integration (curated, not auto-generated)
+
+Manuals uploaded to the document library are surfaced in the Knowledge Base **only through
+curated topics** — never as auto-generated stub topics or runtime-AI-generated pages. (An
+auto-stub + "Generate full topic with AI" approach was built and then removed in June 2026:
+the generated pages didn't match the curated structure/quality, and many stubs duplicated
+existing topics.)
+
+How a manual gets into the KB:
+1. **Existing topic covers the subject** → add a keyword to that topic's `manualKeywords` in
+   `lib/knowledge/topics.ts` that matches the document's title (ILIKE substring on title).
+   The manual then appears in the topic's "Related Manuals" sidebar.
+2. **No topic covers it** → write a new curated topic: content in `lib/ai/prompts.ts`
+   (following the formatting standards below), registered in `TOPICS` in
+   `lib/knowledge/topics.ts` with `manualKeywords` chosen to match the relevant document
+   titles. Group related products into one topic (e.g. all SWEP + Alfa Laval plate heat
+   exchanger manuals live under one "Brazed Plate Heat Exchangers" topic).
+
+When choosing `manualKeywords`, verify each intended manual title actually matches a keyword
+(case-insensitive substring) and that keywords aren't so generic they pull in unrelated
+manuals. Note: in Postgres ILIKE, `_` matches any single character — a keyword like
+`refplus_evap` works but is a 1-char wildcard at the underscore.
+
+Dynamic DB topics (`knowledge_topics` rows, e.g. the Wirz book chapters) are still supported
+for hand-curated content, but should meet the same content standards.
+
 All knowledge topic content lives in `lib/ai/prompts.ts` as exported template-literal strings. The custom markdown renderer in `components/knowledge/MarkdownContent.tsx` has specific rules — follow these to keep pages consistent and professional.
 
 ### Heading Structure
