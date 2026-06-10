@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
   // Fetch verifier names for any completed tasks that have a verified_by
   const verifierIds = [...new Set(progress.map((p: { verified_by: string | null }) => p.verified_by).filter(Boolean))] as string[]
-  let verifierMap: Record<string, string> = {}
+  const verifierMap: Record<string, string> = {}
   if (verifierIds.length > 0) {
     const { data: verifiers } = await supabase
       .from('users')

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { X, Loader2 } from 'lucide-react'
 
 interface Props {
@@ -99,7 +100,7 @@ export default function AddEquipmentModal({ onClose, onCreated, storeId: presetS
               </select>
               {stores.length === 0 && (
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                  No sites found — <a href="/stores" className="underline text-blue-500">create a site first</a>.
+                  No sites found — <Link href="/stores" className="underline text-blue-500">create a site first</Link>.
                 </p>
               )}
             </div>

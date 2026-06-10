@@ -147,11 +147,6 @@ function ptBubbleReverse(psig: number, pt: PTData): number { return ptInterpReve
 
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
 
-// Legacy aliases — most suction-side callers can keep using these unchanged;
-// condensing-side callers have been updated to ptBubble / ptBubbleReverse explicitly.
-function ptLookup(tempF: number, pt: PTData = PT_TABLES['R-404A']): number { return ptDew(tempF, pt) }
-function ptReverse(psig: number, pt: PTData = PT_TABLES['R-404A']): number { return ptDewReverse(psig, pt) }
-
 // ── Fault types ───────────────────────────────────────────────────────────────
 // NOTE: 'highAmbient' removed — OAT is now a continuous slider, not a fault toggle.
 type FaultKey =
@@ -226,10 +221,6 @@ const BASELINE = {
   baseAmps:           21,   // A per compressor (460 V / 3 Ph)
 }
 // Head pressure control: minimum condensing sat temp (models HP control valve/fan cycling)
-// Hussmann standard HPC setpoint: 85 °F sat ≈ 146 psig (commonly displayed as ~165 psig on older gauges)
-// Activates whenever OAT + approach would fall below this floor (typically OAT < 70 °F on a clean rack)
-const HP_CTRL_MIN_COND_SAT = 85  // °F sat ≈ 190 psig (R-404A bubble) / 193 psig (R-448A) / 190 psig (R-407A)
-
 const SAFETY = {
   hpcoPsig:        400,
   hpcoWarnPsig:    355,

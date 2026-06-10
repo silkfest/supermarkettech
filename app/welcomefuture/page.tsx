@@ -245,7 +245,7 @@ export default function WelcomePage() {
         ) : (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Full visibility across your team and equipment</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Oversight tools for managers who need to know what's happening across every site, every shift.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Oversight tools for managers who need to know what&apos;s happening across every site, every shift.</p>
           </div>
         )}
 

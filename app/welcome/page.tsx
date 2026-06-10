@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  MessageSquare, BookOpen, FileText, Cpu, ClipboardList, ShieldCheck,
+  MessageSquare, ClipboardList, ShieldCheck,
   GraduationCap, ChevronRight, ArrowRight, Thermometer, CheckCircle2,
-  Library, Brain, Wrench, Users, Zap, Lock, Megaphone, MessageSquareWarning,
+  Brain, Wrench, Users, Zap, Lock, MessageSquareWarning,
 } from 'lucide-react'
 
 // ── Section data ──────────────────────────────────────────────────────────────
@@ -137,7 +136,6 @@ function FeatureCard({ feature, color }: { feature: SubFeature; color: string })
 // ── Section block ─────────────────────────────────────────────────────────────
 
 function SectionBlock({ section, index }: { section: Section; index: number }) {
-  const router = useRouter()
   const c = COLOR_STYLES[section.color]
 
   return (
@@ -188,7 +186,7 @@ export default function WelcomePage() {
             <span className="text-xs font-semibold opacity-60 tracking-widest uppercase">ColdIQ</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold leading-tight mb-3">
-            Your refrigeration team's<br className="hidden md:block" /> digital toolkit
+            Your refrigeration team&apos;s<br className="hidden md:block" /> digital toolkit
           </h1>
           <p className="text-slate-300 text-base md:text-lg max-w-2xl leading-relaxed mb-8">
             ColdIQ brings together the tools your team uses every day — AI-assisted fault finding, training, digital maintenance records, and company procedures — in one place built specifically for supermarket refrigeration.
@@ -242,7 +240,7 @@ export default function WelcomePage() {
           {/* Body */}
           <div className="px-6 py-5">
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-5">
-              ColdIQ handles sensitive company documents, service records, and proprietary procedures. Access is tightly controlled and every piece of data is encrypted — because your trade secrets shouldn't be anyone else's business.
+              ColdIQ handles sensitive company documents, service records, and proprietary procedures. Access is tightly controlled and every piece of data is encrypted — because your trade secrets shouldn&apos;t be anyone else&apos;s business.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
@@ -317,7 +315,7 @@ export default function WelcomePage() {
             <div className="flex-1">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Got an idea or found a bug?</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mb-3">
-                ColdIQ is actively evolving — if there's a feature that would make your day easier, or something isn't working right, let us know directly.
+                ColdIQ is actively evolving — if there&apos;s a feature that would make your day easier, or something isn&apos;t working right, let us know directly.
               </p>
               <button
                 onClick={() => router.push('/feedback')}

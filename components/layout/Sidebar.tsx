@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, FlaskConical, UserCircle, Shield, Layers, Moon, Sun, Building, MessageSquareWarning } from 'lucide-react'
+import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, UserCircle, Layers, Moon, Sun, Building, MessageSquareWarning } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { cn, statusDot } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
@@ -196,7 +196,7 @@ function SidebarContent({
             </button>
 
             {equipment.map(eq => {
-              const alarms = (eq.active_alarms ?? []).filter((a: any) => !a.resolved_at)
+              const alarms = (eq.active_alarms ?? []).filter((a: { resolved_at?: string | null }) => !a.resolved_at)
               const daysSincePm = eq.last_pm_date
                 ? Math.floor((Date.now() - new Date(eq.last_pm_date).getTime()) / 86400000)
                 : null

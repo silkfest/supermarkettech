@@ -215,24 +215,14 @@ export default function KnowledgePage() {
       .catch(() => setDynamicLoading(false))
   }, [])
 
-  // Fetch manual counts for all topics
+  // Fetch manual counts for all topics in a single batched request
   useEffect(() => {
-    async function fetchCounts() {
-      const results = await Promise.allSettled(
-        TOPICS.map(async topic => {
-          const res = await fetch(`/api/knowledge/${topic.slug}/manuals`)
-          if (!res.ok) return { slug: topic.slug, count: 0 }
-          const data = await res.json()
-          return { slug: topic.slug, count: Array.isArray(data) ? data.length : 0 }
-        })
-      )
-      setManualCounts(
-        results
-          .filter((r): r is PromiseFulfilledResult<ManualCount> => r.status === 'fulfilled')
-          .map(r => r.value)
-      )
-    }
-    fetchCounts()
+    fetch('/api/knowledge/manual-counts')
+      .then(r => r.ok ? r.json() : {})
+      .then((data: Record<string, number>) => {
+        setManualCounts(Object.entries(data).map(([slug, count]) => ({ slug, count })))
+      })
+      .catch(() => setManualCounts([]))
   }, [])
 
   // Debounced search of document titles + knowledge content

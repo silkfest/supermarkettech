@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Sort contacts within each section
-  const sections = (data ?? []).map((s: any) => ({
+  type Contact = { sort_order: number; created_at: string }
+  const sections = (data ?? []).map((s: { directory_contacts?: Contact[] }) => ({
     ...s,
     directory_contacts: (s.directory_contacts ?? []).sort(
-      (a: any, b: any) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
+      (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
     ),
   }))
 

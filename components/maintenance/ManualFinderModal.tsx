@@ -88,7 +88,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
     finally { setBusy(false) }
   }
 
-  const useDoc = (doc: DbDoc) => { setLinked({ id: doc.id, title: doc.title }); setPhase('done') }
+  const selectDoc = (doc: DbDoc) => { setLinked({ id: doc.id, title: doc.title }); setPhase('done') }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -131,7 +131,7 @@ export default function ManualFinderModal({ manufacturer, model, equipmentId, on
                       </p>
                     </div>
                     <button
-                      onClick={() => useDoc(doc)}
+                      onClick={() => selectDoc(doc)}
                       className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700"
                     >
                       <Link2 size={10} /> Use

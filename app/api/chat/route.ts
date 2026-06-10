@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   let retrievedContext = ''
   let sources: ReturnType<typeof chunksToCitations> = []
   let componentLinks: ComponentLink[] = []
-  let compDocMap = new Map<string, string>() // catalogId -> documentId, for post-response filtering
+  const compDocMap = new Map<string, string>() // catalogId -> documentId, for post-response filtering
   const jinaKey = process.env.JINA_API_KEY
   if (jinaKey) {
     try {
