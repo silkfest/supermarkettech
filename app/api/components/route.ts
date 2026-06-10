@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { ensureKnowledgeTopicForDocument } from '@/lib/knowledge/autoTopic'
 
 export interface ComponentRecord {
   key: string
@@ -335,10 +334,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  if (documentId) {
-    await ensureKnowledgeTopicForDocument(supabase, documentId, { manufacturer: data.manufacturer, model: data.model, type: data.type })
-  }
-
   return NextResponse.json(data)
 }
 
@@ -387,10 +382,6 @@ export async function PATCH(req: NextRequest) {
   if (error) {
     console.error('[components PATCH] error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  if (update.document_id) {
-    await ensureKnowledgeTopicForDocument(supabase, update.document_id as string, { manufacturer: data.manufacturer, model: data.model, type: data.type })
   }
 
   return NextResponse.json(data)

@@ -9269,6 +9269,354 @@ This becomes the baseline commissioning record for warranty and future service.
 - Startup documentation signed off and filed (copy left with equipment)
 `
 
+export const PLATE_HEAT_EXCHANGER_KNOWLEDGE = `
+## Brazed Plate Heat Exchangers — SWEP & Alfa Laval
+
+
+### What a BPHE Is and Where You Find One on a Rack
+
+A brazed plate heat exchanger (BPHE) is a stack of corrugated stainless-steel channel plates vacuum-brazed together with copper (or nickel) filler at every contact point. The brazing forms two sets of interleaved channels, so two fluids exchange heat through thin plates with very high efficiency — no gaskets, no frame, a fraction of the size of a shell-and-tube.
+
+On a supermarket rack you'll typically find BPHEs working as:
+- **Subcoolers / economizers** — liquid line on one side, expanded refrigerant or medium-temp suction on the other, boosting liquid subcooling and system capacity (this is the duty of the SWEP and Alfa Laval units cataloged on Rack A and Rack B)
+- **Desuperheaters / heat reclaim** — discharge gas heating a water loop for HVAC reheat or domestic hot water
+- **Oil coolers** — discharge oil cooled against liquid refrigerant or glycol
+- **Water-cooled condensers / cascade condensers** — including CO₂ subcritical cascade heat exchangers
+- **Glycol/secondary loop chillers** — refrigerant evaporating against a pumped glycol loop feeding cases
+
+### Manufacturer Lines You'll Encounter
+
+**SWEP** (plate part numbers like 8402722131 / 8402722140 / 8402722142 on Rack A/B, 8402120432, and the U-Pressure series):
+- Pressure classes M, H, S, and **U ("Ultra-High")** — the U-Pressure line is rated for transcritical CO₂ duty (PED-evaluated per EN 13345, working pressures into the 140 bar / 2000+ psi range)
+- Double-wall variants (e.g. B16DW) use two plates between fluids with a vented gap, so an internal failure leaks visibly to the outside instead of cross-contaminating — required for potable water heat reclaim
+- Approvals: PED (Europe), UL (North America), KHK (Japan)
+
+**Alfa Laval**:
+- **CB series** (CB30, CB110 with CBH/CBP high-pressure variants) — copper-brazed general refrigerant duty
+- **AXP series** (AXP10, AXP27, AXP52, AXP112) — high-pressure line built for **transcritical CO₂** economizer/gas-cooler duty
+- **AC/ACH series** (AC16/ACH16) — refrigerant evaporator/condenser duty
+
+Model numbers encode plate size; the number of plates (NoP) sets capacity. The nameplate lists design pressure, test pressure, and volume per channel — always check the nameplate rating against system design pressure, especially when a unit sits on the high side of a CO₂ booster system.
+
+### Installation Practices
+
+- Mount **vertically** with connections pointing in the orientation shown on the label (evaporator duty: refrigerant in at the bottom, out at the top, to keep the channels wetted and return oil)
+- Pipe **counter-flow** — the two fluids should travel in opposite directions for the best approach temperature
+- Fit a **strainer/filter (≤1 mm mesh)** on the inlet of any fluid that can carry debris — channel passages are small and plug easily
+- Support the piping, not the exchanger — BPHE connections are not designed to carry pipe weight
+- When brazing connections: wrap the unit in wet rags and direct the flame away from the plate pack; overheating the first plate can melt internal brazing
+- Insulate cold-duty units and provide a drip tray — they sweat like any cold surface
+
+### Freeze Protection
+
+The number one BPHE killer in glycol and water duty is **freezing**. Ice expansion deforms and splits the channel plates internally.
+- Never run an evaporator BPHE below freezing without adequate antifreeze concentration — verify glycol percentage with a refractometer at PM
+- Interlock the chiller so refrigerant flow stops on loss of water/glycol flow (flow switch proven, pump interlock)
+- Low water-side flow + normal refrigerant flow = local freezing even when the loop "isn't cold"
+
+### Troubleshooting
+
+| Symptom | Likely Cause | Action |
+|---|---|---|
+| Approach temperature creeping up over months | Fouling/scale on water side, oil logging on refrigerant side | CIP (clean-in-place) flush water side; check oil return on refrigerant side |
+| Subcooler delivering less subcooling than design | Low refrigerant flow, plugged inlet strainer, flash gas at inlet | Verify strainer, check liquid line sight glass upstream |
+| Refrigerant found in water/glycol loop | Internal plate failure (freeze damage, corrosion, fatigue) | BPHE is not repairable — replace; find and fix the root cause first |
+| Pressure drop across exchanger rising | Debris plugging channels | Backflush; install/clean inlet strainer |
+| External weeping at plate pack edge | Brazing fatigue from pressure/thermal cycling, chloride corrosion | Replace unit; check for excessive cycling and water chemistry |
+
+**Cleaning:** circulate a weak acid descaler (per manufacturer guidance) through the water side opposite to normal flow direction, then neutralize and rinse. Never rod or mechanically clean — the channels are inaccessible.
+
+### Replacement Notes
+
+- Match port size, plate count (NoP), and pressure class — a same-footprint unit with fewer plates will not deliver design capacity
+- For CO₂ duty, only use units rated for the actual design pressure of that location in the system (high side vs. flash tank vs. MT suction differ enormously)
+- Record the nameplate model and serial in the Components Directory and link the manufacturer datasheet
+`
+
+export const RELIEF_VALVE_KNOWLEDGE = `
+## Pressure Relief Valves on Refrigeration Systems
+
+
+### Why Relief Valves Exist
+
+Every refrigerant-containing vessel that can be isolated — receivers, flash tanks, suction accumulators, oil separators, shell heat exchangers — must be protected against overpressure by a relief device sized and set per **CSA B52** (Canada) / **ASHRAE 15**. A hydrostatically locked or fire-exposed vessel without relief protection becomes a bomb. Relief valves are the last line of defence after controls (HPCO) have failed.
+
+Brands commonly cataloged on our racks: **Farris** (spring-loaded ASME relief valves), **Superior**, and **LESER** (common on European-built CO₂ racks).
+
+### How They Work
+
+A spring holds the seat closed until vessel pressure reaches **set pressure**; the valve then opens proportionally, relieving vapour until pressure drops below reseat pressure (blowdown). Key nameplate data:
+- **Set pressure** — must not exceed the design pressure (MAWP) of the protected vessel
+- **Capacity** (lb/min of air or refrigerant) — must meet or exceed the code-required capacity for the vessel size
+- **CRN / ASME UV stamp** — registration for the jurisdiction
+
+CO₂ systems use the same principle at much higher settings (flash tank reliefs typically 45–60 bar, high-side reliefs 90–120 bar) and often relieve to atmosphere through dedicated vent headers; a discharging CO₂ relief can ice up and roar — treat a vented machine room as an asphyxiation hazard and ventilate before entry.
+
+### Installation Rules (B52 / ASHRAE 15 Basics)
+
+- Relief discharge must terminate **outdoors**, away from doors, windows, and air intakes, pointed so discharge cannot impinge on people
+- **Vent line sizing matters**: undersized or excessively long vent piping raises built-up back pressure and reduces valve capacity — follow the valve manufacturer's equivalent-length tables
+- **Three-way (dual) relief manifolds**: two relief valves on a transfer valve so one is always in service; the changeover stem lets you replace one valve without pumping out the vessel. The transfer valve must never be able to isolate both valves at once
+- No isolation valve may be installed between the vessel and its relief device (other than the code-permitted three-way transfer valve)
+- Install valves vertically, vapour space connection, with drip protection so the vent line cannot trap water/oil on the seat
+
+### Service & Replacement Rules
+
+- **Replace after any discharge event.** Once a relief valve has lifted, the seat is considered compromised — it will weep. Do not reuse
+- **Never gag, cap, or plug** a weeping relief valve — replace it and fix the overpressure cause
+- B52 practice: inspect relief valves at least annually; many jurisdictions and insurers require **replacement every 5 years** (check the date tag) or proof of bench recertification
+- When replacing: match set pressure, capacity, inlet/outlet size, and CRN. Tag with installation date
+- On dual-manifold setups, swing the transfer valve fully to the in-service side — mid-position throttles both valves
+
+### Signs of Trouble
+
+| Observation | Meaning | Action |
+|---|---|---|
+| Oil staining or frost at relief vent outlet | Valve has lifted or is seeping | Replace valve; investigate what drove pressure up |
+| Vent line corroded/blocked (mud daubers, ice) | Valve capacity compromised | Clear and screen the outlet; repair piping |
+| Relief set pressure below current system design (after refrigerant conversion) | Wrong valve for application | Re-evaluate relief sizing for the new refrigerant/condition |
+| No date tag, unknown age | Out of inspection program | Replace and tag |
+
+### After a Relief Event — Checklist
+
+1. Ventilate the space and confirm it's safe to enter (especially CO₂)
+2. Identify the cause: fire, hydrostatic lock (liquid-full vessel isolated and warmed), condenser/gas-cooler fan failure, HPCO failure, overcharge
+3. Replace the discharged relief valve (both, if a dual manifold and you can't prove which lifted)
+4. Verify HPCO and other safeties function before restart
+5. Record the event, the cause, and the new valve details in the store's service history
+`
+
+export const PRESSURE_SWITCH_KNOWLEDGE = `
+## Pressure Switches & Gauges — HPCO, LPCO & Safety Controls
+
+
+### Roles on the Rack
+
+Mechanical pressure switches are the hard-wired safety layer that backs up the electronic controller:
+- **HPCO (high-pressure cutout)** — opens the compressor control circuit on excessive discharge pressure. Safety-critical, usually **manual reset** so a tripped compressor stays off until a tech investigates
+- **LPCO (low-pressure cutout)** — protects against deep vacuum operation / loss of charge; often auto-reset
+- **Oil differential pressure switch** — proves net oil pressure on semi-hermetics
+- **Fan cycling switches** — stage condenser fans on head pressure (auto-reset, wide differential)
+
+Brands in our catalog: **Ashcroft** (A-Series snap-action switches), **Sensata** (PS80-2X series hermetic pressure switches), and **Winters Instruments** (gauges, gauge/switch combos, and transducer-style senders).
+
+### How to Read the Nameplate
+
+- **Range** — the span the setpoint can be adjusted across (e.g. 100–500 psi)
+- **Differential (deadband)** — the gap between trip and reset. Fixed on some models, adjustable on others. An HPCO with a 50 psi differential set to open at 400 psi recloses at 350 psi
+- **Proof pressure** — maximum pressure the switch can survive without damage; size so normal trips never approach it
+- **Contact form** — SPST open-on-rise (HPCO duty) vs. close-on-rise (fan cycling); pilot-duty contact ratings (e.g. 120/240 VAC, amps) must match the control circuit
+- Sensata PS80-style switches are **hermetic, factory-set, non-adjustable** — you replace, not recalibrate. Ashcroft A-Series are field-adjustable under the cover
+
+### Typical Settings (verify against system design before adjusting)
+
+| Application | Trip | Notes |
+|---|---|---|
+| HPCO, R-448A/R-449A MT rack | ≈ 400–425 psig, manual reset | Below relief valve setting with comfortable margin |
+| HPCO, R-744 (CO₂) MT/LT | Per rack design — far higher; use CO₂-rated switches only | Electronic HP transducers + mechanical backup |
+| LPCO, MT suction | Cut-out just above vacuum for the design SST | Auto-reset with anti-short-cycle in controller |
+| Condenser fan cycling | Stage on/off around target head pressure | Wide differential prevents short cycling |
+
+The mechanical HPCO must always be set **below** the relief valve setting and **above** the electronic controller's high-pressure alarm/unload point — controller acts first, switch second, relief valve last.
+
+### Testing an HPCO Safely
+
+1. Identify the switch's sensing point and confirm with a calibrated gauge on the same port (Winters gauge accuracy class matters — a worn 3½" utility gauge is not a reference)
+2. With the controller in a supervised test mode, force the condenser/gas-cooler fans off to let discharge pressure climb **while watching a calibrated gauge**
+3. Verify the switch opens at its setpoint ±10%, and that the compressor actually drops out
+4. Restore fans, let pressure fall, and confirm manual-reset behaviour (it should NOT auto-restart)
+5. Never test by front-seating the discharge service valve against a running compressor with no relief path
+
+### Common Faults
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Trips well below setpoint | Drifted spring, vibration-damaged mechanism | Replace (hermetic types) or recalibrate against a reference gauge |
+| Never trips in test | Stuck/welded contacts, plugged capillary or pulsation snubber | Replace switch; never bypass and leave it |
+| Capillary line frosted or oily | Cap tube leak — switch is now a refrigerant leak | Replace switch and recover properly |
+| Nuisance trips after pump-down changes | Differential too narrow for new operating envelope | Reselect switch range/differential |
+| Gauge needle flutter, switch chatter | Discharge pulsation | Add a snubber/dampener fitting; check valve plate condition |
+
+**Wiring note:** safety switches belong **in series** in the compressor pilot circuit (the "safety string") so any one device opening stops the compressor. When a controller digital input is also used, the hard-wired string still must be capable of stopping the machine on its own.
+
+### Gauges (Winters & Similar)
+
+- Use refrigeration-type gauges with the correct refrigerant temperature scale, liquid-filled where vibration is present
+- A gauge that reads zero at atmosphere and tracks a calibrated reference within its accuracy class stays; anything else gets replaced — bad panel gauges cause bad diagnosis
+- Transducer-style senders (4–20 mA / 0–5 V) feeding the rack controller should be cross-checked annually against a calibrated gauge at the same port
+`
+
+export const GAS_COOLER_KNOWLEDGE = `
+## CO₂ Gas Coolers & Adiabatic Cooling Systems
+
+
+### What a Gas Cooler Does
+
+Above CO₂'s critical point (31.1°C / 87.8°F, 73.8 bar), discharge gas doesn't condense — it just cools as a dense supercritical fluid. The **gas cooler** replaces the condenser in a transcritical CO₂ system: a fan-driven air coil that rejects heat and delivers the coolest possible CO₂ to the high-pressure control valve.
+
+Why exit temperature matters so much: every degree of approach you lose costs real capacity and efficiency. The high-pressure valve's optimum pressure is computed from **gas cooler exit temperature** — a dirty coil or failed fan raises exit temp, which raises optimum pressure, which raises compression work. In subcritical (cool weather) operation, the same coil simply condenses like a normal condenser.
+
+Manufacturers in our catalog: **Güntner** (GVD/GVW condensers and gas coolers, GFD/GFW dry coolers, with the hydroBLU™ adiabatic option) and **REFPLUS** (Canadian-built gas coolers and evaporators).
+
+### Adiabatic Cooling — Güntner hydroBLU™
+
+An adiabatic system pre-cools the air entering the coil by evaporating water — pads or spray wet the incoming airstream, dropping it from dry-bulb toward wet-bulb temperature. On a 35°C dry / 24°C wet-bulb day, that can mean ~8–10 K cooler air entering the coil, often enough to keep a CO₂ system subcritical (or much closer to it) on the hottest days.
+
+Key operating points from the Güntner ACS manual:
+- The system runs **dry** most of the year; water is only introduced above a programmed ambient threshold — this is the efficiency advantage over evaporative condensers
+- **Water quality matters**: follow the manual's water quality guidelines (hardness, conductivity, chlorides). Untreated hard water scales the pads and destroys wetting performance
+- **Seasonal/prolonged shutdown**: drain the water system completely per the shutdown procedure — freeze damage and stagnant-water biology (legionella risk) are the two failure modes
+- Commissioning requires the full preliminary-operation sequence in the manual (system inspection → preliminary mode → operation mode) before unattended running
+
+### PM Checklist — Gas Coolers & Adiabatic Systems
+
+- Straighten fins and wash the coil (low-pressure water, inside-out where accessible); confirm fin temperature uniformity across circuits after cleaning
+- Verify all fans run and rotate correctly; check EC fan/VFD response to a forced setpoint change from the rack controller
+- Inspect adiabatic pads for scale, algae, and bypass gaps; replace media that no longer wets evenly
+- Confirm water solenoid/pump operation and the ambient-temperature enable threshold
+- Test drain-down at season end; verify heat-trace on exposed water lines before winter
+- Check structure: vibration isolators, fan guards, coil frame corrosion
+- Cross-check the gas cooler exit temperature sensor against a strap-on reference — the HP valve optimization depends on this sensor being right
+
+### Troubleshooting High Discharge / Gas Cooler Pressure
+
+| Finding | Cause | Action |
+|---|---|---|
+| Exit temp far above ambient dry-bulb | Dirty/scaled coil, dead fans, recirculating hot air | Clean coil, repair fans, check installation clearances |
+| Adiabatic system never engages on a hot day | Water supply off, failed ambient sensor, disabled controller output | Restore water, verify enable threshold and sensor |
+| Pads wet but little benefit | Scaled/channelled media, poor water distribution | Descale or replace pads, clean distribution headers |
+| High pressure only at low ambient | Gas cooler fan control mis-tuned (overshooting subcritical transition) | Review controller's transcritical/subcritical changeover settings |
+| Exit temp sensor reads low vs reference | Sensor drift — HP valve running wrong optimum pressure | Replace/recalibrate sensor |
+
+### Winter & Transition Operation
+
+- Subcritical changeover: the controller floats pressure down and the gas cooler behaves as a condenser; verify minimum pressure limits hold enough liquid pressure for expansion devices
+- Confirm fan minimum-speed settings don't let the coil overshoot (too-cold exit temp can starve the flash tank of pressure)
+- Drain adiabatic water before sustained freezing; verify the dry-mode damper/bypass (if fitted) operates
+`
+
+export const PRESSURE_REGULATOR_KNOWLEDGE = `
+## Pressure Regulators & Rack Service Valves
+
+
+### Where Regulators Fit on a Rack
+
+Pressure regulators hold a set pressure somewhere the compressors and TXVs can't do it alone. The Parker **Refrigerating Specialties (RS) A8 and A9** compact wide-range regulators in our catalog are classic examples:
+
+- **A8 — inlet (upstream) pressure regulator.** Holds the pressure *upstream* of itself constant. Classic duty: **EPR (evaporator pressure regulator)** — keeps a warmer-temperature evaporator from pulling down below its design SST when it shares a suction group with colder loads. Also used as a relief-style regulator holding back vessel pressure
+- **A9 — outlet (downstream) pressure regulator.** Holds the pressure *downstream* constant. Classic duty: maintaining minimum receiver pressure in winter (head pressure control), or feeding a constant-pressure supply to a gas-defrost header
+
+Rule of thumb: name the pressure you need to control, then pick the regulator that senses on that side. Inlet regulators open on **rising inlet** pressure; outlet regulators open on **falling outlet** pressure.
+
+### Adjusting an A8/A9
+
+1. Install gauges on the controlled-pressure side (use the regulator's gauge port if fitted) — never adjust blind
+2. Back out or screw in the adjusting stem slowly: **clockwise raises** the setpoint on these spring-loaded regulators
+3. Let the system stabilize between adjustments — regulators interact with TXVs and compressor staging, so give each change a few minutes
+4. Verify across load swings (defrost return, case pulldown) that the regulator holds setpoint without hunting
+5. Record the final setpoint in the store's service history and on the regulator tag
+
+### Installation Notes
+
+- Flow direction arrow must match — these are one-way devices
+- Fit a **strainer upstream**; regulator pilot ports and seats are intolerant of scale and flux debris
+- Mount per the manual's orientation guidance; protect the spring housing from physical damage and water
+- When brazing, disassemble or wrap per the instructions — overheating warps seats
+- Size from capacity tables at the actual pressure drop, not pipe size — an oversized regulator hunts, an undersized one starves the circuit
+
+### Troubleshooting Regulators
+
+| Symptom | Cause | Action |
+|---|---|---|
+| Pressure drifts above setpoint (inlet type) | Seat fouled/eroded, spring fatigue | Inspect seat, clean strainer, rebuild or replace |
+| Hunting/oscillating pressure | Oversized regulator, pilot passage debris, interaction with another control | Verify sizing; clean pilot; stagger setpoints |
+| Will not reach setpoint | Undersized, upstream restriction, wrong range spring | Check capacity table; inspect strainer |
+| No control at all | Diaphragm/bellows failure | Rebuild kit or replace |
+
+### Mueller Service & Transducer Valves
+
+The Mueller catalog entries cover the rack's **ball valves** and **transducer (access) valves**:
+
+**Refrigeration ball valves**:
+- Full-port, bi-directional, with seal caps. Use the cap — stem O-rings are not the primary seal
+- When brazing in: open the valve, remove internals where the design allows, and wrap the body in wet rags; seat materials are ruined by brazing heat
+- A partially-open ball valve is a throttling device it was never designed to be — leave service valves fully open or fully closed
+
+**Transducer/access valves**:
+- Provide a Schrader-style depressor port so a pressure transducer or gauge can be installed/replaced **without pumping down** the section
+- When replacing a transducer: confirm the access valve actually has a functioning depressor core; a missing core = full refrigerant release when the transducer comes off
+- Cap every access port with the correct sealing cap — Schrader cores weep; the cap is the real seal
+- Torque transducers to spec, leak-check with the system at pressure, and verify the new transducer reads against a calibrated gauge before trusting it to the rack controller
+
+### PM Quick Hits
+
+- Verify each EPR-held circuit holds design SST under steady load (gauge at the case, not just the rack)
+- Exercise ball valves annually (full close → full open) so they're operable when you need an isolation in an emergency
+- Check every access valve cap is present and tight; replace weeping Schrader cores with the section at pressure using a core tool
+`
+
+export const STANDBY_POWER_KNOWLEDGE = `
+## Standby Power — Generators, Transfer Switches & UPS
+
+
+### Why Standby Power Is a Refrigeration Topic
+
+A power outage in a loaded supermarket is a refrigeration emergency: product in open cases starts warming within minutes and walk-in/LT product follows. The standby power chain — generator, automatic transfer switch (ATS), and UPS units on the controls — decides whether an outage is a non-event or a five-figure product loss claim. Techs should know how the chain behaves so post-outage callouts make sense.
+
+### Generac RTS Automatic Transfer Switches
+
+The **Generac RTS Series** units in our catalog are CSA-approved, **service-entrance rated** ATS units (100 A and 200 A, single-phase, NEMA/UL Type 3R aluminum outdoor enclosure). Service-rated means the switch doubles as the service disconnect, with utility-side circuit breakers providing downstream protection.
+
+Transfer logic (all timing and sensing lives in the **generator controller**, not the switch):
+- Utility voltage drop-out threshold: **below ~60%** of nominal
+- Timer to generator start: **10 seconds factory-set** (adjustable 10–30 s) — short blips don't start the engine
+- Engine warm-up before transfer: **~5 seconds**
+- Standby voltage sensed at **60% for 5 seconds** before load transfer
+- Return to utility after stable utility restoration, then engine cool-down run
+
+What this means on site: after an outage begins, expect roughly **15–20 seconds of dark time** before the rack comes back on generator. Compressors will short-cycle-protect and restage; expect a burst of alarms, not a clean instant recovery.
+
+### After-Outage Service Checklist (Refrigeration Side)
+
+1. Confirm all compressors restarted and staged normally — look for HPCO/LPCO trips logged during the outage window
+2. Check case/cooler temps and start a pulldown watch; verify defrost schedules didn't stack (multiple circuits defrosting simultaneously on recovery)
+3. Verify rack controller, supervisory front-end, and network gear rebooted cleanly and the clock/schedules are correct
+4. Walk-in and case alarms: clear, then confirm they re-arm — don't leave alarm silences active
+5. If the site ran on generator under refrigeration load: note run hours and report for generator service scheduling
+
+### CyberPower UPS Units on Controls
+
+The cataloged **CyberPower AVRG900U** (AVR series, 900 VA) and **CP550SLG** (Standby series, 550 VA) protect electronics, not motors:
+- **AVR (automatic voltage regulation)** models buck/boost continuously through sags and swells without switching to battery — better for rack controllers and front-ends that hate the transfer gap
+- **Standby** models switch to inverter only when power fails — fine for modems/switches
+- Their job is to ride the controls through the **15–20 second ATS gap** so the rack controller never loses its brain, keeps its alarm log, and restages compressors immediately when power returns
+
+UPS service notes:
+- Batteries are consumables: plan replacement every **3–5 years**; most units chirp or fail self-test when the battery is done
+- Run the unit's self-test at PM; a UPS that drops its load during self-test is worse than no UPS (it's a single point of failure)
+- Size by VA *and* watts against the actual connected load — controllers plus a monitor plus network gear add up
+- Never plug motor loads, heaters, or battery chargers into a control UPS
+
+### What Belongs on Which Backup
+
+| Load | Generator | UPS |
+|---|---|---|
+| Compressors, condenser/gas-cooler fans | Yes | Never |
+| Case/walk-in evap fans, anti-sweat | Yes | No |
+| Rack controller, supervisory PC, gateways | Yes | Yes — bridges the transfer gap |
+| Network switch/modem (alarm dial-out) | Yes | Yes |
+| Store lighting/POS | Per store design | No (their own systems) |
+
+### Troubleshooting the Chain
+
+| Symptom | Likely Cause | Action |
+|---|---|---|
+| Controllers rebooted during outage despite UPS | Dead UPS battery, overloaded UPS, controller not actually on UPS circuit | Self-test UPS, audit what's plugged in where |
+| Generator started but store never transferred | ATS contactor failure, standby voltage never qualified | Generator/electrical service call — do not force the contactor |
+| Repeated nuisance engine starts | Drop-out threshold marginal with utility sags | Review utility power quality; adjust start delay within 10–30 s range |
+| Alarms flood after every outage | Normal restage behaviour | Verify recovery completed, then clear; tune alarm delays if excessive |
+`
+
 export interface BuildSystemPromptOptions {
   mode: ChatMode
   equipment?: Equipment | null

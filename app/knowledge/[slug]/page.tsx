@@ -15,10 +15,8 @@ import {
   MessageSquare,
   Sparkles,
   Package,
-  Loader2,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
-import { getSupabaseBrowser } from '@/lib/supabase/client'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
@@ -77,37 +75,6 @@ export default function KnowledgeTopicPage() {
   const [figures, setFigures] = useState<TopicFigure[]>([])
   const [tocOpen, setTocOpen] = useState(false)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [generateError, setGenerateError] = useState('')
-
-  useEffect(() => {
-    async function checkRole() {
-      const supabase = getSupabaseBrowser()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profileData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      const profileRole = (profileData as { role?: string } | null)?.role
-      setIsAdmin(profileRole === 'admin' || profileRole === 'manager')
-    }
-    checkRole()
-  }, [])
-
-  async function generateFullTopic() {
-    if (!topic || generating) return
-    setGenerating(true)
-    setGenerateError('')
-    try {
-      const res = await fetch(`/api/knowledge/${slug}/generate`, { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-      setTopic(t => t ? { ...t, description: data.description, content: data.content } : t)
-    } catch (e) {
-      setGenerateError(e instanceof Error ? e.message : 'Generation failed')
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   // For dynamic topics, fetch from DB
   useEffect(() => {
@@ -191,16 +158,6 @@ export default function KnowledgeTopicPage() {
                   <Sparkles size={9} /> From Manual
                 </span>
               )}
-              {topic.source === 'manual' && isAdmin && (
-                <button
-                  onClick={generateFullTopic}
-                  disabled={generating}
-                  className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-500/30 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors disabled:opacity-60"
-                >
-                  {generating ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                  {generating ? 'Generating…' : 'Generate full topic with AI'}
-                </button>
-              )}
               {topic.tags.map(tag => (
                 <span key={tag} className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700">
                   {tag}
@@ -217,9 +174,6 @@ export default function KnowledgeTopicPage() {
               </button>
             </div>
           </div>
-          {generateError && (
-            <p className="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{generateError}</p>
-          )}
         </div>
       </div>
 
@@ -285,7 +239,7 @@ export default function KnowledgeTopicPage() {
                     {components.map(c => (
                       <button
                         key={c.id}
-                        onClick={() => { router.push(`/maintenance/components#comp-${c.id}`); setTocOpen(false) }}
+                        onClick={() => { router.push(`/maintenance/components?highlight=${c.id}`); setTocOpen(false) }}
                         className="flex items-center gap-1.5 w-full text-left text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                       >
                         <Package size={10} className="flex-shrink-0 opacity-60" />
@@ -350,7 +304,7 @@ export default function KnowledgeTopicPage() {
                     {components.map(c => (
                       <button
                         key={c.id}
-                        onClick={() => router.push(`/maintenance/components#comp-${c.id}`)}
+                        onClick={() => router.push(`/maintenance/components?highlight=${c.id}`)}
                         className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
                       >
                         <Package size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
@@ -404,7 +358,7 @@ export default function KnowledgeTopicPage() {
                 {components.map(c => (
                   <button
                     key={c.id}
-                    onClick={() => router.push(`/maintenance/components#comp-${c.id}`)}
+                    onClick={() => router.push(`/maintenance/components?highlight=${c.id}`)}
                     className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
                   >
                     <div className="flex items-center gap-2 min-w-0">
