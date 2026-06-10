@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Thermometer, Gauge, Wind, Zap, Activity, Info,
-  ChevronUp, MessageSquare, Trophy, Target, Package,
+  ChevronUp, MessageSquare, Trophy, Target, Package, Dices, BookOpen,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
 // R-404A: Arkema/Forane data via learnmetrics.com (liquid bubble + vapor dew columns)
@@ -548,6 +550,35 @@ interface Scenario {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   oat?: number              // OAT locked during scenario (if omitted, defaults to 80 °F)
   faults: Partial<FaultState>; answer: FaultKey[]
+  knowledge?: { slug: string; label: string }[]   // related knowledge-base topics shown after submit
+}
+
+// ── Mystery fault generator ───────────────────────────────────────────────────
+// Picks 1–2 random faults (respecting mutual exclusions) and a random OAT so
+// scenarios never run out. The answer is hidden until the diagnosis is submitted.
+const MYSTERY_OATS = [15, 35, 55, 75, 85, 95, 105]
+function generateMystery(): Scenario {
+  const faultCount = Math.random() < 0.55 ? 1 : 2
+  const picked: FaultKey[] = []
+  const pool = [...FAULT_DEFS]
+  while (picked.length < faultCount && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length)
+    const def = pool.splice(idx, 1)[0]
+    if (picked.some(k => FAULT_DEFS.find(d => d.key === k)?.mutuallyExcludes?.includes(def.key) || def.mutuallyExcludes?.includes(k))) continue
+    picked.push(def.key)
+  }
+  const faults: Partial<FaultState> = {}
+  picked.forEach(k => { faults[k] = true })
+  return {
+    id: 'mystery',
+    name: 'Mystery Fault',
+    difficulty: picked.length > 1 ? 'Advanced' : 'Intermediate',
+    oat: MYSTERY_OATS[Math.floor(Math.random() * MYSTERY_OATS.length)],
+    description: `The rack has ${picked.length === 1 ? 'one hidden fault' : 'two hidden faults'}. No story, no hints — read the gauges, work the readings, and call it like a real service visit.`,
+    faults,
+    answer: picked,
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  }
 }
 
 const SCENARIOS: Scenario[] = [
@@ -559,6 +590,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Service call on a hot summer day — OAT 100 °F. Discharge pressure 340+ psig (normal is 200–240 psig for this store). Machine room maintenance hasn\'t been done since spring. What are the contributing mechanical faults?',
     faults: { dirtyCondenser: true, fan1Failed: true },
     answer: ['dirtyCondenser', 'fan1Failed'],
+    knowledge: [{ slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'gradual_warmup',
@@ -568,6 +600,7 @@ const SCENARIOS: Scenario[] = [
     description: 'MT cases have been slowly warming over 2 weeks — about 2–3 °F per week. No sudden alarms. Subcooling is low and the sight glass shows some flashing.',
     faults: { underchargeModerate: true, filterDrierRestricted: true },
     answer: ['underchargeModerate', 'filterDrierRestricted'],
+    knowledge: [{ slug: 'filter-driers', label: 'Filter Driers' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'monday_lt',
@@ -577,6 +610,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Opened the store Monday. All LT (frozen food) cases above 10 °F. MT medium-temp side seems fine. Defrost was scheduled to run at 4 AM.',
     faults: { ltDefrostStuckOn: true },
     answer: ['ltDefrostStuckOn'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
   },
   {
     id: 'oil_fault',
@@ -586,6 +620,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Overnight call — oil pressure alarm tripped Comp 3. It\'s now off. Oil differential reading 8 psi on the gauge. Remaining compressor amps are elevated.',
     faults: { oilLow: true, comp3Failed: true },
     answer: ['oilLow', 'comp3Failed'],
+    knowledge: [{ slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }, { slug: 'copeland', label: 'Copeland Compressors' }],
   },
   {
     id: 'lt_no_pulldown',
@@ -595,6 +630,7 @@ const SCENARIOS: Scenario[] = [
     description: 'LT circuit was worked on last week (defrost board swap). Since then it won\'t pull down. LT booster suction very low, superheats extremely high, LT cases at 15 °F and rising. MT running fine.',
     faults: { ltTxvNotFeeding: true, ltComp1Failed: true },
     answer: ['ltTxvNotFeeding', 'ltComp1Failed'],
+    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'winter_low_amb',
@@ -604,6 +640,7 @@ const SCENARIOS: Scenario[] = [
     description: 'January service call — outdoor temp 15 °F. Head pressure seems unusually low; the tech notes the HP control valve is holding condensing at minimum. MT cases are warm and subcooling is very high. A slow leak went unnoticed over the fall.',
     faults: { underchargeModerate: true },
     answer: ['underchargeModerate'],
+    knowledge: [{ slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }, { slug: 'refrigeration-fundamentals', label: 'Refrigeration Fundamentals' }],
   },
   {
     id: 'non_condensables',
@@ -613,6 +650,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Summer service call, OAT 80 °F. The head pressure is running ~28 psig higher than what the PT chart says it should be for the measured condensing temperature. Condenser coil looks clean, all fans running. What is causing the gap between the PT reading and the actual gauge pressure?',
     faults: { nonCondensables: true },
     answer: ['nonCondensables'],
+    knowledge: [{ slug: 'refrigeration-fundamentals', label: 'Refrigeration Fundamentals' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'll_restriction',
@@ -622,6 +660,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Cases getting warm. MT suction superheat is 38 °F — way above normal. You replace the filter drier core expecting that to fix it. Subcooling is still low after the change, and SH is still high. The drier shows only a 1 °F temperature drop. What else could be restricting the liquid line?',
     faults: { liquidLineRestriction: true },
     answer: ['liquidLineRestriction'],
+    knowledge: [{ slug: 'filter-driers', label: 'Filter Driers' }, { slug: 'sporlan', label: 'Sporlan Valves & TXVs' }],
   },
   {
     id: 'worn_valve',
@@ -631,6 +670,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Cases are trending 3–4 °F warmer than normal. The suction pressure is slightly higher than the set point. All four compressors appear to be running — amps look near-normal. No alarms have tripped. Discharge temperature on Comp 1 seems higher than the others. What is the likely internal fault on Comp 1?',
     faults: { comp1ValveWorn: true },
     answer: ['comp1ValveWorn'],
+    knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
 ]
 
@@ -1110,7 +1150,23 @@ export default function SimulationPage() {
   function enterScenarioMode() { setScenarioMode(true); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
   function exitScenarioMode()  { setScenarioMode(false); setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
   function loadScenario(s: Scenario) { setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
-  function submitDiagnosis() { setSubmitted(true) }
+  function loadMystery() { loadScenario(generateMystery()) }
+  function submitDiagnosis() {
+    setSubmitted(true)
+    if (!activeScenario) return
+    const correct = activeScenario.answer.filter(k => userGuess[k]).length
+    const total   = activeScenario.answer.length
+    const fp      = Object.entries(userGuess).filter(([k, v]) => v && !activeScenario.answer.includes(k as FaultKey)).length
+    const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
+    saveSimAttempt({
+      rack: 'parallel-rack',
+      scenarioId: activeScenario.id,
+      scenarioName: activeScenario.name,
+      difficulty: activeScenario.difficulty,
+      mode: activeScenario.id === 'mystery' ? 'mystery' : 'scenario',
+      score: pct, correct, total, falsePositives: fp,
+    })
+  }
   const fieldAnalysis = useMemo(
     () => analyzeFieldReadings(fieldReadings, hpCtrlSatTemp, rackConfig, pt),
     [fieldReadings, hpCtrlSatTemp, rackConfig, pt]
@@ -1136,6 +1192,16 @@ export default function SimulationPage() {
   })()
 
   const faultsByGroup = FAULT_GROUPS.map(g => ({ group: g, faults: FAULT_DEFS.filter(d => d.group === g) }))
+
+  const trendSpecs = [
+    { key: 'mtSuction',   label: 'MT Suction',     unit: 'psig', value: mt.suctionPsig },
+    { key: 'discharge',   label: 'Discharge',      unit: 'psig', value: mt.dischargePsig },
+    { key: 'mtSH',        label: 'MT Superheat',   unit: '°F',   value: mt.suctionSuperheat },
+    { key: 'subcooling',  label: 'Subcooling',     unit: '°F',   value: mt.subcooling },
+    { key: 'ltSuction',   label: 'LT Suction',     unit: 'psig', value: lt.suctionPsig },
+    { key: 'mtCase',      label: 'MT Case Temp',   unit: '°F',   value: mt.caseTemp },
+  ]
+  const trendHistory = useTrendHistory(trendSpecs)
 
   // OAT colour helper
   const oatColor = activeOat <= 32 ? 'text-blue-600 dark:text-blue-300'
@@ -1647,6 +1713,9 @@ export default function SimulationPage() {
               </div>
             </div>
 
+            {/* ── Reading trends ── */}
+            <TrendsCard specs={trendSpecs} history={trendHistory} />
+
             {/* ── Scenario picker / active scenario ── */}
             {scenarioMode && (
               <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-500/40 rounded-xl overflow-hidden">
@@ -1657,6 +1726,15 @@ export default function SimulationPage() {
                 {!activeScenario ? (
                   <div className="p-3 space-y-2">
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">Pick a scenario. Readings will update — diagnose using the left panel.</p>
+                    <button onClick={loadMystery}
+                      className="w-full text-left px-3 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white border border-violet-500 transition-colors">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Dices size={13} className="flex-shrink-0"/>
+                        <span className="text-xs font-semibold">Mystery Fault</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold bg-white/20">Random</span>
+                      </div>
+                      <p className="text-[10px] text-violet-100 leading-relaxed">1–2 random hidden faults, random weather. Infinite replays — every service call is different.</p>
+                    </button>
                     {SCENARIOS.map(s => (
                       <button key={s.id} onClick={() => loadScenario(s)}
                         className="w-full text-left px-3 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors">
@@ -1724,8 +1802,22 @@ export default function SimulationPage() {
                             </div>
                           )
                         })}
+                        {(activeScenario.knowledge?.length ?? 0) > 0 && (
+                          <div className="flex items-center gap-2 flex-wrap pt-1">
+                            <span className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10}/> Read more:</span>
+                            {activeScenario.knowledge!.map(k => (
+                              <button key={k.slug} onClick={() => router.push(`/knowledge/${k.slug}`)}
+                                className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-400 transition-colors">
+                                {k.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex gap-2 pt-1">
                           <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
+                          {activeScenario.id === 'mystery' && (
+                            <button onClick={loadMystery} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11}/> New Mystery</button>
+                          )}
                           <button onClick={() => setActiveScenario(null)} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg">New Scenario</button>
                         </div>
                       </div>

@@ -1,12 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FlaskConical, ChevronRight, Layers, Snowflake } from 'lucide-react'
+import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+
+interface RackSummary { attempts: number; bestScore: number | null; avgScore: number | null; lastAt: string | null }
 
 const RACKS = [
   {
     href: '/simulation/parallel-rack',
+    rackKey: 'parallel-rack',
     icon: Layers,
     accent: 'blue',
     name: 'Hussmann Parallel Rack',
@@ -14,11 +18,12 @@ const RACKS = [
     description:
       'Classic parallel rack — 4 Copeland scrolls on medium temp with a 2-compressor low-temp booster. ' +
       'Full gauge set, sight glass, oil differential, and condenser readings.',
-    stats: ['22 fault toggles', '9 guided scenarios', 'Instructor reveal', 'Adjustable refrigerant & setpoints'],
+    stats: ['22 fault toggles', '9 guided scenarios + Mystery Fault', 'Instructor reveal', 'Adjustable refrigerant & setpoints'],
     source: 'Based on Hussmann Parallel Rack Systems I/O Manual',
   },
   {
     href: '/simulation/protocol-rack-a',
+    rackKey: 'protocol-rack-a',
     icon: Snowflake,
     accent: 'violet',
     name: 'Hussmann Protocol HE Rack — Unit A',
@@ -28,6 +33,19 @@ const RACKS = [
       'lead modulation serving 9 frozen-food circuits, each with its own suction and superheat readings.',
     stats: ['Per-circuit case temps & SH', 'Digital scroll modulation', '7 guided scenarios', 'Time-of-day load curve'],
     source: "Modeled on Fortino's Mall Rd · Remote Header A",
+  },
+  {
+    href: '/simulation/co2-booster',
+    rackKey: 'co2-booster',
+    icon: Leaf,
+    accent: 'emerald',
+    name: 'CO2 Transcritical Booster',
+    refrigerant: 'R-744 · MT + LT Booster',
+    description:
+      'Where the industry is heading — transcritical CO2 with a gas cooler, high pressure valve, flash tank, ' +
+      'and flash gas bypass. Watch the rack flip between subcritical and transcritical as the weather changes.',
+    stats: ['12 fault toggles', '6 guided scenarios + Mystery Fault', 'Transcritical / subcritical modes', 'Flash tank & relief valve dynamics'],
+    source: 'R-744 booster architecture · gas cooler optimization curve',
   },
 ]
 
@@ -42,10 +60,23 @@ const ACCENT = {
     hover: 'hover:border-violet-400 dark:hover:border-violet-500',
     badge: 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-300',
   },
+  emerald: {
+    iconBox: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+    hover: 'hover:border-emerald-400 dark:hover:border-emerald-500',
+    badge: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
+  },
 } as const
 
 export default function SimulatorSelectPage() {
   const router = useRouter()
+  const [summary, setSummary] = useState<Record<string, RackSummary>>({})
+
+  useEffect(() => {
+    fetch('/api/simulator/attempts')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.summary) setSummary(data.summary) })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
@@ -62,7 +93,7 @@ export default function SimulatorSelectPage() {
 
       <LearningTabBar />
 
-      <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto w-full px-4 py-6 space-y-5">
 
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -75,10 +106,11 @@ export default function SimulatorSelectPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {RACKS.map(rack => {
             const a = ACCENT[rack.accent as keyof typeof ACCENT]
             const Icon = rack.icon
+            const s = summary[rack.rackKey]
             return (
               <button
                 key={rack.href}
@@ -102,17 +134,25 @@ export default function SimulatorSelectPage() {
                 </p>
 
                 <ul className="space-y-1 mb-3">
-                  {rack.stats.map(s => (
-                    <li key={s} className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  {rack.stats.map(st => (
+                    <li key={st} className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
-                      {s}
+                      {st}
                     </li>
                   ))}
                 </ul>
 
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-700 pt-2.5">
-                  {rack.source}
-                </p>
+                <div className="border-t border-slate-100 dark:border-slate-700 pt-2.5 space-y-1">
+                  {s && s.attempts > 0 && (
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Trophy size={10} className="text-amber-500 dark:text-amber-400 flex-shrink-0" />
+                      {s.attempts} attempt{s.attempts !== 1 ? 's' : ''}
+                      {s.bestScore !== null && <> · best {s.bestScore}%</>}
+                      {s.avgScore !== null && <> · avg {s.avgScore}%</>}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">{rack.source}</p>
+                </div>
               </button>
             )
           })}

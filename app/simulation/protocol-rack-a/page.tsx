@@ -5,9 +5,11 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle,
-  Activity, Wind, ChevronLeft, Clock,
+  Activity, Wind, ChevronLeft, Clock, BookOpen,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── R-448A P-T data (psia) — Honeywell Solstice N40 / Opteon XP40 ─────────────
 // R-448A has ~10–15 °F temperature glide.
@@ -201,6 +203,7 @@ interface Scenario {
   id: string; name: string; description: string
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   ambient?: number; timeOfDay?: number; faults: Partial<FaultState>; answer: FaultKey[]
+  knowledge?: { slug: string; label: string }[]   // related knowledge-base topics shown on reveal
 }
 
 const SCENARIOS: Scenario[] = [
@@ -211,6 +214,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Call at 2 AM — Protocol Rack A is alarming. The controller shows only 5 of 6 compressors active and suction is running above setpoint. Case temps starting to climb. Which compressor failed, and why does losing the Lead hurt differently than losing a Lag unit?',
     faults: { comp1Failed: true },
     answer: ['comp1Failed'],
+    knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }, { slug: 'rack-sequence-of-events', label: 'Rack Sequence of Events' }],
   },
   {
     id: 'demand_cooling',
@@ -219,6 +223,7 @@ const SCENARIOS: Scenario[] = [
     description: 'All 6 compressors running but discharge temperature is approaching 210 °F on every unit simultaneously. Suction and head pressure look near-normal. No refrigerant alarms. What is the common system element that protects all 6 Copeland EVI scrolls from high discharge temps?',
     faults: { demandCoolingFailed: true },
     answer: ['demandCoolingFailed'],
+    knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }],
   },
   {
     id: 'lag2_all_down',
@@ -227,6 +232,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Three separate safety trips took out C4, C5, and C6 overnight — all ZF18KVE units. Suction is above setpoint and the frozen food cases are warming. The Lead and Lag-1 group are running. How much capacity has been lost, and how does C1 respond to carry more of the load?',
     faults: { comp4Failed: true, comp5Failed: true, comp6Failed: true },
     answer: ['comp4Failed', 'comp5Failed', 'comp6Failed'],
+    knowledge: [{ slug: 'rack-sequence-of-events', label: 'Rack Sequence of Events' }, { slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }],
   },
   {
     id: 'a8_txv_failed',
@@ -235,6 +241,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Circuit A8 case temps are rising while suction is running lower than setpoint. The 16-door ORZ section isn\'t pulling down — superheat on A8 is very high while other circuits read normal. What is the single fault causing this?',
     faults: { a8TxvFailed: true },
     answer: ['a8TxvFailed'],
+    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'multiple_defrosts',
@@ -245,6 +252,7 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 8,
     faults: { a2DefrostStuck: true, a3DefrostStuck: true, a4DefrostStuck: true, a9DefrostStuck: true },
     answer: ['a2DefrostStuck', 'a3DefrostStuck', 'a4DefrostStuck', 'a9DefrostStuck'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
   },
   {
     id: 'undercharge_winter',
@@ -255,6 +263,7 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 3,
     faults: { undercharge: true },
     answer: ['undercharge'],
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }, { slug: 'refrigeration-fundamentals', label: 'Refrigeration Fundamentals' }],
   },
   {
     id: 'dirty_condenser_summer',
@@ -265,6 +274,7 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 19,
     faults: { dirtyCondenser: true, fan1Failed: true },
     answer: ['dirtyCondenser', 'fan1Failed'],
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
 ]
 
@@ -575,6 +585,19 @@ export default function ProtocolRackASimulatorPage() {
     setActiveTab('faults')
   }
 
+  function revealScenario() {
+    if (!activeScenario || scenarioRevealed) return
+    setScenarioRevealed(true)
+    // Protocol scenarios are walkthroughs (no guess scoring) — log practice without a score
+    saveSimAttempt({
+      rack: 'protocol-rack-a',
+      scenarioId: activeScenario.id,
+      scenarioName: activeScenario.name,
+      difficulty: activeScenario.difficulty,
+      mode: 'scenario',
+    })
+  }
+
   function resetAll() {
     setFaults(INITIAL_FAULTS)
     setAmbient(70)
@@ -586,6 +609,17 @@ export default function ProtocolRackASimulatorPage() {
   const activeFaultCount = Object.values(faults).filter(Boolean).length
   const runningCount     = result.compRunning.filter(Boolean).length
   const loadPct          = result.loadRatio * 100
+
+  const validCaseTemps = result.circuitCaseTemps.filter(t => Number.isFinite(t))
+  const trendSpecs = [
+    { key: 'suction',    label: 'Suction',        unit: 'psig', value: result.suctionPsig },
+    { key: 'discharge',  label: 'Discharge',      unit: 'psig', value: result.dischargePsig },
+    { key: 'suctionSH',  label: 'Suction SH',     unit: '°F',   value: result.suctionSH },
+    { key: 'subcooling', label: 'Subcooling',     unit: '°F',   value: result.subcooling },
+    { key: 'totalAmps',  label: 'Total Amps',     unit: 'A',    value: result.totalAmps },
+    { key: 'avgCase',    label: 'Avg Case Temp',  unit: '°F',   value: validCaseTemps.length ? validCaseTemps.reduce((a, b) => a + b, 0) / validCaseTemps.length : 0 },
+  ]
+  const trendHistory = useTrendHistory(trendSpecs)
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
@@ -635,7 +669,7 @@ export default function ProtocolRackASimulatorPage() {
                 </div>
                 <p className="text-sm text-violet-700 dark:text-violet-300">{activeScenario.description}</p>
                 {!scenarioRevealed ? (
-                  <button onClick={() => setScenarioRevealed(true)}
+                  <button onClick={revealScenario}
                     className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400 underline">
                     Reveal answer
                   </button>
@@ -648,6 +682,17 @@ export default function ProtocolRackASimulatorPage() {
                         <p key={key} className="text-xs text-slate-500 dark:text-slate-400">• {def.label}</p>
                       ) : null
                     })}
+                    {(activeScenario.knowledge?.length ?? 0) > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1"><BookOpen size={10}/> Read more:</span>
+                        {activeScenario.knowledge!.map(k => (
+                          <button key={k.slug} onClick={() => router.push(`/knowledge/${k.slug}`)}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-400 transition-colors">
+                            {k.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -723,6 +768,9 @@ export default function ProtocolRackASimulatorPage() {
             <p className="text-xs text-slate-400">{period.label} · {period.mult.toFixed(2)}×</p>
           </div>
         </div>
+
+        {/* Reading trends */}
+        <TrendsCard specs={trendSpecs} history={trendHistory} />
 
         {/* Context sliders — Ambient + Time of day */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 space-y-3">
