@@ -8,11 +8,13 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   BookOpen,
   Globe,
   X,
   MessageSquare,
   Sparkles,
+  Package,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
@@ -26,6 +28,14 @@ interface RelatedManual {
   created_at: string
   source_type: string
   source_url: string | null
+}
+
+interface RelatedComponent {
+  id: string
+  type: string
+  manufacturer: string
+  model: string
+  store_name: string | null
 }
 
 interface TopicFigure {
@@ -61,6 +71,7 @@ export default function KnowledgeTopicPage() {
 
   const [manuals, setManuals] = useState<RelatedManual[]>([])
   const [manualsLoading, setManualsLoading] = useState(false)
+  const [components, setComponents] = useState<RelatedComponent[]>([])
   const [figures, setFigures] = useState<TopicFigure[]>([])
   const [tocOpen, setTocOpen] = useState(false)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
@@ -86,6 +97,10 @@ export default function KnowledgeTopicPage() {
         .then(r => r.ok ? r.json() : [])
         .then((data: RelatedManual[]) => { setManuals(Array.isArray(data) ? data : []); setManualsLoading(false) })
         .catch(() => setManualsLoading(false))
+      fetch(`/api/knowledge/${slug}/components`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: RelatedComponent[]) => setComponents(Array.isArray(data) ? data : []))
+        .catch(() => {})
     }
     fetch(`/api/knowledge/${slug}/figures`)
       .then(r => r.ok ? r.json() : [])
@@ -217,6 +232,23 @@ export default function KnowledgeTopicPage() {
                   </div>
                 </div>
               )}
+              {components.length > 0 && (
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 mb-1">Related Components</p>
+                  <div className="space-y-0.5">
+                    {components.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { router.push(`/maintenance/components#comp-${c.id}`); setTocOpen(false) }}
+                        className="flex items-center gap-1.5 w-full text-left text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                      >
+                        <Package size={10} className="flex-shrink-0 opacity-60" />
+                        <span className="truncate">{[c.manufacturer, c.model].filter(Boolean).join(' ') || c.type}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -265,6 +297,23 @@ export default function KnowledgeTopicPage() {
                   )}
                 </div>
               )}
+              {components.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-2">Related Components</p>
+                  <div className="space-y-1">
+                    {components.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => router.push(`/maintenance/components#comp-${c.id}`)}
+                        className="flex items-start gap-1.5 text-xs text-slate-600 hover:text-blue-600 py-1 px-2 rounded hover:bg-blue-50 transition-colors group w-full text-left"
+                      >
+                        <Package size={11} className="flex-shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
+                        <span className="leading-snug line-clamp-2">{[c.manufacturer, c.model].filter(Boolean).join(' ') || c.type}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </aside>
         )}
@@ -298,6 +347,27 @@ export default function KnowledgeTopicPage() {
                     </button>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {components.length > 0 && (
+            <div className="md:hidden mt-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Related Components</p>
+              <div className="space-y-2">
+                {components.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => router.push(`/maintenance/components#comp-${c.id}`)}
+                    className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-all group w-full text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Package size={14} className="text-slate-400 flex-shrink-0" />
+                      <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{[c.manufacturer, c.model].filter(Boolean).join(' ') || c.type}</span>
+                    </div>
+                    <ChevronRight size={12} className="text-slate-400 flex-shrink-0 group-hover:text-blue-500" />
+                  </button>
+                ))}
               </div>
             </div>
           )}

@@ -631,3 +631,43 @@ export const TOPICS: KnowledgeTopic[] = [
 export function getTopicBySlug(slug: string): KnowledgeTopic | undefined {
   return TOPICS.find(t => t.slug === slug)
 }
+
+export interface RelatedTopicMatch {
+  slug: string
+  title: string
+  shortTitle: string
+  iconName: string
+  colorClass: string
+}
+
+/** Suggests Knowledge Base topics related to a Components Directory entry, matching
+ *  manufacturer/model against each topic's manualKeywords and type/systemArea against tags. */
+export function findRelatedTopics(
+  component: { manufacturer?: string | null; model?: string | null; type?: string | null; systemArea?: string | null },
+  limit = 4
+): RelatedTopicMatch[] {
+  const manufacturer = (component.manufacturer ?? '').toLowerCase()
+  const model        = (component.model ?? '').toLowerCase()
+  const type         = (component.type ?? '').toLowerCase()
+  const systemArea   = (component.systemArea ?? '').toLowerCase()
+
+  if (!manufacturer && !model && !type && !systemArea) return []
+
+  const matches: RelatedTopicMatch[] = []
+  for (const topic of TOPICS) {
+    const kwHit = topic.manualKeywords.some(kw => {
+      const k = kw.toLowerCase()
+      return (!!manufacturer && manufacturer.includes(k)) || (!!model && model.includes(k))
+    })
+    const tagHit = !kwHit && topic.tags.some(tag => {
+      const t = tag.toLowerCase()
+      return (!!type && (type.includes(t) || t.includes(type))) ||
+             (!!systemArea && (systemArea.includes(t) || t.includes(systemArea)))
+    })
+    if (kwHit || tagHit) {
+      matches.push({ slug: topic.slug, title: topic.title, shortTitle: topic.shortTitle, iconName: topic.iconName, colorClass: topic.colorClass })
+      if (matches.length >= limit) break
+    }
+  }
+  return matches
+}

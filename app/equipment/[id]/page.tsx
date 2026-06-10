@@ -1,18 +1,21 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, Package, Wrench, Pencil, Check, X,
   Building2, MapPin, Calendar, Thermometer, Tag, StickyNote,
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
   FileText, ExternalLink, Loader2, ListChecks, Plus,
+  Camera, Image as ImageIcon, Workflow,
 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import EditableRow from '@/components/EditableRow'
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+interface MediaItem { url: string; label: string }
 
 interface EquipmentDetail {
   id: string
@@ -29,6 +32,8 @@ interface EquipmentDetail {
   specs: { label: string; value: string }[] | null
   status: string
   updated_at: string
+  photos: MediaItem[] | null
+  wiring_diagrams: MediaItem[] | null
   // joined
   stores: { name: string; address: string } | null
   pm_history: PMEntry[]
@@ -123,6 +128,11 @@ export default function EquipmentDetailPage() {
   const [documents, setDocuments] = useState<DocRow[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingDiagram, setUploadingDiagram] = useState(false)
+  const photoFileRef = useRef<HTMLInputElement>(null)
+  const diagramFileRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     async function init() {
       const supabase = getSupabaseBrowser()
@@ -183,6 +193,51 @@ export default function EquipmentDetailPage() {
       setEditingSpecs(false)
     }
     setSavingSpecs(false)
+  }
+
+  async function saveMedia(field: 'photos' | 'wiring_diagrams', items: MediaItem[]) {
+    if (!equip) return
+    setEquip(prev => prev ? { ...prev, [field]: items } : prev)
+    const payloadKey = field === 'photos' ? 'photos' : 'wiringDiagrams'
+    await fetch(`/api/equipment/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [payloadKey]: items }),
+    })
+  }
+
+  async function handleMediaUpload(field: 'photos' | 'wiring_diagrams', files: FileList | null, setUploading: (v: boolean) => void) {
+    if (!equip || !files?.length) return
+    setUploading(true)
+    const results = await Promise.all(
+      Array.from(files).map(async (file) => {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('label', '')
+        const res = await fetch('/api/upload-report-photo', { method: 'POST', body: fd })
+        if (!res.ok) return null
+        const data = await res.json()
+        return { url: data.url, label: data.label } as MediaItem
+      })
+    )
+    const newItems = results.filter((p): p is MediaItem => p !== null)
+    if (newItems.length > 0) {
+      const current = (field === 'photos' ? equip.photos : equip.wiring_diagrams) ?? []
+      await saveMedia(field, [...current, ...newItems])
+    }
+    setUploading(false)
+  }
+
+  function updateMediaLabel(field: 'photos' | 'wiring_diagrams', index: number, label: string) {
+    if (!equip) return
+    const current = (field === 'photos' ? equip.photos : equip.wiring_diagrams) ?? []
+    setEquip(prev => prev ? { ...prev, [field]: current.map((item, i) => i === index ? { ...item, label } : item) } : prev)
+  }
+
+  function removeMedia(field: 'photos' | 'wiring_diagrams', index: number) {
+    if (!equip) return
+    const current = (field === 'photos' ? equip.photos : equip.wiring_diagrams) ?? []
+    saveMedia(field, current.filter((_, i) => i !== index))
   }
 
   if (loading) return (
@@ -555,6 +610,123 @@ export default function EquipmentDetailPage() {
                       <p className="text-sm text-slate-500 truncate">{doc.title}</p>
                       <p className="text-xs text-slate-400">{processing ? 'Processing…' : doc.status}</p>
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Photos */}
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <ImageIcon size={13}/> Photos
+            </p>
+            {isAdmin && (
+              <button
+                onClick={() => photoFileRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
+              >
+                {uploadingPhoto ? <Loader2 size={12} className="animate-spin"/> : <Camera size={12}/>}
+                {uploadingPhoto ? 'Uploading…' : 'Add Photos'}
+              </button>
+            )}
+            <input ref={photoFileRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={e => { handleMediaUpload('photos', e.target.files, setUploadingPhoto); e.target.value = '' }} />
+          </div>
+          {(equip.photos ?? []).length === 0 ? (
+            <div className="px-4 py-5 text-center">
+              <ImageIcon size={20} className="text-slate-200 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400">No photos yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
+              {(equip.photos ?? []).map((p, i) => (
+                <div key={i} className="relative group">
+                  <img src={p.url} alt={p.label || `Photo ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"/>
+                  {isAdmin ? (
+                    <input
+                      value={p.label}
+                      onChange={e => updateMediaLabel('photos', i, e.target.value)}
+                      onBlur={() => saveMedia('photos', equip.photos ?? [])}
+                      placeholder="Add label…"
+                      className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
+                    />
+                  ) : p.label ? (
+                    <p className="mt-1 px-1.5 text-[11px] text-slate-500 truncate">{p.label}</p>
+                  ) : null}
+                  {isAdmin && (
+                    <button onClick={() => removeMedia('photos', i)}
+                      className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                      <X size={11}/>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Wiring Diagrams */}
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Workflow size={13}/> Wiring Diagrams
+            </p>
+            {isAdmin && (
+              <button
+                onClick={() => diagramFileRef.current?.click()}
+                disabled={uploadingDiagram}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
+              >
+                {uploadingDiagram ? <Loader2 size={12} className="animate-spin"/> : <Plus size={12}/>}
+                {uploadingDiagram ? 'Uploading…' : 'Add Diagram'}
+              </button>
+            )}
+            <input ref={diagramFileRef} type="file" accept="image/*,application/pdf" multiple className="hidden"
+              onChange={e => { handleMediaUpload('wiring_diagrams', e.target.files, setUploadingDiagram); e.target.value = '' }} />
+          </div>
+          {(equip.wiring_diagrams ?? []).length === 0 ? (
+            <div className="px-4 py-5 text-center">
+              <Workflow size={20} className="text-slate-200 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400">No wiring diagrams yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
+              {(equip.wiring_diagrams ?? []).map((d, i) => {
+                const isPdf = /\.pdf($|\?)/i.test(d.url)
+                return (
+                  <div key={i} className="relative group">
+                    {isPdf ? (
+                      <a href={d.url} target="_blank" rel="noopener noreferrer"
+                        className="w-full aspect-[4/3] flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <FileText size={22} className="text-red-400"/>
+                        <span className="text-[11px] text-blue-600">Open PDF</span>
+                      </a>
+                    ) : (
+                      <a href={d.url} target="_blank" rel="noopener noreferrer">
+                        <img src={d.url} alt={d.label || `Diagram ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"/>
+                      </a>
+                    )}
+                    {isAdmin ? (
+                      <input
+                        value={d.label}
+                        onChange={e => updateMediaLabel('wiring_diagrams', i, e.target.value)}
+                        onBlur={() => saveMedia('wiring_diagrams', equip.wiring_diagrams ?? [])}
+                        placeholder="Add label…"
+                        className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
+                      />
+                    ) : d.label ? (
+                      <p className="mt-1 px-1.5 text-[11px] text-slate-500 truncate">{d.label}</p>
+                    ) : null}
+                    {isAdmin && (
+                      <button onClick={() => removeMedia('wiring_diagrams', i)}
+                        className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                        <X size={11}/>
+                      </button>
+                    )}
                   </div>
                 )
               })}

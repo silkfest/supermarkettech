@@ -51,6 +51,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ('notes'         in body) update.notes          = body.notes
   if ('specs'         in body) update.specs          = body.specs
   if ('status'        in body) update.status         = body.status
+  if ('photos'        in body) update.photos         = body.photos
+  if ('wiringDiagrams' in body) update.wiring_diagrams = body.wiringDiagrams
 
   const { data, error } = await supabase
     .from('equipment')

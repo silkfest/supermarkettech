@@ -13,6 +13,7 @@ import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import type { ComponentRecord } from '@/app/api/components/route'
 import type { UserRole } from '@/types'
+import { findRelatedTopics } from '@/lib/knowledge/topics'
 
 // ── Type metadata ──────────────────────────────────────────────────────────────
 const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
@@ -545,7 +546,8 @@ function ComponentCard({
   const router   = useRouter()
   const [expanded, setExpanded] = useState(false)
   const meta     = TYPE_META[c.type] ?? DEFAULT_META
-  const hasExtra = c.isCatalog || !!(c.notes || c.troubleshooting)
+  const relatedTopics = findRelatedTopics(c)
+  const hasExtra = c.isCatalog || !!(c.notes || c.troubleshooting) || relatedTopics.length > 0
   const steps    = c.troubleshooting ? c.troubleshooting.split('\n').filter(s => s.trim()) : []
   const isDecom  = c.status === 'decommissioned'
 
@@ -715,6 +717,24 @@ function ComponentCard({
                         </li>
                       ))}
                     </ol>
+                  </div>
+                )}
+                {relatedTopics.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <BookOpen size={10}/> Related Knowledge
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {relatedTopics.map(t => (
+                        <button
+                          key={t.slug}
+                          onClick={() => router.push(`/knowledge/${t.slug}`)}
+                          className="text-[11px] font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                        >
+                          {t.shortTitle}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
