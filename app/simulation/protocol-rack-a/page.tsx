@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle,
-  Activity, Wind, ChevronLeft, Clock, BookOpen,
+  Wind, ChevronLeft, Clock, BookOpen, Target, Trophy, Dices,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
@@ -277,6 +277,37 @@ const SCENARIOS: Scenario[] = [
     knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
 ]
+
+// ── Mystery fault generator ─────────────────────────────────────────────────────
+// Picks 1–2 random faults (respecting mutual exclusions) plus random weather/time
+// so the rack never runs out of fresh service calls. The answer stays hidden until
+// the diagnosis is submitted.
+const MYSTERY_AMBIENTS = [5, 35, 55, 70, 85, 95]
+const MYSTERY_HOURS    = [3, 8, 14, 19, 22]
+function generateMystery(): Scenario {
+  const faultCount = Math.random() < 0.55 ? 1 : 2
+  const picked: FaultKey[] = []
+  const pool = [...FAULT_DEFS]
+  while (picked.length < faultCount && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length)
+    const def = pool.splice(idx, 1)[0]
+    if (picked.some(k => FAULT_DEFS.find(d => d.key === k)?.mutuallyExcludes?.includes(def.key) || def.mutuallyExcludes?.includes(k))) continue
+    picked.push(def.key)
+  }
+  const faults: Partial<FaultState> = {}
+  picked.forEach(k => { faults[k] = true })
+  return {
+    id: 'mystery',
+    name: 'Mystery Fault',
+    difficulty: picked.length > 1 ? 'Advanced' : 'Intermediate',
+    ambient: MYSTERY_AMBIENTS[Math.floor(Math.random() * MYSTERY_AMBIENTS.length)],
+    timeOfDay: MYSTERY_HOURS[Math.floor(Math.random() * MYSTERY_HOURS.length)],
+    description: `The rack has ${picked.length === 1 ? 'one hidden fault' : 'two hidden faults'}. No story, no hints — read the controller, work the readings, and call it like a real service visit.`,
+    faults,
+    answer: picked,
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  }
+}
 
 // ── Compute engine ─────────────────────────────────────────────────────────────
 // Design: −25 °F SST  |  Operating setpoint: −21 °F SST  |  HP control floor: 80 °F condensing
@@ -559,14 +590,23 @@ export default function ProtocolRackASimulatorPage() {
   const [timeOfDay, setTimeOfDay] = useState(14)   // 2pm default — daytime steady
   const [activeGroup, setActiveGroup] = useState<string>(FAULT_GROUPS[0])
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
-  const [scenarioRevealed, setScenarioRevealed] = useState(false)
+  const [userGuess, setUserGuess] = useState<FaultState>(INITIAL_FAULTS)
+  const [submitted, setSubmitted] = useState(false)
   const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'info'>('faults')
 
-  const result = useMemo(() => computeRack(faults, ambient, timeOfDay), [faults, ambient, timeOfDay])
+  // In a scenario the hidden scenario faults drive the sim; the Faults tab
+  // becomes the diagnosis sheet and edits userGuess instead of the live faults.
+  const inScenario   = activeScenario !== null
+  const activeFaults = useMemo(
+    () => (activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
+    [activeScenario, faults],
+  )
+  const result = useMemo(() => computeRack(activeFaults, ambient, timeOfDay), [activeFaults, ambient, timeOfDay])
   const period = loadPeriod(timeOfDay)
 
   function toggleFault(key: FaultKey) {
-    setFaults(prev => {
+    const setter = inScenario ? setUserGuess : setFaults
+    setter(prev => {
       const next = { ...prev, [key]: !prev[key] }
       const def = FAULT_DEFS.find(d => d.key === key)
       if (def?.mutuallyExcludes && !prev[key]) {
@@ -577,36 +617,55 @@ export default function ProtocolRackASimulatorPage() {
   }
 
   function loadScenario(s: Scenario) {
-    setFaults({ ...INITIAL_FAULTS, ...s.faults })
     if (s.ambient   !== undefined) setAmbient(s.ambient)
     if (s.timeOfDay !== undefined) setTimeOfDay(s.timeOfDay)
     setActiveScenario(s)
-    setScenarioRevealed(false)
+    setUserGuess(INITIAL_FAULTS)
+    setSubmitted(false)
     setActiveTab('faults')
   }
 
-  function revealScenario() {
-    if (!activeScenario || scenarioRevealed) return
-    setScenarioRevealed(true)
-    // Protocol scenarios are walkthroughs (no guess scoring) — log practice without a score
+  function exitScenario() {
+    setActiveScenario(null)
+    setUserGuess(INITIAL_FAULTS)
+    setSubmitted(false)
+  }
+
+  function submitDiagnosis() {
+    if (!activeScenario || submitted) return
+    setSubmitted(true)
+    const correct = activeScenario.answer.filter(k => userGuess[k]).length
+    const total   = activeScenario.answer.length
+    const fp      = Object.entries(userGuess).filter(([k, v]) => v && !activeScenario.answer.includes(k as FaultKey)).length
+    const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
     saveSimAttempt({
       rack: 'protocol-rack-a',
       scenarioId: activeScenario.id,
       scenarioName: activeScenario.name,
       difficulty: activeScenario.difficulty,
-      mode: 'scenario',
+      mode: activeScenario.id === 'mystery' ? 'mystery' : 'scenario',
+      score: pct, correct, total, falsePositives: fp,
     })
   }
+
+  const score = (() => {
+    if (!activeScenario || !submitted) return null
+    const correct = activeScenario.answer.filter(k => userGuess[k]).length
+    const total   = activeScenario.answer.length
+    const fp      = Object.entries(userGuess).filter(([k, v]) => v && !activeScenario.answer.includes(k as FaultKey)).length
+    const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
+    return { correct, total, fp, pct }
+  })()
 
   function resetAll() {
     setFaults(INITIAL_FAULTS)
     setAmbient(70)
     setTimeOfDay(14)
-    setActiveScenario(null)
-    setScenarioRevealed(false)
+    exitScenario()
   }
 
-  const activeFaultCount = Object.values(faults).filter(Boolean).length
+  const guessState       = inScenario ? userGuess : faults
+  const activeFaultCount = inScenario ? 0 : Object.values(faults).filter(Boolean).length
   const runningCount     = result.compRunning.filter(Boolean).length
   const loadPct          = result.loadRatio * 100
 
@@ -658,32 +717,49 @@ export default function ProtocolRackASimulatorPage() {
           <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                <Activity size={14} className="text-violet-600 dark:text-violet-400" />
+                <Target size={14} className="text-violet-600 dark:text-violet-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">{activeScenario.name}</p>
                   <span className="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400">
                     {activeScenario.difficulty}
                   </span>
+                  <button onClick={exitScenario} className="ml-auto text-[11px] text-violet-600 dark:text-violet-400 underline">Exit scenario</button>
                 </div>
                 <p className="text-sm text-violet-700 dark:text-violet-300">{activeScenario.description}</p>
-                {!scenarioRevealed ? (
-                  <button onClick={revealScenario}
-                    className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400 underline">
-                    Reveal answer
-                  </button>
-                ) : (
-                  <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded-lg">
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Active faults:</p>
+
+                {!submitted && (
+                  <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80 mt-2">
+                    Read the controller and gauges below, then mark the root cause(s) in the <strong>Your Diagnosis</strong> tab and submit.
+                  </p>
+                )}
+
+                {submitted && score && (
+                  <div className="mt-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Trophy size={14} className={score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'} />
+                      <span className={`text-sm font-bold ${score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                        Score: {score.pct}%
+                      </span>
+                      <span className="text-[10px] text-slate-500">{score.correct}/{score.total} fault{score.total > 1 ? 's' : ''} identified</span>
+                      {score.fp > 0 && <span className="text-[10px] text-red-500 dark:text-red-400">{score.fp} false positive{score.fp > 1 ? 's' : ''}</span>}
+                    </div>
                     {activeScenario.answer.map(key => {
                       const def = FAULT_DEFS.find(d => d.key === key)
-                      return def ? (
-                        <p key={key} className="text-xs text-slate-500 dark:text-slate-400">• {def.label}</p>
-                      ) : null
+                      const hit = userGuess[key]
+                      return (
+                        <div key={key} className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg ${hit ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30' : 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30'}`}>
+                          {hit ? <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" /> : <XCircle size={12} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />}
+                          <div>
+                            <span className={hit ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}>{def?.label}</span>
+                            <span className="text-slate-500 ml-1.5">— {def?.hint}</span>
+                          </div>
+                        </div>
+                      )
                     })}
                     {(activeScenario.knowledge?.length ?? 0) > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1"><BookOpen size={10}/> Read more:</span>
                         {activeScenario.knowledge!.map(k => (
                           <button key={k.slug} onClick={() => router.push(`/knowledge/${k.slug}`)}
@@ -693,6 +769,13 @@ export default function ProtocolRackASimulatorPage() {
                         ))}
                       </div>
                     )}
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
+                      {activeScenario.id === 'mystery' && (
+                        <button onClick={() => loadScenario(generateMystery())} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11}/> New Mystery</button>
+                      )}
+                      <button onClick={exitScenario} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg">Done</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1005,47 +1088,70 @@ export default function ProtocolRackASimulatorPage() {
                   activeTab === tab
                     ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-                {tab === 'faults' ? `Fault Injection${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}` : tab === 'scenarios' ? 'Scenarios' : 'Rack Info'}
+                {tab === 'faults'
+                  ? (inScenario ? '🎯 Your Diagnosis' : `Fault Injection${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`)
+                  : tab === 'scenarios' ? 'Scenarios' : 'Rack Info'}
               </button>
             ))}
           </div>
 
-          {/* Faults panel */}
+          {/* Faults panel — free-play fault injection, or diagnosis sheet in a scenario */}
           {activeTab === 'faults' && (
             <div className="p-4">
+              {inScenario && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-[180px]">
+                    Mark the root cause(s) you think are active, then submit. The readings above are driven by the hidden fault.
+                  </p>
+                  {!submitted && (
+                    <button onClick={submitDiagnosis}
+                      className="px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-shrink-0">
+                      Submit Diagnosis
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-1 flex-wrap mb-4">
                 {FAULT_GROUPS.map(g => {
                   const active = activeGroup === g
-                  const count  = FAULT_DEFS.filter(d => d.group === g && faults[d.key]).length
+                  const count  = FAULT_DEFS.filter(d => d.group === g && guessState[d.key]).length
                   return (
                     <button key={g} onClick={() => setActiveGroup(g)}
                       className={`text-xs px-3 py-1.5 rounded-full transition-colors ${
                         active
                           ? 'bg-blue-600 text-white'
                           : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
-                      {g}{count > 0 && <span className={`ml-1 font-bold ${active ? 'text-blue-200' : 'text-red-500'}`}>({count})</span>}
+                      {g}{count > 0 && <span className={`ml-1 font-bold ${active ? 'text-blue-200' : (inScenario ? 'text-blue-500' : 'text-red-500')}`}>({count})</span>}
                     </button>
                   )
                 })}
               </div>
               <div className="space-y-2">
-                {FAULT_DEFS.filter(d => d.group === activeGroup).map(def => (
-                  <label key={def.key}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      faults[def.key]
-                        ? 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/40'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-                    <input type="checkbox" checked={faults[def.key]}
-                      onChange={() => toggleFault(def.key)}
-                      className="mt-0.5 accent-red-500 flex-shrink-0" />
-                    <div>
-                      <p className={`text-sm font-medium ${faults[def.key] ? 'text-red-700 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                        {def.label}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{def.hint}</p>
-                    </div>
-                  </label>
-                ))}
+                {FAULT_DEFS.filter(d => d.group === activeGroup).map(def => {
+                  const checked  = guessState[def.key]
+                  const disabled = inScenario && submitted
+                  // Free play uses red (injecting a fault); diagnosis uses blue (marking a guess)
+                  const onCls = inScenario
+                    ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/40'
+                    : 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/40'
+                  const textCls = checked
+                    ? (inScenario ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-400')
+                    : 'text-slate-700 dark:text-slate-200'
+                  return (
+                    <label key={def.key}
+                      className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${disabled ? 'cursor-default opacity-70' : 'cursor-pointer'} ${
+                        checked ? onCls : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                      <input type="checkbox" checked={checked} disabled={disabled}
+                        onChange={() => toggleFault(def.key)}
+                        className={`mt-0.5 flex-shrink-0 ${inScenario ? 'accent-blue-600' : 'accent-red-500'}`} />
+                      <div>
+                        <p className={`text-sm font-medium ${textCls}`}>{def.label}</p>
+                        {/* Hide the diagnostic hint while diagnosing — that would give the answer away */}
+                        {!inScenario && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{def.hint}</p>}
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -1053,6 +1159,15 @@ export default function ProtocolRackASimulatorPage() {
           {/* Scenarios panel */}
           {activeTab === 'scenarios' && (
             <div className="p-4 space-y-3">
+              <button onClick={() => loadScenario(generateMystery())}
+                className="w-full text-left rounded-xl p-4 bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Dices size={15} className="flex-shrink-0" />
+                  <p className="text-sm font-semibold">Mystery Fault</p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-white/20">Random</span>
+                </div>
+                <p className="text-xs text-violet-100">1–2 random hidden faults, random weather and time of day. Infinite replays — every call is a fresh diagnosis.</p>
+              </button>
               {SCENARIOS.map(s => (
                 <div key={s.id}
                   className={`rounded-xl border p-4 cursor-pointer transition-all ${
