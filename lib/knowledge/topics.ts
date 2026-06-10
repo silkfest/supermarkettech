@@ -649,9 +649,8 @@ export function findRelatedTopics(
   const manufacturer = (component.manufacturer ?? '').toLowerCase()
   const model        = (component.model ?? '').toLowerCase()
   const type         = (component.type ?? '').toLowerCase()
-  const systemArea   = (component.systemArea ?? '').toLowerCase()
 
-  if (!manufacturer && !model && !type && !systemArea) return []
+  if (!manufacturer && !model && !type) return []
 
   const matches: RelatedTopicMatch[] = []
   for (const topic of TOPICS) {
@@ -659,11 +658,12 @@ export function findRelatedTopics(
       const k = kw.toLowerCase()
       return (!!manufacturer && manufacturer.includes(k)) || (!!model && model.includes(k))
     })
-    const tagHit = !kwHit && topic.tags.some(tag => {
-      const t = tag.toLowerCase()
-      return (!!type && (type.includes(t) || t.includes(type))) ||
-             (!!systemArea && (systemArea.includes(t) || t.includes(systemArea)))
-    })
+    // Exact (case-insensitive) match only — substring matching let generic tags like
+    // "Rack" match unrelated types like "Rack Controller" (e.g. Temprite suggested for
+    // a Danfoss controller just because both relate to "Rack"). systemArea is excluded
+    // entirely since nearly every component's area is "Rack", making it too generic to
+    // be a useful signal here.
+    const tagHit = !kwHit && topic.tags.some(tag => !!type && type === tag.toLowerCase())
     if (kwHit || tagHit) {
       matches.push({ slug: topic.slug, title: topic.title, shortTitle: topic.shortTitle, iconName: topic.iconName, colorClass: topic.colorClass })
       if (matches.length >= limit) break
