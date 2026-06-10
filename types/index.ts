@@ -114,6 +114,12 @@ export interface ComponentLink {
   manualTitle: string
 }
 
+export interface AnnouncementAck {
+  user_id: string
+  acknowledged_at: string
+  users?: { name: string } | null
+}
+
 export interface Announcement {
   id: string
   title: string
@@ -121,7 +127,12 @@ export interface Announcement {
   created_by: string | null
   created_at: string
   updated_at: string
+  pinned: boolean
+  requires_ack: boolean
   users?: { name: string } | null
+  acknowledged_by_me?: boolean
+  acknowledgements?: AnnouncementAck[]
+  total_active_users?: number
 }
 
 export interface ChatMessage {

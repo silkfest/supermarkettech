@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   Home, FileText, Plus, Pencil, Trash2, ExternalLink,
   Loader2, X, AlertTriangle, Users, Lock, Phone, Mail,
-  ChevronDown, ChevronUp, GripVertical, Shield, Megaphone,
+  ChevronDown, ChevronUp, GripVertical, Shield, Megaphone, Pin, PinOff, CheckCircle2,
 } from 'lucide-react'
 import type { Announcement } from '@/types'
 import {
@@ -176,8 +176,10 @@ function PolicyModal({ initial, onSave, onClose }: {
 function AnnouncementModal({ initial, onSave, onClose }: {
   initial?: Announcement | null; onSave: (a: Announcement) => void; onClose: () => void
 }) {
-  const [title,   setTitle]   = useState(initial?.title   ?? '')
-  const [content, setContent] = useState(initial?.content ?? '')
+  const [title,       setTitle]       = useState(initial?.title        ?? '')
+  const [content,     setContent]     = useState(initial?.content      ?? '')
+  const [pinned,      setPinned]      = useState(initial?.pinned       ?? false)
+  const [requiresAck, setRequiresAck] = useState(initial?.requires_ack ?? false)
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
 
@@ -189,7 +191,7 @@ function AnnouncementModal({ initial, onSave, onClose }: {
     const res = await fetch(endpoint, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content, pinned, requires_ack: requiresAck }),
     })
     setSaving(false)
     if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
@@ -212,6 +214,16 @@ function AnnouncementModal({ initial, onSave, onClose }: {
           <div>
             <label className={lbl}>Message *</label>
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} className={inp} placeholder="Write the announcement…" />
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} className="rounded border-slate-300 dark:border-slate-600" />
+              Pin to top of dashboard
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={requiresAck} onChange={e => setRequiresAck(e.target.checked)} className="rounded border-slate-300 dark:border-slate-600" />
+              Require everyone to acknowledge they&apos;ve read it
+            </label>
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
@@ -549,6 +561,25 @@ export default function CompanyHubPage() {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   }
 
+  const [expandedAckId, setExpandedAckId] = useState<string | null>(null)
+
+  async function togglePin(a: Announcement) {
+    const res = await fetch(`/api/announcements/${a.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned: !a.pinned }),
+    })
+    if (!res.ok) return
+    const saved = await res.json()
+    setAnnouncements(prev => {
+      const updated = prev.map(x => x.id === saved.id ? saved : x)
+      return [...updated].sort((x, y) => {
+        if (x.pinned !== y.pinned) return x.pinned ? -1 : 1
+        return new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
+      })
+    })
+  }
+
   // ── Policies state ────────────────────────────────────────────────────────────
   const [policies,      setPolicies]      = useState<Policy[]>([])
   const [polLoading,    setPolLoading]    = useState(true)
@@ -815,32 +846,70 @@ export default function CompanyHubPage() {
 
           {!annLoading && announcements.length > 0 && (
             <div className="space-y-2">
-              {announcements.map(a => (
-                <div key={a.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Megaphone size={16} className="text-blue-600 dark:text-blue-400"/>
+              {announcements.map(a => {
+                const ackCount = a.acknowledgements?.length ?? 0
+                const ackExpanded = expandedAckId === a.id
+                return (
+                <div key={a.id} className={`bg-white dark:bg-slate-900 border rounded-xl px-4 py-3.5 ${a.pinned ? 'border-blue-300 dark:border-blue-700' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {a.pinned ? <Pin size={16} className="text-blue-600 dark:text-blue-400"/> : <Megaphone size={16} className="text-blue-600 dark:text-blue-400"/>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{a.title}</p>
+                        {a.pinned && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800">Pinned</span>
+                        )}
+                        {a.requires_ack && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30">Acknowledgement required</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{a.content}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                        {a.users?.name ? `${a.users.name} · ` : ''}{formatAnnDate(a.created_at)}
+                      </p>
+                    </div>
+                    {isManager && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => togglePin(a)} title={a.pinned ? 'Unpin' : 'Pin to top of dashboard'}
+                          className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors">
+                          {a.pinned ? <PinOff size={13}/> : <Pin size={13}/>}
+                        </button>
+                        <button onClick={() => { setEditingAnnouncement(a); setShowAnnouncementModal(true) }}
+                          className="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                          <Pencil size={13}/>
+                        </button>
+                        <button onClick={() => deleteAnnouncement(a.id)} disabled={deletingAnnId === a.id}
+                          className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40">
+                          {deletingAnnId === a.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{a.title}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap mt-0.5">{a.content}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
-                      {a.users?.name ? `${a.users.name} · ` : ''}{formatAnnDate(a.created_at)}
-                    </p>
-                  </div>
-                  {isManager && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => { setEditingAnnouncement(a); setShowAnnouncementModal(true) }}
-                        className="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                        <Pencil size={13}/>
+
+                  {isManager && a.requires_ack && (
+                    <div className="mt-2.5 ml-12">
+                      <button onClick={() => setExpandedAckId(ackExpanded ? null : a.id)}
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+                        <CheckCircle2 size={12}/>
+                        Acknowledged by {ackCount}{a.total_active_users ? ` of ${a.total_active_users}` : ''}
+                        {ackExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
                       </button>
-                      <button onClick={() => deleteAnnouncement(a.id)} disabled={deletingAnnId === a.id}
-                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40">
-                        {deletingAnnId === a.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
-                      </button>
+                      {ackExpanded && (
+                        <div className="mt-1.5 space-y-1">
+                          {ackCount === 0 && <p className="text-[11px] text-slate-400 dark:text-slate-500">No one has acknowledged yet.</p>}
+                          {a.acknowledgements?.map(ack => (
+                            <p key={ack.user_id} className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {ack.users?.name ?? 'Unknown user'} · {formatAnnDate(ack.acknowledged_at)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
