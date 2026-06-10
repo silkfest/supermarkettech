@@ -7,8 +7,10 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   Home, FileText, Plus, Pencil, Trash2, ExternalLink,
   Loader2, X, AlertTriangle, Users, Lock, Phone, Mail,
-  ChevronDown, ChevronUp, GripVertical, Shield,
+  ChevronDown, ChevronUp, GripVertical, Shield, Megaphone, Pin, PinOff, CheckCircle2,
+  MessageSquareWarning, Lightbulb, Bug,
 } from 'lucide-react'
+import type { Announcement, AppFeedback } from '@/types'
 import {
   DndContext, DragEndEvent, PointerSensor,
   useSensor, useSensors, closestCenter,
@@ -164,6 +166,73 @@ function PolicyModal({ initial, onSave, onClose }: {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">
             {saving && <Loader2 size={13} className="animate-spin"/>}
             {saving ? 'Saving…' : initial ? 'Update' : 'Add'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Announcement modal ─────────────────────────────────────────────────────────
+function AnnouncementModal({ initial, onSave, onClose }: {
+  initial?: Announcement | null; onSave: (a: Announcement) => void; onClose: () => void
+}) {
+  const [title,       setTitle]       = useState(initial?.title        ?? '')
+  const [content,     setContent]     = useState(initial?.content      ?? '')
+  const [pinned,      setPinned]      = useState(initial?.pinned       ?? false)
+  const [requiresAck, setRequiresAck] = useState(initial?.requires_ack ?? false)
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+
+  async function handleSave() {
+    if (!title.trim() || !content.trim()) { setError('Title and message are required'); return }
+    setSaving(true); setError('')
+    const method   = initial ? 'PATCH' : 'POST'
+    const endpoint = initial ? `/api/announcements/${initial.id}` : '/api/announcements'
+    const res = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, pinned, requires_ack: requiresAck }),
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+    onSave(await res.json())
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{initial ? 'Edit Announcement' : 'New Announcement'}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={18}/></button>
+        </div>
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-lg">{error}</div>}
+          <div>
+            <label className={lbl}>Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="e.g. Holiday Schedule Update" />
+          </div>
+          <div>
+            <label className={lbl}>Message *</label>
+            <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} className={inp} placeholder="Write the announcement…" />
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} className="rounded border-slate-300 dark:border-slate-600" />
+              Pin to top of dashboard
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={requiresAck} onChange={e => setRequiresAck(e.target.checked)} className="rounded border-slate-300 dark:border-slate-600" />
+              Require everyone to acknowledge they&apos;ve read it
+            </label>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 rounded-lg">Cancel</button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">
+            {saving && <Loader2 size={13} className="animate-spin"/>}
+            {saving ? 'Saving…' : initial ? 'Update' : 'Post'}
           </button>
         </div>
       </div>
@@ -424,14 +493,15 @@ function SortableSection({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CompanyHubPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'policies' | 'contacts'>('policies')
+  const [activeTab, setActiveTab] = useState<'announcements' | 'policies' | 'contacts' | 'feedback'>('policies')
   const [isAdmin,   setIsAdmin]   = useState(false)
   const [isManager, setIsManager] = useState(false)
 
   // Read ?tab= URL param on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('tab') === 'contacts') setActiveTab('contacts')
+    const tab = params.get('tab')
+    if (tab === 'contacts' || tab === 'announcements' || tab === 'feedback') setActiveTab(tab)
   }, [])
 
   // Auth
@@ -447,6 +517,102 @@ export default function CompanyHubPage() {
     }
     checkAuth()
   }, [router])
+
+  // ── Announcements state ───────────────────────────────────────────────────────
+  const [announcements,      setAnnouncements]      = useState<Announcement[]>([])
+  const [annLoading,         setAnnLoading]         = useState(true)
+  const [annError,           setAnnError]           = useState<string | null>(null)
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+  const [editingAnnouncement,   setEditingAnnouncement]   = useState<Announcement | null>(null)
+  const [deletingAnnId,      setDeletingAnnId]      = useState<string | null>(null)
+
+  const loadAnnouncements = useCallback(async () => {
+    setAnnLoading(true); setAnnError(null)
+    try {
+      const res = await fetch('/api/announcements')
+      if (!res.ok) throw new Error('Failed')
+      setAnnouncements(await res.json())
+    } catch {
+      setAnnError('Could not load announcements. Check your connection and try again.')
+    }
+    setAnnLoading(false)
+  }, [])
+
+  useEffect(() => { loadAnnouncements() }, [loadAnnouncements])
+
+  async function deleteAnnouncement(id: string) {
+    if (!confirm('Delete this announcement?')) return
+    setDeletingAnnId(id)
+    await fetch(`/api/announcements/${id}`, { method: 'DELETE' })
+    setAnnouncements(prev => prev.filter(a => a.id !== id))
+    setDeletingAnnId(null)
+  }
+
+  function handleAnnouncementSaved(saved: Announcement) {
+    if (editingAnnouncement) {
+      setAnnouncements(prev => prev.map(a => a.id === saved.id ? saved : a))
+    } else {
+      setAnnouncements(prev => [saved, ...prev])
+    }
+    setShowAnnouncementModal(false)
+    setEditingAnnouncement(null)
+  }
+
+  function formatAnnDate(d: string) {
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  const [expandedAckId, setExpandedAckId] = useState<string | null>(null)
+
+  async function togglePin(a: Announcement) {
+    const res = await fetch(`/api/announcements/${a.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned: !a.pinned }),
+    })
+    if (!res.ok) return
+    const saved = await res.json()
+    setAnnouncements(prev => {
+      const updated = prev.map(x => x.id === saved.id ? saved : x)
+      return [...updated].sort((x, y) => {
+        if (x.pinned !== y.pinned) return x.pinned ? -1 : 1
+        return new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
+      })
+    })
+  }
+
+  // ── Feedback state (admin/manager only) ───────────────────────────────────────
+  const [feedbackItems,  setFeedbackItems]  = useState<AppFeedback[]>([])
+  const [fbLoading,      setFbLoading]      = useState(true)
+  const [fbError,        setFbError]        = useState<string | null>(null)
+  const [fbFilter,       setFbFilter]       = useState<'all' | 'open' | 'reviewed'>('open')
+
+  const loadFeedback = useCallback(async () => {
+    setFbLoading(true); setFbError(null)
+    try {
+      const res = await fetch('/api/app-feedback')
+      if (!res.ok) throw new Error('Failed')
+      setFeedbackItems(await res.json())
+    } catch {
+      setFbError('Could not load feedback. Check your connection and try again.')
+    }
+    setFbLoading(false)
+  }, [])
+
+  useEffect(() => { if (isManager) loadFeedback() }, [isManager, loadFeedback])
+
+  async function setFeedbackStatus(id: string, status: 'open' | 'reviewed') {
+    const res = await fetch(`/api/app-feedback/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) return
+    const saved = await res.json()
+    setFeedbackItems(prev => prev.map(f => f.id === saved.id ? saved : f))
+  }
+
+  const visibleFeedback = feedbackItems.filter(f => fbFilter === 'all' || f.status === fbFilter)
 
   // ── Policies state ────────────────────────────────────────────────────────────
   const [policies,      setPolicies]      = useState<Policy[]>([])
@@ -595,6 +761,10 @@ export default function CompanyHubPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
 
       {/* Modals */}
+      {(showAnnouncementModal || editingAnnouncement) && (
+        <AnnouncementModal initial={editingAnnouncement} onSave={handleAnnouncementSaved}
+          onClose={() => { setShowAnnouncementModal(false); setEditingAnnouncement(null) }} />
+      )}
       {(showPolicyModal || editingPolicy) && (
         <PolicyModal initial={editingPolicy} onSave={handlePolicySaved}
           onClose={() => { setShowPolicyModal(false); setEditingPolicy(null) }} />
@@ -621,6 +791,12 @@ export default function CompanyHubPage() {
         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Company Hub</span>
 
         {/* Contextual add button */}
+        {activeTab === 'announcements' && isManager && (
+          <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
+            <Plus size={13}/> New Announcement
+          </button>
+        )}
         {activeTab === 'policies' && isAdmin && (
           <button onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
@@ -646,6 +822,16 @@ export default function CompanyHubPage() {
       {/* Tab selector */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 flex items-center gap-0.5">
         <button
+          onClick={() => setActiveTab('announcements')}
+          className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
+            activeTab === 'announcements'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Megaphone size={12}/> Announcements
+        </button>
+        <button
           onClick={() => setActiveTab('policies')}
           className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
             activeTab === 'policies'
@@ -665,7 +851,118 @@ export default function CompanyHubPage() {
         >
           <Users size={12}/> Contact Directory
         </button>
+        {isManager && (
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === 'feedback'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <MessageSquareWarning size={12}/> Feedback
+            {feedbackItems.some(f => f.status === 'open') && (
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            )}
+          </button>
+        )}
       </div>
+
+      {/* ── Announcements tab ── */}
+      {activeTab === 'announcements' && (
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-3">
+          {annError && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+              <AlertTriangle size={15} className="flex-shrink-0"/>
+              <span className="flex-1">{annError}</span>
+              <button onClick={loadAnnouncements} className="font-medium underline hover:no-underline">Retry</button>
+            </div>
+          )}
+
+          {annLoading && (
+            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
+              <Loader2 size={16} className="animate-spin"/> Loading…
+            </div>
+          )}
+
+          {!annLoading && !annError && announcements.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <Megaphone size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No announcements yet.</p>
+              {isManager && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;New Announcement&rdquo; in the header to post the first one.</p>}
+            </div>
+          )}
+
+          {!annLoading && announcements.length > 0 && (
+            <div className="space-y-2">
+              {announcements.map(a => {
+                const ackCount = a.acknowledgements?.length ?? 0
+                const ackExpanded = expandedAckId === a.id
+                return (
+                <div key={a.id} className={`bg-white dark:bg-slate-900 border rounded-xl px-4 py-3.5 ${a.pinned ? 'border-blue-300 dark:border-blue-700' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {a.pinned ? <Pin size={16} className="text-blue-600 dark:text-blue-400"/> : <Megaphone size={16} className="text-blue-600 dark:text-blue-400"/>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{a.title}</p>
+                        {a.pinned && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800">Pinned</span>
+                        )}
+                        {a.requires_ack && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30">Acknowledgement required</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{a.content}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                        {a.users?.name ? `${a.users.name} · ` : ''}{formatAnnDate(a.created_at)}
+                      </p>
+                    </div>
+                    {isManager && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => togglePin(a)} title={a.pinned ? 'Unpin' : 'Pin to top of dashboard'}
+                          className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors">
+                          {a.pinned ? <PinOff size={13}/> : <Pin size={13}/>}
+                        </button>
+                        <button onClick={() => { setEditingAnnouncement(a); setShowAnnouncementModal(true) }}
+                          className="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                          <Pencil size={13}/>
+                        </button>
+                        <button onClick={() => deleteAnnouncement(a.id)} disabled={deletingAnnId === a.id}
+                          className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40">
+                          {deletingAnnId === a.id ? <Loader2 size={13} className="animate-spin"/> : <Trash2 size={13}/>}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isManager && a.requires_ack && (
+                    <div className="mt-2.5 ml-12">
+                      <button onClick={() => setExpandedAckId(ackExpanded ? null : a.id)}
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+                        <CheckCircle2 size={12}/>
+                        Acknowledged by {ackCount}{a.total_active_users ? ` of ${a.total_active_users}` : ''}
+                        {ackExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                      </button>
+                      {ackExpanded && (
+                        <div className="mt-1.5 space-y-1">
+                          {ackCount === 0 && <p className="text-[11px] text-slate-400 dark:text-slate-500">No one has acknowledged yet.</p>}
+                          {a.acknowledgements?.map(ack => (
+                            <p key={ack.user_id} className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {ack.users?.name ?? 'Unknown user'} · {formatAnnDate(ack.acknowledged_at)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )})}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Policies tab ── */}
       {activeTab === 'policies' && (
@@ -839,6 +1136,72 @@ export default function CompanyHubPage() {
                 </div>
               </SortableContext>
             </DndContext>
+          )}
+        </div>
+      )}
+
+      {/* ── Feedback tab (admin/manager only) ── */}
+      {activeTab === 'feedback' && isManager && (
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(['open', 'reviewed', 'all'] as const).map(f => (
+              <button key={f} onClick={() => setFbFilter(f)}
+                className={`text-xs px-3 py-1 rounded-full border font-medium capitalize ${fbFilter === f ? 'bg-slate-800 text-white border-slate-800' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {fbError && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+              <AlertTriangle size={15} className="flex-shrink-0"/>
+              <span className="flex-1">{fbError}</span>
+              <button onClick={loadFeedback} className="font-medium underline hover:no-underline">Retry</button>
+            </div>
+          )}
+
+          {fbLoading && (
+            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
+              <Loader2 size={16} className="animate-spin"/> Loading…
+            </div>
+          )}
+
+          {!fbLoading && !fbError && visibleFeedback.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <MessageSquareWarning size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No {fbFilter !== 'all' ? fbFilter : ''} feedback.</p>
+            </div>
+          )}
+
+          {!fbLoading && visibleFeedback.length > 0 && (
+            <div className="space-y-2">
+              {visibleFeedback.map(f => (
+                <div key={f.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 mt-0.5 ${f.type === 'bug' ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'}`}>
+                    {f.type === 'bug' ? <Bug size={16} className="text-red-600 dark:text-red-400"/> : <Lightbulb size={16} className="text-blue-600 dark:text-blue-400"/>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${f.type === 'bug' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30' : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800'}`}>
+                        {f.type}
+                      </span>
+                      {f.status === 'reviewed' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30">Reviewed</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{f.message}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                      {f.users?.name ?? 'Unknown user'} · {formatAnnDate(f.created_at)}
+                    </p>
+                  </div>
+                  <button onClick={() => setFeedbackStatus(f.id, f.status === 'open' ? 'reviewed' : 'open')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 flex-shrink-0">
+                    {f.status === 'open' ? <CheckCircle2 size={12}/> : <ChevronUp size={12}/>}
+                    {f.status === 'open' ? 'Mark reviewed' : 'Mark open'}
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

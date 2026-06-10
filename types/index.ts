@@ -114,6 +114,40 @@ export interface ComponentLink {
   manualTitle: string
 }
 
+export interface AnnouncementAck {
+  user_id: string
+  acknowledged_at: string
+  users?: { name: string } | null
+}
+
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  pinned: boolean
+  requires_ack: boolean
+  users?: { name: string } | null
+  acknowledged_by_me?: boolean
+  acknowledgements?: AnnouncementAck[]
+  total_active_users?: number
+}
+
+export type AppFeedbackType = 'suggestion' | 'bug'
+export type AppFeedbackStatus = 'open' | 'reviewed'
+
+export interface AppFeedback {
+  id: string
+  type: AppFeedbackType
+  message: string
+  created_by: string | null
+  status: AppFeedbackStatus
+  created_at: string
+  users?: { name: string } | null
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
