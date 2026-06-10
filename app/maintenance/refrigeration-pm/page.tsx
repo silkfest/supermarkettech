@@ -228,15 +228,48 @@ function findCompressorCount(specs: EquipmentSpec[] | null): number | null {
   return spec ? parseLeadingInt(spec.value, 2, 8) : null
 }
 
+/** Finds the compressor manufacturer — either a dedicated "Compressor Manufacturer" spec, or
+ *  parsed from the "Compressors" summary spec (e.g. "4 total — 1× Bitzer 4FE-28-5PU (lead) + ...") */
+function findCompressorManufacturer(specs: EquipmentSpec[] | null): string {
+  const direct = findSpec(specs, 'compressor', 'manufacturer')
+  if (direct) return direct
+  if (!specs) return ''
+  const spec = specs.find(s => s.label.toLowerCase().includes('compressor') && /^\d+\s*total\b/i.test(s.value))
+  const match = spec?.value.match(/\d+\s*[×x]\s*([A-Za-z]+)/)
+  return match ? match[1] : ''
+}
+
+/** Pulls per-compressor model/serial from specs labelled "Compressor <n> — <model>" with a
+ *  value containing "S/N <serial>" (cataloging convention — see CLAUDE.md). Returns
+ *  arrays sized for createArr8(), so they can be assigned straight onto a UnitData. */
+function findCompressorDetails(specs: EquipmentSpec[] | null): { models: string[]; serials: string[] } {
+  const models = createArr8()
+  const serials = createArr8()
+  if (!specs) return { models, serials }
+  for (const s of specs) {
+    const labelMatch = s.label.match(/^Compressor\s+(\d+)\s*[—-]\s*(.+)$/i)
+    if (!labelMatch) continue
+    const idx = parseInt(labelMatch[1], 10) - 1
+    if (idx < 0 || idx >= models.length) continue
+    models[idx] = labelMatch[2].trim()
+    const serialMatch = s.value.match(/S\/N\s*([A-Za-z0-9-]+)/i)
+    if (serialMatch) serials[idx] = serialMatch[1]
+  }
+  return { models, serials }
+}
+
 /** Best-effort pre-fill of a rack tab from a linked equipment record — fields left blank when the spec sheet doesn't have a confident match (tech fills those in on site) */
 function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
   const base = createRack()
   const specs = e.specs
+  const { models, serials } = findCompressorDetails(specs)
   return {
     ...base,
     tabDisplayName: e.name,
     rackManufacturer: e.manufacturer ?? '',
-    compressorManufacturer: findSpec(specs, 'compressor', 'manufacturer') ?? '',
+    compressorManufacturer: findCompressorManufacturer(specs),
+    compressorModels: models,
+    compressorSerials: serials,
     refrigerant: normaliseRefrigerant(e.refrigerant),
     rackType: findRackType(specs),
     compressorCount: findCompressorCount(specs) ?? base.compressorCount,
