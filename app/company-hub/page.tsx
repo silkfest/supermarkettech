@@ -8,8 +8,9 @@ import {
   Home, FileText, Plus, Pencil, Trash2, ExternalLink,
   Loader2, X, AlertTriangle, Users, Lock, Phone, Mail,
   ChevronDown, ChevronUp, GripVertical, Shield, Megaphone, Pin, PinOff, CheckCircle2,
+  MessageSquareWarning, Lightbulb, Bug,
 } from 'lucide-react'
-import type { Announcement } from '@/types'
+import type { Announcement, AppFeedback } from '@/types'
 import {
   DndContext, DragEndEvent, PointerSensor,
   useSensor, useSensors, closestCenter,
@@ -492,7 +493,7 @@ function SortableSection({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CompanyHubPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'announcements' | 'policies' | 'contacts'>('policies')
+  const [activeTab, setActiveTab] = useState<'announcements' | 'policies' | 'contacts' | 'feedback'>('policies')
   const [isAdmin,   setIsAdmin]   = useState(false)
   const [isManager, setIsManager] = useState(false)
 
@@ -500,7 +501,7 @@ export default function CompanyHubPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tab = params.get('tab')
-    if (tab === 'contacts' || tab === 'announcements') setActiveTab(tab)
+    if (tab === 'contacts' || tab === 'announcements' || tab === 'feedback') setActiveTab(tab)
   }, [])
 
   // Auth
@@ -579,6 +580,39 @@ export default function CompanyHubPage() {
       })
     })
   }
+
+  // ── Feedback state (admin/manager only) ───────────────────────────────────────
+  const [feedbackItems,  setFeedbackItems]  = useState<AppFeedback[]>([])
+  const [fbLoading,      setFbLoading]      = useState(true)
+  const [fbError,        setFbError]        = useState<string | null>(null)
+  const [fbFilter,       setFbFilter]       = useState<'all' | 'open' | 'reviewed'>('open')
+
+  const loadFeedback = useCallback(async () => {
+    setFbLoading(true); setFbError(null)
+    try {
+      const res = await fetch('/api/app-feedback')
+      if (!res.ok) throw new Error('Failed')
+      setFeedbackItems(await res.json())
+    } catch {
+      setFbError('Could not load feedback. Check your connection and try again.')
+    }
+    setFbLoading(false)
+  }, [])
+
+  useEffect(() => { if (isManager) loadFeedback() }, [isManager, loadFeedback])
+
+  async function setFeedbackStatus(id: string, status: 'open' | 'reviewed') {
+    const res = await fetch(`/api/app-feedback/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) return
+    const saved = await res.json()
+    setFeedbackItems(prev => prev.map(f => f.id === saved.id ? saved : f))
+  }
+
+  const visibleFeedback = feedbackItems.filter(f => fbFilter === 'all' || f.status === fbFilter)
 
   // ── Policies state ────────────────────────────────────────────────────────────
   const [policies,      setPolicies]      = useState<Policy[]>([])
@@ -817,6 +851,21 @@ export default function CompanyHubPage() {
         >
           <Users size={12}/> Contact Directory
         </button>
+        {isManager && (
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === 'feedback'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <MessageSquareWarning size={12}/> Feedback
+            {feedbackItems.some(f => f.status === 'open') && (
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* ── Announcements tab ── */}
@@ -1087,6 +1136,72 @@ export default function CompanyHubPage() {
                 </div>
               </SortableContext>
             </DndContext>
+          )}
+        </div>
+      )}
+
+      {/* ── Feedback tab (admin/manager only) ── */}
+      {activeTab === 'feedback' && isManager && (
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(['open', 'reviewed', 'all'] as const).map(f => (
+              <button key={f} onClick={() => setFbFilter(f)}
+                className={`text-xs px-3 py-1 rounded-full border font-medium capitalize ${fbFilter === f ? 'bg-slate-800 text-white border-slate-800' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {fbError && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+              <AlertTriangle size={15} className="flex-shrink-0"/>
+              <span className="flex-1">{fbError}</span>
+              <button onClick={loadFeedback} className="font-medium underline hover:no-underline">Retry</button>
+            </div>
+          )}
+
+          {fbLoading && (
+            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
+              <Loader2 size={16} className="animate-spin"/> Loading…
+            </div>
+          )}
+
+          {!fbLoading && !fbError && visibleFeedback.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <MessageSquareWarning size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No {fbFilter !== 'all' ? fbFilter : ''} feedback.</p>
+            </div>
+          )}
+
+          {!fbLoading && visibleFeedback.length > 0 && (
+            <div className="space-y-2">
+              {visibleFeedback.map(f => (
+                <div key={f.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 mt-0.5 ${f.type === 'bug' ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'}`}>
+                    {f.type === 'bug' ? <Bug size={16} className="text-red-600 dark:text-red-400"/> : <Lightbulb size={16} className="text-blue-600 dark:text-blue-400"/>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${f.type === 'bug' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30' : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800'}`}>
+                        {f.type}
+                      </span>
+                      {f.status === 'reviewed' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30">Reviewed</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{f.message}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                      {f.users?.name ?? 'Unknown user'} · {formatAnnDate(f.created_at)}
+                    </p>
+                  </div>
+                  <button onClick={() => setFeedbackStatus(f.id, f.status === 'open' ? 'reviewed' : 'open')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 flex-shrink-0">
+                    {f.status === 'open' ? <CheckCircle2 size={12}/> : <ChevronUp size={12}/>}
+                    {f.status === 'open' ? 'Mark reviewed' : 'Mark open'}
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

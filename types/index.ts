@@ -135,6 +135,19 @@ export interface Announcement {
   total_active_users?: number
 }
 
+export type AppFeedbackType = 'suggestion' | 'bug'
+export type AppFeedbackStatus = 'open' | 'reviewed'
+
+export interface AppFeedback {
+  id: string
+  type: AppFeedbackType
+  message: string
+  created_by: string | null
+  status: AppFeedbackStatus
+  created_at: string
+  users?: { name: string } | null
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'

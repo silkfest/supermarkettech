@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   MessageSquare, BookOpen, FileText, Cpu, ClipboardList, ShieldCheck,
   GraduationCap, ChevronRight, ArrowRight, Thermometer, CheckCircle2,
-  Library, Brain, Wrench, Users, Zap, Lock,
+  Library, Brain, Wrench, Users, Zap, Lock, Megaphone, MessageSquareWarning,
 } from 'lucide-react'
 
 // ── Section data ──────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ interface SubFeature {
   title: string
   description: string
   href: string
+  beta?: boolean
 }
 
 interface Section {
@@ -48,7 +49,7 @@ const SECTIONS: Section[] = [
     tagline: 'Hands-on practice and structured learning',
     body: 'Technicians can build fault-finding skills on a simulated rack before touching live equipment. The rack simulator presents realistic fault scenarios — high suction, head pressure issues, compressor faults — and walks through diagnosis interactively. Managers can create and assign training courses, track completion, and use the knowledge base as a structured reference library for apprentices working through refrigeration fundamentals and system-specific topics.',
     features: [
-      { title: 'Rack Simulator', description: 'Practice diagnosing faults on a simulated system. No live equipment, no risk.', href: '/simulation' },
+      { title: 'Rack Simulator', description: 'Practice diagnosing faults on a simulated system. No live equipment, no risk.', href: '/simulation', beta: true },
       { title: 'Knowledge Base', description: 'Structured technical reference covering refrigeration fundamentals, manufacturer specs, and field procedures.', href: '/knowledge' },
       { title: 'Courses', description: 'Create and assign training courses, track completion, and build a structured learning path for your team.', href: '/apprentice/training' },
     ],
@@ -63,6 +64,7 @@ const SECTIONS: Section[] = [
     features: [
       { title: 'Service Reports', description: 'Log findings, parts, and time. Reports stored permanently under each piece of equipment.', href: '/maintenance' },
       { title: 'PM Checklists', description: 'Structured preventive maintenance checklists — completed on phone, signed off digitally.', href: '/maintenance' },
+      { title: 'Sites', description: 'Per-store view of equipment, trending issues, and PM history. Currently available to admins.', href: '/stores', beta: true },
     ],
   },
   {
@@ -71,11 +73,13 @@ const SECTIONS: Section[] = [
     color: 'amber',
     title: 'Policies & Procedures',
     tagline: 'Company documents, always current, always accessible',
-    body: "No more digging through emails — store all your company procedures, safety protocols, and compliance documents in one place. Includes store procedures (with seasonal ones pinnable to the top), an on-call schedule where trades can be requested and accepted by technicians, and a truck stock list so everyone knows what should be on each van. Managers can update anything instantly and everyone sees the latest version.",
+    body: "No more digging through emails — store all your company procedures, safety protocols, and compliance documents in one place. Includes store procedures (with seasonal ones pinnable to the top), an on-call schedule where trades can be requested and accepted by technicians, and a truck stock list so everyone knows what should be on each van. Company-wide announcements and the contact directory live here too, so managers can update anything instantly and everyone sees the latest version.",
     features: [
       { title: 'Store Procedures', description: 'SOPs and safety protocols — pin seasonal procedures to the top so the right info is always front and centre.', href: '/policies' },
       { title: 'On-Call Schedule', description: 'Post the on-call roster and let technicians request or accept trades directly in the app.', href: '/policies' },
       { title: 'Truck Stock List', description: 'Keep a standard parts list for each van so every technician knows exactly what they should be carrying.', href: '/policies' },
+      { title: 'Announcements', description: 'Managers post company-wide updates that show right on the dashboard — pin important ones and require a read acknowledgement.', href: '/company-hub?tab=announcements' },
+      { title: 'Contact Directory', description: 'Find phone numbers and emails for managers, vendors, and emergency contacts in one place.', href: '/company-hub?tab=contacts' },
     ],
   },
   {
@@ -114,7 +118,14 @@ function FeatureCard({ feature, color }: { feature: SubFeature; color: string })
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className={`text-sm font-semibold text-slate-900 dark:text-slate-100 group-hover:${c.text} transition-colors mb-1`}>{feature.title}</p>
+          <div className="flex items-center gap-1.5 mb-1">
+            <p className={`text-sm font-semibold text-slate-900 dark:text-slate-100 group-hover:${c.text} transition-colors`}>{feature.title}</p>
+            {feature.beta && (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30 uppercase tracking-wide">
+                Beta
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{feature.description}</p>
         </div>
         <ChevronRight size={14} className="flex-shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 mt-0.5 transition-colors" />
@@ -293,6 +304,28 @@ export default function WelcomePage() {
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">
                 ColdIQ is designed to connect to Simpro, the job management platform many refrigeration companies already use. A future integration would let maintenance reports created in ColdIQ flow directly into Simpro job cards — eliminating double entry — and pull asset data and scheduled work orders back into ColdIQ. This is a planned capability as the platform grows.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Feedback callout */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <MessageSquareWarning size={20} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Got an idea or found a bug?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mb-3">
+                ColdIQ is actively evolving — if there's a feature that would make your day easier, or something isn't working right, let us know directly.
+              </p>
+              <button
+                onClick={() => router.push('/feedback')}
+                className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                Send Feedback
+                <ArrowRight size={14} />
+              </button>
             </div>
           </div>
         </div>
