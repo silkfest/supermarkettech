@@ -23,6 +23,16 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getSupabaseServer()
   const body = await req.json()
+
+  // Users can add certs for themselves; admins/managers can add for anyone
+  if (body.userId !== user.id) {
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+    const role = (profile as { role?: string } | null)?.role ?? ''
+    if (!['admin', 'manager'].includes(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   const { data, error } = await supabase
     .from('tech_certifications')
     .insert({

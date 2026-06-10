@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { requireRole } from '@/lib/api/auth'
 
 export async function POST(req: NextRequest) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
   const supabase = getSupabaseServer()
 
   const formData  = await req.formData()

@@ -201,6 +201,7 @@ export default function ChatHistoryPage() {
   const [sessions, setSessions]         = useState<Session[]>([])
   const [loading, setLoading]           = useState(true)
   const [clearingAll, setClearingAll]   = useState(false)
+  const [canClearAll, setCanClearAll]   = useState(false)
   const [search, setSearch]             = useState('')
   const [filterMode, setFilterMode]     = useState<'all' | 'EXPERT' | 'MAINTENANCE'>('all')
 
@@ -209,6 +210,11 @@ export default function ChatHistoryPage() {
       const sb = getSupabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
+
+      // Clearing all history affects every user's sessions — managers/admins only
+      const { data: profile } = await sb.from('users').select('role').eq('id', user.id).single()
+      const role = (profile as { role?: string } | null)?.role
+      setCanClearAll(role === 'admin' || role === 'manager')
 
       const res = await fetch('/api/chat/sessions')
       if (res.ok) setSessions(await res.json())
@@ -286,7 +292,7 @@ export default function ChatHistoryPage() {
                 </button>
               ))}
             </div>
-            {sessions.length > 0 && (
+            {sessions.length > 0 && canClearAll && (
               <button
                 onClick={handleClearAll}
                 disabled={clearingAll}
