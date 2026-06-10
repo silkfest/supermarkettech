@@ -114,6 +114,16 @@ export interface ComponentLink {
   manualTitle: string
 }
 
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  users?: { name: string } | null
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'

@@ -8,6 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import Sidebar from '@/components/layout/Sidebar'
 import ChatPanel from '@/components/chat/ChatPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
+import AnnouncementBanner from '@/components/announcements/AnnouncementBanner'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import {
   Menu, MessageSquare, WrenchIcon, AlertTriangle, BookOpen, UserCircle, Moon, Sun,
@@ -305,10 +306,13 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <div className="flex-1 min-w-0">
-                <Suspense>
-                  <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
-                </Suspense>
+              <div className="flex-1 min-w-0 flex flex-col min-h-0">
+                <AnnouncementBanner />
+                <div className="flex-1 min-h-0">
+                  <Suspense>
+                    <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
+                  </Suspense>
+                </div>
               </div>
             </>
           )}
