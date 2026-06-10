@@ -1072,7 +1072,16 @@ export default function ComponentRegistryPage() {
           model={manualTarget.model}
           equipmentId={manualTarget.equipmentId ?? undefined}
           onClose={() => setManualTarget(null)}
-          onLinked={() => { setManualTarget(null); fetchAll() }}
+          onLinked={async (doc) => {
+            if (manualTarget?.isCatalog && manualTarget.catalogId) {
+              await fetch('/api/components', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: manualTarget.catalogId, documentId: doc.id, manualTitle: doc.title }),
+              }).catch(() => {})
+            }
+            setManualTarget(null); fetchAll()
+          }}
         />
       )}
       {showAdd && <AddComponentModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); fetchAll() }}/>}
