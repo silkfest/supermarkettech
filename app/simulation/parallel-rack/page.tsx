@@ -1017,7 +1017,7 @@ function ReadingRow({ label, value, sub, dot, color, note, tooltip }: ReadingRow
 interface CardProps { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string; accent?: string }
 function Card({ title, icon, children, className = '', accent = 'bg-slate-200 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700' }: CardProps) {
   return (
-    <div className={`bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden ${className}`}>
+    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden ${className}`}>
       <div className={`flex items-center gap-2 px-3 py-2 border-b ${accent}`}>
         <span className="text-slate-500 dark:text-slate-400">{icon}</span>
         <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{title}</span>
@@ -1214,58 +1214,58 @@ export default function SimulationPage() {
   const cleanCondensingPsig = Math.round(toGauge(ptBubble(Math.max(activeOat + 15, hpCtrlSatTemp), pt)))
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
 
       {/* ── Header ── */}
-      <div className="safe-top flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 flex-wrap z-10">
-        <button onClick={() => router.push('/simulation')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors" title="Back to rack selection">
-          <ChevronLeft size={16}/>
+      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/simulation')}
+          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700" title="Back to rack selection">
+          <ChevronLeft size={20} />
         </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <h1 className="text-sm font-semibold text-slate-900 dark:text-white"><span className="hidden sm:inline">Hussmann Parallel Rack · </span>{rackConfig.refrigerant} · MT + LT</h1>
-            <span className="hidden sm:inline text-[10px] text-slate-500">4 × Copeland Scroll MT + 2 × Booster LT</span>
-          </div>
-          <p className="text-[10px] text-slate-500 hidden md:block">
-            MT: {mtSatSetpoint.toFixed(1)}°F SST ({rackConfig.mtSuctionPsig} psig) · LT: {ltSatSetpoint.toFixed(1)}°F SST ({rackConfig.ltSuctionPsig} psig) · HP ctrl: {rackConfig.hpCtrlPsig} psig · OAT: <span className={oatColor}>{activeOat} °F</span>
-          </p>
+        <div className="flex items-baseline gap-0.5">
+          <span className="text-lg font-bold text-blue-400">Cold</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
         </div>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">Parallel Rack — MT + LT</span>
 
-        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
 
-        {!scenarioMode && activeFaultCount > 0 && (
-          <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 px-2 py-1 rounded-full">
-            {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
-          </span>
-        )}
+          {!scenarioMode && activeFaultCount > 0 && (
+            <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+              {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
+            </span>
+          )}
 
-        <button
-          onClick={diagnoseInColdIQ}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-          title="Send current readings snapshot to ColdIQ Expert chat"
-        >
-          <MessageSquare size={12}/><span className="hidden sm:inline"> Diagnose</span>
-        </button>
-
-        <button
-          onClick={scenarioMode ? exitScenarioMode : enterScenarioMode}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-            scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 border-slate-300 dark:border-slate-600'
-          }`}
-          title={scenarioMode ? 'Exit Scenario Mode' : 'Scenario Mode'}
-        >
-          <Target size={12}/><span className="hidden sm:inline"> {scenarioMode ? 'Exit Scenario' : 'Scenario'}</span>
-        </button>
-
-        {!scenarioMode && (
           <button
-            onClick={resetAll}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700"
-            title="Reset all faults"
+            onClick={diagnoseInColdIQ}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            title="Send current readings snapshot to ColdIQ Expert chat"
           >
-            <RotateCcw size={12}/><span className="hidden sm:inline"> Reset</span>
+            <MessageSquare size={12}/><span className="hidden sm:inline"> Diagnose</span>
           </button>
-        )}
+
+          <button
+            onClick={scenarioMode ? exitScenarioMode : enterScenarioMode}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
+            }`}
+            title={scenarioMode ? 'Exit Scenario Mode' : 'Scenario Mode'}
+          >
+            <Target size={12}/><span className="hidden sm:inline"> {scenarioMode ? 'Exit Scenario' : 'Scenario'}</span>
+          </button>
+
+          {!scenarioMode && (
+            <button
+              onClick={resetAll}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-600"
+              title="Reset all faults"
+            >
+              <RotateCcw size={12}/><span className="hidden sm:inline"> Reset</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Learning tab bar ── */}
@@ -1283,8 +1283,8 @@ export default function SimulationPage() {
         )}
 
         {/* ── Left panel — fault injection / diagnosis ── */}
-        <div className={`${showFaults ? 'flex' : 'hidden'} md:flex flex-col fixed inset-y-0 left-0 w-72 z-30 md:relative md:inset-auto md:w-56 lg:w-60 md:flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 overflow-y-auto`}>
-          <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-slate-100 dark:bg-slate-800 z-10">
+        <div className={`${showFaults ? 'flex' : 'hidden'} md:flex flex-col fixed inset-y-0 left-0 w-72 z-30 md:relative md:inset-auto md:w-56 lg:w-60 md:flex-shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 overflow-y-auto`}>
+          <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-800 z-10">
             <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {scenarioMode ? '🎯 Your Diagnosis' : 'Fault Injection'}
             </span>
@@ -1469,7 +1469,7 @@ export default function SimulationPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* Tab bar */}
-          <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 flex bg-slate-100 dark:bg-slate-800">
+          <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 flex bg-white dark:bg-slate-800">
             <button onClick={() => setDiagTab('sim')}
               className={`flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${diagTab === 'sim' ? 'text-blue-400 border-blue-500' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 border-transparent'}`}>
               🔧 Fault Simulator
@@ -1532,7 +1532,7 @@ export default function SimulationPage() {
             <div className="flex-1 md:overflow-y-auto p-4 space-y-4 pb-24 md:pb-4">
 
               {/* Derived values */}
-              <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-200 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
                   <Activity size={13} className="text-slate-500 dark:text-slate-400"/>
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Calculated Values</span>
@@ -1603,7 +1603,7 @@ export default function SimulationPage() {
               </div>
 
               {/* Findings */}
-              <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-200 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
                   <AlertTriangle size={13} className="text-slate-500 dark:text-slate-400"/>
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Findings</span>
@@ -1659,7 +1659,7 @@ export default function SimulationPage() {
             <div className="max-w-4xl mx-auto space-y-3">
 
             {/* ── OAT Slider ── */}
-            <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Thermometer size={13} className="text-slate-500 dark:text-slate-400"/>
@@ -1737,7 +1737,7 @@ export default function SimulationPage() {
                     </button>
                     {SCENARIOS.map(s => (
                       <button key={s.id} onClick={() => loadScenario(s)}
-                        className="w-full text-left px-3 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors">
+                        className="w-full text-left px-3 py-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-medium text-slate-900 dark:text-white">{s.name}</span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
@@ -1780,7 +1780,7 @@ export default function SimulationPage() {
                     </div>
 
                     {submitted && score && (
-                      <div className="mt-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="mt-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                         <div className="flex items-center gap-2">
                           <Trophy size={14} className={score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}/>
                           <span className={`text-sm font-bold ${score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -1834,7 +1834,7 @@ export default function SimulationPage() {
 
             {/* ── Active alarms ── */}
             {allAlarms.length > 0 && (
-              <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-200 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
                   <AlertTriangle size={13} className="text-amber-400"/>
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Active Alarms</span>
@@ -2075,7 +2075,7 @@ export default function SimulationPage() {
 
               {!scenarioMode ? (
                 <div className="space-y-3">
-                  <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Instructor mode — reveal active faults</p>
                       <p className="text-[10px] text-slate-500">Use after trainee gives their diagnosis</p>
@@ -2088,7 +2088,7 @@ export default function SimulationPage() {
                     </button>
                   </div>
                   {revealFaults && (
-                    <div className="bg-slate-100 dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
+                    <div className="bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
                       <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Active faults · OAT {activeOat} °F</p>
                       {activeFaultCount === 0 ? (
                         <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
@@ -2106,7 +2106,7 @@ export default function SimulationPage() {
                   )}
                 </div>
               ) : (
-                <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-center">
                   <p className="text-[10px] text-slate-500 text-center leading-relaxed">
                     Instructor reveal disabled in scenario mode.<br/>Exit scenario mode to use it.
                   </p>
