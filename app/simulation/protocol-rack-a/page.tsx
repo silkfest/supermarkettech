@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Wind, ChevronLeft, Clock, BookOpen, Target, Trophy, Dices,
+  Eye, EyeOff, SlidersHorizontal,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── R-448A P-T data (psia) — Honeywell Solstice N40 / Opteon XP40 ─────────────
@@ -54,9 +56,160 @@ function ptInterpReverse(psig: number, tbl: [number, number][]): number {
   return tbl[0][0]
 }
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
-const bubblePsig  = (t: number) => toGauge(ptInterp(t, R448A_BUBBLE))
-const dewPsig     = (t: number) => toGauge(ptInterp(t, R448A_DEW))
-const dewTempFrom = (psig: number) => ptInterpReverse(psig, R448A_DEW)
+const bubblePsig     = (t: number) => toGauge(ptInterp(t, R448A_BUBBLE))
+const dewPsig        = (t: number) => toGauge(ptInterp(t, R448A_DEW))
+const dewTempFrom    = (psig: number) => ptInterpReverse(psig, R448A_DEW)
+const bubbleTempFrom = (psig: number) => ptInterpReverse(psig, R448A_BUBBLE)
+
+// ── Field Readings diagnostic ─────────────────────────────────────────────────
+// Enter measured values from the rack → derived calcs + a findings list, tailored
+// to this single-temp R-448A LT rack with EVI scrolls + demand cooling.
+const FIELD_EMPTY = {
+  oat: '', suctionPsig: '', suctionTemp: '',
+  dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
+  drierInTemp: '', drierOutTemp: '',
+}
+type FieldReadings = typeof FIELD_EMPTY
+
+const FIELD_DEFS: FieldDef[] = [
+  { key: 'oat',            label: 'Outdoor Ambient (OAT)', unit: '°F',   placeholder: 'e.g. 75', section: 'Environment' },
+  { key: 'suctionPsig',    label: 'Suction Pressure',      unit: 'psig', placeholder: 'e.g. 9',  hint: 'rack suction header', section: 'Suction Side' },
+  { key: 'suctionTemp',    label: 'Suction Line Temp',     unit: '°F',   placeholder: 'e.g. -9', hint: 'pipe temp at rack' },
+  { key: 'dischargePsig',  label: 'Discharge Pressure',    unit: 'psig', placeholder: 'e.g. 235', hint: 'rack discharge header', section: 'Discharge Side' },
+  { key: 'dischargeTemp',  label: 'Discharge Line Temp',   unit: '°F',   placeholder: 'e.g. 165', hint: 'pipe temp at discharge' },
+  { key: 'liquidLineTemp', label: 'Liquid Line Temp',      unit: '°F',   placeholder: 'e.g. 95', hint: 'after condenser / receiver', section: 'Liquid Line' },
+  { key: 'drierInTemp',    label: 'Drier Inlet Temp',      unit: '°F',   placeholder: 'e.g. 96', section: 'Filter Drier (optional)' },
+  { key: 'drierOutTemp',   label: 'Drier Outlet Temp',     unit: '°F',   placeholder: 'e.g. 94', hint: 'ΔT > 3°F = restriction' },
+]
+
+function analyzeField(r: FieldReadings, opSST: number): { derived: DerivedRow[]; findings: Finding[] } {
+  const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  const oat            = num(r.oat)
+  const suctionPsig    = num(r.suctionPsig)
+  const suctionTemp    = num(r.suctionTemp)
+  const dischargePsig  = num(r.dischargePsig)
+  const dischargeTemp  = num(r.dischargeTemp)
+  const liquidLineTemp = num(r.liquidLineTemp)
+  const drierInTemp    = num(r.drierInTemp)
+  const drierOutTemp   = num(r.drierOutTemp)
+
+  const condensingSatTemp = dischargePsig !== null ? bubbleTempFrom(dischargePsig) : null
+  const suctionSatTemp    = suctionPsig !== null ? dewTempFrom(suctionPsig) : null
+  const suctionSH         = suctionSatTemp !== null && suctionTemp !== null ? suctionTemp - suctionSatTemp : null
+  const subcooling        = condensingSatTemp !== null && liquidLineTemp !== null ? condensingSatTemp - liquidLineTemp : null
+  const dischargeSH       = condensingSatTemp !== null && dischargeTemp !== null ? dischargeTemp - condensingSatTemp : null
+  const approachDelta     = condensingSatTemp !== null && oat !== null ? condensingSatTemp - oat : null
+  const drierDeltaT       = drierInTemp !== null && drierOutTemp !== null ? drierInTemp - drierOutTemp : null
+  const compRatio         = dischargePsig !== null && suctionPsig !== null ? (dischargePsig + 14.696) / (suctionPsig + 14.696) : null
+  const setpointPsig      = dewPsig(opSST)
+  const suctionDev        = suctionPsig !== null ? suctionPsig - setpointPsig : null
+
+  const findings: Finding[] = []
+
+  if (approachDelta !== null) {
+    if (approachDelta > 32)
+      findings.push({ severity: 'critical', label: 'Very high approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal ~20°F)`,
+        causes: ['Badly fouled condenser coil', 'Multiple condenser fans failed', 'Non-condensables in system'],
+        checks: ['Wash condenser coil', 'Verify all fans spinning at full speed', 'Compare discharge psig vs PT — a gap = non-condensables'] })
+    else if (approachDelta > 26)
+      findings.push({ severity: 'warning', label: 'Elevated approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal ~20°F)`,
+        causes: ['Partial condenser fouling', 'One fan failed or at reduced speed'],
+        checks: ['Inspect condenser coil', 'Check fan amp draw and blade condition'] })
+  }
+
+  if (dischargeTemp !== null && dischargeTemp > 225)
+    findings.push({ severity: 'critical', label: 'Discharge temp at EVI limit', measurement: `${Math.round(dischargeTemp)}°F (limit ~225°F)`,
+      causes: ['Demand cooling (liquid injection) failed', 'High compression ratio', 'Very high suction superheat'],
+      checks: ['Verify demand cooling solenoid + liquid feed to intermediate stage', 'Check discharge temp sensor accuracy', 'Address compression-ratio root cause'] })
+  else if (dischargeSH !== null && dischargeSH > 90)
+    findings.push({ severity: 'warning', label: 'High discharge superheat', measurement: `${dischargeSH.toFixed(0)}°F above condensing sat`,
+      causes: ['Demand cooling injecting weakly', 'High suction superheat', 'High compression ratio'],
+      checks: ['Confirm demand cooling is functioning', 'Correlate with suction superheat'] })
+
+  if (suctionSH !== null) {
+    if (suctionSH > 30)
+      findings.push({ severity: 'critical', label: 'Very high suction superheat', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Undercharge', 'TXV(s) not feeding', 'Filter drier restricted', 'Liquid line restriction'],
+        checks: ['Check subcooling and sight glass', 'Measure drier in/out ΔT', 'Inspect TXV bulbs and external equalizers'] })
+    else if (suctionSH > 20)
+      findings.push({ severity: 'warning', label: 'High suction superheat', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Moderate undercharge', 'TXV hunting', 'Partial drier restriction', 'Low load'],
+        checks: ['Check subcooling — if low, suspect undercharge', 'Measure drier ΔT'] })
+    else if (suctionSH < 5)
+      findings.push({ severity: 'warning', label: 'Low suction superheat — floodback risk', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Overcharge', 'TXV overfeeding', 'Defrost stuck on'],
+        checks: ['Check subcooling — if high, suspect overcharge', 'Verify defrost termination'] })
+  }
+
+  if (subcooling !== null) {
+    if (subcooling < 3)
+      findings.push({ severity: 'critical', label: 'Near-zero subcooling — flash gas', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Undercharge', 'Restricted filter drier', 'Head pressure too low'],
+        checks: ['Check sight glass for bubbles', 'Measure drier ΔT', 'Weigh refrigerant charge'] })
+    else if (subcooling < 8)
+      findings.push({ severity: 'warning', label: 'Low subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Marginal charge', 'Partial drier restriction'],
+        checks: ['Inspect sight glass', 'Measure drier in/out ΔT'] })
+    else if (subcooling > 28)
+      findings.push({ severity: 'warning', label: 'High subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Overcharge', 'Low ambient — liquid backing up in condenser'],
+        checks: ['Check OAT — if low with HP ctrl active, may be normal', 'If high OAT + high SC, recover excess charge'] })
+  }
+
+  if (drierDeltaT !== null) {
+    if (drierDeltaT > 6)
+      findings.push({ severity: 'critical', label: 'Filter drier severely restricted', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core saturated with moisture/debris', 'Drier icing'],
+        checks: ['Replace drier core', 'Vacuum and recharge if moisture confirmed'] })
+    else if (drierDeltaT > 3)
+      findings.push({ severity: 'warning', label: 'Filter drier showing restriction', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core partially saturated'],
+        checks: ['Plan drier core replacement', 'Monitor sight glass downstream'] })
+  }
+
+  if (suctionDev !== null && Math.abs(suctionDev) > 4)
+    findings.push({ severity: 'warning',
+      label: suctionDev > 0 ? 'Suction above setpoint' : 'Suction below setpoint',
+      measurement: `${suctionPsig!.toFixed(1)} psig vs ${setpointPsig.toFixed(1)} psig (${opSST}°F SST)`,
+      causes: suctionDev > 0 ? ['Excess load', 'Defrost stuck on', 'Compressor(s) down', 'TXV overfeeding'] : ['Undercharge', 'TXVs starved', 'Low load'],
+      checks: suctionDev > 0 ? ['Check compressor staging and defrost status', 'Verify suction setpoint on controller'] : ['Check subcooling and sight glass', 'Verify TXVs feeding'] })
+
+  if (compRatio !== null && compRatio > 12)
+    findings.push({ severity: 'warning', label: 'High compression ratio', measurement: `${compRatio.toFixed(2)} : 1`,
+      causes: ['Low suction combined with elevated discharge'],
+      checks: ['Address suction and head root causes — a high ratio stresses scroll valves and raises discharge temp'] })
+
+  const hasData = [dischargePsig, suctionPsig, liquidLineTemp, suctionTemp].some(v => v !== null)
+  if (findings.length === 0 && hasData)
+    findings.push({ severity: 'ok', label: 'No significant deviations found', measurement: '',
+      causes: [], checks: ['Readings appear within normal range for this rack — enter more measurements for a fuller picture'] })
+
+  const derived: DerivedRow[] = [
+    { label: 'Condensing sat temp', value: condensingSatTemp, unit: '°F sat' },
+    { label: 'Suction sat temp', value: suctionSatTemp, unit: '°F sat' },
+    { label: 'Suction superheat', value: suctionSH, unit: '°F',
+      note: suctionSH !== null && suctionSH > 20 ? 'HIGH' : suctionSH !== null && suctionSH < 5 ? 'LOW' : undefined,
+      color: suctionSH !== null && (suctionSH > 20 || suctionSH < 5) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Subcooling', value: subcooling, unit: '°F',
+      note: subcooling !== null && subcooling < 3 ? 'FLASH GAS' : subcooling !== null && subcooling < 8 ? 'LOW' : undefined,
+      color: subcooling !== null && subcooling < 8 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Discharge superheat', value: dischargeSH, dec: 0, unit: '°F',
+      note: dischargeSH !== null && dischargeSH > 90 ? 'HIGH' : undefined,
+      color: dischargeSH !== null && dischargeSH > 90 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Approach ΔT', value: approachDelta, unit: '°F',
+      note: approachDelta !== null && approachDelta > 26 ? 'ELEVATED' : undefined,
+      color: approachDelta !== null && approachDelta > 26 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      tooltip: 'Condensing sat temp minus OAT. Protocol racks run a higher baseline (~20°F) than typical. Elevated values point to a dirty coil, failed fans, or non-condensables.' },
+    { label: 'Compression ratio', value: compRatio, dec: 2, unit: ': 1',
+      note: compRatio !== null && compRatio > 12 ? 'HIGH' : undefined,
+      color: compRatio !== null && compRatio > 12 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Filter drier ΔT', value: drierDeltaT, unit: '°F',
+      note: drierDeltaT !== null && drierDeltaT > 3 ? 'RESTRICTED' : undefined,
+      color: drierDeltaT !== null && drierDeltaT > 3 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+  ]
+
+  return { derived, findings }
+}
 
 // ── Compressor specs ───────────────────────────────────────────────────────────
 // Hussmann Protocol Rack — Unit A — Fortino's Mall Rd
@@ -337,7 +490,7 @@ interface RackResult {
   alarms: Alarm[]
 }
 
-function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackResult {
+function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: number = OPERATING_SST, hpMin: number = HP_CTRL_MIN): RackResult {
   const period = loadPeriod(timeOfDay)
 
   // ── Demand cooling ─────────────────────────────────────────────────────────
@@ -351,8 +504,8 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackRes
   if (fansFailed === 2) approach += 24
 
   const rawCond = ambient + approach
-  const hpCtrl  = rawCond < HP_CTRL_MIN
-  let condensing = Math.max(rawCond, HP_CTRL_MIN)
+  const hpCtrl  = rawCond < hpMin
+  let condensing = Math.max(rawCond, hpMin)
   if (f.overcharge) condensing += 14
 
   // ── Charge effects ─────────────────────────────────────────────────────────
@@ -460,7 +613,7 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackRes
     else             sstDev = (ratio - 1.0) * 3
   }
 
-  const sst            = OPERATING_SST + sstDev
+  const sst            = opSST + sstDev
   const suctionPsig    = dewPsig(sst)
   const suctionGasTemp = sst + suctionSH
 
@@ -592,7 +745,20 @@ export default function ProtocolRackASimulatorPage() {
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
   const [userGuess, setUserGuess] = useState<FaultState>(INITIAL_FAULTS)
   const [submitted, setSubmitted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'info'>('faults')
+  const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'field' | 'info'>('faults')
+
+  // Adjustable rack settings (controller setpoints)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [opSST, setOpSST]   = useState(OPERATING_SST)  // operating saturated suction setpoint
+  const [hpMin, setHpMin]   = useState(HP_CTRL_MIN)    // HP control condensing floor
+
+  // Field Readings diagnostic
+  const [fieldReadings, setFieldReadings] = useState<FieldReadings>(FIELD_EMPTY)
+  const updateField = (key: string, val: string) => setFieldReadings(prev => ({ ...prev, [key]: val }))
+  const fieldAnalysis = useMemo(() => analyzeField(fieldReadings, opSST), [fieldReadings, opSST])
+
+  // Instructor reveal (free-play only)
+  const [instructorReveal, setInstructorReveal] = useState(false)
 
   // In a scenario the hidden scenario faults drive the sim; the Faults tab
   // becomes the diagnosis sheet and edits userGuess instead of the live faults.
@@ -601,7 +767,7 @@ export default function ProtocolRackASimulatorPage() {
     () => (activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
     [activeScenario, faults],
   )
-  const result = useMemo(() => computeRack(activeFaults, ambient, timeOfDay), [activeFaults, ambient, timeOfDay])
+  const result = useMemo(() => computeRack(activeFaults, ambient, timeOfDay, opSST, hpMin), [activeFaults, ambient, timeOfDay, opSST, hpMin])
   const period = loadPeriod(timeOfDay)
 
   function toggleFault(key: FaultKey) {
@@ -661,6 +827,7 @@ export default function ProtocolRackASimulatorPage() {
     setFaults(INITIAL_FAULTS)
     setAmbient(70)
     setTimeOfDay(14)
+    setInstructorReveal(false)
     exitScenario()
   }
 
@@ -889,6 +1056,42 @@ export default function ProtocolRackASimulatorPage() {
           </div>
         </div>
 
+        {/* Rack settings — adjustable controller setpoints */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <button onClick={() => setSettingsOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+            <SlidersHorizontal size={14} className="text-slate-400 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Settings</span>
+            <span className="text-[10px] text-slate-400 ml-1 truncate">{opSST}°F SST · HP floor {hpMin}°F</span>
+            <span className={`ml-auto text-slate-400 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {settingsOpen && (
+            <div className="px-4 pb-4 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Operating SST setpoint</span>
+                  <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">{opSST}°F · {dewPsig(opSST).toFixed(1)} psig</span>
+                </div>
+                <input type="range" min={-30} max={-10} step={1} value={opSST}
+                  onChange={e => setOpSST(Number(e.target.value))} className="w-full accent-emerald-500" />
+                <p className="text-[9px] text-slate-400 mt-0.5">Design −25°F · default −21°F. Lower SST = colder cases but higher compression ratio.</p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">HP control floor</span>
+                  <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-400">{hpMin}°F · {bubblePsig(hpMin).toFixed(0)} psig</span>
+                </div>
+                <input type="range" min={70} max={95} step={1} value={hpMin}
+                  onChange={e => setHpMin(Number(e.target.value))} className="w-full accent-amber-500" />
+                <p className="text-[9px] text-slate-400 mt-0.5">Minimum condensing the controller holds. Default 80°F — fans cycle to maintain this floor.</p>
+              </div>
+              <div className="sm:col-span-2">
+                <button onClick={() => { setOpSST(OPERATING_SST); setHpMin(HP_CTRL_MIN) }}
+                  className="text-[10px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2">Reset to defaults</button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Alarms */}
         {result.alarms.length > 0 && (
           <div className="space-y-1.5">
@@ -1082,7 +1285,7 @@ export default function ProtocolRackASimulatorPage() {
         {/* Bottom tab panel */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
           <div className="flex border-b border-slate-200 dark:border-slate-700">
-            {(['faults', 'scenarios', 'info'] as const).map(tab => (
+            {(['faults', 'scenarios', 'field', 'info'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2.5 text-xs font-medium transition-colors capitalize ${
                   activeTab === tab
@@ -1090,7 +1293,7 @@ export default function ProtocolRackASimulatorPage() {
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
                 {tab === 'faults'
                   ? (inScenario ? '🎯 Your Diagnosis' : `Fault Injection${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`)
-                  : tab === 'scenarios' ? 'Scenarios' : 'Rack Info'}
+                  : tab === 'scenarios' ? 'Scenarios' : tab === 'field' ? '📋 Field Readings' : 'Rack Info'}
               </button>
             ))}
           </div>
@@ -1153,6 +1356,57 @@ export default function ProtocolRackASimulatorPage() {
                   )
                 })}
               </div>
+
+              {/* Instructor reveal — free-play only */}
+              {!inScenario && (
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5">
+                        <Eye size={13} className="text-slate-400" /> Instructor mode
+                      </p>
+                      <p className="text-[10px] text-slate-500">Reveal active faults + expected effects after a trainee gives their diagnosis</p>
+                    </div>
+                    <button onClick={() => setInstructorReveal(v => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${instructorReveal ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                      {instructorReveal ? <><EyeOff size={12}/> Hide faults</> : <><Eye size={12}/> Reveal faults</>}
+                    </button>
+                  </div>
+                  {instructorReveal && (
+                    <div className="mt-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
+                      <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Active faults · OAT {ambient}°F · {formatHour(timeOfDay)}</p>
+                      {activeFaultCount === 0 ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
+                            <div key={d.key} className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-300">
+                              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-blue-500" />
+                              <div><span className="font-medium">{d.label}</span><span className="text-blue-600/70 dark:text-blue-400/60 ml-1.5">— {d.hint}</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Field readings analyzer */}
+          {activeTab === 'field' && (
+            <div className="p-4">
+              <FieldReadingsPanel
+                fields={FIELD_DEFS}
+                values={fieldReadings}
+                onChange={updateField}
+                onClear={() => setFieldReadings(FIELD_EMPTY)}
+                derived={fieldAnalysis.derived}
+                findings={fieldAnalysis.findings}
+                footnote={`Analysis uses operating setpoint ${opSST}°F SST (${dewPsig(opSST).toFixed(1)} psig) — adjust in Rack Settings. R-448A PT data.`}
+                intro="Enter what you measure at the rack — leave blanks for values you haven’t taken. The analyzer computes superheat, subcooling, approach ΔT and compression ratio, then flags likely issues."
+              />
             </div>
           )}
 

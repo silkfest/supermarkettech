@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle, Wind,
   ChevronLeft, Thermometer, Gauge, Target, Trophy, Dices, BookOpen, Snowflake,
+  Eye, EyeOff, SlidersHorizontal, ClipboardList,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── R-744 (CO2) saturation P-T data ───────────────────────────────────────────
@@ -109,7 +111,7 @@ interface RackResult {
 }
 
 // ── Compute engine ────────────────────────────────────────────────────────────
-function computeRack(f: FaultState, oat: number): RackResult {
+function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: number = LT_SST, flashSet: number = FLASH_TANK_SET): RackResult {
   // Gas cooler approach — base + fouling/fan faults
   let approach = BASE_APPROACH
   if (f.gcFouled) approach += 12
@@ -135,7 +137,7 @@ function computeRack(f: FaultState, oat: number): RackResult {
   if (f.hpvStuckOpen)   headPsig = Math.max(headPsig - 130, transcritical ? 1000 : satPsig(Math.max(oat, 50)))
 
   // Flash tank / receiver
-  let flashPsig = satPsig(FLASH_TANK_SET)
+  let flashPsig = satPsig(flashSet)
   if (f.hpvStuckOpen)    flashPsig += 85
   if (f.fgbvStuckClosed) flashPsig += 75
   if (f.fgbvStuckOpen)   flashPsig -= 45
@@ -145,7 +147,7 @@ function computeRack(f: FaultState, oat: number): RackResult {
   const rvMarginPsig = RV_LIFT_PSIG - flashPsig
 
   // MT circuit
-  let mtSuctionPsig = satPsig(MT_SST)
+  let mtSuctionPsig = satPsig(mtSet)
   let mtSH = 14
   if (f.mtComp1Failed)  { mtSuctionPsig += 28 }
   if (f.fgbvStuckOpen)  { mtSuctionPsig += 30; mtSH += 3 }
@@ -155,7 +157,7 @@ function computeRack(f: FaultState, oat: number): RackResult {
   const mtSSTnow = satTempF(mtSuctionPsig)
 
   // LT circuit — LT compressors discharge into the MT suction header
-  let ltSuctionPsig = satPsig(LT_SST)
+  let ltSuctionPsig = satPsig(ltSet)
   let ltSH = 12
   if (f.ltComp1Failed)  { ltSuctionPsig += 32 }
   if (f.ltDefrostStuck) { ltSuctionPsig += 20 }
@@ -331,6 +333,149 @@ function generateMystery(): Scenario {
   }
 }
 
+// ── Field Readings diagnostic ───────────────────────────────────────────────────
+// Enter measured values from a transcritical CO2 booster → derived calcs + findings.
+const CO2_FIELD_EMPTY = {
+  oat: '', gcOutletTemp: '', headPsig: '',
+  flashPsig: '', mtSuctionPsig: '', mtSuctionTemp: '',
+  ltSuctionPsig: '', ltSuctionTemp: '',
+}
+type Co2FieldReadings = typeof CO2_FIELD_EMPTY
+
+const CO2_FIELD_DEFS: FieldDef[] = [
+  { key: 'oat',           label: 'Outdoor Ambient (OAT)',     unit: '°F',   placeholder: 'e.g. 85',   section: 'Environment' },
+  { key: 'gcOutletTemp',  label: 'Gas cooler outlet temp',    unit: '°F',   placeholder: 'e.g. 90',   hint: 'refrigerant leaving the gas cooler', section: 'High Side' },
+  { key: 'headPsig',      label: 'Gas cooler / head pressure',unit: 'psig', placeholder: 'e.g. 1300' },
+  { key: 'flashPsig',     label: 'Flash tank pressure',       unit: 'psig', placeholder: 'e.g. 530',  hint: 'receiver pressure', section: 'Flash Tank' },
+  { key: 'mtSuctionPsig', label: 'MT suction pressure',       unit: 'psig', placeholder: 'e.g. 420',  section: 'MT Circuit' },
+  { key: 'mtSuctionTemp', label: 'MT suction line temp',      unit: '°F',   placeholder: 'e.g. 35' },
+  { key: 'ltSuctionPsig', label: 'LT suction pressure',       unit: 'psig', placeholder: 'e.g. 190',  section: 'LT Circuit' },
+  { key: 'ltSuctionTemp', label: 'LT suction line temp',      unit: '°F',   placeholder: 'e.g. -10' },
+]
+
+function analyzeCo2Field(r: Co2FieldReadings, mtSet: number, ltSet: number, flashSet: number): { derived: DerivedRow[]; findings: Finding[] } {
+  const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  const oat      = num(r.oat)
+  const gcOutlet = num(r.gcOutletTemp)
+  const headPsig = num(r.headPsig)
+  const flashPsig = num(r.flashPsig)
+  const mtPsig   = num(r.mtSuctionPsig)
+  const mtTemp   = num(r.mtSuctionTemp)
+  const ltPsig   = num(r.ltSuctionPsig)
+  const ltTemp   = num(r.ltSuctionTemp)
+
+  const optimalHead = gcOutlet !== null && gcOutlet >= 80
+    ? (() => { const tC = (gcOutlet - 32) / 1.8; return Math.max((2.7 * tC + 6.1) * 14.5 - 14.7, 1080) })()
+    : null
+  const headDev    = headPsig !== null && optimalHead !== null ? headPsig - optimalHead : null
+  const gcApproach = gcOutlet !== null && oat !== null ? gcOutlet - oat : null
+  const mtSST      = mtPsig !== null ? satTempF(mtPsig) : null
+  const mtSH       = mtSST !== null && mtTemp !== null ? mtTemp - mtSST : null
+  const ltSST      = ltPsig !== null ? satTempF(ltPsig) : null
+  const ltSH       = ltSST !== null && ltTemp !== null ? ltTemp - ltSST : null
+  const rvMargin   = flashPsig !== null ? RV_LIFT_PSIG - flashPsig : null
+  const flashSat   = flashPsig !== null ? satTempF(flashPsig) : null
+  const mtDev      = mtPsig !== null ? mtPsig - satPsig(mtSet) : null
+  const ltDev      = ltPsig !== null ? ltPsig - satPsig(ltSet) : null
+
+  const findings: Finding[] = []
+
+  if (gcApproach !== null) {
+    if (gcApproach > 18)
+      findings.push({ severity: 'critical', label: 'Very high gas cooler approach', measurement: `${gcApproach.toFixed(1)}°F outlet above OAT (target <8°F)`,
+        causes: ['Fouled gas cooler coil', 'Multiple gas cooler fans failed', 'Airflow restriction'],
+        checks: ['Wash gas cooler coil', 'Verify all GC fans at full speed', 'In transcritical, high approach pushes head far above the optimum'] })
+    else if (gcApproach > 10)
+      findings.push({ severity: 'warning', label: 'Elevated gas cooler approach', measurement: `${gcApproach.toFixed(1)}°F outlet above OAT (target <8°F)`,
+        causes: ['Partial gas cooler fouling', 'One GC fan reduced/failed'],
+        checks: ['Inspect gas cooler coil', 'Check GC fan amp draw'] })
+  }
+
+  if (headDev !== null) {
+    if (headDev > 120)
+      findings.push({ severity: 'critical', label: 'Head well above control curve', measurement: `${Math.round(headPsig!)} psig vs ~${Math.round(optimalHead!)} psig optimum`,
+        causes: ['Gas cooler fouled / fans down', 'High pressure valve stuck closed', 'HPV not optimizing'],
+        checks: ['Cross-check gas cooler approach', 'Inspect HPV — stuck closed raises GC pressure while starving the flash tank'] })
+    else if (headDev > 60)
+      findings.push({ severity: 'warning', label: 'Head above control curve', measurement: `${Math.round(headPsig!)} psig vs ~${Math.round(optimalHead!)} psig optimum`,
+        causes: ['Partial GC fouling', 'HPV not optimizing'],
+        checks: ['Inspect gas cooler', 'Verify HPV setpoint and operation'] })
+  }
+
+  if (flashPsig !== null) {
+    if (rvMargin !== null && rvMargin <= 0)
+      findings.push({ severity: 'critical', label: 'Flash tank at relief valve', measurement: `${Math.round(flashPsig)} psig — RV lifts at ${RV_LIFT_PSIG} psig`,
+        causes: ['Flash gas bypass valve stuck closed', 'HPV stuck open flooding the receiver'],
+        checks: ['CO2 venting — act now', 'Check FGBV — stuck closed traps flash gas', 'Verify HPV is not dumping into the receiver'] })
+    else if (flashPsig >= RV_WARN_PSIG)
+      findings.push({ severity: 'warning', label: 'Flash tank approaching relief valve', measurement: `${Math.round(flashPsig)} psig (RV ${RV_LIFT_PSIG} psig)`,
+        causes: ['FGBV stuck closed', 'Excess flash gas not venting'],
+        checks: ['Inspect flash gas bypass valve', 'Watch the trend toward the RV'] })
+    else if (flashPsig <= 440)
+      findings.push({ severity: 'warning', label: 'Flash tank pressure low', measurement: `${Math.round(flashPsig)} psig (set ~${Math.round(satPsig(flashSet))} psig)`,
+        causes: ['Low CO2 charge', 'HPV stuck closed starving the receiver', 'FGBV stuck open venting'],
+        checks: ['Check receiver level / charge', 'Inspect HPV and FGBV operation'] })
+  }
+
+  if (mtSH !== null) {
+    if (mtSH > 25)
+      findings.push({ severity: 'warning', label: 'High MT superheat', measurement: `${mtSH.toFixed(1)}°F (target ~14°F)`,
+        causes: ['Low charge', 'MT case EEV starved', 'HPV stuck closed starving liquid'],
+        checks: ['Check flash tank / charge', 'Inspect MT EEV feed', 'Cross-check head + flash for an HPV fault'] })
+    else if (mtSH < 4)
+      findings.push({ severity: 'warning', label: 'Low MT superheat — floodback risk', measurement: `${mtSH.toFixed(1)}°F (target ~14°F)`,
+        causes: ['EEV overfeeding', 'FGBV stuck open loading the MT suction'],
+        checks: ['Verify EEV control', 'Check flash gas bypass valve'] })
+  }
+
+  if (ltSH !== null && ltSH > 24)
+    findings.push({ severity: 'warning', label: 'High LT superheat', measurement: `${ltSH.toFixed(1)}°F (target ~12°F)`,
+      causes: ['Low charge', 'LT case EEV starved', 'HPV stuck closed'],
+      checks: ['Check charge / flash tank', 'Inspect LT EEV feed'] })
+
+  if (mtDev !== null && Math.abs(mtDev) > 25)
+    findings.push({ severity: 'warning', label: mtDev > 0 ? 'MT suction above setpoint' : 'MT suction below setpoint',
+      measurement: `${Math.round(mtPsig!)} psig vs ${Math.round(satPsig(mtSet))} psig (${mtSet}°F SST)`,
+      causes: mtDev > 0 ? ['MT compressor down', 'FGBV stuck open loading MT suction', 'Excess load'] : ['Low charge', 'HPV stuck closed', 'EEV starved'],
+      checks: mtDev > 0 ? ['Check MT compressors and FGBV'] : ['Check charge and HPV/EEV feed'] })
+
+  if (ltDev !== null && Math.abs(ltDev) > 25)
+    findings.push({ severity: 'warning', label: ltDev > 0 ? 'LT suction above setpoint' : 'LT suction below setpoint',
+      measurement: `${Math.round(ltPsig!)} psig vs ${Math.round(satPsig(ltSet))} psig (${ltSet}°F SST)`,
+      causes: ltDev > 0 ? ['LT compressor down', 'LT defrost stuck on'] : ['Low charge', 'HPV stuck closed'],
+      checks: ['Check LT compressors and defrost', 'Verify charge'] })
+
+  const hasData = [headPsig, flashPsig, mtPsig, ltPsig, gcOutlet].some(v => v !== null)
+  if (findings.length === 0 && hasData)
+    findings.push({ severity: 'ok', label: 'No significant deviations found', measurement: '',
+      causes: [], checks: ['Readings appear within normal range for this rack — enter more measurements for a fuller picture'] })
+
+  const derived: DerivedRow[] = [
+    { label: 'Gas cooler approach', value: gcApproach, unit: '°F',
+      note: gcApproach !== null && gcApproach > 10 ? 'HIGH' : undefined,
+      color: gcApproach !== null && gcApproach > 10 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      tooltip: 'Gas cooler outlet temp minus OAT. On a clean CO2 gas cooler this is under ~8°F. A high approach in transcritical drives head far above the optimum.' },
+    { label: 'Optimal head (curve)', value: optimalHead, dec: 0, unit: 'psig' },
+    { label: 'Head vs optimum', value: headDev, dec: 0, unit: 'psig',
+      note: headDev !== null && headDev > 60 ? 'HIGH' : undefined,
+      color: headDev !== null && headDev > 60 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Flash tank sat temp', value: flashSat, unit: '°F sat' },
+    { label: 'Relief valve margin', value: rvMargin, dec: 0, unit: 'psig',
+      note: rvMargin !== null && rvMargin < 50 ? 'LOW' : undefined,
+      color: rvMargin !== null && rvMargin < 50 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'MT sat temp', value: mtSST, unit: '°F sat' },
+    { label: 'MT superheat', value: mtSH, unit: '°F',
+      note: mtSH !== null ? (mtSH > 25 ? 'HIGH' : mtSH < 4 ? 'LOW' : undefined) : undefined,
+      color: mtSH !== null && (mtSH > 25 || mtSH < 4) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'LT sat temp', value: ltSST, unit: '°F sat' },
+    { label: 'LT superheat', value: ltSH, unit: '°F',
+      note: ltSH !== null && ltSH > 24 ? 'HIGH' : undefined,
+      color: ltSH !== null && ltSH > 24 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+  ]
+
+  return { derived, findings }
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Co2BoosterSimulatorPage() {
   const router = useRouter()
@@ -341,6 +486,21 @@ export default function Co2BoosterSimulatorPage() {
   const [submitted, setSubmitted]           = useState(false)
   const [pickerOpen, setPickerOpen]         = useState(false)
 
+  // Adjustable rack settings (controller setpoints)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [mtSet, setMtSet]       = useState(MT_SST)
+  const [ltSet, setLtSet]       = useState(LT_SST)
+  const [flashSet, setFlashSet] = useState(FLASH_TANK_SET)
+
+  // Field Readings diagnostic
+  const [fieldOpen, setFieldOpen] = useState(false)
+  const [fieldReadings, setFieldReadings] = useState<Co2FieldReadings>(CO2_FIELD_EMPTY)
+  const updateField = (key: string, val: string) => setFieldReadings(prev => ({ ...prev, [key]: val }))
+  const fieldAnalysis = useMemo(() => analyzeCo2Field(fieldReadings, mtSet, ltSet, flashSet), [fieldReadings, mtSet, ltSet, flashSet])
+
+  // Instructor reveal (free-play only)
+  const [instructorReveal, setInstructorReveal] = useState(false)
+
   const inScenario   = activeScenario !== null
   const activeFaults = useMemo(
     () => (activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
@@ -348,7 +508,7 @@ export default function Co2BoosterSimulatorPage() {
   )
   const activeOat    = inScenario ? (activeScenario.oat ?? 75) : oat
 
-  const result = useMemo(() => computeRack(activeFaults, activeOat), [activeFaults, activeOat])
+  const result = useMemo(() => computeRack(activeFaults, activeOat, mtSet, ltSet, flashSet), [activeFaults, activeOat, mtSet, ltSet, flashSet])
 
   const trendSpecs = [
     { key: 'head',      label: result.transcritical ? 'Gas Cooler' : 'Head', unit: 'psig', value: result.headPsig, decimals: 0 },
@@ -374,7 +534,12 @@ export default function Co2BoosterSimulatorPage() {
     setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false); setPickerOpen(false)
   }
   function exitScenario() { setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
-  function resetAll() { setFaults(INITIAL_FAULTS); setOat(75); exitScenario() }
+  function resetAll() {
+    setFaults(INITIAL_FAULTS); setOat(75)
+    setMtSet(MT_SST); setLtSet(LT_SST); setFlashSet(FLASH_TANK_SET)
+    setInstructorReveal(false)
+    exitScenario()
+  }
 
   function submitDiagnosis() {
     if (!activeScenario) return
@@ -641,6 +806,69 @@ export default function Co2BoosterSimulatorPage() {
           </p>
         </div>
 
+        {/* Rack settings — adjustable controller setpoints */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <button onClick={() => setSettingsOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+            <SlidersHorizontal size={14} className="text-slate-400 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Settings</span>
+            <span className="text-[10px] text-slate-400 ml-1 truncate hidden sm:inline">MT {mtSet}°F · LT {ltSet}°F · Flash {flashSet}°F</span>
+            <span className={`ml-auto text-slate-400 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {settingsOpen && (
+            <div className="px-4 pb-4 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-200 dark:border-slate-700">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">MT SST setpoint</span>
+                  <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">{mtSet}°F · {Math.round(satPsig(mtSet))} psig</span>
+                </div>
+                <input type="range" min={15} max={30} step={1} value={mtSet} onChange={e => setMtSet(Number(e.target.value))} className="w-full accent-emerald-500" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">LT SST setpoint</span>
+                  <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">{ltSet}°F · {Math.round(satPsig(ltSet))} psig</span>
+                </div>
+                <input type="range" min={-30} max={-15} step={1} value={ltSet} onChange={e => setLtSet(Number(e.target.value))} className="w-full accent-blue-500" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Flash tank setpoint</span>
+                  <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-400">{flashSet}°F · {Math.round(satPsig(flashSet))} psig</span>
+                </div>
+                <input type="range" min={30} max={45} step={1} value={flashSet} onChange={e => setFlashSet(Number(e.target.value))} className="w-full accent-amber-500" />
+              </div>
+              <div className="sm:col-span-3">
+                <button onClick={() => { setMtSet(MT_SST); setLtSet(LT_SST); setFlashSet(FLASH_TANK_SET) }}
+                  className="text-[10px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2">Reset to defaults</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Field readings analyzer */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <button onClick={() => setFieldOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+            <ClipboardList size={14} className="text-slate-400 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Field Readings Analyzer</span>
+            <span className="text-[10px] text-slate-400 ml-1 hidden sm:inline">enter on-site readings → diagnosis</span>
+            <span className={`ml-auto text-slate-400 transition-transform ${fieldOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {fieldOpen && (
+            <div className="px-4 pb-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <FieldReadingsPanel
+                fields={CO2_FIELD_DEFS}
+                values={fieldReadings}
+                onChange={updateField}
+                onClear={() => setFieldReadings(CO2_FIELD_EMPTY)}
+                derived={fieldAnalysis.derived}
+                findings={fieldAnalysis.findings}
+                footnote={`Analysis uses MT ${mtSet}°F / LT ${ltSet}°F / flash ${flashSet}°F setpoints — adjust in Rack Settings. R-744 transcritical.`}
+                intro="Enter what you read at the rack — gas cooler, flash tank and MT/LT suction. The analyzer computes approach, head-vs-curve, superheats and relief-valve margin, then flags likely issues."
+              />
+            </div>
+          )}
+        </div>
+
         {/* Compressors */}
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
@@ -731,7 +959,33 @@ export default function Co2BoosterSimulatorPage() {
                 Submit Diagnosis
               </button>
             )}
+            {!inScenario && (
+              <button onClick={() => setInstructorReveal(v => !v)}
+                className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${instructorReveal ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                title="Instructor mode — reveal active faults">
+                {instructorReveal ? <><EyeOff size={11} /> Hide</> : <><Eye size={11} /> Reveal</>}
+              </button>
+            )}
           </div>
+          {!inScenario && instructorReveal && (
+            <div className="px-3 pt-3">
+              <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
+                <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Instructor reveal — active faults · OAT {activeOat}°F</p>
+                {activeFaultCount === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
+                      <div key={d.key} className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-300">
+                        <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-blue-500" />
+                        <div><span className="font-medium">{d.label}</span><span className="text-blue-600/70 dark:text-blue-400/60 ml-1.5">— {d.hint}</span></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className="p-3 grid sm:grid-cols-2 gap-x-4 gap-y-3">
             {faultsByGroup.map(({ group, defs }) => (
               <div key={group}>
@@ -763,7 +1017,7 @@ export default function Co2BoosterSimulatorPage() {
         </div>
 
         <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center pb-4 leading-relaxed">
-          R-744 transcritical booster — 3 × MT + 2 × LT Bitzer · MT {MT_SST} °F SST / LT {LT_SST} °F SST · flash tank {FLASH_TANK_SET} °F sat ({Math.round(satPsig(FLASH_TANK_SET))} psig) ·
+          R-744 transcritical booster — 3 × MT + 2 × LT Bitzer · MT {mtSet} °F SST / LT {ltSet} °F SST · flash tank {flashSet} °F sat ({Math.round(satPsig(flashSet))} psig) ·
           critical point {CO2_CRITICAL_F} °F / ~1056 psig · gas cooler curve ≈ 2.7 × T(°C) + 6.1 bar
         </div>
 
