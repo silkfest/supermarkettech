@@ -11,6 +11,7 @@ import {
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
+import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -308,14 +309,6 @@ interface LTState {
 }
 
 // ── Field Readings diagnostic ─────────────────────────────────────────────────
-interface Finding {
-  severity: 'critical' | 'warning' | 'info' | 'ok'
-  label: string
-  measurement: string
-  causes: string[]
-  checks: string[]
-}
-
 const FIELD_EMPTY = {
   oat: '', mtSuctionPsig: '', mtSuctionTemp: '', ltSuctionPsig: '', ltSuctionTemp: '',
   dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
@@ -323,6 +316,60 @@ const FIELD_EMPTY = {
   mtCompsRunning: '', ltCompsRunning: '',
 }
 type FieldReadings = typeof FIELD_EMPTY
+
+const FIELD_DEFS: FieldDef[] = [
+  { key: 'oat',            label: 'Outdoor Ambient (OAT)',  unit: '°F',      placeholder: 'e.g. 75',  section: 'Environment' },
+  { key: 'mtSuctionPsig',  label: 'MT Suction Pressure',    unit: 'psig',    placeholder: 'e.g. 55',  hint: 'gauge at rack header', section: 'MT Circuit' },
+  { key: 'mtSuctionTemp',  label: 'MT Suction Line Temp',   unit: '°F',      placeholder: 'e.g. 42',  hint: 'pipe temp at rack' },
+  { key: 'ltSuctionPsig',  label: 'LT Suction Pressure',    unit: 'psig',    placeholder: 'e.g. 3',   hint: 'booster suction gauge', section: 'LT Booster Circuit' },
+  { key: 'ltSuctionTemp',  label: 'LT Suction Line Temp',   unit: '°F',      placeholder: 'e.g. -8',  hint: 'pipe temp at booster' },
+  { key: 'dischargePsig',  label: 'Discharge Pressure',     unit: 'psig',    placeholder: 'e.g. 165', hint: 'rack discharge header', section: 'Discharge Side' },
+  { key: 'dischargeTemp',  label: 'Discharge Line Temp',    unit: '°F',      placeholder: 'e.g. 185', hint: 'pipe temp at discharge' },
+  { key: 'liquidLineTemp', label: 'Liquid Line Temp',       unit: '°F',      placeholder: 'e.g. 78',  hint: 'after condenser / at receiver', section: 'Liquid Line' },
+  { key: 'drierInTemp',    label: 'Drier Inlet Temp',       unit: '°F',      placeholder: 'e.g. 80',  section: 'Filter Drier (optional)' },
+  { key: 'drierOutTemp',   label: 'Drier Outlet Temp',      unit: '°F',      placeholder: 'e.g. 77',  hint: 'ΔT > 3°F = restriction' },
+  { key: 'oilDiffPsi',     label: 'Oil Diff Pressure',      unit: 'psi',     placeholder: 'e.g. 22',  hint: 'Y825 — target 20–25 psi above suc', section: 'Oil & Compressors' },
+  { key: 'mtCompsRunning', label: 'MT Compressors',         unit: 'running', placeholder: 'e.g. 3',   hint: 'how many are running' },
+  { key: 'ltCompsRunning', label: 'LT Boosters',            unit: 'running', placeholder: 'e.g. 2' },
+]
+
+/** Map the analyzer's derived record onto the shared panel's display rows. */
+function toDerivedRows(d: Record<string, number | null>): DerivedRow[] {
+  const warn = 'text-amber-600 dark:text-amber-400'
+  const ok   = 'text-emerald-600 dark:text-emerald-400'
+  return [
+    { label: 'Condensing sat temp', value: d.condensingSatTemp, unit: '°F sat' },
+    { label: 'MT sat temp (suction)', value: d.mtSatTemp, unit: '°F sat' },
+    { label: 'MT superheat', value: d.mtSuperheat, unit: '°F',
+      note: d.mtSuperheat !== null && d.mtSuperheat > 30 ? 'HIGH' : d.mtSuperheat !== null && d.mtSuperheat < 5 ? 'LOW' : undefined,
+      color: d.mtSuperheat !== null && (d.mtSuperheat > 30 || d.mtSuperheat < 5) ? warn : ok },
+    { label: 'Subcooling', value: d.subcooling, unit: '°F',
+      note: d.subcooling !== null && d.subcooling < 3 ? 'FLASH GAS' : d.subcooling !== null && d.subcooling < 8 ? 'LOW' : undefined,
+      color: d.subcooling !== null && d.subcooling < 8 ? warn : ok },
+    { label: 'Discharge superheat', value: d.dischargeSuperheat, dec: 0, unit: '°F',
+      note: d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'HIGH' : undefined,
+      color: d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? warn : undefined },
+    { label: 'Approach ΔT', value: d.approachDelta, unit: '°F',
+      note: d.approachDelta !== null && d.approachDelta > 18 ? 'ELEVATED' : undefined,
+      color: d.approachDelta !== null && d.approachDelta > 18 ? warn : ok,
+      tooltip: 'Condensing sat temp minus outdoor air temp (OAT). On a clean rack with all fans running, baseline is ~15°F. Higher values indicate condenser inefficiency — dirty coil, failed fans, or non-condensables. Normal range: 12–18°F.' },
+    { label: 'MT compression ratio', value: d.mtCompRatio, dec: 2, unit: ': 1',
+      note: d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'HIGH' : undefined,
+      color: d.mtCompRatio !== null && d.mtCompRatio > 10 ? warn : undefined },
+    { label: 'LT sat temp (suction)', value: d.ltSatTemp, unit: '°F sat' },
+    { label: 'LT superheat', value: d.ltSuperheat, unit: '°F',
+      note: d.ltSuperheat !== null && d.ltSuperheat > 25 ? 'HIGH' : d.ltSuperheat !== null && d.ltSuperheat < 4 ? 'LOW' : undefined,
+      color: d.ltSuperheat !== null && (d.ltSuperheat > 25 || d.ltSuperheat < 4) ? warn : ok },
+    { label: 'LT compression ratio', value: d.ltCompRatio, dec: 2, unit: ': 1' },
+    { label: 'Filter drier ΔT', value: d.drierDeltaT, unit: '°F',
+      note: d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'RESTRICTED' : undefined,
+      color: d.drierDeltaT !== null && d.drierDeltaT > 3 ? warn : ok },
+    { label: 'Expected discharge', value: d.expectedDischargePsig, dec: 0, unit: 'psig' },
+    { label: 'Discharge deviation', value: d.dischargeDeviation, dec: 0, unit: 'psig',
+      note: d.dischargeDeviation !== null && Math.abs(d.dischargeDeviation) > 25 ? 'OFF EXPECTED' : undefined,
+      color: d.dischargeDeviation !== null && Math.abs(d.dischargeDeviation) > 25 ? warn : undefined },
+  ]
+}
 
 // ── MT compute ────────────────────────────────────────────────────────────────
 function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpoint: number, pt: PTTable = PT_TABLES['R-404A']): SystemState {
@@ -693,6 +740,36 @@ const SCENARIOS: Scenario[] = [
     answer: ['comp1ValveWorn'],
     knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
+  {
+    id: 'iced_vs_starved',
+    name: 'Warm Produce Case — Read the Superheat',
+    difficulty: 'Intermediate',
+    oat: 75,
+    description: 'The Produce case is warm and MT suction is running low — your first instinct says starved TXV. But look again: superheat is LOW, not high. A starved coil reads high SH; this is the opposite. What blocks a coil\'s capacity without closing a valve?',
+    faults: { coilIced: true },
+    answer: ['coilIced'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  },
+  {
+    id: 'floodback_oil',
+    name: 'Sweating Suction Line, Sagging Oil',
+    difficulty: 'Advanced',
+    oat: 80,
+    description: 'MT suction superheat is reading near zero and the suction line is sweating all the way back to the rack. Discharge temperature is running unusually cool. The Y825 oil differential has slipped from 22 psi to about 16 psi over the shift. What single valve fault explains all three readings?',
+    faults: { txvOverfeeding: true },
+    answer: ['txvOverfeeding'],
+    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'copeland', label: 'Copeland Compressors' }],
+  },
+  {
+    id: 'case_drier',
+    name: 'One Starving Case, Clean Rack Drier',
+    difficulty: 'Intermediate',
+    oat: 78,
+    description: 'The Cheese case is running ~10 °F warm with very high superheat at its coil, but every other MT case is holding setpoint. You check the rack filter drier expecting a restriction — ΔT across it is under 1 °F. Where is the restriction actually hiding?',
+    faults: { caseDrierPlugged: true },
+    answer: ['caseDrierPlugged'],
+    knowledge: [{ slug: 'filter-driers', label: 'Filter Driers' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  },
 ]
 
 // ── Diagnose text ─────────────────────────────────────────────────────────────
@@ -1044,28 +1121,6 @@ function Card({ title, icon, children, className = '', accent = 'bg-slate-200 da
         <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{title}</span>
       </div>
       <div className="px-3 py-1.5">{children}</div>
-    </div>
-  )
-}
-
-interface FieldInputProps { label: string; value: string; onChange: (v: string) => void; unit: string; placeholder?: string; hint?: string }
-function FieldInput({ label, value, onChange, unit, placeholder, hint }: FieldInputProps) {
-  return (
-    <div className="flex items-center gap-2 py-0.5">
-      <div className="w-36 flex-shrink-0">
-        <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
-        {hint && <div className="text-[9px] text-slate-500 dark:text-slate-600">{hint}</div>}
-      </div>
-      <div className="relative flex-1">
-        <input
-          type="number"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder ?? '—'}
-          className="w-full bg-slate-200/60 dark:bg-slate-700/60 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none">{unit}</span>
-      </div>
     </div>
   )
 }
@@ -1560,176 +1615,25 @@ export default function SimulationPage() {
           </div>
 
           {diagTab === 'field' ? (
-          /* ── Field Readings Diagnostic ─────────────────────────────────── */
-          <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
-
-            {/* Left: input form */}
-            <div className="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-200 dark:border-slate-700 md:overflow-y-auto p-4 space-y-1 pb-24 md:pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Enter Your Readings</span>
-                <button onClick={() => setFieldReadings(FIELD_EMPTY)} className="text-[10px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2">Clear all</button>
-              </div>
-
-              <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">Enter what you see on site — leave blank any values you haven&apos;t measured yet. Calculations update instantly.</p>
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-1 pb-0.5">Environment</div>
-              <FieldInput label="Outdoor Ambient (OAT)" value={fieldReadings.oat} onChange={v => updateField('oat', v)} unit="°F" placeholder="e.g. 75" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">MT Circuit</div>
-              <FieldInput label="MT Suction Pressure" value={fieldReadings.mtSuctionPsig} onChange={v => updateField('mtSuctionPsig', v)} unit="psig" placeholder="e.g. 55" hint="gauge at rack header" />
-              <FieldInput label="MT Suction Line Temp" value={fieldReadings.mtSuctionTemp} onChange={v => updateField('mtSuctionTemp', v)} unit="°F" placeholder="e.g. 42" hint="pipe temp at rack" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">LT Booster Circuit</div>
-              <FieldInput label="LT Suction Pressure" value={fieldReadings.ltSuctionPsig} onChange={v => updateField('ltSuctionPsig', v)} unit="psig" placeholder="e.g. 3" hint="booster suction gauge" />
-              <FieldInput label="LT Suction Line Temp" value={fieldReadings.ltSuctionTemp} onChange={v => updateField('ltSuctionTemp', v)} unit="°F" placeholder="e.g. -8" hint="pipe temp at booster" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Discharge Side</div>
-              <FieldInput label="Discharge Pressure" value={fieldReadings.dischargePsig} onChange={v => updateField('dischargePsig', v)} unit="psig" placeholder="e.g. 165" hint="rack discharge header" />
-              <FieldInput label="Discharge Line Temp" value={fieldReadings.dischargeTemp} onChange={v => updateField('dischargeTemp', v)} unit="°F" placeholder="e.g. 185" hint="pipe temp at discharge" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Liquid Line</div>
-              <FieldInput label="Liquid Line Temp" value={fieldReadings.liquidLineTemp} onChange={v => updateField('liquidLineTemp', v)} unit="°F" placeholder="e.g. 78" hint="after condenser / at receiver" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Filter Drier (optional)</div>
-              <FieldInput label="Drier Inlet Temp" value={fieldReadings.drierInTemp} onChange={v => updateField('drierInTemp', v)} unit="°F" placeholder="e.g. 80" />
-              <FieldInput label="Drier Outlet Temp" value={fieldReadings.drierOutTemp} onChange={v => updateField('drierOutTemp', v)} unit="°F" placeholder="e.g. 77" hint="ΔT > 3°F = restriction" />
-
-              <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest pt-3 pb-0.5">Oil &amp; Compressors</div>
-              <FieldInput label="Oil Diff Pressure" value={fieldReadings.oilDiffPsi} onChange={v => updateField('oilDiffPsi', v)} unit="psi" placeholder="e.g. 22" hint="Y825 — target 20–25 psi above suc" />
-              <FieldInput label="MT Compressors" value={fieldReadings.mtCompsRunning} onChange={v => updateField('mtCompsRunning', v)} unit="running" placeholder="e.g. 3" hint="how many are running" />
-              <FieldInput label="LT Boosters" value={fieldReadings.ltCompsRunning} onChange={v => updateField('ltCompsRunning', v)} unit="running" placeholder="e.g. 2" />
-
-              <div className="pt-4">
-                <button onClick={diagnoseField}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors">
-                  <MessageSquare size={13}/> Ask ColdIQ AI About These Readings
-                </button>
-              </div>
-            </div>
-
-            {/* Right: derived calculations + findings */}
-            <div className="flex-1 md:overflow-y-auto p-4 space-y-4 pb-24 md:pb-4">
-
-              {/* Derived values */}
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                <div className="px-3 py-2 bg-slate-200 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                  <Activity size={13} className="text-slate-500 dark:text-slate-400"/>
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Calculated Values</span>
-                </div>
-                <div className="px-3 py-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                  {(() => {
-                    const d = fieldAnalysis.derived
-                    const row = (label: string, val: number | null, dec: number, unit: string, note?: string, color?: string, tooltip?: string) => (
-                      val === null ? null :
-                      <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/40 last:border-0">
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          {label}
-                          {tooltip && (
-                            <span className="relative group/tip flex-shrink-0">
-                              <Info size={10} className="text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 cursor-help transition-colors" />
-                              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-[10px] leading-relaxed px-2.5 py-2 shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
-                                {tooltip}
-                                <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-slate-300 dark:border-t-slate-600" />
-                              </span>
-                            </span>
-                          )}
-                        </span>
-                        <div className="text-right">
-                          <span className={`text-sm font-mono font-semibold tabular-nums ${color ?? 'text-slate-900 dark:text-white'}`}>{val.toFixed(dec)} {unit}</span>
-                          {note && <div className="text-[9px] text-amber-400">{note}</div>}
-                        </div>
-                      </div>
-                    )
-                    return [
-                      row('Condensing sat temp', d.condensingSatTemp, 1, '°F sat'),
-                      row('MT sat temp (suction)', d.mtSatTemp, 1, '°F sat'),
-                      row('MT superheat', d.mtSuperheat, 1, '°F',
-                        d.mtSuperheat !== null && d.mtSuperheat > 30 ? 'HIGH' : d.mtSuperheat !== null && d.mtSuperheat < 5 ? 'LOW' : undefined,
-                        d.mtSuperheat !== null && (d.mtSuperheat > 30 || d.mtSuperheat < 5) ? 'text-amber-400' : 'text-emerald-400'),
-                      row('Subcooling', d.subcooling, 1, '°F',
-                        d.subcooling !== null && d.subcooling < 3 ? 'FLASH GAS' : d.subcooling !== null && d.subcooling < 8 ? 'LOW' : undefined,
-                        d.subcooling !== null && d.subcooling < 8 ? 'text-amber-400' : 'text-emerald-400'),
-                      row('Discharge superheat', d.dischargeSuperheat, 0, '°F',
-                        d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'HIGH' : undefined,
-                        d.dischargeSuperheat !== null && d.dischargeSuperheat > 80 ? 'text-amber-400' : 'text-slate-900 dark:text-white'),
-                      row('Approach ΔT', d.approachDelta, 1, '°F',
-                        d.approachDelta !== null && d.approachDelta > 18 ? 'ELEVATED' : undefined,
-                        d.approachDelta !== null && d.approachDelta > 18 ? 'text-amber-400' : 'text-emerald-400',
-                        'Condensing sat temp minus outdoor air temp (OAT). On a clean rack with all fans running, baseline is ~15°F. Higher values indicate condenser inefficiency — dirty coil, failed fans, or non-condensables. Normal range: 12–18°F.'),
-                      row('MT compression ratio', d.mtCompRatio, 2, ': 1',
-                        d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'HIGH' : undefined,
-                        d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'text-amber-400' : 'text-slate-900 dark:text-white'),
-                      row('LT sat temp (suction)', d.ltSatTemp, 1, '°F sat'),
-                      row('LT superheat', d.ltSuperheat, 1, '°F',
-                        d.ltSuperheat !== null && d.ltSuperheat > 25 ? 'HIGH' : d.ltSuperheat !== null && d.ltSuperheat < 4 ? 'LOW' : undefined,
-                        d.ltSuperheat !== null && (d.ltSuperheat > 25 || d.ltSuperheat < 4) ? 'text-amber-400' : 'text-emerald-400'),
-                      row('LT compression ratio', d.ltCompRatio, 2, ': 1'),
-                      row('Filter drier ΔT', d.drierDeltaT, 1, '°F',
-                        d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'RESTRICTED' : undefined,
-                        d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'text-amber-400' : 'text-emerald-400'),
-                      row('Expected discharge', d.expectedDischargePsig, 0, 'psig'),
-                      d.dischargeDeviation !== null ? (
-                        <div key="dev" className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/40 last:border-0">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">Discharge deviation</span>
-                          <span className={`text-sm font-mono font-semibold tabular-nums ${Math.abs(d.dischargeDeviation) > 25 ? 'text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                            {d.dischargeDeviation >= 0 ? '+' : ''}{d.dischargeDeviation.toFixed(0)} psig
-                          </span>
-                        </div>
-                      ) : null,
-                    ]
-                  })()}
-                </div>
-              </div>
-
-              {/* Findings */}
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                <div className="px-3 py-2 bg-slate-200 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                  <AlertTriangle size={13} className="text-slate-500 dark:text-slate-400"/>
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Findings</span>
-                  <span className="ml-auto text-[10px] text-slate-500">{fieldAnalysis.findings.length} result{fieldAnalysis.findings.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="p-3 space-y-3">
-                  {fieldAnalysis.findings.length === 0 ? (
-                    <p className="text-xs text-slate-500 text-center py-4">Enter readings on the left to see analysis</p>
-                  ) : fieldAnalysis.findings.map((f, i) => (
-                    <div key={i} className={`rounded-lg border p-3 ${
-                      f.severity === 'critical' ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40' :
-                      f.severity === 'warning'  ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/40' :
-                      f.severity === 'ok'       ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/40' :
-                      'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600'}`}>
-                      <div className="flex items-start gap-2 mb-1.5">
-                        {f.severity === 'critical' ? <XCircle size={13} className="text-red-400 flex-shrink-0 mt-0.5"/> :
-                         f.severity === 'warning'  ? <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5"/> :
-                         f.severity === 'ok'       ? <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0 mt-0.5"/> :
-                         <Info size={13} className="text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5"/>}
-                        <div className="min-w-0">
-                          <span className={`text-xs font-semibold ${
-                            f.severity === 'critical' ? 'text-red-600 dark:text-red-300' :
-                            f.severity === 'warning'  ? 'text-amber-700 dark:text-amber-300' :
-                            f.severity === 'ok'       ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>{f.label}</span>
-                          {f.measurement && <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-1.5">{f.measurement}</span>}
-                        </div>
-                      </div>
-                      {f.causes.length > 0 && (
-                        <div className="ml-5 mb-1">
-                          <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">Possible causes: </span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{f.causes.join(' · ')}</span>
-                        </div>
-                      )}
-                      {f.checks.map((c, j) => (
-                        <div key={j} className="ml-5 flex items-start gap-1.5 mt-0.5">
-                          <span className="text-[9px] text-slate-500 dark:text-slate-600 mt-0.5">→</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">{c}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-[10px] text-slate-600 text-center pb-2">
-                Rack config used: HP ctrl {rackConfig.hpCtrlPsig} psig · MT suc {rackConfig.mtSuctionPsig} psig · LT suc {rackConfig.ltSuctionPsig} psig — adjust in Rack Settings
-              </p>
+          /* ── Field Readings Diagnostic (shared panel) ──────────────────── */
+          <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
+            <div className="max-w-4xl mx-auto">
+              <FieldReadingsPanel
+                fields={FIELD_DEFS}
+                values={fieldReadings}
+                onChange={(k, v) => updateField(k as keyof FieldReadings, v)}
+                onClear={() => setFieldReadings(FIELD_EMPTY)}
+                derived={toDerivedRows(fieldAnalysis.derived)}
+                findings={fieldAnalysis.findings}
+                footnote={`Rack config used: HP ctrl ${rackConfig.hpCtrlPsig} psig · MT suc ${rackConfig.mtSuctionPsig} psig · LT suc ${rackConfig.ltSuctionPsig} psig — adjust in Rack Settings. ${rackConfig.refrigerant} PT data.`}
+                intro="Enter what you see on site — leave blank any values you haven't measured yet. Calculations update instantly."
+                actions={
+                  <button onClick={diagnoseField}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                    <MessageSquare size={13}/> Ask ColdIQ AI About These Readings
+                  </button>
+                }
+              />
             </div>
           </div>
           ) : (

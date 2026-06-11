@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, XCircle, Info, Activity } from 'lucide-react'
 
 // ── Shared types ────────────────────────────────────────────────────────────────
@@ -73,9 +74,11 @@ interface PanelProps {
   /** Optional note rendered under the findings (e.g. which rack config was used). */
   footnote?: string
   intro?: string
+  /** Optional actions (e.g. an "Ask the AI" button) rendered below the input form. */
+  actions?: ReactNode
 }
 
-export default function FieldReadingsPanel({ fields, values, onChange, onClear, derived, findings, footnote, intro }: PanelProps) {
+export default function FieldReadingsPanel({ fields, values, onChange, onClear, derived, findings, footnote, intro, actions }: PanelProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Left: input form */}
@@ -95,6 +98,7 @@ export default function FieldReadingsPanel({ fields, values, onChange, onClear, 
             <FieldInput def={def} value={values[def.key] ?? ''} onChange={v => onChange(def.key, v)} />
           </div>
         ))}
+        {actions && <div className="pt-4">{actions}</div>}
       </div>
 
       {/* Right: derived + findings */}

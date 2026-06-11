@@ -336,6 +336,26 @@ const SCENARIOS: Scenario[] = [
     answer: ['undercharge'],
     knowledge: [{ slug: 'carnot', label: 'Carnot CO2 Racks' }, { slug: 'refrigeration-fundamentals', label: 'Refrigeration Fundamentals' }],
   },
+  {
+    id: 'lt_iced',
+    name: 'Frozen Food Warming — Suction LOW',
+    difficulty: 'Intermediate',
+    oat: 68,
+    description: 'Frozen food is drifting up, but LT suction is BELOW set point with LOW superheat — a stuck defrost would push suction UP, and a starved EEV would read high SH. The case fans run, yet almost no air comes off the discharge grille. What is choking that coil?',
+    faults: { ltCoilIced: true },
+    answer: ['ltCoilIced'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  },
+  {
+    id: 'lt_floodback',
+    name: 'LT Boosters Slugging',
+    difficulty: 'Advanced',
+    oat: 72,
+    description: 'LT superheat is reading ~2 °F and falling, the boosters sound wet, and their amps are running ~6% high. LT suction sits slightly above set point and the frozen cases are actually holding fine. What is the LT EEV doing, and what happens to the boosters if you ignore it?',
+    faults: { ltEevOverfeed: true },
+    answer: ['ltEevOverfeed'],
+    knowledge: [{ slug: 'carnot', label: 'Carnot CO2 Racks' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  },
 ]
 
 const MYSTERY_OATS = [20, 45, 65, 75, 85, 95, 105]
