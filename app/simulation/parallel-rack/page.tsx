@@ -11,6 +11,7 @@ import {
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
+import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
@@ -1083,6 +1084,7 @@ export default function SimulationPage() {
   const [oat,          setOat]          = useState(80)        // °F — outdoor ambient
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
+  const [schematicOpen, setSchematicOpen] = useState(true)
 
   // Rack configuration — matches what techs read from the rack controller / setup sheet
   const [rackSettingsOpen, setRackSettingsOpen] = useState(false)
@@ -1715,6 +1717,50 @@ export default function SimulationPage() {
           /* ── Sim readings (existing) ─────────────────────────────────────── */
           <div className="flex-1 overflow-y-auto p-3 md:p-4 pb-24 md:pb-4">
             <div className="max-w-4xl mx-auto space-y-3">
+
+            {/* ── Rack schematic ── */}
+            {(() => {
+              const conceal = scenarioMode
+              const compStatus = (running: boolean) => (running ? 'run' as const : 'trip' as const)
+              const mtCaseColor = mt.caseTemp >= 44 ? '#ef4444' : mt.caseTemp >= 40 ? '#f59e0b' : '#10b981'
+              const ltCaseColor = lt.caseTemp >= 10 ? '#ef4444' : lt.caseTemp >= 5 ? '#f59e0b' : '#10b981'
+              const receiverLevel = conceal ? 0.45
+                : activeFaults.underchargeSevere ? 0.10
+                : activeFaults.underchargeModerate ? 0.25
+                : activeFaults.overcharge ? 0.85 : 0.45
+              return (
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <button onClick={() => setSchematicOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                    <Activity size={13} className="text-slate-500 dark:text-slate-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Schematic</span>
+                    {conceal && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">controller view — inspection cues hidden</span>}
+                    <span className={`ml-auto text-slate-400 transition-transform ${schematicOpen ? 'rotate-180' : ''}`}>▾</span>
+                  </button>
+                  {schematicOpen && (
+                    <div className="px-2 pb-2">
+                      <ParallelRackVisual
+                        fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
+                        fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
+                        dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
+                        comps={mtBase.compRunning.map((r, i) => ({ label: `C${i + 1}`, status: compStatus(r), amps: mt.compAmps[i] }))}
+                        boosters={ltBase.compRunning.map((r, i) => ({ label: `LT${i + 1}`, status: compStatus(r), amps: lt.compAmps[i] }))}
+                        receiverLevel={receiverLevel}
+                        drierRestricted={!conceal && activeFaults.filterDrierRestricted}
+                        suctionPsig={mt.suctionPsig}
+                        dischargePsig={mt.dischargePsig}
+                        ltSuctionPsig={lt.suctionPsig}
+                        mtCaseTemp={mt.caseTemp} mtCaseColor={mtCaseColor}
+                        ltCaseTemp={lt.caseTemp} ltCaseColor={ltCaseColor}
+                        defrostStuck={!conceal && activeFaults.defrostStuckOn}
+                        ltDefrostStuck={!conceal && activeFaults.ltDefrostStuckOn}
+                        doorsOpen={!conceal && activeFaults.caseDoorsOpen}
+                        hpCtrlActive={mtBase.hpCtrlActive}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* ── OAT Slider ── */}
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">

@@ -11,6 +11,7 @@ import {
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
+import ProtocolRackVisual from '@/components/simulation/visuals/ProtocolRackVisual'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -770,6 +771,7 @@ export default function ProtocolRackASimulatorPage() {
 
   // Instructor reveal (free-play only)
   const [instructorReveal, setInstructorReveal] = useState(false)
+  const [schematicOpen, setSchematicOpen] = useState(true)
 
   // In a scenario the hidden scenario faults drive the sim; the Faults tab
   // becomes the diagnosis sheet and edits userGuess instead of the live faults.
@@ -1064,6 +1066,50 @@ export default function ProtocolRackASimulatorPage() {
             <p className="text-xs text-slate-400">{period.label} · {period.mult.toFixed(2)}×</p>
           </div>
         </div>
+
+        {/* Rack schematic */}
+        {(() => {
+          const conceal = inScenario
+          const visStatus = (s: CompStatus) => (s === 'RUNNING' ? 'run' as const : s === 'TRIPPED' ? 'trip' as const : 'standby' as const)
+          return (
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button onClick={() => setSchematicOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                <Wind size={13} className="text-slate-400 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Schematic</span>
+                {conceal && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">controller view — inspection cues hidden</span>}
+                <span className={`ml-auto text-slate-400 transition-transform ${schematicOpen ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+              {schematicOpen && (
+                <div className="px-2 pb-2">
+                  <ProtocolRackVisual
+                    fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
+                    fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
+                    dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
+                    comps={COMP_SPECS.map((c, i) => ({
+                      label: c.id, status: visStatus(base.compStatus[i]), amps: result.compAmps[i],
+                      mod: i === 0 ? result.c1Modulation : undefined,
+                    }))}
+                    drierRestricted={!conceal && activeFaults.filterDrierRestricted}
+                    suctionPsig={result.suctionPsig}
+                    dischargePsig={result.dischargePsig}
+                    circuits={CIRCUITS.map((c, i) => {
+                      const temp = result.circuitCaseTemps[i]
+                      const rawStatus = base.circuitStatuses[i]
+                      // In a scenario, per-circuit fault states (TXV starved / defrost stuck)
+                      // are inspection findings — show circuits as plain readings only
+                      const status = conceal && (rawStatus === 'TXV_FAIL' || rawStatus === 'DEF_STUCK') ? 'OK' : rawStatus
+                      const tempColor = !c.active ? '#94a3b8'
+                        : temp >= c.caseTargetF + 15 ? '#ef4444'
+                        : temp >= c.caseTargetF + 8 ? '#f59e0b' : '#10b981'
+                      return { id: c.id, status, temp, tempColor }
+                    })}
+                    doorsOpen={!conceal && activeFaults.doorsOpen}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Reading trends */}
         <TrendsCard specs={trendSpecs} history={trendHistory} />

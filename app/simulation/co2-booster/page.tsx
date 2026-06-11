@@ -11,6 +11,7 @@ import {
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
+import Co2BoosterVisual from '@/components/simulation/visuals/Co2BoosterVisual'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -510,6 +511,7 @@ export default function Co2BoosterSimulatorPage() {
 
   // Instructor reveal (free-play only)
   const [instructorReveal, setInstructorReveal] = useState(false)
+  const [schematicOpen, setSchematicOpen] = useState(true)
 
   const inScenario   = activeScenario !== null
   const activeFaults = useMemo(
@@ -826,6 +828,53 @@ export default function Co2BoosterSimulatorPage() {
             <p className="text-[10px] text-slate-400 dark:text-slate-500">{result.ltSST.toFixed(1)} °F SST · SH {result.ltSH.toFixed(0)} °F</p>
           </div>
         </div>
+
+        {/* Rack schematic */}
+        {(() => {
+          const conceal = inScenario
+          const vis = (running: boolean) => (running ? 'run' as const : 'trip' as const)
+          const mtAvg = result.mtCaseTemps.reduce((a, b) => a + b, 0) / result.mtCaseTemps.length
+          const ltAvg = result.ltCaseTemps.reduce((a, b) => a + b, 0) / result.ltCaseTemps.length
+          const mtDev = Math.max(...result.mtCaseTemps.map((t, i) => t - MT_CASES[i].setpoint))
+          const ltDev = Math.max(...result.ltCaseTemps.map((t, i) => t - LT_CASES[i].setpoint))
+          const valveState = (closed: boolean, open: boolean) =>
+            conceal ? 'auto' as const : closed ? 'closed' as const : open ? 'open' as const : 'auto' as const
+          return (
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button onClick={() => setSchematicOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                <Gauge size={13} className="text-slate-400 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Schematic</span>
+                {conceal && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">controller view — inspection cues hidden</span>}
+                <span className={`ml-auto text-slate-400 transition-transform ${schematicOpen ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+              {schematicOpen && (
+                <div className="px-2 pb-2">
+                  <Co2BoosterVisual
+                    fansSpinning={conceal ? [true, true] : [!activeFaults.gcFan1Failed, !activeFaults.gcFan2Failed]}
+                    fansFailed={conceal ? [false, false] : [activeFaults.gcFan1Failed, activeFaults.gcFan2Failed]}
+                    gcFouled={!conceal && activeFaults.gcFouled}
+                    transcritical={result.transcritical}
+                    headPsig={result.headPsig}
+                    flashPsig={result.flashPsig}
+                    flashLevel={Math.min(0.92, Math.max(0.08, (result.flashPsig - 420) / 320))}
+                    rvVenting={result.flashPsig >= RV_LIFT_PSIG}
+                    rvWarn={result.flashPsig >= RV_WARN_PSIG}
+                    hpv={valveState(activeFaults.hpvStuckClosed, activeFaults.hpvStuckOpen)}
+                    fgbv={valveState(activeFaults.fgbvStuckClosed, activeFaults.fgbvStuckOpen)}
+                    mtComps={base.mtCompRunning.map((r, i) => ({ label: `MT${i + 1}`, status: vis(r), amps: result.mtAmps[i] }))}
+                    ltComps={base.ltCompRunning.map((r, i) => ({ label: `LT${i + 1}`, status: vis(r), amps: result.ltAmps[i] }))}
+                    mtSuctionPsig={result.mtSuctionPsig}
+                    ltSuctionPsig={result.ltSuctionPsig}
+                    mtCaseTemp={mtAvg} mtCaseColor={mtDev >= 6 ? '#ef4444' : mtDev >= 3 ? '#f59e0b' : '#10b981'}
+                    ltCaseTemp={ltAvg} ltCaseColor={ltDev >= 10 ? '#ef4444' : ltDev >= 5 ? '#f59e0b' : '#10b981'}
+                    ltDefrost={!conceal && activeFaults.ltDefrostStuck}
+                    doorsOpen={!conceal && activeFaults.mtDoorsOpen}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Reading trends */}
         <TrendsCard specs={trendSpecs} history={trendHistory} />
