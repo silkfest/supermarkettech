@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -265,6 +266,7 @@ type FaultKey =
   | 'dirtyCondenser' | 'fan1Failed' | 'fan2Failed'
   | 'undercharge' | 'overcharge'
   | 'filterDrierRestricted'
+  | 'doorsOpen'
 
 type FaultState = Record<FaultKey, boolean>
 
@@ -281,6 +283,7 @@ const INITIAL_FAULTS: FaultState = {
   dirtyCondenser: false, fan1Failed: false, fan2Failed: false,
   undercharge: false, overcharge: false,
   filterDrierRestricted: false,
+  doorsOpen: false,
 }
 
 const CIRCUIT_TXV_FAULT: Record<string, FaultKey> = {
@@ -311,6 +314,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'undercharge',     group: 'Charge', label: 'Undercharge (~20%)',            hint: 'High SH on all circuits, near-zero subcooling — EVI intermediate fed poorly, discharge temp rises. Flash gas in liquid line; cases struggle.', mutuallyExcludes: ['overcharge'] },
   { key: 'overcharge',      group: 'Charge', label: 'Overcharge (~15%)',             hint: 'High head pressure, high subcooling, low SH — liquid carryover risk to EVI scrolls. High discharge pressure drives up comp amps.', mutuallyExcludes: ['undercharge'] },
   { key: 'filterDrierRestricted', group: 'Charge', label: 'Filter drier restricted', hint: 'ΔT across drier — all 9 circuits liquid-starved. High SH on every circuit, cases warming. Subcooling drops downstream of restriction.' },
+  { key: 'doorsOpen', group: 'Store Load', label: 'Case doors propped open (restock)', hint: 'Stocking crew left frozen-food doors open — infiltration load jumps ~18%, suction rises, C1 modulation climbs, cases drift warm. No alarm on the controller; you have to read the load.' },
   { key: 'a1TxvFailed',  group: 'Circuit TXV', label: 'A1 ORZ (9 doors) — TXV not feeding',   hint: 'A1 starved — coil SH very high, 9.54 MBH load drops off suction. Suction falls; case warms. Check TXV bulb and external equalizer.' },
   { key: 'a2TxvFailed',  group: 'Circuit TXV', label: 'A2 BREMA (10 doors) — TXV not feeding', hint: 'A2 starved — 11.60 MBH off suction. High SH. TXV bulb or equalizer suspect.' },
   { key: 'a3TxvFailed',  group: 'Circuit TXV', label: 'A3 BREMA (10 doors) — TXV not feeding', hint: 'A3 starved — twin to A2; check for common liquid supply issue if both starved.' },
@@ -331,7 +335,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'a9DefrostStuck',  group: 'Circuit Defrost', label: 'A9 BREMA (12 doors) — HG defrost stuck on',  hint: 'A9 stuck — 12-door section. Second highest load impact of any single circuit.' },
 ]
 
-const FAULT_GROUPS = ['Compressors', 'Condenser', 'Charge', 'Circuit TXV', 'Circuit Defrost']
+const FAULT_GROUPS = ['Compressors', 'Condenser', 'Charge', 'Store Load', 'Circuit TXV', 'Circuit Defrost']
 
 // ── Time-of-day load curve ─────────────────────────────────────────────────────
 // Approximates door-opening infiltration load variation over a typical supermarket day.
@@ -523,6 +527,13 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: n
   if (f.filterDrierRestricted) baseCircSH += 16
 
   // ── Circuit load + per-circuit data ───────────────────────────────────────
+  // Effective load multiplier: time-of-day curve × doors-open infiltration ×
+  // ambient infiltration (warm store air leaks into LT cases on hot days)
+  const loadMult  = period.mult
+    * (f.doorsOpen ? 1.18 : 1)
+    * (1 + Math.max(0, ambient - 75) * 0.003)
+  const caseBump  = (f.doorsOpen ? 3.5 : 0) + Math.max(0, ambient - 90) * 0.08
+
   let totalLoadMBH = 0
   const circuitCaseTemps: number[]  = []
   const circuitSuperheatF: number[] = []
@@ -539,18 +550,18 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: n
     const defStuck  = CIRCUIT_DEF_FAULT[c.id] ? f[CIRCUIT_DEF_FAULT[c.id]] : false
 
     if (defStuck) {
-      totalLoadMBH += c.designMBH * period.mult * 0.25
-      circuitCaseTemps.push(c.caseTargetF + 28)
+      totalLoadMBH += c.designMBH * loadMult * 0.25
+      circuitCaseTemps.push(c.caseTargetF + 28 + caseBump)
       circuitSuperheatF.push(NaN)
       circuitStatuses.push('DEF_STUCK')
     } else if (txvFailed) {
-      totalLoadMBH += c.designMBH * period.mult * 0.08
-      circuitCaseTemps.push(c.caseTargetF + 22)
+      totalLoadMBH += c.designMBH * loadMult * 0.08
+      circuitCaseTemps.push(c.caseTargetF + 22 + caseBump)
       circuitSuperheatF.push(38 + Math.max(0, baseCircSH - BASE_CIRCUIT_SH))  // starved
       circuitStatuses.push('TXV_FAIL')
     } else {
-      totalLoadMBH += c.designMBH * period.mult
-      circuitCaseTemps.push(c.caseTargetF)
+      totalLoadMBH += c.designMBH * loadMult
+      circuitCaseTemps.push(c.caseTargetF + caseBump)
       circuitSuperheatF.push(baseCircSH)
       circuitStatuses.push('OK')
     }
@@ -767,8 +778,43 @@ export default function ProtocolRackASimulatorPage() {
     () => (activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
     [activeScenario, faults],
   )
-  const result = useMemo(() => computeRack(activeFaults, ambient, timeOfDay, opSST, hpMin), [activeFaults, ambient, timeOfDay, opSST, hpMin])
+  const base = useMemo(() => computeRack(activeFaults, ambient, timeOfDay, opSST, hpMin), [activeFaults, ambient, timeOfDay, opSST, hpMin])
   const period = loadPeriod(timeOfDay)
+
+  // ── Live sensor layer — readings breathe around the model's steady state ──
+  const live = useLiveReadings([
+    { key: 'suction',   target: base.suctionPsig,    jitter: 0.15, wander: 0.45, period: 32, bias: 0.15 },
+    { key: 'discharge', target: base.dischargePsig,  jitter: 0.60, wander: 2.5,  period: 50, bias: 1.0 },
+    { key: 'sh',        target: base.suctionSH,      jitter: 0.25, wander: 1.3,  period: 26, bias: 0.4 },   // TXV hunting
+    { key: 'sc',        target: base.subcooling,     jitter: 0.15, wander: 0.6,  period: 55, bias: 0.3 },
+    { key: 'dt',        target: base.dischargeTemp,  jitter: 0.40, wander: 1.8,  period: 65, bias: 1.0 },
+    { key: 'ampF',      target: 1,                   jitter: 0.004, wander: 0.014, period: 22 },
+    { key: 'modWob',    target: 0,                   jitter: 0.008, wander: 0.045, period: 18 },            // digital scroll trimming
+    // per-circuit case sensor deltas — each case cycles on its own phase/bias
+    ...CIRCUITS.map((c, i) => ({ key: `circ${i}`, target: 0, jitter: 0.10, wander: 0.8, period: 70 + i * 6, bias: 0.7 })),
+  ])
+
+  // Display object — JSX reads this; alarms/staging logic stays on the clean model
+  const result: RackResult = {
+    ...base,
+    suctionPsig:      live.suction,
+    sst:              dewTempFrom(live.suction),
+    suctionSH:        live.sh,
+    suctionGasTemp:   dewTempFrom(live.suction) + live.sh,
+    dischargePsig:    live.discharge,
+    dischargeTemp:    live.dt,
+    subcooling:       live.sc,
+    compressionRatio: (live.discharge + 14.696) / (live.suction + 14.696),
+    totalAmps:        base.totalAmps * live.ampF,
+    compAmps:         base.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+    c1Modulation:     base.compRunning[0]
+      ? Math.min(1, Math.max(C1_MIN_MOD, base.c1Modulation + live.modWob))
+      : base.c1Modulation,
+    circuitCaseTemps: base.circuitCaseTemps.map((t, i) =>
+      base.circuitStatuses[i] === 'SPARE' ? t : t + (live[`circ${i}`] ?? 0)),
+    circuitSuperheatF: base.circuitSuperheatF.map((sh, i) =>
+      Number.isFinite(sh) ? sh + (live[`circ${i}`] ?? 0) * 0.5 : sh),
+  }
 
   function toggleFault(key: FaultKey) {
     const setter = inScenario ? setUserGuess : setFaults

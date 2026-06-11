@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -46,7 +47,7 @@ type FaultKey =
   | 'hpvStuckClosed' | 'hpvStuckOpen'
   | 'fgbvStuckClosed' | 'fgbvStuckOpen'
   | 'mtComp1Failed' | 'ltComp1Failed'
-  | 'undercharge' | 'mtEevStarved' | 'ltDefrostStuck'
+  | 'undercharge' | 'mtEevStarved' | 'ltDefrostStuck' | 'mtDoorsOpen'
 
 type FaultState = Record<FaultKey, boolean>
 const INITIAL_FAULTS = {
@@ -55,6 +56,7 @@ const INITIAL_FAULTS = {
   fgbvStuckClosed: false, fgbvStuckOpen: false,
   mtComp1Failed: false, ltComp1Failed: false,
   undercharge: false, mtEevStarved: false, ltDefrostStuck: false,
+  mtDoorsOpen: false,
 } satisfies FaultState
 
 interface FaultDef { key: FaultKey; label: string; hint: string; group: string; mutuallyExcludes?: FaultKey[] }
@@ -71,6 +73,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'undercharge',    label: 'Low CO2 charge',             hint: 'Receiver level low — flash gas at EEVs, high SH, cases warm',                   group: 'Charge / Load' },
   { key: 'mtEevStarved',   label: 'MT case EEV starved (Dairy)', hint: 'One MT circuit starved — its case warms while others hold',                    group: 'Charge / Load' },
   { key: 'ltDefrostStuck', label: 'LT defrost stuck on',        hint: 'LT circuit won\'t terminate — frozen food warming fast',                        group: 'Charge / Load' },
+  { key: 'mtDoorsOpen',    label: 'MT case doors propped open', hint: 'Stocking crew left dairy/deli doors open — infiltration lifts MT suction and case temps; amps climb. No controller alarm — read the load.', group: 'Charge / Load' },
 ]
 const FAULT_GROUPS = ['Gas Cooler', 'Valves', 'Compressors', 'Charge / Load']
 
@@ -154,6 +157,10 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.undercharge)    { mtSuctionPsig -= 30; mtSH += 18 }
   if (f.hpvStuckClosed) { mtSuctionPsig -= 35; mtSH += 24 }
   if (f.mtEevStarved)   { mtSuctionPsig -= 14; mtSH += 10 }
+  if (f.mtDoorsOpen)    { mtSuctionPsig += 18; mtSH = Math.max(4, mtSH - 2) }
+  // Hot-day infiltration: store load rises with ambient — suction doesn't hold
+  // setpoint as crisply at 100 °F as at 70 °F
+  if (oat > 88) mtSuctionPsig += (oat - 88) * 0.9
   const mtSSTnow = satTempF(mtSuctionPsig)
 
   // LT circuit — LT compressors discharge into the MT suction header
@@ -171,6 +178,7 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   let mtAmpsMult = 1
   if (f.mtComp1Failed) mtAmpsMult *= 1.24
   if (f.fgbvStuckOpen) mtAmpsMult *= 1.18
+  if (f.mtDoorsOpen)   mtAmpsMult *= 1.09
   if (headPsig > 1300) mtAmpsMult *= 1 + (headPsig - 1300) / 2500
   let ltAmpsMult = 1
   if (f.ltComp1Failed) ltAmpsMult *= 1.28
@@ -184,6 +192,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.undercharge)    mtCaseOffset += 4
   if (f.hpvStuckClosed) mtCaseOffset += 6
   if (f.fgbvStuckOpen)  mtCaseOffset += 3
+  if (f.mtDoorsOpen)    mtCaseOffset += 4
+  if (oat > 90)         mtCaseOffset += (oat - 90) * 0.07
   const mtCaseTemps = MT_CASES.map(c =>
     c.setpoint + mtCaseOffset + (f.mtEevStarved && c.name === 'Dairy' ? 9 : 0))
 
@@ -508,7 +518,42 @@ export default function Co2BoosterSimulatorPage() {
   )
   const activeOat    = inScenario ? (activeScenario.oat ?? 75) : oat
 
-  const result = useMemo(() => computeRack(activeFaults, activeOat, mtSet, ltSet, flashSet), [activeFaults, activeOat, mtSet, ltSet, flashSet])
+  const base = useMemo(() => computeRack(activeFaults, activeOat, mtSet, ltSet, flashSet), [activeFaults, activeOat, mtSet, ltSet, flashSet])
+
+  // ── Live sensor layer — readings breathe around the model's steady state ──
+  const live = useLiveReadings([
+    { key: 'head',      target: base.headPsig,      jitter: 2.2,  wander: 9,    period: 48, bias: 3 },
+    { key: 'flash',     target: base.flashPsig,     jitter: 0.8,  wander: 3.5,  period: 60, bias: 1.5 },
+    { key: 'mtSuction', target: base.mtSuctionPsig, jitter: 1.0,  wander: 4,    period: 34, bias: 1.2 },
+    { key: 'ltSuction', target: base.ltSuctionPsig, jitter: 0.7,  wander: 2.5,  period: 38, bias: 0.8 },
+    { key: 'mtSH',      target: base.mtSH,          jitter: 0.25, wander: 1.4,  period: 26, bias: 0.4 },  // EEV hunting
+    { key: 'ltSH',      target: base.ltSH,          jitter: 0.25, wander: 1.2,  period: 30, bias: 0.4 },
+    { key: 'gcOut',     target: base.gcOutletTemp,  jitter: 0.20, wander: 0.8,  period: 70, bias: 0.5 },
+    { key: 'ampF',      target: 1,                  jitter: 0.005, wander: 0.015, period: 24 },
+    // per-case sensor deltas
+    ...MT_CASES.map((c, i) => ({ key: `mtCase${i}`, target: 0, jitter: 0.10, wander: 0.9, period: 72 + i * 8, bias: 0.7 })),
+    ...LT_CASES.map((c, i) => ({ key: `ltCase${i}`, target: 0, jitter: 0.10, wander: 0.7, period: 84 + i * 9, bias: 0.6 })),
+  ])
+
+  // Display object — JSX reads this; alarm logic stays on the clean model
+  const result: RackResult = {
+    ...base,
+    headPsig:      live.head,
+    flashPsig:     live.flash,
+    flashSatTemp:  satTempF(live.flash),
+    rvMarginPsig:  RV_LIFT_PSIG - live.flash,
+    mtSuctionPsig: live.mtSuction,
+    mtSST:         satTempF(live.mtSuction),
+    ltSuctionPsig: live.ltSuction,
+    ltSST:         satTempF(live.ltSuction),
+    mtSH:          live.mtSH,
+    ltSH:          live.ltSH,
+    gcOutletTemp:  live.gcOut,
+    mtAmps:        base.mtAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+    ltAmps:        base.ltAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+    mtCaseTemps:   base.mtCaseTemps.map((t, i) => t + (live[`mtCase${i}`] ?? 0)),
+    ltCaseTemps:   base.ltCaseTemps.map((t, i) => t + (live[`ltCase${i}`] ?? 0)),
+  }
 
   const trendSpecs = [
     { key: 'head',      label: result.transcritical ? 'Gas Cooler' : 'Head', unit: 'psig', value: result.headPsig, decimals: 0 },

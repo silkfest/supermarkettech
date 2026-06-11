@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
@@ -157,7 +158,7 @@ type FaultKey =
   | 'underchargeModerate' | 'underchargeSevere' | 'overcharge'
   | 'filterDrierRestricted'
   | 'comp1Failed' | 'comp2Failed' | 'comp3Failed' | 'comp4Failed'
-  | 'txvNotFeeding' | 'defrostStuckOn'
+  | 'txvNotFeeding' | 'defrostStuckOn' | 'caseDoorsOpen'
   | 'oilLow' | 'nonCondensables'
   | 'ltComp1Failed' | 'ltComp2Failed'
   | 'ltTxvNotFeeding' | 'ltDefrostStuckOn'
@@ -172,7 +173,7 @@ const INITIAL_FAULTS: FaultState = {
   underchargeModerate: false, underchargeSevere: false, overcharge: false,
   filterDrierRestricted: false,
   comp1Failed: false, comp2Failed: false, comp3Failed: false, comp4Failed: false,
-  txvNotFeeding: false, defrostStuckOn: false,
+  txvNotFeeding: false, defrostStuckOn: false, caseDoorsOpen: false,
   oilLow: false, nonCondensables: false,
   ltComp1Failed: false, ltComp2Failed: false,
   ltTxvNotFeeding: false, ltDefrostStuckOn: false,
@@ -202,6 +203,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp1ValveWorn', label: 'Comp 1 — worn valves (bypassing)', hint: 'Internal bypass — comp still runs, amps look near-normal, but capacity is reduced ~35%; hard to find without individual analysis', group: 'Compressors' },
   { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load' },
   { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
+  { key: 'caseDoorsOpen',       label: 'Case doors propped open (stocking)', hint: 'Warm humid store air floods the cases — load and suction rise, case temps drift up, coils frost faster', group: 'MT Load' },
   { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',             group: 'LT Booster' },
   { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',              group: 'LT Booster' },
   { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',               group: 'LT Booster' },
@@ -335,12 +337,15 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     const coldOffset = Math.min(40 - oat, 40)
     subcooling += coldOffset * 0.5          // up to +20 °F SC from liquid migration
   }
-  // High ambient: compressor heat soak, increased case infiltration load
-  if (oat > 90) {
-    const hotOffset = oat - 90
+  // High ambient: compressor heat soak, increased case infiltration load.
+  // Store traffic + infiltration also lift the suction load itself — a rack
+  // at 105 °F OAT doesn't hold setpoint as crisply as one at 75 °F.
+  if (oat > 85) {
+    const hotOffset = oat - 85
     dischargeSuperheat += hotOffset * 0.4
     ampsMultiplier     *= 1 + hotOffset * 0.004
-    caseTemp           += hotOffset * 0.08  // heat infiltration into MT cases
+    caseTemp           += hotOffset * 0.10  // heat infiltration into MT cases
+    suctionSatTemp     += hotOffset * 0.06  // load rise lifts suction above setpoint
   }
 
   // ── Machine room ─────────────────────────────────────────────────────────
@@ -384,6 +389,7 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   // ── Load faults ───────────────────────────────────────────────────────────
   if (f.txvNotFeeding)  { suctionSatTemp -= 12; condensingSatTemp -= 10; superheat += 28; dischargeSuperheat += 22; caseTemp += 8 }
   if (f.defrostStuckOn) { suctionSatTemp += 7; caseTemp += 12; if (superheat > 8) superheat -= 8 }
+  if (f.caseDoorsOpen)  { suctionSatTemp += 3; caseTemp += 5; ampsMultiplier *= 1.06; if (superheat > 8) superheat -= 2 }
 
   // ── Oil / Misc ────────────────────────────────────────────────────────────
   if (f.oilLow)          { oilDiff = 8 }
@@ -1100,7 +1106,10 @@ export default function SimulationPage() {
   const [submitted,      setSubmitted]      = useState(false)
 
   // Active values — scenarios override free-play faults and OAT
-  const activeFaults = scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults
+  const activeFaults = useMemo(
+    () => (scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
+    [scenarioMode, activeScenario, faults],
+  )
   const activeOat    = scenarioMode ? (activeScenario?.oat ?? 80) : oat
 
   // Derive sat-temp equivalents from the configured psig set points
@@ -1109,14 +1118,63 @@ export default function SimulationPage() {
   const mtSatSetpoint  = ptDewReverse(rackConfig.mtSuctionPsig, pt)   // MT suction → evap sat temp (dew)
   const ltSatSetpoint  = ptDewReverse(rackConfig.ltSuctionPsig, pt)   // LT suction → evap sat temp (dew)
 
-  const mt = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
-  const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt])
+  const mtBase = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
+  const ltBase = useMemo(() => computeLT(activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt])
 
-  // Individual case temperatures — deviation from aggregate caseTemp × sensitivity
-  const caseTemps = useMemo(() => STORE_LINEUP.map(s => {
-    if (s.circuit === 'MT') return s.setpoint + (mt.caseTemp - BASELINE.caseTemp) * s.sensitivity
-    else                     return s.setpoint + (lt.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
-  }), [mt.caseTemp, lt.caseTemp])
+  // ── Live sensor layer — readings breathe around the model's steady state ──
+  const live = useLiveReadings([
+    { key: 'mtSuction', target: mtBase.suctionPsig,       jitter: 0.30, wander: 0.9,  period: 35, bias: 0.3 },
+    { key: 'discharge', target: mtBase.dischargePsig,     jitter: 0.50, wander: 2.2,  period: 55, bias: 0.8 },
+    { key: 'mtSH',      target: mtBase.suctionSuperheat,  jitter: 0.25, wander: 1.4,  period: 28, bias: 0.4 },  // TXV hunting
+    { key: 'sc',        target: mtBase.subcooling,        jitter: 0.15, wander: 0.7,  period: 60, bias: 0.3 },
+    { key: 'dischTemp', target: mtBase.dischargeTemp,     jitter: 0.40, wander: 2.0,  period: 70, bias: 1.0 },
+    { key: 'oilDiff',   target: mtBase.oilDiff,           jitter: 0.20, wander: 0.6,  period: 40 },
+    { key: 'ltSuction', target: ltBase.suctionPsig,       jitter: 0.18, wander: 0.5,  period: 38, bias: 0.2 },
+    { key: 'ltSH',      target: ltBase.superheat,         jitter: 0.25, wander: 1.2,  period: 30, bias: 0.4 },
+    { key: 'mtCase',    target: mtBase.caseTemp,          jitter: 0.10, wander: 0.8,  period: 90, bias: 0.4 },  // case cycling
+    { key: 'ltCase',    target: ltBase.caseTemp,          jitter: 0.10, wander: 0.7,  period: 80, bias: 0.4 },
+    { key: 'ampF',      target: 1,                        jitter: 0.004, wander: 0.012, period: 25 },
+    // per-case sensor deltas — each case sensor has its own bias + cycling phase
+    ...STORE_LINEUP.map((s, i) => ({ key: `case${i}`, target: 0, jitter: 0.10, wander: s.circuit === 'MT' ? 0.9 : 0.7, period: 75 + i * 7, bias: 0.7 })),
+  ])
+
+  // Display objects — JSX reads these; alarms/status logic stays on the clean model
+  const mt: SystemState = {
+    ...mtBase,
+    suctionPsig:      live.mtSuction,
+    dischargePsig:    live.discharge,
+    suctionSuperheat: live.mtSH,
+    subcooling:       live.sc,
+    dischargeTemp:    live.dischTemp,
+    oilDiff:          live.oilDiff,
+    oilPressurePsig:  live.mtSuction + live.oilDiff,
+    suctionGasTemp:   mtBase.suctionSatTemp + live.mtSH,
+    liquidTemp:       mtBase.condensingTemp - live.sc,
+    compressionRatio: (live.discharge + 14.696) / (live.mtSuction + 14.696),
+    liquidLinePsig:   Math.max(live.discharge - 8, 0),
+    dischargeDeviation: live.discharge - mtBase.expectedDischargePsig,
+    caseTemp:         live.mtCase,
+    compAmps:         mtBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+  }
+  const lt: LTState = {
+    ...ltBase,
+    suctionPsig:      live.ltSuction,
+    superheat:        live.ltSH,
+    suctionGasTemp:   ltBase.suctionSatTemp + live.ltSH,
+    compressionRatio: (ltBase.dischargePsig + 14.696) / (live.ltSuction + 14.696),
+    caseTemp:         live.ltCase,
+    compAmps:         ltBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+  }
+
+  // Individual case temperatures — deviation from aggregate caseTemp × sensitivity,
+  // plus each sensor's own live bias/cycling so no two cases read identically
+  const caseTemps = useMemo(() => STORE_LINEUP.map((s, i) => {
+    const base = s.circuit === 'MT'
+      ? s.setpoint + (mtBase.caseTemp - BASELINE.caseTemp) * s.sensitivity
+      : s.setpoint + (ltBase.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
+    return base + (live[`case${i}`] ?? 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [mtBase.caseTemp, ltBase.caseTemp, live])
 
   const allAlarms    = [...mt.alarms, ...lt.alarms]
   const hasCritical  = allAlarms.some(a => a.severity === 'CRITICAL')
