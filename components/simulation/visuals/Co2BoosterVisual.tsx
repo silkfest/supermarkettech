@@ -1,5 +1,6 @@
 'use client'
-import { Defs, Pipe, Fan, Coil, Comp, Vessel, Valve, CaseBox, Tag, C, type CompVisStatus, type ValveVisState } from './primitives'
+import { Defs, Pipe, Fan, Coil, Comp, Vessel, Valve, CaseBox, Tag, Hotspot, C, type CompVisStatus, type ValveVisState } from './primitives'
+import type { SchematicDetail } from './SchematicViewer'
 
 // ── CO2 transcritical booster schematic ─────────────────────────────────────────
 // Gas cooler → HPV → flash tank (w/ relief valve + FGBV) → MT/LT cases;
@@ -27,6 +28,9 @@ export interface Co2BoosterVisualProps {
   doorsOpen: boolean
   ltIced: boolean
   mtFanOut: boolean
+  /** Tap-to-inspect */
+  selectedId?: string | null
+  onSelect?: (d: SchematicDetail | null) => void
 }
 
 export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
@@ -34,6 +38,18 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
   const ltRunning = p.ltComps.some(c => c.status === 'run')
   const hpvFlow = mtRunning && p.hpv !== 'closed'
   const fgbvFlow = mtRunning && p.fgbv !== 'closed'
+  const fansUp = p.fansFailed.filter(f => !f).length
+  const pick = (detail: SchematicDetail) => () => p.onSelect?.(p.selectedId === detail.id ? null : detail)
+  const valveRow = (state: ValveVisState) =>
+    state === 'closed' ? { value: 'STUCK CLOSED', color: 'text-red-600 dark:text-red-400' }
+    : state === 'open' ? { value: 'STUCK OPEN', color: 'text-amber-600 dark:text-amber-400' }
+    : { value: 'Auto (modulating)' as string, color: 'text-emerald-600 dark:text-emerald-400' }
+  const compRows = (c: { status: CompVisStatus; amps: number }, suction: number) => [
+    { label: 'Status', value: c.status === 'run' ? 'Running' : 'TRIPPED',
+      color: c.status === 'trip' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Amps', value: c.status === 'run' ? `${c.amps.toFixed(1)} A` : '—' },
+    { label: 'Suction', value: `${suction.toFixed(0)} psig` },
+  ]
 
   return (
     <svg viewBox="0 0 860 340" className="w-full h-auto select-none" role="img" aria-label="CO2 booster rack schematic">
@@ -111,6 +127,67 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
       <Tag x={646} y={268} text={`${p.flashPsig.toFixed(0)}`} color="#b45309" />
       <Tag x={480} y={222} text={`MT ${p.mtSuctionPsig.toFixed(0)} psig`} color={C.suction} />
       <Tag x={600} y={326} text={`LT ${p.ltSuctionPsig.toFixed(0)} psig`} color={C.ltSuction} />
+
+      {/* ── Tap-to-inspect hotspots (top layer) ── */}
+      {p.onSelect && (
+        <g>
+          <Hotspot x={230} y={42} w={250} h={46} selected={p.selectedId === 'gc'} onSelect={pick({
+            id: 'gc', title: 'Gas Cooler', subtitle: p.transcritical ? 'transcritical — no condensing' : 'subcritical — condensing',
+            rows: [
+              { label: 'Pressure', value: `${p.headPsig.toFixed(0)} psig` },
+              { label: 'Fans', value: `${fansUp}/2 running`, color: fansUp < 2 ? 'text-red-600 dark:text-red-400' : undefined },
+              ...(p.gcFouled ? [{ label: 'Coil', value: 'FOULED', color: 'text-amber-600 dark:text-amber-400' }] : []),
+            ],
+          })} />
+          <Hotspot x={586} y={98} w={40} h={42} selected={p.selectedId === 'hpv'} onSelect={pick({
+            id: 'hpv', title: 'High Pressure Valve (HPV)', subtitle: 'gas cooler → flash tank',
+            rows: [{ label: 'State', ...valveRow(p.hpv) }],
+          })} />
+          <Hotspot x={622} y={152} w={48} h={100} selected={p.selectedId === 'flash'} onSelect={pick({
+            id: 'flash', title: 'Flash Tank / Receiver',
+            rows: [
+              { label: 'Pressure', value: `${p.flashPsig.toFixed(0)} psig` },
+              { label: 'Level', value: `${Math.round(p.flashLevel * 100)}%` },
+              { label: 'Relief valve', value: p.rvVenting ? 'LIFTING — venting CO2' : p.rvWarn ? 'Approaching (690)' : 'OK (lifts 690)',
+                color: p.rvVenting ? 'text-red-600 dark:text-red-400' : p.rvWarn ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+            ],
+          })} />
+          <Hotspot x={576} y={148} w={40} h={42} selected={p.selectedId === 'fgbv'} onSelect={pick({
+            id: 'fgbv', title: 'Flash Gas Bypass Valve (FGBV)', subtitle: 'flash tank vapor → MT suction',
+            rows: [{ label: 'State', ...valveRow(p.fgbv) }],
+          })} />
+          {p.mtComps.map((c, i) => (
+            <Hotspot key={c.label} x={84 + i * 52} y={252} w={46} h={42} selected={p.selectedId === `mt${i}`} onSelect={pick({
+              id: `mt${i}`, title: `MT Compressor ${i + 1}`, subtitle: 'Bitzer · discharges to gas cooler',
+              rows: compRows(c, p.mtSuctionPsig),
+            })} />
+          ))}
+          {p.ltComps.map((c, i) => (
+            <Hotspot key={c.label} x={346 + i * 52} y={252} w={46} h={42} selected={p.selectedId === `lt${i}`} onSelect={pick({
+              id: `lt${i}`, title: `LT Booster ${i + 1}`, subtitle: 'Bitzer · discharges into MT suction',
+              rows: compRows(c, p.ltSuctionPsig),
+            })} />
+          ))}
+          <Hotspot x={690} y={46} w={150} h={66} selected={p.selectedId === 'mtcases'} onSelect={pick({
+            id: 'mtcases', title: 'MT Cases', subtitle: 'dairy · meat · deli',
+            rows: [
+              { label: 'Avg temp', value: `${p.mtCaseTemp.toFixed(1)} °F` },
+              { label: 'MT suction', value: `${p.mtSuctionPsig.toFixed(0)} psig` },
+              ...(p.doorsOpen ? [{ label: 'Doors', value: 'PROPPED OPEN', color: 'text-amber-600 dark:text-amber-400' }] : []),
+              ...(p.mtFanOut ? [{ label: 'Evap fans', value: 'OUT', color: 'text-red-600 dark:text-red-400' }] : []),
+            ],
+          })} />
+          <Hotspot x={690} y={186} w={150} h={64} selected={p.selectedId === 'ltcases'} onSelect={pick({
+            id: 'ltcases', title: 'Frozen Cases', subtitle: 'frozen food · ice cream',
+            rows: [
+              { label: 'Avg temp', value: `${p.ltCaseTemp.toFixed(1)} °F` },
+              { label: 'LT suction', value: `${p.ltSuctionPsig.toFixed(0)} psig` },
+              ...(p.ltDefrost ? [{ label: 'Defrost', value: 'STUCK ON', color: 'text-amber-600 dark:text-amber-400' }] : []),
+              ...(p.ltIced ? [{ label: 'Coil', value: 'ICED', color: 'text-cyan-600 dark:text-cyan-400' }] : []),
+            ],
+          })} />
+        </g>
+      )}
     </svg>
   )
 }
