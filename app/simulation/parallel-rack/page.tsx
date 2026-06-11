@@ -160,6 +160,7 @@ type FaultKey =
   | 'filterDrierRestricted'
   | 'comp1Failed' | 'comp2Failed' | 'comp3Failed' | 'comp4Failed'
   | 'txvNotFeeding' | 'defrostStuckOn' | 'caseDoorsOpen'
+  | 'evapFanFailed' | 'coilIced' | 'txvOverfeeding' | 'caseDrierPlugged'
   | 'oilLow' | 'nonCondensables'
   | 'ltComp1Failed' | 'ltComp2Failed'
   | 'ltTxvNotFeeding' | 'ltDefrostStuckOn'
@@ -175,6 +176,7 @@ const INITIAL_FAULTS: FaultState = {
   filterDrierRestricted: false,
   comp1Failed: false, comp2Failed: false, comp3Failed: false, comp4Failed: false,
   txvNotFeeding: false, defrostStuckOn: false, caseDoorsOpen: false,
+  evapFanFailed: false, coilIced: false, txvOverfeeding: false, caseDrierPlugged: false,
   oilLow: false, nonCondensables: false,
   ltComp1Failed: false, ltComp2Failed: false,
   ltTxvNotFeeding: false, ltDefrostStuckOn: false,
@@ -202,9 +204,13 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp3Failed',         label: 'Compressor 3 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp4Failed',         label: 'Compressor 4 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp1ValveWorn', label: 'Comp 1 — worn valves (bypassing)', hint: 'Internal bypass — comp still runs, amps look near-normal, but capacity is reduced ~35%; hard to find without individual analysis', group: 'Compressors' },
-  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load' },
+  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load', mutuallyExcludes: ['txvOverfeeding'] },
+  { key: 'txvOverfeeding',      label: 'MT TXV overfeeding (floodback)', hint: 'Bulb loose or valve hunting wide open — superheat near zero, liquid back to the rack. Cool discharge, oil dilution drops the Y825 differential.', group: 'MT Load', mutuallyExcludes: ['txvNotFeeding'] },
   { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
   { key: 'caseDoorsOpen',       label: 'Case doors propped open (stocking)', hint: 'Warm humid store air floods the cases — load and suction rise, case temps drift up, coils frost faster', group: 'MT Load' },
+  { key: 'evapFanFailed',       label: 'Evap fan motors out (Dairy)',   hint: 'Air stops moving across the coil — Dairy case warms while suction sags and SH runs low. Coil will ice next; check fan amps and blades.', group: 'MT Load' },
+  { key: 'coilIced',            label: 'Evaporator coil iced up (Produce)', hint: 'Solid frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warm case. Find why defrost didn\'t clear it.', group: 'MT Load' },
+  { key: 'caseDrierPlugged',    label: 'Case liquid drier plugged (Cheese)', hint: 'Drier at the case is restricting — that circuit starves (warm case, high SH) but the RACK drier ΔT reads normal. Check ΔT across the case drier.', group: 'MT Load' },
   { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',             group: 'LT Booster' },
   { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',              group: 'LT Booster' },
   { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',               group: 'LT Booster' },
@@ -391,6 +397,13 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   if (f.txvNotFeeding)  { suctionSatTemp -= 12; condensingSatTemp -= 10; superheat += 28; dischargeSuperheat += 22; caseTemp += 8 }
   if (f.defrostStuckOn) { suctionSatTemp += 7; caseTemp += 12; if (superheat > 8) superheat -= 8 }
   if (f.caseDoorsOpen)  { suctionSatTemp += 3; caseTemp += 5; ampsMultiplier *= 1.06; if (superheat > 8) superheat -= 2 }
+  // Low-airflow faults — classic signature: case warms while suction AND superheat both drop
+  if (f.evapFanFailed)  { suctionSatTemp -= 1.5; caseTemp += 2; if (superheat > 6) superheat -= 3 }
+  if (f.coilIced)       { suctionSatTemp -= 4; caseTemp += 3; if (superheat > 7) superheat -= 5; ampsMultiplier *= 0.97 }
+  // Floodback — liquid back to the rack: SH collapses, discharge runs cool, oil dilutes
+  if (f.txvOverfeeding) { suctionSatTemp += 3; superheat = Math.min(superheat, 2); dischargeSuperheat -= 25; ampsMultiplier *= 1.05; oilDiff -= 6 }
+  // Case-level drier plugged — one circuit starves; rack drier ΔT stays normal
+  if (f.caseDrierPlugged) { suctionSatTemp -= 2; superheat += 6; caseTemp += 1.5 }
 
   // ── Oil / Misc ────────────────────────────────────────────────────────────
   if (f.oilLow)          { oilDiff = 8 }
@@ -413,9 +426,10 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   }
 
   // ── Clamp ─────────────────────────────────────────────────────────────────
-  subcooling        = Math.max(subcooling, 0.3)
-  superheat         = Math.max(superheat, 0)
-  oilDiff           = Math.max(oilDiff, 0)
+  subcooling         = Math.max(subcooling, 0.3)
+  superheat          = Math.max(superheat, 0)
+  oilDiff            = Math.max(oilDiff, 0)
+  dischargeSuperheat = Math.max(dischargeSuperheat, 12)
   condensingSatTemp = Math.max(condensingSatTemp, suctionSatTemp + 20)
 
   // ── Derived values ────────────────────────────────────────────────────────
@@ -1169,14 +1183,19 @@ export default function SimulationPage() {
   }
 
   // Individual case temperatures — deviation from aggregate caseTemp × sensitivity,
-  // plus each sensor's own live bias/cycling so no two cases read identically
+  // plus each sensor's own live bias/cycling so no two cases read identically.
+  // Case-level faults hit their named case hard while barely moving the aggregate.
   const caseTemps = useMemo(() => STORE_LINEUP.map((s, i) => {
     const base = s.circuit === 'MT'
       ? s.setpoint + (mtBase.caseTemp - BASELINE.caseTemp) * s.sensitivity
       : s.setpoint + (ltBase.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
-    return base + (live[`case${i}`] ?? 0)
+    const localFault =
+      (s.name === 'Dairy'   && activeFaults.evapFanFailed    ? 9  : 0) +
+      (s.name === 'Produce' && activeFaults.coilIced         ? 8  : 0) +
+      (s.name === 'Cheese'  && activeFaults.caseDrierPlugged ? 10 : 0)
+    return base + localFault + (live[`case${i}`] ?? 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [mtBase.caseTemp, ltBase.caseTemp, live])
+  }), [mtBase.caseTemp, ltBase.caseTemp, activeFaults, live])
 
   const allAlarms    = [...mt.alarms, ...lt.alarms]
   const hasCritical  = allAlarms.some(a => a.severity === 'CRITICAL')
@@ -1754,6 +1773,9 @@ export default function SimulationPage() {
                         defrostStuck={!conceal && activeFaults.defrostStuckOn}
                         ltDefrostStuck={!conceal && activeFaults.ltDefrostStuckOn}
                         doorsOpen={!conceal && activeFaults.caseDoorsOpen}
+                        mtIced={!conceal && activeFaults.coilIced}
+                        mtFanOut={!conceal && activeFaults.evapFanFailed}
+                        floodback={mt.suctionSuperheat < 5}
                         hpCtrlActive={mtBase.hpCtrlActive}
                       />
                     </div>

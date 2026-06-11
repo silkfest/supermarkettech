@@ -6,7 +6,7 @@ import { Defs, Pipe, Fan, Coil, Comp, Tag, C, type CompVisStatus } from './primi
 
 export interface ProtocolCircuitVis {
   id: string
-  status: 'OK' | 'TXV_FAIL' | 'DEF_STUCK' | 'SPARE'
+  status: 'OK' | 'TXV_FAIL' | 'DEF_STUCK' | 'SPARE' | 'FAN_OUT' | 'ICED' | 'DRIER' | 'OVERFEED'
   temp: number
   tempColor: string
 }
@@ -75,11 +75,22 @@ export default function ProtocolRackVisual(p: ProtocolRackVisualProps) {
         const col = i % 4, row = Math.floor(i / 4)
         const x = gx + col * gxs, y = gy + row * gys
         const spare = c.status === 'SPARE'
-        const border = c.status === 'DEF_STUCK' ? C.warn : c.status === 'TXV_FAIL' ? '#fb923c' : C.stroke
+        const border =
+          c.status === 'DEF_STUCK' ? C.warn :
+          c.status === 'TXV_FAIL' || c.status === 'DRIER' ? '#fb923c' :
+          c.status === 'ICED' || c.status === 'FAN_OUT' ? '#22d3ee' :
+          c.status === 'OVERFEED' ? '#a78bfa' : C.stroke
+        const faultText: Record<string, { label: string; color: string }> = {
+          TXV_FAIL: { label: 'TXV starved',    color: '#fb923c' },
+          DRIER:    { label: 'drier plugged',  color: '#fb923c' },
+          ICED:     { label: 'coil iced',      color: '#0891b2' },
+          FAN_OUT:  { label: 'evap fans out',  color: '#ef4444' },
+          OVERFEED: { label: 'floodback',      color: '#8b5cf6' },
+        }
         return (
           <g key={c.id} opacity={spare ? 0.4 : 1}>
             <rect x={x} y={y} width={cw} height={ch} rx={5} fill={C.metal} fillOpacity={0.13} stroke={border}
-              strokeWidth={c.status === 'DEF_STUCK' || c.status === 'TXV_FAIL' ? 1.8 : 1.1} />
+              strokeWidth={c.status !== 'OK' && !spare ? 1.8 : 1.1} />
             <text x={x + 7} y={y + 14} fontSize={9} fontWeight={700} fill={C.text}>❄ {c.id}</text>
             {spare ? (
               <text x={x + cw / 2} y={y + 34} textAnchor="middle" fontSize={8} fill={C.text}>spare</text>
@@ -94,8 +105,13 @@ export default function ProtocolRackVisual(p: ProtocolRackVisualProps) {
                     <text x={x + cw / 2 + 6} y={y + ch - 10} textAnchor="middle" fontSize={7.5} fill="#fb923c" fontWeight={700}>defrost stuck</text>
                   </>
                 )}
-                {c.status === 'TXV_FAIL' && (
-                  <text x={x + cw / 2} y={y + ch - 10} textAnchor="middle" fontSize={7.5} fill="#fb923c" fontWeight={700}>TXV starved</text>
+                {c.status === 'ICED' && (
+                  <path d={`M${x + 10},${y + ch - 14} l4,-4 l4,4 l4,-4 l4,4 l4,-4 l4,4`}
+                    stroke="#22d3ee" strokeWidth={1.4} fill="none" strokeLinejoin="round" />
+                )}
+                {faultText[c.status] && (
+                  <text x={x + cw / 2} y={y + ch - (c.status === 'ICED' ? 4 : 10)} textAnchor="middle" fontSize={7.5}
+                    fill={faultText[c.status].color} fontWeight={700}>{faultText[c.status].label}</text>
                 )}
                 {c.status === 'OK' && (
                   <circle cx={x + 12} cy={y + ch - 14} r={2.6} fill={C.ok}>

@@ -18,6 +18,10 @@ export interface ParallelRackVisualProps {
   defrostStuck: boolean
   ltDefrostStuck: boolean
   doorsOpen: boolean
+  mtIced: boolean
+  mtFanOut: boolean
+  /** Gauge-derived (low SH) — safe to show even in scenario mode */
+  floodback: boolean
   hpCtrlActive: boolean
 }
 
@@ -79,7 +83,8 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
 
       {/* ── Cases ── */}
       <CaseBox x={640} y={46} w={185} h={66} label="MT Cases" sub="produce · dairy · WIC"
-        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={4} doorsOpen={p.doorsOpen} defrost={p.defrostStuck} />
+        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={4} doorsOpen={p.doorsOpen} defrost={p.defrostStuck}
+        iced={p.mtIced} fanOut={p.mtFanOut} />
       <CaseBox x={640} y={190} w={185} h={60} label="Frozen Food" sub="RL-5 doors · WIF · bunkers"
         temp={p.ltCaseTemp} tempColor={p.ltCaseColor} doors={4} frozen defrost={p.ltDefrostStuck} />
 
@@ -87,6 +92,7 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
       <Tag x={380} y={112} text={`${p.dischargePsig.toFixed(0)} psig`} color={C.discharge} />
       <Tag x={520} y={160} text={`${p.suctionPsig.toFixed(1)} psig`} color={C.suction} />
       <Tag x={672} y={322} text={`${p.ltSuctionPsig.toFixed(1)} psig`} color={C.ltSuction} />
+      {p.floodback && <Tag x={436} y={148} text="⚠ low SH — liquid floodback risk" color={C.crit} />}
     </svg>
   )
 }

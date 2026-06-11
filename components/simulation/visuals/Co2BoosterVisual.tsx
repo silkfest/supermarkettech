@@ -25,6 +25,8 @@ export interface Co2BoosterVisualProps {
   ltCaseTemp: number; ltCaseColor: string
   ltDefrost: boolean
   doorsOpen: boolean
+  ltIced: boolean
+  mtFanOut: boolean
 }
 
 export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
@@ -100,9 +102,9 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
 
       {/* ── Cases ── */}
       <CaseBox x={690} y={46} w={150} h={66} label="MT Cases" sub="dairy · meat · deli"
-        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={3} doorsOpen={p.doorsOpen} />
+        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={3} doorsOpen={p.doorsOpen} fanOut={p.mtFanOut} />
       <CaseBox x={690} y={186} w={150} h={64} label="Frozen" sub="frozen food · ice cream" frozen
-        temp={p.ltCaseTemp} tempColor={p.ltCaseColor} doors={3} defrost={p.ltDefrost} />
+        temp={p.ltCaseTemp} tempColor={p.ltCaseColor} doors={3} defrost={p.ltDefrost} iced={p.ltIced} />
 
       {/* ── Reading tags ── */}
       <Tag x={205} y={112} text={`${p.headPsig.toFixed(0)} psig`} color={p.transcritical ? '#f97316' : C.discharge} />

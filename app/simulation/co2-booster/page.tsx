@@ -49,6 +49,7 @@ type FaultKey =
   | 'fgbvStuckClosed' | 'fgbvStuckOpen'
   | 'mtComp1Failed' | 'ltComp1Failed'
   | 'undercharge' | 'mtEevStarved' | 'ltDefrostStuck' | 'mtDoorsOpen'
+  | 'mtEvapFanOut' | 'ltCoilIced' | 'mtCaseDrierPlugged' | 'ltEevOverfeed'
 
 type FaultState = Record<FaultKey, boolean>
 const INITIAL_FAULTS = {
@@ -58,6 +59,7 @@ const INITIAL_FAULTS = {
   mtComp1Failed: false, ltComp1Failed: false,
   undercharge: false, mtEevStarved: false, ltDefrostStuck: false,
   mtDoorsOpen: false,
+  mtEvapFanOut: false, ltCoilIced: false, mtCaseDrierPlugged: false, ltEevOverfeed: false,
 } satisfies FaultState
 
 interface FaultDef { key: FaultKey; label: string; hint: string; group: string; mutuallyExcludes?: FaultKey[] }
@@ -75,8 +77,12 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'mtEevStarved',   label: 'MT case EEV starved (Dairy)', hint: 'One MT circuit starved — its case warms while others hold',                    group: 'Charge / Load' },
   { key: 'ltDefrostStuck', label: 'LT defrost stuck on',        hint: 'LT circuit won\'t terminate — frozen food warming fast',                        group: 'Charge / Load' },
   { key: 'mtDoorsOpen',    label: 'MT case doors propped open', hint: 'Stocking crew left dairy/deli doors open — infiltration lifts MT suction and case temps; amps climb. No controller alarm — read the load.', group: 'Charge / Load' },
+  { key: 'mtEvapFanOut',   label: 'Evap fan motors out (Meat case)', hint: 'Air stops moving across the Meat coil — case warms while MT suction sags and SH runs low. Coil will ice next; check fan amps at the case.', group: 'Case / Evap' },
+  { key: 'ltCoilIced',     label: 'LT coil iced solid (Frozen Food)', hint: 'Frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warming case. Find why defrost didn\'t clear it.', group: 'Case / Evap' },
+  { key: 'mtCaseDrierPlugged', label: 'Case liquid drier plugged (Deli)', hint: 'The drier/strainer at the Deli case is restricting — that circuit starves (warm case, high SH) while the rack liquid supply reads normal.', group: 'Case / Evap', mutuallyExcludes: ['mtEevStarved'] },
+  { key: 'ltEevOverfeed',  label: 'LT EEV overfeeding (floodback)', hint: 'Valve driving wide open — LT superheat near zero, liquid back to the boosters. Amps up, slugging risk. Check the EEV driver and suction probe.', group: 'Case / Evap' },
 ]
-const FAULT_GROUPS = ['Gas Cooler', 'Valves', 'Compressors', 'Charge / Load']
+const FAULT_GROUPS = ['Gas Cooler', 'Valves', 'Compressors', 'Charge / Load', 'Case / Evap']
 
 // ── Design constants ──────────────────────────────────────────────────────────
 const MT_SST = 23           // °F — medium temp saturated suction (≈ 425 psig)
@@ -159,6 +165,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.hpvStuckClosed) { mtSuctionPsig -= 35; mtSH += 24 }
   if (f.mtEevStarved)   { mtSuctionPsig -= 14; mtSH += 10 }
   if (f.mtDoorsOpen)    { mtSuctionPsig += 18; mtSH = Math.max(4, mtSH - 2) }
+  if (f.mtEvapFanOut)   { mtSuctionPsig -= 10; mtSH = Math.max(3, mtSH - 3) }    // low airflow: load falls off
+  if (f.mtCaseDrierPlugged) { mtSuctionPsig -= 10; mtSH += 7 }                   // one circuit starved
   // Hot-day infiltration: store load rises with ambient — suction doesn't hold
   // setpoint as crisply at 100 °F as at 70 °F
   if (oat > 88) mtSuctionPsig += (oat - 88) * 0.9
@@ -171,6 +179,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.ltDefrostStuck) { ltSuctionPsig += 20 }
   if (f.undercharge)    { ltSuctionPsig -= 22; ltSH += 14 }
   if (f.hpvStuckClosed) { ltSuctionPsig -= 24; ltSH += 18 }
+  if (f.ltCoilIced)     { ltSuctionPsig -= 22; ltSH = Math.max(2, ltSH - 6) }   // low airflow: low suction AND low SH
+  if (f.ltEevOverfeed)  { ltSuctionPsig += 12; ltSH = Math.min(ltSH, 2) }       // flooded coil — liquid to boosters
   const ltSSTnow = satTempF(ltSuctionPsig)
 
   // Compressors
@@ -184,6 +194,7 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   let ltAmpsMult = 1
   if (f.ltComp1Failed) ltAmpsMult *= 1.28
   if (f.mtComp1Failed) ltAmpsMult *= 1.08      // LT discharge header (MT suction) is elevated
+  if (f.ltEevOverfeed) ltAmpsMult *= 1.06      // wet compression draws more current
   const mtAmps = mtCompRunning.map(r => r ? Math.round(MT_BASE_AMPS * mtAmpsMult * 10) / 10 : 0)
   const ltAmps = ltCompRunning.map(r => r ? Math.round(LT_BASE_AMPS * ltAmpsMult * 10) / 10 : 0)
 
@@ -196,7 +207,10 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.mtDoorsOpen)    mtCaseOffset += 4
   if (oat > 90)         mtCaseOffset += (oat - 90) * 0.07
   const mtCaseTemps = MT_CASES.map(c =>
-    c.setpoint + mtCaseOffset + (f.mtEevStarved && c.name === 'Dairy' ? 9 : 0))
+    c.setpoint + mtCaseOffset
+    + (f.mtEevStarved        && c.name === 'Dairy' ? 9  : 0)
+    + (f.mtEvapFanOut        && c.name === 'Meat'  ? 8  : 0)
+    + (f.mtCaseDrierPlugged  && c.name === 'Deli'  ? 10 : 0))
 
   let ltCaseOffset = 0
   if (f.ltComp1Failed)  ltCaseOffset += 8
@@ -204,7 +218,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.undercharge)    ltCaseOffset += 3
   if (f.hpvStuckClosed) ltCaseOffset += 5
   if (f.mtComp1Failed)  ltCaseOffset += 2
-  const ltCaseTemps = LT_CASES.map(c => c.setpoint + ltCaseOffset)
+  const ltCaseTemps = LT_CASES.map(c =>
+    c.setpoint + ltCaseOffset + (f.ltCoilIced ? (c.name === 'Frozen Food' ? 9 : 2) : 0))
 
   // Alarms
   const alarms: Alarm[] = []
@@ -224,8 +239,12 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   ltCompRunning.forEach((r, i) => { if (!r) alarms.push({ code: `LT-C${i + 1}`, severity: 'CRITICAL', message: `LT compressor ${i + 1} off on safety.` }) })
   if (mtSH >= 30)
     alarms.push({ code: 'MT-SH', severity: 'WARNING', message: `MT superheat ${Math.round(mtSH)} °F — circuits starving.` })
+  else if (mtSH <= 3)
+    alarms.push({ code: 'MT-FLOOD', severity: 'WARNING', message: `MT superheat ${Math.round(mtSH)} °F — near zero. Liquid floodback risk to MT compressors.` })
   if (ltSH >= 28)
     alarms.push({ code: 'LT-SH', severity: 'WARNING', message: `LT superheat ${Math.round(ltSH)} °F — circuits starving.` })
+  else if (ltSH <= 3)
+    alarms.push({ code: 'LT-FLOOD', severity: 'WARNING', message: `LT superheat ${Math.round(ltSH)} °F — near zero. Liquid floodback to the LT boosters; check EEV control.` })
   const worstLt = Math.max(...ltCaseTemps)
   if (worstLt >= 10)
     alarms.push({ code: 'LT-CASE', severity: 'CRITICAL', message: `LT case at ${Math.round(worstLt)} °F — frozen food at risk.` })
@@ -869,6 +888,8 @@ export default function Co2BoosterSimulatorPage() {
                     ltCaseTemp={ltAvg} ltCaseColor={ltDev >= 10 ? '#ef4444' : ltDev >= 5 ? '#f59e0b' : '#10b981'}
                     ltDefrost={!conceal && activeFaults.ltDefrostStuck}
                     doorsOpen={!conceal && activeFaults.mtDoorsOpen}
+                    ltIced={!conceal && activeFaults.ltCoilIced}
+                    mtFanOut={!conceal && activeFaults.mtEvapFanOut}
                   />
                 </div>
               )}

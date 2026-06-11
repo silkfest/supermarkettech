@@ -182,8 +182,9 @@ interface CaseProps {
   x: number; y: number; w?: number; h?: number
   label: string; temp: number; tempColor: string; sub?: string
   doors?: number; doorsOpen?: boolean; defrost?: boolean; frozen?: boolean
+  iced?: boolean; fanOut?: boolean
 }
-export function CaseBox({ x, y, w = 130, h = 66, label, temp, tempColor, sub, doors = 4, doorsOpen = false, defrost = false, frozen = false }: CaseProps) {
+export function CaseBox({ x, y, w = 130, h = 66, label, temp, tempColor, sub, doors = 4, doorsOpen = false, defrost = false, frozen = false, iced = false, fanOut = false }: CaseProps) {
   const dw = (w - 12) / doors
   return (
     <g>
@@ -212,6 +213,23 @@ export function CaseBox({ x, y, w = 130, h = 66, label, temp, tempColor, sub, do
             </path>
           ))}
           <text x={x + w * 0.3 + 14} y={y + h + 11} textAnchor="middle" fontSize={7.5} fill="#fb923c" fontWeight={700}>defrost</text>
+        </g>
+      )}
+      {iced && (
+        <g>
+          <path d={`M${x + 8},${y + h - 11} ${Array.from({ length: Math.floor((w - 20) / 10) }, () => 'l5,-5 l5,5').join(' ')}`}
+            stroke="#22d3ee" strokeWidth={1.6} fill="none" strokeLinejoin="round" />
+          <text x={x + 30} y={y + h + 11} textAnchor="middle" fontSize={7.5} fill="#0891b2" fontWeight={700}>coil iced</text>
+        </g>
+      )}
+      {fanOut && (
+        <g transform={`translate(${x + w - 17},${y + h - 16})`}>
+          <circle r={7} fill="none" stroke={C.crit} strokeWidth={1.2} />
+          {[0, 120, 240].map(a => (
+            <ellipse key={a} cx={0} cy={-3} rx={1.6} ry={2.8} fill={C.crit} opacity={0.7} transform={`rotate(${a})`} />
+          ))}
+          <path d="M-5,-5 L5,5 M5,-5 L-5,5" stroke={C.crit} strokeWidth={1.8} strokeLinecap="round" />
+          <text x={0} y={20} textAnchor="middle" fontSize={7.5} fill={C.crit} fontWeight={700}>evap fan</text>
         </g>
       )}
     </g>
