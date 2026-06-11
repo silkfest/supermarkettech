@@ -440,6 +440,28 @@ const SCENARIOS: Scenario[] = [
     answer: ['dirtyCondenser', 'fan1Failed'],
     knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
+  {
+    id: 'a2_iced',
+    name: 'A2 Warm — But Superheat Is LOW',
+    difficulty: 'Intermediate',
+    ambient: 70,
+    timeOfDay: 9,
+    description: 'Circuit A2 is running ~10 °F warm and its load has fallen off the rack. If the TXV were starving it, A2\'s superheat would be high — but it reads about 4 °F, the lowest on the header. The case fans hum but barely move any air at the discharge grille. What happened to that coil overnight?',
+    faults: { a2CoilIced: true },
+    answer: ['a2CoilIced'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  },
+  {
+    id: 'a8_floodback',
+    name: 'LO-SH Alarm — Liquid Coming Back',
+    difficulty: 'Advanced',
+    ambient: 75,
+    timeOfDay: 14,
+    description: 'The rack is alarming low suction superheat — mixed SH at the header is ~4 °F and the suction line is frosting back toward the compressors. One circuit reads near-zero SH while its case actually runs slightly COLD. Which valve is hunting wide open, and why does it threaten all six EVI scrolls?',
+    faults: { a8TxvOverfeeding: true },
+    answer: ['a8TxvOverfeeding'],
+    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'copeland', label: 'Copeland Compressors' }],
+  },
 ]
 
 // ── Mystery fault generator ─────────────────────────────────────────────────────

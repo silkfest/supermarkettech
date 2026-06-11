@@ -18,7 +18,7 @@ const RACKS = [
     description:
       'Classic parallel rack — 4 Copeland scrolls on medium temp with a 2-compressor low-temp booster. ' +
       'Full gauge set, sight glass, oil differential, and condenser readings.',
-    stats: ['22 fault toggles', '9 scored scenarios + Mystery Fault', 'Field-readings analyzer', 'Adjustable refrigerant & setpoints'],
+    stats: ['27 fault toggles', '12 scored scenarios + Mystery Fault', 'Field-readings analyzer', 'Adjustable refrigerant & setpoints'],
     source: 'Based on Hussmann Parallel Rack Systems I/O Manual',
   },
   {
@@ -31,7 +31,7 @@ const RACKS = [
     description:
       'Distributed Protocol unit modeled on a real store install — 6 Copeland EVI scrolls with digital ' +
       'lead modulation serving 9 frozen-food circuits, each with its own suction and superheat readings.',
-    stats: ['Per-circuit case temps & SH', 'Digital scroll modulation', '7 scored scenarios + Mystery Fault', 'Time-of-day load curve'],
+    stats: ['Per-circuit case temps & SH', 'Digital scroll modulation', '9 scored scenarios + Mystery Fault', 'Time-of-day load curve'],
     source: "Modeled on Fortino's Mall Rd · Remote Header A",
   },
   {
@@ -44,7 +44,7 @@ const RACKS = [
     description:
       'Where the industry is heading — transcritical CO2 with a gas cooler, high pressure valve, flash tank, ' +
       'and flash gas bypass. Watch the rack flip between subcritical and transcritical as the weather changes.',
-    stats: ['12 fault toggles', '6 scored scenarios + Mystery Fault', 'Transcritical / subcritical modes', 'Flash tank & relief valve dynamics'],
+    stats: ['17 fault toggles', '8 scored scenarios + Mystery Fault', 'Transcritical / subcritical modes', 'Flash tank & relief valve dynamics'],
     source: 'R-744 booster architecture · gas cooler optimization curve',
   },
 ]
