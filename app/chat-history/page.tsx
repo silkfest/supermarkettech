@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2 } from 'lucide-react'
+import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -36,6 +36,7 @@ function timeAgo(iso: string) {
 }
 
 function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: string) => void }) {
+  const router = useRouter()
   const [expanded, setExpanded]   = useState(false)
   const [savingTip, setSavingTip] = useState(false)
   const [tipSaved, setTipSaved]   = useState(!!session.tip)
@@ -105,6 +106,16 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {messages.length >= 2 && (
+            <button
+              onClick={() => router.push(`/dashboard?session=${session.id}`)}
+              title="Continue conversation"
+              className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/50 flex items-center gap-1"
+            >
+              <Play size={11} />
+              Continue
+            </button>
+          )}
           {!tipSaved && !showInput && messages.length >= 2 && (
             <button
               onClick={() => setShowInput(true)}
