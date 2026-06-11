@@ -207,7 +207,7 @@ function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: 
   )
 }
 
-function EmptyState({ equipment, mode }: { equipment: Equipment | null; mode: ChatMode }) {
+function EmptyState({ mode }: { mode: ChatMode }) {
   const modeHints: Record<ChatMode, string> = {
     EXPERT:      'Ask about a fault, alarm code, or refrigeration system. The AI draws on an in-depth knowledge base covering Copeland, Hussmann, Danfoss, Sporlan, Bitzer, and more — or from manuals you\'ve uploaded.',
     MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done and I\'ll help document it.',
@@ -568,7 +568,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       {/* ── Message list ── */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
         {!hasMessages ? (
-          <EmptyState equipment={equipment} mode={mode} />
+          <EmptyState mode={mode} />
         ) : (
           <div className="max-w-2xl mx-auto w-full">
             {messages.map(msg => (

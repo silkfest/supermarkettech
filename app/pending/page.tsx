@@ -41,7 +41,7 @@ export default function PendingPage() {
           Your account is awaiting approval from an administrator.
         </p>
         <p className="text-xs text-slate-400 dark:text-slate-500 mb-6">
-          This page will automatically update once you're approved.
+          This page will automatically update once you&apos;re approved.
         </p>
         <button onClick={handleLogout}
           className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline">

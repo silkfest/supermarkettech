@@ -111,8 +111,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!currentUser) return
     const sb = getSupabaseBrowser()
-    let channel: RealtimeChannel
-    channel = sb
+    const channel: RealtimeChannel = sb
       .channel('coldiq-alarms')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarm_events' }, (payload: { new: Record<string, unknown> }) => {
         const alarm = payload.new as { equipment_id: string; alarm_type?: string }

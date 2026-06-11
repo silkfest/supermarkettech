@@ -49,7 +49,7 @@ the feature is ready to build.
 - "Admin" in this app = company admin/owner, not a super-admin. Managers are senior techs or service managers.
 - Chat AI (ColdIQ Expert) uses Claude via the Anthropic API with equipment context injected into the system prompt.
 - Maintenance reports split into two types: PM reports (refrigeration/HVAC checklists) and individual service reports (fault + steps taken + next action).
-- The rack simulator is a self-contained training tool — no server calls, all computed in-browser from fault toggles and slider values.
+- The rack simulator physics are all computed in-browser from fault toggles and slider values — no server round-trips during play. `/simulation` is a chooser page; the three sims live at `/simulation/parallel-rack`, `/simulation/protocol-rack-a`, and `/simulation/co2-booster`. The only server interaction is fire-and-forget scenario attempt logging to `/api/simulator/attempts` (table `simulator_attempts`), surfaced as per-rack stats on the chooser.
 - Profile page is intentionally a career-focused page (certifications, feedback, progression) — NOT just account settings.
 - Welcome page (`/welcome`) is a management/demo-facing page to showcase the product — not a user onboarding flow.
 

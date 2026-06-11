@@ -497,7 +497,7 @@ function TrainingInner() {
       {isReadOnly && (
         <div className="bg-blue-50 dark:bg-blue-900/60 border-b border-blue-200 dark:border-blue-700/50 px-4 py-2 flex items-center gap-2">
           <span className="text-xs text-blue-700 dark:text-blue-300">
-            👁 Viewing <span className="font-semibold text-blue-800 dark:text-blue-200">{displayUser?.name || displayUser?.email}</span>'s training — read-only
+            👁 Viewing <span className="font-semibold text-blue-800 dark:text-blue-200">{displayUser?.name || displayUser?.email}</span>&apos;s training — read-only
           </span>
           {mentor && <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">Journeyman: <span className="text-blue-700 dark:text-blue-200 font-medium">{mentor.name}</span></span>}
         </div>

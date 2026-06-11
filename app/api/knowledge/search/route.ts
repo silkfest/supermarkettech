@@ -1,77 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/client'
+import { requireUser } from '@/lib/api/auth'
 import { TOPICS } from '@/lib/knowledge/topics'
-import {
-  REFRIGERATION_KNOWLEDGE,
-  SPORLAN_KNOWLEDGE,
-  COPELAND_KNOWLEDGE,
-  HUSSMANN_KNOWLEDGE,
-  DANFOSS_KNOWLEDGE,
-  ARNEG_KNOWLEDGE,
-  KEEPRITE_KNOWLEDGE,
-  MATH_AND_ELECTRICAL_KNOWLEDGE,
-  MICRO_THERMO_KNOWLEDGE,
-  EVAPCO_LMP_KNOWLEDGE,
-  PENN_CONTROLS_KNOWLEDGE,
-  CARNOT_KNOWLEDGE,
-  EMERSON_E2_E3_KNOWLEDGE,
-  SYSTEM_DIAGNOSTICS_KNOWLEDGE,
-  DEFROST_KNOWLEDGE,
-  WALK_IN_KNOWLEDGE,
-  PARALLEL_RACK_KNOWLEDGE,
-  VFD_KNOWLEDGE,
-  REFRIGERANT_RETROFIT_KNOWLEDGE,
-  TYLER_HILL_PHOENIX_KNOWLEDGE,
-  HEATCRAFT_BOHN_KNOWLEDGE,
-  BITZER_KNOWLEDGE,
-  LENNOX_RTU_KNOWLEDGE,
-  CARRIER_RTU_KNOWLEDGE,
-  YORK_RTU_KNOWLEDGE,
-  TRANE_RTU_KNOWLEDGE,
-  RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
-  AAON_RTU_KNOWLEDGE,
-  TRANE_RAUC_KNOWLEDGE,
-  TEMPRITE_KNOWLEDGE,
-  DIXELL_KNOWLEDGE,
-  KYSOR_WARREN_KNOWLEDGE,
-  HEAT_RECLAIM_KNOWLEDGE,
-} from '@/lib/ai/prompts'
 
-const KNOWLEDGE_MAP: Record<string, string> = {
-  'refrigeration-fundamentals': REFRIGERATION_KNOWLEDGE,
-  'system-diagnostics':         SYSTEM_DIAGNOSTICS_KNOWLEDGE,
-  'defrost-systems':            DEFROST_KNOWLEDGE,
-  'sporlan':                    SPORLAN_KNOWLEDGE,
-  'copeland':                   COPELAND_KNOWLEDGE,
-  'hussmann':                   HUSSMANN_KNOWLEDGE,
-  'danfoss':                    DANFOSS_KNOWLEDGE,
-  'arneg':                      ARNEG_KNOWLEDGE,
-  'keeprite':                   KEEPRITE_KNOWLEDGE,
-  'micro-thermo':               MICRO_THERMO_KNOWLEDGE,
-  'evapco-lmp':                 EVAPCO_LMP_KNOWLEDGE,
-  'penn-controls':              PENN_CONTROLS_KNOWLEDGE,
-  'tyler-hill-phoenix':         TYLER_HILL_PHOENIX_KNOWLEDGE,
-  'heatcraft-bohn':             HEATCRAFT_BOHN_KNOWLEDGE,
-  'bitzer':                     BITZER_KNOWLEDGE,
-  'carnot':                     CARNOT_KNOWLEDGE,
-  'emerson-e2-e3':              EMERSON_E2_E3_KNOWLEDGE,
-  'vfd':                        VFD_KNOWLEDGE,
-  'refrigerant-retrofit':       REFRIGERANT_RETROFIT_KNOWLEDGE,
-  'math-electrical':            MATH_AND_ELECTRICAL_KNOWLEDGE,
-  'walk-in-troubleshooting':    WALK_IN_KNOWLEDGE,
-  'parallel-rack-systems':      PARALLEL_RACK_KNOWLEDGE,
-  'lennox-rtu':                 LENNOX_RTU_KNOWLEDGE,
-  'carrier-rtu':                CARRIER_RTU_KNOWLEDGE,
-  'york-rtu':                   YORK_RTU_KNOWLEDGE,
-  'trane-rtu':                  TRANE_RTU_KNOWLEDGE,
-  'rtu-diagnostics':            RTU_HVAC_DIAGNOSTICS_KNOWLEDGE,
-  'aaon-rtu':                   AAON_RTU_KNOWLEDGE,
-  'trane-rauc':                 TRANE_RAUC_KNOWLEDGE,
-  'temprite':                   TEMPRITE_KNOWLEDGE,
-  'dixell':                     DIXELL_KNOWLEDGE,
-  'kysor-warren':               KYSOR_WARREN_KNOWLEDGE,
-  'heat-reclaim':               HEAT_RECLAIM_KNOWLEDGE,
-}
+// Full-text content for every curated topic, derived from TOPICS so newly
+// registered topics are automatically searchable (a hand-maintained map here
+// had drifted and silently excluded newer topics from content search).
+const KNOWLEDGE_MAP: Record<string, string> = Object.fromEntries(
+  TOPICS.map(t => [t.slug, t.content])
+)
 
 export interface ContentMatch {
   topicSlug: string
@@ -122,6 +59,9 @@ function extractMatches(slug: string, title: string, content: string, query: str
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (auth instanceof NextResponse) return auth
+
   const q = req.nextUrl.searchParams.get('q')?.trim()
   if (!q || q.length < 2) return NextResponse.json({ docSlugs: [], contentMatches: [] })
 

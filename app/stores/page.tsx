@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Building2, MapPin, Wrench, ChevronRight, Plus, X, ArrowLeft,
-  Calendar, Package, Home,
+  Building2, MapPin, Wrench, ChevronRight, Plus, X,
+  Package, Home,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import { getSupabaseBrowser } from '@/lib/supabase/client'

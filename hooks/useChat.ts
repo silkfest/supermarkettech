@@ -85,9 +85,10 @@ export function useChat(opts: { equipmentId?: string; mode: ChatMode }) {
           } catch { /* skip bad SSE lines */ }
         }
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return
-      setError(err?.message ?? 'Something went wrong')
+    } catch (err) {
+      const e = err as { name?: string; message?: string } | undefined
+      if (e?.name === 'AbortError') return
+      setError(e?.message ?? 'Something went wrong')
       setMessages(prev => prev.map(m =>
         m.id === asstId ? { ...m, content: m.content || 'An error occurred. Please try again.', isStreaming: false } : m
       ))

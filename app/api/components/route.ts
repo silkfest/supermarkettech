@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { requireRole } from '@/lib/api/auth'
 
 export interface ComponentRecord {
   key: string
@@ -282,8 +283,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
 
   const supabase = getSupabaseServer()
   const body = await req.json()
@@ -338,8 +339,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
 
   const supabase = getSupabaseServer()
   const body = await req.json()

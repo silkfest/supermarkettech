@@ -315,7 +315,6 @@ function ProfileContent() {
   const annDays    = annDate ? daysUntil(annDate) : null
   const tenure     = profile.apprenticeship_start_date ? yearsMonths(profile.apprenticeship_start_date) : null
   const isApprentice = profile.role === 'apprentice'
-  const showApprSection = isApprentice || (isAdmin && profile.role === 'apprentice')
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">

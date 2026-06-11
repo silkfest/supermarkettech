@@ -5,9 +5,13 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle,
-  Activity, Wind, ChevronLeft, Clock,
+  Wind, ChevronLeft, Clock, BookOpen, Target, Trophy, Dices,
+  Eye, EyeOff, SlidersHorizontal,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
+import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── R-448A P-T data (psia) — Honeywell Solstice N40 / Opteon XP40 ─────────────
 // R-448A has ~10–15 °F temperature glide.
@@ -52,9 +56,160 @@ function ptInterpReverse(psig: number, tbl: [number, number][]): number {
   return tbl[0][0]
 }
 const toGauge = (psia: number) => Math.max(psia - 14.696, 0)
-const bubblePsig  = (t: number) => toGauge(ptInterp(t, R448A_BUBBLE))
-const dewPsig     = (t: number) => toGauge(ptInterp(t, R448A_DEW))
-const dewTempFrom = (psig: number) => ptInterpReverse(psig, R448A_DEW)
+const bubblePsig     = (t: number) => toGauge(ptInterp(t, R448A_BUBBLE))
+const dewPsig        = (t: number) => toGauge(ptInterp(t, R448A_DEW))
+const dewTempFrom    = (psig: number) => ptInterpReverse(psig, R448A_DEW)
+const bubbleTempFrom = (psig: number) => ptInterpReverse(psig, R448A_BUBBLE)
+
+// ── Field Readings diagnostic ─────────────────────────────────────────────────
+// Enter measured values from the rack → derived calcs + a findings list, tailored
+// to this single-temp R-448A LT rack with EVI scrolls + demand cooling.
+const FIELD_EMPTY = {
+  oat: '', suctionPsig: '', suctionTemp: '',
+  dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
+  drierInTemp: '', drierOutTemp: '',
+}
+type FieldReadings = typeof FIELD_EMPTY
+
+const FIELD_DEFS: FieldDef[] = [
+  { key: 'oat',            label: 'Outdoor Ambient (OAT)', unit: '°F',   placeholder: 'e.g. 75', section: 'Environment' },
+  { key: 'suctionPsig',    label: 'Suction Pressure',      unit: 'psig', placeholder: 'e.g. 9',  hint: 'rack suction header', section: 'Suction Side' },
+  { key: 'suctionTemp',    label: 'Suction Line Temp',     unit: '°F',   placeholder: 'e.g. -9', hint: 'pipe temp at rack' },
+  { key: 'dischargePsig',  label: 'Discharge Pressure',    unit: 'psig', placeholder: 'e.g. 235', hint: 'rack discharge header', section: 'Discharge Side' },
+  { key: 'dischargeTemp',  label: 'Discharge Line Temp',   unit: '°F',   placeholder: 'e.g. 165', hint: 'pipe temp at discharge' },
+  { key: 'liquidLineTemp', label: 'Liquid Line Temp',      unit: '°F',   placeholder: 'e.g. 95', hint: 'after condenser / receiver', section: 'Liquid Line' },
+  { key: 'drierInTemp',    label: 'Drier Inlet Temp',      unit: '°F',   placeholder: 'e.g. 96', section: 'Filter Drier (optional)' },
+  { key: 'drierOutTemp',   label: 'Drier Outlet Temp',     unit: '°F',   placeholder: 'e.g. 94', hint: 'ΔT > 3°F = restriction' },
+]
+
+function analyzeField(r: FieldReadings, opSST: number): { derived: DerivedRow[]; findings: Finding[] } {
+  const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  const oat            = num(r.oat)
+  const suctionPsig    = num(r.suctionPsig)
+  const suctionTemp    = num(r.suctionTemp)
+  const dischargePsig  = num(r.dischargePsig)
+  const dischargeTemp  = num(r.dischargeTemp)
+  const liquidLineTemp = num(r.liquidLineTemp)
+  const drierInTemp    = num(r.drierInTemp)
+  const drierOutTemp   = num(r.drierOutTemp)
+
+  const condensingSatTemp = dischargePsig !== null ? bubbleTempFrom(dischargePsig) : null
+  const suctionSatTemp    = suctionPsig !== null ? dewTempFrom(suctionPsig) : null
+  const suctionSH         = suctionSatTemp !== null && suctionTemp !== null ? suctionTemp - suctionSatTemp : null
+  const subcooling        = condensingSatTemp !== null && liquidLineTemp !== null ? condensingSatTemp - liquidLineTemp : null
+  const dischargeSH       = condensingSatTemp !== null && dischargeTemp !== null ? dischargeTemp - condensingSatTemp : null
+  const approachDelta     = condensingSatTemp !== null && oat !== null ? condensingSatTemp - oat : null
+  const drierDeltaT       = drierInTemp !== null && drierOutTemp !== null ? drierInTemp - drierOutTemp : null
+  const compRatio         = dischargePsig !== null && suctionPsig !== null ? (dischargePsig + 14.696) / (suctionPsig + 14.696) : null
+  const setpointPsig      = dewPsig(opSST)
+  const suctionDev        = suctionPsig !== null ? suctionPsig - setpointPsig : null
+
+  const findings: Finding[] = []
+
+  if (approachDelta !== null) {
+    if (approachDelta > 32)
+      findings.push({ severity: 'critical', label: 'Very high approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal ~20°F)`,
+        causes: ['Badly fouled condenser coil', 'Multiple condenser fans failed', 'Non-condensables in system'],
+        checks: ['Wash condenser coil', 'Verify all fans spinning at full speed', 'Compare discharge psig vs PT — a gap = non-condensables'] })
+    else if (approachDelta > 26)
+      findings.push({ severity: 'warning', label: 'Elevated approach ΔT', measurement: `${approachDelta.toFixed(1)}°F (normal ~20°F)`,
+        causes: ['Partial condenser fouling', 'One fan failed or at reduced speed'],
+        checks: ['Inspect condenser coil', 'Check fan amp draw and blade condition'] })
+  }
+
+  if (dischargeTemp !== null && dischargeTemp > 225)
+    findings.push({ severity: 'critical', label: 'Discharge temp at EVI limit', measurement: `${Math.round(dischargeTemp)}°F (limit ~225°F)`,
+      causes: ['Demand cooling (liquid injection) failed', 'High compression ratio', 'Very high suction superheat'],
+      checks: ['Verify demand cooling solenoid + liquid feed to intermediate stage', 'Check discharge temp sensor accuracy', 'Address compression-ratio root cause'] })
+  else if (dischargeSH !== null && dischargeSH > 90)
+    findings.push({ severity: 'warning', label: 'High discharge superheat', measurement: `${dischargeSH.toFixed(0)}°F above condensing sat`,
+      causes: ['Demand cooling injecting weakly', 'High suction superheat', 'High compression ratio'],
+      checks: ['Confirm demand cooling is functioning', 'Correlate with suction superheat'] })
+
+  if (suctionSH !== null) {
+    if (suctionSH > 30)
+      findings.push({ severity: 'critical', label: 'Very high suction superheat', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Undercharge', 'TXV(s) not feeding', 'Filter drier restricted', 'Liquid line restriction'],
+        checks: ['Check subcooling and sight glass', 'Measure drier in/out ΔT', 'Inspect TXV bulbs and external equalizers'] })
+    else if (suctionSH > 20)
+      findings.push({ severity: 'warning', label: 'High suction superheat', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Moderate undercharge', 'TXV hunting', 'Partial drier restriction', 'Low load'],
+        checks: ['Check subcooling — if low, suspect undercharge', 'Measure drier ΔT'] })
+    else if (suctionSH < 5)
+      findings.push({ severity: 'warning', label: 'Low suction superheat — floodback risk', measurement: `${suctionSH.toFixed(1)}°F (EVI target 10–15°F)`,
+        causes: ['Overcharge', 'TXV overfeeding', 'Defrost stuck on'],
+        checks: ['Check subcooling — if high, suspect overcharge', 'Verify defrost termination'] })
+  }
+
+  if (subcooling !== null) {
+    if (subcooling < 3)
+      findings.push({ severity: 'critical', label: 'Near-zero subcooling — flash gas', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Undercharge', 'Restricted filter drier', 'Head pressure too low'],
+        checks: ['Check sight glass for bubbles', 'Measure drier ΔT', 'Weigh refrigerant charge'] })
+    else if (subcooling < 8)
+      findings.push({ severity: 'warning', label: 'Low subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Marginal charge', 'Partial drier restriction'],
+        checks: ['Inspect sight glass', 'Measure drier in/out ΔT'] })
+    else if (subcooling > 28)
+      findings.push({ severity: 'warning', label: 'High subcooling', measurement: `${subcooling.toFixed(1)}°F (target 10–18°F)`,
+        causes: ['Overcharge', 'Low ambient — liquid backing up in condenser'],
+        checks: ['Check OAT — if low with HP ctrl active, may be normal', 'If high OAT + high SC, recover excess charge'] })
+  }
+
+  if (drierDeltaT !== null) {
+    if (drierDeltaT > 6)
+      findings.push({ severity: 'critical', label: 'Filter drier severely restricted', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core saturated with moisture/debris', 'Drier icing'],
+        checks: ['Replace drier core', 'Vacuum and recharge if moisture confirmed'] })
+    else if (drierDeltaT > 3)
+      findings.push({ severity: 'warning', label: 'Filter drier showing restriction', measurement: `ΔT = ${drierDeltaT.toFixed(1)}°F across drier`,
+        causes: ['Drier core partially saturated'],
+        checks: ['Plan drier core replacement', 'Monitor sight glass downstream'] })
+  }
+
+  if (suctionDev !== null && Math.abs(suctionDev) > 4)
+    findings.push({ severity: 'warning',
+      label: suctionDev > 0 ? 'Suction above setpoint' : 'Suction below setpoint',
+      measurement: `${suctionPsig!.toFixed(1)} psig vs ${setpointPsig.toFixed(1)} psig (${opSST}°F SST)`,
+      causes: suctionDev > 0 ? ['Excess load', 'Defrost stuck on', 'Compressor(s) down', 'TXV overfeeding'] : ['Undercharge', 'TXVs starved', 'Low load'],
+      checks: suctionDev > 0 ? ['Check compressor staging and defrost status', 'Verify suction setpoint on controller'] : ['Check subcooling and sight glass', 'Verify TXVs feeding'] })
+
+  if (compRatio !== null && compRatio > 12)
+    findings.push({ severity: 'warning', label: 'High compression ratio', measurement: `${compRatio.toFixed(2)} : 1`,
+      causes: ['Low suction combined with elevated discharge'],
+      checks: ['Address suction and head root causes — a high ratio stresses scroll valves and raises discharge temp'] })
+
+  const hasData = [dischargePsig, suctionPsig, liquidLineTemp, suctionTemp].some(v => v !== null)
+  if (findings.length === 0 && hasData)
+    findings.push({ severity: 'ok', label: 'No significant deviations found', measurement: '',
+      causes: [], checks: ['Readings appear within normal range for this rack — enter more measurements for a fuller picture'] })
+
+  const derived: DerivedRow[] = [
+    { label: 'Condensing sat temp', value: condensingSatTemp, unit: '°F sat' },
+    { label: 'Suction sat temp', value: suctionSatTemp, unit: '°F sat' },
+    { label: 'Suction superheat', value: suctionSH, unit: '°F',
+      note: suctionSH !== null && suctionSH > 20 ? 'HIGH' : suctionSH !== null && suctionSH < 5 ? 'LOW' : undefined,
+      color: suctionSH !== null && (suctionSH > 20 || suctionSH < 5) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Subcooling', value: subcooling, unit: '°F',
+      note: subcooling !== null && subcooling < 3 ? 'FLASH GAS' : subcooling !== null && subcooling < 8 ? 'LOW' : undefined,
+      color: subcooling !== null && subcooling < 8 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Discharge superheat', value: dischargeSH, dec: 0, unit: '°F',
+      note: dischargeSH !== null && dischargeSH > 90 ? 'HIGH' : undefined,
+      color: dischargeSH !== null && dischargeSH > 90 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Approach ΔT', value: approachDelta, unit: '°F',
+      note: approachDelta !== null && approachDelta > 26 ? 'ELEVATED' : undefined,
+      color: approachDelta !== null && approachDelta > 26 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      tooltip: 'Condensing sat temp minus OAT. Protocol racks run a higher baseline (~20°F) than typical. Elevated values point to a dirty coil, failed fans, or non-condensables.' },
+    { label: 'Compression ratio', value: compRatio, dec: 2, unit: ': 1',
+      note: compRatio !== null && compRatio > 12 ? 'HIGH' : undefined,
+      color: compRatio !== null && compRatio > 12 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Filter drier ΔT', value: drierDeltaT, unit: '°F',
+      note: drierDeltaT !== null && drierDeltaT > 3 ? 'RESTRICTED' : undefined,
+      color: drierDeltaT !== null && drierDeltaT > 3 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+  ]
+
+  return { derived, findings }
+}
 
 // ── Compressor specs ───────────────────────────────────────────────────────────
 // Hussmann Protocol Rack — Unit A — Fortino's Mall Rd
@@ -201,6 +356,7 @@ interface Scenario {
   id: string; name: string; description: string
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   ambient?: number; timeOfDay?: number; faults: Partial<FaultState>; answer: FaultKey[]
+  knowledge?: { slug: string; label: string }[]   // related knowledge-base topics shown on reveal
 }
 
 const SCENARIOS: Scenario[] = [
@@ -211,6 +367,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Call at 2 AM — Protocol Rack A is alarming. The controller shows only 5 of 6 compressors active and suction is running above setpoint. Case temps starting to climb. Which compressor failed, and why does losing the Lead hurt differently than losing a Lag unit?',
     faults: { comp1Failed: true },
     answer: ['comp1Failed'],
+    knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }, { slug: 'rack-sequence-of-events', label: 'Rack Sequence of Events' }],
   },
   {
     id: 'demand_cooling',
@@ -219,6 +376,7 @@ const SCENARIOS: Scenario[] = [
     description: 'All 6 compressors running but discharge temperature is approaching 210 °F on every unit simultaneously. Suction and head pressure look near-normal. No refrigerant alarms. What is the common system element that protects all 6 Copeland EVI scrolls from high discharge temps?',
     faults: { demandCoolingFailed: true },
     answer: ['demandCoolingFailed'],
+    knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }],
   },
   {
     id: 'lag2_all_down',
@@ -227,6 +385,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Three separate safety trips took out C4, C5, and C6 overnight — all ZF18KVE units. Suction is above setpoint and the frozen food cases are warming. The Lead and Lag-1 group are running. How much capacity has been lost, and how does C1 respond to carry more of the load?',
     faults: { comp4Failed: true, comp5Failed: true, comp6Failed: true },
     answer: ['comp4Failed', 'comp5Failed', 'comp6Failed'],
+    knowledge: [{ slug: 'rack-sequence-of-events', label: 'Rack Sequence of Events' }, { slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }],
   },
   {
     id: 'a8_txv_failed',
@@ -235,6 +394,7 @@ const SCENARIOS: Scenario[] = [
     description: 'Circuit A8 case temps are rising while suction is running lower than setpoint. The 16-door ORZ section isn\'t pulling down — superheat on A8 is very high while other circuits read normal. What is the single fault causing this?',
     faults: { a8TxvFailed: true },
     answer: ['a8TxvFailed'],
+    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'multiple_defrosts',
@@ -245,6 +405,7 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 8,
     faults: { a2DefrostStuck: true, a3DefrostStuck: true, a4DefrostStuck: true, a9DefrostStuck: true },
     answer: ['a2DefrostStuck', 'a3DefrostStuck', 'a4DefrostStuck', 'a9DefrostStuck'],
+    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
   },
   {
     id: 'undercharge_winter',
@@ -255,6 +416,7 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 3,
     faults: { undercharge: true },
     answer: ['undercharge'],
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }, { slug: 'refrigeration-fundamentals', label: 'Refrigeration Fundamentals' }],
   },
   {
     id: 'dirty_condenser_summer',
@@ -265,8 +427,40 @@ const SCENARIOS: Scenario[] = [
     timeOfDay: 19,
     faults: { dirtyCondenser: true, fan1Failed: true },
     answer: ['dirtyCondenser', 'fan1Failed'],
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
 ]
+
+// ── Mystery fault generator ─────────────────────────────────────────────────────
+// Picks 1–2 random faults (respecting mutual exclusions) plus random weather/time
+// so the rack never runs out of fresh service calls. The answer stays hidden until
+// the diagnosis is submitted.
+const MYSTERY_AMBIENTS = [5, 35, 55, 70, 85, 95]
+const MYSTERY_HOURS    = [3, 8, 14, 19, 22]
+function generateMystery(): Scenario {
+  const faultCount = Math.random() < 0.55 ? 1 : 2
+  const picked: FaultKey[] = []
+  const pool = [...FAULT_DEFS]
+  while (picked.length < faultCount && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length)
+    const def = pool.splice(idx, 1)[0]
+    if (picked.some(k => FAULT_DEFS.find(d => d.key === k)?.mutuallyExcludes?.includes(def.key) || def.mutuallyExcludes?.includes(k))) continue
+    picked.push(def.key)
+  }
+  const faults: Partial<FaultState> = {}
+  picked.forEach(k => { faults[k] = true })
+  return {
+    id: 'mystery',
+    name: 'Mystery Fault',
+    difficulty: picked.length > 1 ? 'Advanced' : 'Intermediate',
+    ambient: MYSTERY_AMBIENTS[Math.floor(Math.random() * MYSTERY_AMBIENTS.length)],
+    timeOfDay: MYSTERY_HOURS[Math.floor(Math.random() * MYSTERY_HOURS.length)],
+    description: `The rack has ${picked.length === 1 ? 'one hidden fault' : 'two hidden faults'}. No story, no hints — read the controller, work the readings, and call it like a real service visit.`,
+    faults,
+    answer: picked,
+    knowledge: [{ slug: 'system-diagnostics', label: 'System Diagnostics' }],
+  }
+}
 
 // ── Compute engine ─────────────────────────────────────────────────────────────
 // Design: −25 °F SST  |  Operating setpoint: −21 °F SST  |  HP control floor: 80 °F condensing
@@ -296,7 +490,7 @@ interface RackResult {
   alarms: Alarm[]
 }
 
-function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackResult {
+function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: number = OPERATING_SST, hpMin: number = HP_CTRL_MIN): RackResult {
   const period = loadPeriod(timeOfDay)
 
   // ── Demand cooling ─────────────────────────────────────────────────────────
@@ -310,8 +504,8 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackRes
   if (fansFailed === 2) approach += 24
 
   const rawCond = ambient + approach
-  const hpCtrl  = rawCond < HP_CTRL_MIN
-  let condensing = Math.max(rawCond, HP_CTRL_MIN)
+  const hpCtrl  = rawCond < hpMin
+  let condensing = Math.max(rawCond, hpMin)
   if (f.overcharge) condensing += 14
 
   // ── Charge effects ─────────────────────────────────────────────────────────
@@ -419,7 +613,7 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number): RackRes
     else             sstDev = (ratio - 1.0) * 3
   }
 
-  const sst            = OPERATING_SST + sstDev
+  const sst            = opSST + sstDev
   const suctionPsig    = dewPsig(sst)
   const suctionGasTemp = sst + suctionSH
 
@@ -549,14 +743,36 @@ export default function ProtocolRackASimulatorPage() {
   const [timeOfDay, setTimeOfDay] = useState(14)   // 2pm default — daytime steady
   const [activeGroup, setActiveGroup] = useState<string>(FAULT_GROUPS[0])
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
-  const [scenarioRevealed, setScenarioRevealed] = useState(false)
-  const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'info'>('faults')
+  const [userGuess, setUserGuess] = useState<FaultState>(INITIAL_FAULTS)
+  const [submitted, setSubmitted] = useState(false)
+  const [activeTab, setActiveTab] = useState<'faults' | 'scenarios' | 'field' | 'info'>('faults')
 
-  const result = useMemo(() => computeRack(faults, ambient, timeOfDay), [faults, ambient, timeOfDay])
+  // Adjustable rack settings (controller setpoints)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [opSST, setOpSST]   = useState(OPERATING_SST)  // operating saturated suction setpoint
+  const [hpMin, setHpMin]   = useState(HP_CTRL_MIN)    // HP control condensing floor
+
+  // Field Readings diagnostic
+  const [fieldReadings, setFieldReadings] = useState<FieldReadings>(FIELD_EMPTY)
+  const updateField = (key: string, val: string) => setFieldReadings(prev => ({ ...prev, [key]: val }))
+  const fieldAnalysis = useMemo(() => analyzeField(fieldReadings, opSST), [fieldReadings, opSST])
+
+  // Instructor reveal (free-play only)
+  const [instructorReveal, setInstructorReveal] = useState(false)
+
+  // In a scenario the hidden scenario faults drive the sim; the Faults tab
+  // becomes the diagnosis sheet and edits userGuess instead of the live faults.
+  const inScenario   = activeScenario !== null
+  const activeFaults = useMemo(
+    () => (activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
+    [activeScenario, faults],
+  )
+  const result = useMemo(() => computeRack(activeFaults, ambient, timeOfDay, opSST, hpMin), [activeFaults, ambient, timeOfDay, opSST, hpMin])
   const period = loadPeriod(timeOfDay)
 
   function toggleFault(key: FaultKey) {
-    setFaults(prev => {
+    const setter = inScenario ? setUserGuess : setFaults
+    setter(prev => {
       const next = { ...prev, [key]: !prev[key] }
       const def = FAULT_DEFS.find(d => d.key === key)
       if (def?.mutuallyExcludes && !prev[key]) {
@@ -567,25 +783,69 @@ export default function ProtocolRackASimulatorPage() {
   }
 
   function loadScenario(s: Scenario) {
-    setFaults({ ...INITIAL_FAULTS, ...s.faults })
     if (s.ambient   !== undefined) setAmbient(s.ambient)
     if (s.timeOfDay !== undefined) setTimeOfDay(s.timeOfDay)
     setActiveScenario(s)
-    setScenarioRevealed(false)
+    setUserGuess(INITIAL_FAULTS)
+    setSubmitted(false)
     setActiveTab('faults')
   }
+
+  function exitScenario() {
+    setActiveScenario(null)
+    setUserGuess(INITIAL_FAULTS)
+    setSubmitted(false)
+  }
+
+  function submitDiagnosis() {
+    if (!activeScenario || submitted) return
+    setSubmitted(true)
+    const correct = activeScenario.answer.filter(k => userGuess[k]).length
+    const total   = activeScenario.answer.length
+    const fp      = Object.entries(userGuess).filter(([k, v]) => v && !activeScenario.answer.includes(k as FaultKey)).length
+    const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
+    saveSimAttempt({
+      rack: 'protocol-rack-a',
+      scenarioId: activeScenario.id,
+      scenarioName: activeScenario.name,
+      difficulty: activeScenario.difficulty,
+      mode: activeScenario.id === 'mystery' ? 'mystery' : 'scenario',
+      score: pct, correct, total, falsePositives: fp,
+    })
+  }
+
+  const score = (() => {
+    if (!activeScenario || !submitted) return null
+    const correct = activeScenario.answer.filter(k => userGuess[k]).length
+    const total   = activeScenario.answer.length
+    const fp      = Object.entries(userGuess).filter(([k, v]) => v && !activeScenario.answer.includes(k as FaultKey)).length
+    const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
+    return { correct, total, fp, pct }
+  })()
 
   function resetAll() {
     setFaults(INITIAL_FAULTS)
     setAmbient(70)
     setTimeOfDay(14)
-    setActiveScenario(null)
-    setScenarioRevealed(false)
+    setInstructorReveal(false)
+    exitScenario()
   }
 
-  const activeFaultCount = Object.values(faults).filter(Boolean).length
+  const guessState       = inScenario ? userGuess : faults
+  const activeFaultCount = inScenario ? 0 : Object.values(faults).filter(Boolean).length
   const runningCount     = result.compRunning.filter(Boolean).length
   const loadPct          = result.loadRatio * 100
+
+  const validCaseTemps = result.circuitCaseTemps.filter(t => Number.isFinite(t))
+  const trendSpecs = [
+    { key: 'suction',    label: 'Suction',        unit: 'psig', value: result.suctionPsig },
+    { key: 'discharge',  label: 'Discharge',      unit: 'psig', value: result.dischargePsig },
+    { key: 'suctionSH',  label: 'Suction SH',     unit: '°F',   value: result.suctionSH },
+    { key: 'subcooling', label: 'Subcooling',     unit: '°F',   value: result.subcooling },
+    { key: 'totalAmps',  label: 'Total Amps',     unit: 'A',    value: result.totalAmps },
+    { key: 'avgCase',    label: 'Avg Case Temp',  unit: '°F',   value: validCaseTemps.length ? validCaseTemps.reduce((a, b) => a + b, 0) / validCaseTemps.length : 0 },
+  ]
+  const trendHistory = useTrendHistory(trendSpecs)
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
@@ -624,30 +884,65 @@ export default function ProtocolRackASimulatorPage() {
           <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                <Activity size={14} className="text-violet-600 dark:text-violet-400" />
+                <Target size={14} className="text-violet-600 dark:text-violet-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">{activeScenario.name}</p>
                   <span className="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400">
                     {activeScenario.difficulty}
                   </span>
+                  <button onClick={exitScenario} className="ml-auto text-[11px] text-violet-600 dark:text-violet-400 underline">Exit scenario</button>
                 </div>
                 <p className="text-sm text-violet-700 dark:text-violet-300">{activeScenario.description}</p>
-                {!scenarioRevealed ? (
-                  <button onClick={() => setScenarioRevealed(true)}
-                    className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400 underline">
-                    Reveal answer
-                  </button>
-                ) : (
-                  <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded-lg">
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Active faults:</p>
+
+                {!submitted && (
+                  <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80 mt-2">
+                    Read the controller and gauges below, then mark the root cause(s) in the <strong>Your Diagnosis</strong> tab and submit.
+                  </p>
+                )}
+
+                {submitted && score && (
+                  <div className="mt-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Trophy size={14} className={score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'} />
+                      <span className={`text-sm font-bold ${score.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score.pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                        Score: {score.pct}%
+                      </span>
+                      <span className="text-[10px] text-slate-500">{score.correct}/{score.total} fault{score.total > 1 ? 's' : ''} identified</span>
+                      {score.fp > 0 && <span className="text-[10px] text-red-500 dark:text-red-400">{score.fp} false positive{score.fp > 1 ? 's' : ''}</span>}
+                    </div>
                     {activeScenario.answer.map(key => {
                       const def = FAULT_DEFS.find(d => d.key === key)
-                      return def ? (
-                        <p key={key} className="text-xs text-slate-500 dark:text-slate-400">• {def.label}</p>
-                      ) : null
+                      const hit = userGuess[key]
+                      return (
+                        <div key={key} className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg ${hit ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30' : 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30'}`}>
+                          {hit ? <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" /> : <XCircle size={12} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />}
+                          <div>
+                            <span className={hit ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}>{def?.label}</span>
+                            <span className="text-slate-500 ml-1.5">— {def?.hint}</span>
+                          </div>
+                        </div>
+                      )
                     })}
+                    {(activeScenario.knowledge?.length ?? 0) > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1"><BookOpen size={10}/> Read more:</span>
+                        {activeScenario.knowledge!.map(k => (
+                          <button key={k.slug} onClick={() => router.push(`/knowledge/${k.slug}`)}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-400 transition-colors">
+                            {k.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
+                      {activeScenario.id === 'mystery' && (
+                        <button onClick={() => loadScenario(generateMystery())} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11}/> New Mystery</button>
+                      )}
+                      <button onClick={exitScenario} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg">Done</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -724,6 +1019,9 @@ export default function ProtocolRackASimulatorPage() {
           </div>
         </div>
 
+        {/* Reading trends */}
+        <TrendsCard specs={trendSpecs} history={trendHistory} />
+
         {/* Context sliders — Ambient + Time of day */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 space-y-3">
           <div className="flex items-center gap-4">
@@ -756,6 +1054,42 @@ export default function ProtocolRackASimulatorPage() {
               {period.label} · {period.mult.toFixed(2)}×
             </span>
           </div>
+        </div>
+
+        {/* Rack settings — adjustable controller setpoints */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <button onClick={() => setSettingsOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+            <SlidersHorizontal size={14} className="text-slate-400 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Settings</span>
+            <span className="text-[10px] text-slate-400 ml-1 truncate">{opSST}°F SST · HP floor {hpMin}°F</span>
+            <span className={`ml-auto text-slate-400 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {settingsOpen && (
+            <div className="px-4 pb-4 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Operating SST setpoint</span>
+                  <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">{opSST}°F · {dewPsig(opSST).toFixed(1)} psig</span>
+                </div>
+                <input type="range" min={-30} max={-10} step={1} value={opSST}
+                  onChange={e => setOpSST(Number(e.target.value))} className="w-full accent-emerald-500" />
+                <p className="text-[9px] text-slate-400 mt-0.5">Design −25°F · default −21°F. Lower SST = colder cases but higher compression ratio.</p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">HP control floor</span>
+                  <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-400">{hpMin}°F · {bubblePsig(hpMin).toFixed(0)} psig</span>
+                </div>
+                <input type="range" min={70} max={95} step={1} value={hpMin}
+                  onChange={e => setHpMin(Number(e.target.value))} className="w-full accent-amber-500" />
+                <p className="text-[9px] text-slate-400 mt-0.5">Minimum condensing the controller holds. Default 80°F — fans cycle to maintain this floor.</p>
+              </div>
+              <div className="sm:col-span-2">
+                <button onClick={() => { setOpSST(OPERATING_SST); setHpMin(HP_CTRL_MIN) }}
+                  className="text-[10px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2">Reset to defaults</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Alarms */}
@@ -951,60 +1285,143 @@ export default function ProtocolRackASimulatorPage() {
         {/* Bottom tab panel */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
           <div className="flex border-b border-slate-200 dark:border-slate-700">
-            {(['faults', 'scenarios', 'info'] as const).map(tab => (
+            {(['faults', 'scenarios', 'field', 'info'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2.5 text-xs font-medium transition-colors capitalize ${
                   activeTab === tab
                     ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-                {tab === 'faults' ? `Fault Injection${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}` : tab === 'scenarios' ? 'Scenarios' : 'Rack Info'}
+                {tab === 'faults'
+                  ? (inScenario ? '🎯 Your Diagnosis' : `Fault Injection${activeFaultCount > 0 ? ` (${activeFaultCount})` : ''}`)
+                  : tab === 'scenarios' ? 'Scenarios' : tab === 'field' ? '📋 Field Readings' : 'Rack Info'}
               </button>
             ))}
           </div>
 
-          {/* Faults panel */}
+          {/* Faults panel — free-play fault injection, or diagnosis sheet in a scenario */}
           {activeTab === 'faults' && (
             <div className="p-4">
+              {inScenario && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-[180px]">
+                    Mark the root cause(s) you think are active, then submit. The readings above are driven by the hidden fault.
+                  </p>
+                  {!submitted && (
+                    <button onClick={submitDiagnosis}
+                      className="px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-shrink-0">
+                      Submit Diagnosis
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-1 flex-wrap mb-4">
                 {FAULT_GROUPS.map(g => {
                   const active = activeGroup === g
-                  const count  = FAULT_DEFS.filter(d => d.group === g && faults[d.key]).length
+                  const count  = FAULT_DEFS.filter(d => d.group === g && guessState[d.key]).length
                   return (
                     <button key={g} onClick={() => setActiveGroup(g)}
                       className={`text-xs px-3 py-1.5 rounded-full transition-colors ${
                         active
                           ? 'bg-blue-600 text-white'
                           : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
-                      {g}{count > 0 && <span className={`ml-1 font-bold ${active ? 'text-blue-200' : 'text-red-500'}`}>({count})</span>}
+                      {g}{count > 0 && <span className={`ml-1 font-bold ${active ? 'text-blue-200' : (inScenario ? 'text-blue-500' : 'text-red-500')}`}>({count})</span>}
                     </button>
                   )
                 })}
               </div>
               <div className="space-y-2">
-                {FAULT_DEFS.filter(d => d.group === activeGroup).map(def => (
-                  <label key={def.key}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      faults[def.key]
-                        ? 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/40'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-                    <input type="checkbox" checked={faults[def.key]}
-                      onChange={() => toggleFault(def.key)}
-                      className="mt-0.5 accent-red-500 flex-shrink-0" />
-                    <div>
-                      <p className={`text-sm font-medium ${faults[def.key] ? 'text-red-700 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                        {def.label}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{def.hint}</p>
-                    </div>
-                  </label>
-                ))}
+                {FAULT_DEFS.filter(d => d.group === activeGroup).map(def => {
+                  const checked  = guessState[def.key]
+                  const disabled = inScenario && submitted
+                  // Free play uses red (injecting a fault); diagnosis uses blue (marking a guess)
+                  const onCls = inScenario
+                    ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/40'
+                    : 'bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/40'
+                  const textCls = checked
+                    ? (inScenario ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-400')
+                    : 'text-slate-700 dark:text-slate-200'
+                  return (
+                    <label key={def.key}
+                      className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${disabled ? 'cursor-default opacity-70' : 'cursor-pointer'} ${
+                        checked ? onCls : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                      <input type="checkbox" checked={checked} disabled={disabled}
+                        onChange={() => toggleFault(def.key)}
+                        className={`mt-0.5 flex-shrink-0 ${inScenario ? 'accent-blue-600' : 'accent-red-500'}`} />
+                      <div>
+                        <p className={`text-sm font-medium ${textCls}`}>{def.label}</p>
+                        {/* Hide the diagnostic hint while diagnosing — that would give the answer away */}
+                        {!inScenario && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{def.hint}</p>}
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
+
+              {/* Instructor reveal — free-play only */}
+              {!inScenario && (
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5">
+                        <Eye size={13} className="text-slate-400" /> Instructor mode
+                      </p>
+                      <p className="text-[10px] text-slate-500">Reveal active faults + expected effects after a trainee gives their diagnosis</p>
+                    </div>
+                    <button onClick={() => setInstructorReveal(v => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${instructorReveal ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                      {instructorReveal ? <><EyeOff size={12}/> Hide faults</> : <><Eye size={12}/> Reveal faults</>}
+                    </button>
+                  </div>
+                  {instructorReveal && (
+                    <div className="mt-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3">
+                      <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Active faults · OAT {ambient}°F · {formatHour(timeOfDay)}</p>
+                      {activeFaultCount === 0 ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">No faults active — system in normal operation</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {FAULT_DEFS.filter(d => faults[d.key]).map(d => (
+                            <div key={d.key} className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-300">
+                              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5 text-blue-500" />
+                              <div><span className="font-medium">{d.label}</span><span className="text-blue-600/70 dark:text-blue-400/60 ml-1.5">— {d.hint}</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Field readings analyzer */}
+          {activeTab === 'field' && (
+            <div className="p-4">
+              <FieldReadingsPanel
+                fields={FIELD_DEFS}
+                values={fieldReadings}
+                onChange={updateField}
+                onClear={() => setFieldReadings(FIELD_EMPTY)}
+                derived={fieldAnalysis.derived}
+                findings={fieldAnalysis.findings}
+                footnote={`Analysis uses operating setpoint ${opSST}°F SST (${dewPsig(opSST).toFixed(1)} psig) — adjust in Rack Settings. R-448A PT data.`}
+                intro="Enter what you measure at the rack — leave blanks for values you haven’t taken. The analyzer computes superheat, subcooling, approach ΔT and compression ratio, then flags likely issues."
+              />
             </div>
           )}
 
           {/* Scenarios panel */}
           {activeTab === 'scenarios' && (
             <div className="p-4 space-y-3">
+              <button onClick={() => loadScenario(generateMystery())}
+                className="w-full text-left rounded-xl p-4 bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Dices size={15} className="flex-shrink-0" />
+                  <p className="text-sm font-semibold">Mystery Fault</p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-white/20">Random</span>
+                </div>
+                <p className="text-xs text-violet-100">1–2 random hidden faults, random weather and time of day. Infinite replays — every call is a fresh diagnosis.</p>
+              </button>
               {SCENARIOS.map(s => (
                 <div key={s.id}
                   className={`rounded-xl border p-4 cursor-pointer transition-all ${

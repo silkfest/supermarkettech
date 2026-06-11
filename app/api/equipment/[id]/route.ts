@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { requireRole } from '@/lib/api/auth'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
@@ -33,8 +34,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
   const { id } = await params
   const supabase = getSupabaseServer()
   const body = await req.json()
@@ -66,8 +67,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
   const { id } = await params
   const supabase = getSupabaseServer()
   const { error } = await supabase.from('equipment').delete().eq('id', id)

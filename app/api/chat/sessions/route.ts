@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { requireRole } from '@/lib/api/auth'
 
 // POST /api/chat/sessions — save a full conversation explicitly
 export async function POST(req: NextRequest) {
@@ -32,10 +33,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ id: sess.id })
 }
 
-// DELETE /api/chat/sessions — clear all chat sessions (messages cascade)
+// DELETE /api/chat/sessions — clear all chat sessions (messages cascade).
+// Destructive for the whole company (sessions aren't per-user yet), so admin/manager only.
 export async function DELETE(req: NextRequest) {
-  const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(req, ['admin', 'manager'])
+  if (auth instanceof NextResponse) return auth
 
   const supabase = getSupabaseServer()
   const { error } = await supabase
