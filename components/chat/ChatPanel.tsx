@@ -1,16 +1,21 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Equipment, ChatMode, ChatMessage, CitationSource, ComponentLink } from '@/types'
+import type { Equipment, ChatMode, ChatDomain, ChatMessage, CitationSource, ComponentLink } from '@/types'
 
 // ── Mode display config ───────────────────────────────────────────────────────
 
 const MODE_CONFIG: Record<ChatMode, { label: string; placeholder: string }> = {
   EXPERT:      { label: 'Expert',      placeholder: 'Ask anything — describe a fault, paste an alarm code, or ask a general question…' },
   MAINTENANCE: { label: 'Maintenance', placeholder: 'Ask about service procedures, PM intervals, or describe work done…' },
+}
+
+const DOMAIN_CONFIG: Record<ChatDomain, { label: string; icon: React.ReactNode }> = {
+  REFRIGERATION: { label: 'Refrigeration', icon: <Snowflake size={11} /> },
+  HVAC:          { label: 'HVAC',          icon: <Wind size={11} /> },
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -237,6 +242,8 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const [input, setInput]         = useState('')
   const [streaming, setStreaming] = useState(false)
   const [error, setError]         = useState<string | null>(null)
+  const [domain, setDomain]       = useState<ChatDomain>('REFRIGERATION')
+  const [escalate, setEscalate]   = useState(false)
 
   // Save conversation state
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
@@ -342,6 +349,8 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         body: JSON.stringify({
           equipmentId: equipment?.id,
           mode,
+          domain: mode === 'EXPERT' ? domain : undefined,
+          escalate: mode === 'EXPERT' ? escalate : undefined,
           message: text,
           history,
         }),
@@ -471,7 +480,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       ))
       setStreaming(false)
     }
-  }, [input, streaming, messages, mode, equipment])
+  }, [input, streaming, messages, mode, equipment, domain, escalate])
 
   function handleRetry() {
     const text = lastSentMsgRef.current
@@ -661,6 +670,42 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       {/* ── Input bar ── */}
       <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
         <div className="max-w-2xl mx-auto w-full">
+          {/* Domain & escalation controls — Expert mode only */}
+          {mode === 'EXPERT' && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                {(Object.keys(DOMAIN_CONFIG) as ChatDomain[]).map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setDomain(d)}
+                    className={[
+                      'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors',
+                      domain === d
+                        ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm'
+                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
+                    ].join(' ')}
+                    title={`${DOMAIN_CONFIG[d].label} knowledge base`}
+                  >
+                    {DOMAIN_CONFIG[d].icon}
+                    {DOMAIN_CONFIG[d].label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEscalate(e => !e)}
+                className={[
+                  'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors',
+                  escalate
+                    ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-400'
+                    : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
+                ].join(' ')}
+                title="Use a more capable model for harder diagnoses (slower, higher cost per message)"
+              >
+                <Zap size={11} />
+                Deep diagnosis
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-900/50 transition-all">
             <textarea
               ref={textareaRef}

@@ -105,10 +105,34 @@ export function formatContext(chunks: RetrievedChunk[], maxChars = 12000): strin
 }
 
 export function chunksToCitations(chunks: RetrievedChunk[]): CitationSource[] {
+  return chunksToCitationsFrom(chunks, 1)
+}
+
+// ─── Agentic search_manuals tool helpers ─────────────────────────────────────
+// Citation numbers must be unique and stable across all search_manuals calls in
+// a single conversation turn, since the model references them as [Doc N]. Each
+// call into the tool continues numbering from `startNum` rather than resetting to 1.
+
+export function formatToolResult(chunks: RetrievedChunk[], startNum: number, maxChars = 8000): string {
+  if (!chunks.length) return 'No relevant manual content found for this query.'
+  const parts: string[] = []
+  let total = 0
+  for (let i = 0; i < chunks.length; i++) {
+    const c = chunks[i]
+    const num = startNum + i
+    const part = `[Doc ${num}: ${c.document_title}${c.page_number ? `, p.${c.page_number}` : ''}]\n${c.content}`
+    if (total + part.length > maxChars) break
+    parts.push(part)
+    total += part.length
+  }
+  return parts.join('\n\n---\n\n')
+}
+
+export function chunksToCitationsFrom(chunks: RetrievedChunk[], startNum: number): CitationSource[] {
   return chunks.map((c, i) => ({
     documentId: c.document_id,
     chunkId: c.chunk_id,
-    citationNumber: i + 1,
+    citationNumber: startNum + i,
     pageNumber: c.page_number,
     title: c.document_title,
     sourceType: c.source_type,

@@ -1,5 +1,6 @@
 export type EquipmentStatus = 'OK' | 'WARNING' | 'ALARM' | 'OFFLINE' | 'UNKNOWN'
 export type ChatMode = 'EXPERT' | 'MAINTENANCE'
+export type ChatDomain = 'REFRIGERATION' | 'HVAC'
 export type SourceType = 'UPLOAD' | 'WEB' | 'SYSTEM'
 export type DocStatus = 'PROCESSING' | 'READY' | 'FAILED'
 export type AlarmLevel = 'INFO' | 'WARNING' | 'CRITICAL'

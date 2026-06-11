@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { buildSystemPromptParts } from '@/lib/ai/prompts'
-import { retrieveChunks, formatContext, chunksToCitations } from '@/lib/ai/rag'
+import { retrieveChunks, formatToolResult, chunksToCitationsFrom } from '@/lib/ai/rag'
 import { buildSnapshot } from '@/lib/sensor'
-import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ComponentLink } from '@/types'
+import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ChatDomain, ComponentLink, CitationSource } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
 
@@ -12,10 +12,16 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY ?? '',
 })
 
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
+const SONNET_MODEL = 'claude-sonnet-4-6'
+const MAX_TOOL_ROUNDS = 2
+
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
   equipmentId: z.string().optional(),
   mode:        z.enum(['EXPERT','MAINTENANCE']),
+  domain:      z.enum(['REFRIGERATION','HVAC']).optional(),
+  escalate:    z.boolean().optional(),
   message:     z.string().min(1).max(4000),
   history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
 })
@@ -31,6 +37,58 @@ async function loadEquipmentContext(equipmentId: string) {
   return { equipment: eq as Equipment, snapshot, alarms: (alarms ?? []) as AlarmEvent[], logs: (logs ?? []) as MaintenanceLog[] }
 }
 
+const SEARCH_MANUALS_TOOL: Anthropic.Tool = {
+  name: 'search_manuals',
+  description: "Search the company's uploaded equipment manuals and documentation library (install/service manuals, wiring diagrams, parts lists, controller programming guides) for specific information. Returns the most relevant excerpts, each labelled [Doc N] for citation.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'A specific search query — include the manufacturer/model and topic, e.g. "Copeland Discus compressor oil pressure failure" or "Danfoss AK-SM 850 defrost programming".',
+      },
+    },
+    required: ['query'],
+  },
+}
+
+interface ManualSearchResult {
+  text: string
+  sources: CitationSource[]
+  componentLinks: ComponentLink[]
+  compDocMap: Map<string, string>
+  count: number
+}
+
+async function runManualSearch(query: string, equipmentId: string | undefined, startNum: number): Promise<ManualSearchResult> {
+  const supabase = getSupabaseServer()
+  const chunks = await retrieveChunks(query, equipmentId, 6, 0.50)
+  const text = formatToolResult(chunks, startNum)
+  const sources = chunksToCitationsFrom(chunks, startNum).map(s => ({ ...s, signedUrl: `/api/pdf?docId=${s.documentId}` }))
+
+  let componentLinks: ComponentLink[] = []
+  const compDocMap = new Map<string, string>()
+  if (chunks.length > 0) {
+    const docIds = [...new Set(chunks.map(c => c.document_id))]
+    const { data: comps } = await supabase
+      .from('manual_components')
+      .select('id, type, manufacturer, model, manual_title, document_id')
+      .in('document_id', docIds)
+    componentLinks = (comps ?? []).map(c => {
+      compDocMap.set(c.id as string, c.document_id as string)
+      return {
+        catalogId:    c.id            as string,
+        type:         c.type          as string ?? 'Component',
+        manufacturer: c.manufacturer  as string ?? '',
+        model:        c.model         as string ?? '',
+        manualTitle:  c.manual_title  as string ?? '',
+      }
+    })
+  }
+
+  return { text, sources, componentLinks, compDocMap, count: chunks.length }
+}
+
 export async function POST(req: NextRequest) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -39,103 +97,88 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
 
-  const { sessionId, equipmentId, mode, message, history } = parsed.data
-  const supabase = getSupabaseServer()
+  const { equipmentId, mode, domain, escalate, message, history } = parsed.data
 
   const ctx = equipmentId ? await loadEquipmentContext(equipmentId) : null
 
-  let retrievedContext = ''
-  let sources: ReturnType<typeof chunksToCitations> = []
-  let componentLinks: ComponentLink[] = []
-  const compDocMap = new Map<string, string>() // catalogId -> documentId, for post-response filtering
-  const jinaKey = process.env.JINA_API_KEY
-  if (jinaKey) {
-    try {
-      // Build RAG query: current message + recent unique user messages for multi-turn context.
-      // Deduplicate to avoid score drift when the user re-asks the same question.
-      const msgNorm = message.toLowerCase().trim()
-      const recentUserMessages = history
-        .filter(m => m.role === 'user')
-        .slice(-2)
-        .map(m => m.content)
-        .filter(c => c.toLowerCase().trim() !== msgNorm)
-      const query = [...recentUserMessages, message].join(' ').slice(0, 600)
-
-      const chunks = await retrieveChunks(query, equipmentId, 8, 0.50)
-
-      console.log(JSON.stringify({ n: chunks.length, top: chunks[0]?.score?.toFixed(3) ?? null }))
-
-      retrievedContext = formatContext(chunks, 15000)
-      sources = chunksToCitations(chunks)
-
-      // Attach proxy PDF URLs — the /api/pdf route serves PDFs inline so that
-      // #page=N fragments work in the browser's built-in PDF viewer.
-      if (sources.length > 0) {
-        sources = sources.map(s => ({ ...s, signedUrl: `/api/pdf?docId=${s.documentId}` }))
-      }
-
-      if (chunks.length > 0) {
-        // Look up any manual_components entries linked to the retrieved documents
-        const docIds = [...new Set(chunks.map(c => c.document_id))]
-        const { data: comps, error: compsError } = await supabase
-          .from('manual_components')
-          .select('id, type, manufacturer, model, manual_title, document_id')
-          .in('document_id', docIds)
-        console.log(JSON.stringify({ compsCount: comps?.length ?? 0, docIds, compsErr: compsError?.message ?? null }))
-        componentLinks = (comps ?? []).map(c => {
-          compDocMap.set(c.id as string, c.document_id as string)
-          return {
-            catalogId:    c.id            as string,
-            type:         c.type          as string ?? 'Component',
-            manufacturer: c.manufacturer  as string ?? '',
-            model:        c.model         as string ?? '',
-            manualTitle:  c.manual_title  as string ?? '',
-          }
-        })
-      }
-    } catch (e) {
-      console.error(JSON.stringify({ ragError: true, msg: e instanceof Error ? e.message : String(e) }))
-    }
-  } else {
-    console.log(JSON.stringify({ rag: false, reason: 'JINA_API_KEY not set' }))
-  }
-
   const { staticContent, dynamicContent } = buildSystemPromptParts({
     mode: mode as ChatMode,
+    domain: domain as ChatDomain | undefined,
     equipment: ctx?.equipment,
     readings: ctx?.snapshot,
     recentLogs: ctx?.logs,
     activeAlarms: ctx?.alarms,
-    retrievedContext: retrievedContext || undefined,
   })
   const systemBlocks = [
     { type: 'text' as const, text: staticContent, cache_control: { type: 'ephemeral' as const } },
     { type: 'text' as const, text: dynamicContent },
   ]
 
+  const model = escalate ? SONNET_MODEL : HAIKU_MODEL
+  const maxTokens = escalate ? 4096 : 2048
+  const manualSearchEnabled = !!process.env.JINA_API_KEY
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
       let fullContent = ''
-      try {
-        const claudeStream = anthropic.messages.stream({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2048,
-          system: systemBlocks,
-          messages: [
-            ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-            { role: 'user', content: message },
-          ],
-        })
+      const allSources: CitationSource[] = []
+      const allComponentLinks: ComponentLink[] = []
+      const compDocMap = new Map<string, string>()
+      let citationCounter = 0
 
-        for await (const chunk of claudeStream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            const text = chunk.delta.text
-            if (text) {
-              fullContent += text
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
+      try {
+        const messages: Anthropic.MessageParam[] = [
+          ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+          { role: 'user', content: message },
+        ]
+
+        for (let round = 0; ; round++) {
+          const useTools = manualSearchEnabled && round < MAX_TOOL_ROUNDS
+
+          const claudeStream = anthropic.messages.stream({
+            model,
+            max_tokens: maxTokens,
+            system: systemBlocks,
+            messages,
+            ...(useTools ? { tools: [SEARCH_MANUALS_TOOL] } : {}),
+          })
+
+          for await (const chunk of claudeStream) {
+            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+              const text = chunk.delta.text
+              if (text) {
+                fullContent += text
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`))
+              }
             }
           }
+
+          const finalMessage = await claudeStream.finalMessage()
+          const toolUses = finalMessage.content.filter(b => b.type === 'tool_use')
+
+          if (!useTools || finalMessage.stop_reason !== 'tool_use' || toolUses.length === 0) break
+
+          messages.push({ role: 'assistant', content: finalMessage.content })
+
+          const toolResults: Anthropic.ToolResultBlockParam[] = []
+          for (const block of toolUses) {
+            if (block.name !== 'search_manuals') {
+              toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Unknown tool', is_error: true })
+              continue
+            }
+            const input = block.input as { query?: unknown }
+            const query = typeof input?.query === 'string' ? input.query : message
+
+            const result = await runManualSearch(query, equipmentId, citationCounter + 1)
+            citationCounter += result.count
+            allSources.push(...result.sources)
+            allComponentLinks.push(...result.componentLinks)
+            for (const [k, v] of result.compDocMap) compDocMap.set(k, v)
+
+            toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result.text })
+          }
+          messages.push({ role: 'user', content: toolResults })
         }
 
         // Extract cited [Doc N] numbers and filter sources + component links to only
@@ -144,17 +187,23 @@ export async function POST(req: NextRequest) {
         for (const m of fullContent.matchAll(/\[Doc (\d+)[^\]]*\]/g)) {
           citedNumbers.add(parseInt(m[1], 10))
         }
-        if (sources.length > 0) {
-          const citedSources = sources.filter(s => citedNumbers.has(s.citationNumber))
+        if (allSources.length > 0) {
+          const citedSources = allSources.filter(s => citedNumbers.has(s.citationNumber))
           if (citedSources.length > 0) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources: citedSources })}\n\n`))
           }
         }
-        if (componentLinks.length > 0) {
+        if (allComponentLinks.length > 0) {
           const citedDocIds = new Set(
-            sources.filter(s => citedNumbers.has(s.citationNumber)).map(s => s.documentId)
+            allSources.filter(s => citedNumbers.has(s.citationNumber)).map(s => s.documentId)
           )
-          const citedLinks = componentLinks.filter(l => citedDocIds.has(compDocMap.get(l.catalogId) ?? ''))
+          const seen = new Set<string>()
+          const citedLinks = allComponentLinks.filter(l => {
+            if (!citedDocIds.has(compDocMap.get(l.catalogId) ?? '')) return false
+            if (seen.has(l.catalogId)) return false
+            seen.add(l.catalogId)
+            return true
+          })
           if (citedLinks.length > 0) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks: citedLinks })}\n\n`))
           }
