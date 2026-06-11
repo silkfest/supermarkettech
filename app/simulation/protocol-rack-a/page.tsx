@@ -12,6 +12,7 @@ import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import ProtocolRackVisual from '@/components/simulation/visuals/ProtocolRackVisual'
+import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -1144,6 +1145,7 @@ export default function ProtocolRackASimulatorPage() {
               </button>
               {schematicOpen && (
                 <div className="px-2 pb-2">
+                  <SchematicViewer label="Protocol Rack — Unit A">
                   <ProtocolRackVisual
                     fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
                     fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
@@ -1168,6 +1170,7 @@ export default function ProtocolRackASimulatorPage() {
                     })}
                     doorsOpen={!conceal && activeFaults.doorsOpen}
                   />
+                  </SchematicViewer>
                 </div>
               )}
             </div>

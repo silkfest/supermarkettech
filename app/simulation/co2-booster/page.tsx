@@ -12,6 +12,7 @@ import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import Co2BoosterVisual from '@/components/simulation/visuals/Co2BoosterVisual'
+import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -888,6 +889,7 @@ export default function Co2BoosterSimulatorPage() {
               </button>
               {schematicOpen && (
                 <div className="px-2 pb-2">
+                  <SchematicViewer label="CO2 Transcritical Booster">
                   <Co2BoosterVisual
                     fansSpinning={conceal ? [true, true] : [!activeFaults.gcFan1Failed, !activeFaults.gcFan2Failed]}
                     fansFailed={conceal ? [false, false] : [activeFaults.gcFan1Failed, activeFaults.gcFan2Failed]}
@@ -911,6 +913,7 @@ export default function Co2BoosterSimulatorPage() {
                     ltIced={!conceal && activeFaults.ltCoilIced}
                     mtFanOut={!conceal && activeFaults.mtEvapFanOut}
                   />
+                  </SchematicViewer>
                 </div>
               )}
             </div>

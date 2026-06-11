@@ -13,6 +13,7 @@ import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
+import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
@@ -1661,6 +1662,7 @@ export default function SimulationPage() {
                   </button>
                   {schematicOpen && (
                     <div className="px-2 pb-2">
+                      <SchematicViewer label="Parallel Rack — MT + LT">
                       <ParallelRackVisual
                         fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
                         fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
@@ -1682,6 +1684,7 @@ export default function SimulationPage() {
                         floodback={mt.suctionSuperheat < 5}
                         hpCtrlActive={mtBase.hpCtrlActive}
                       />
+                      </SchematicViewer>
                     </div>
                   )}
                 </div>
