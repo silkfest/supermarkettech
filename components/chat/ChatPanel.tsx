@@ -1,10 +1,10 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Equipment, ChatMode, ChatMessage, CitationSource, ComponentLink } from '@/types'
+import type { Equipment, ChatMode, ChatDomain, ChatMessage, CitationSource, ComponentLink } from '@/types'
 
 // ── Mode display config ───────────────────────────────────────────────────────
 
@@ -13,12 +13,18 @@ const MODE_CONFIG: Record<ChatMode, { label: string; placeholder: string }> = {
   MAINTENANCE: { label: 'Maintenance', placeholder: 'Ask about service procedures, PM intervals, or describe work done…' },
 }
 
+const DOMAIN_CONFIG: Record<ChatDomain, { label: string; icon: React.ReactNode }> = {
+  REFRIGERATION: { label: 'Refrigeration', icon: <Snowflake size={11} /> },
+  HVAC:          { label: 'HVAC',          icon: <Wind size={11} /> },
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   equipment: Equipment | null
   mode: ChatMode
   onUpload: () => void
+  initialSession?: { id: string; messages: ChatMessage[] } | null
 }
 
 interface StreamEvent {
@@ -108,6 +114,20 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
 
 function pdfUrl(signedUrl: string, pageNumber?: number | null): string {
   return pageNumber != null ? `${signedUrl}#page=${pageNumber}` : signedUrl
+}
+
+// ── Local draft persistence ───────────────────────────────────────────────────
+// Keeps the in-progress conversation in localStorage so an accidental refresh
+// or navigation doesn't lose it. Keyed per-equipment so switching units
+// restores that unit's own draft.
+function draftKey(equipmentId?: string | null): string {
+  return `coldiq_chat_draft_${equipmentId ?? 'none'}`
+}
+
+interface ChatDraft {
+  messages: ChatMessage[]
+  sessionId: string | null
+  chatSaved: boolean
 }
 
 function processInlineCitations(content: string): string {
@@ -230,13 +250,16 @@ function EmptyState({ mode }: { mode: ChatMode }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ChatPanel({ equipment, mode, onUpload }: Props) {
+export default function ChatPanel({ equipment, mode, onUpload, initialSession }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [messages, setMessages]   = useState<ChatMessage[]>([])
   const [input, setInput]         = useState('')
   const [streaming, setStreaming] = useState(false)
   const [error, setError]         = useState<string | null>(null)
+  const [domain, setDomain]       = useState<ChatDomain>('REFRIGERATION')
+  const [escalate, setEscalate]   = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   // Save conversation state
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
@@ -250,6 +273,11 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
+  const sessionIdRef     = useRef<string | null>(null)
+  const assistantContentRef = useRef('')
+  const appliedSessionRef   = useRef<string | null>(null)
+
+  useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
   // Pre-fill from ?q= URL param (Ask ColdIQ from knowledge pages) — fires on
   // every navigation even when the component is cached by the router.
@@ -277,19 +305,62 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     } catch { /* ignore – SSR or private browsing */ }
   }, [])
 
-  // Reset chat when the selected equipment changes
+  // Reset chat when the selected equipment changes — restoring that unit's
+  // saved draft from localStorage if one exists, so switching units and back
+  // doesn't lose either conversation.
   useEffect(() => {
     // Cancel any in-flight request
     abortRef.current?.abort()
-    setMessages([])
     setError(null)
     setInput('')
     setStreaming(false)
     setShowSavePrompt(false)
     setSaveTitle('')
-    setChatSaved(false)
     setSaveError('')
+
+    try {
+      const raw = localStorage.getItem(draftKey(equipment?.id))
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<ChatDraft>
+        if (draft.messages?.length) {
+          setMessages(draft.messages)
+          setSessionId(draft.sessionId ?? null)
+          setChatSaved(!!draft.chatSaved)
+          return
+        }
+      }
+    } catch { /* corrupt or unavailable draft — fall through to a clean chat */ }
+
+    setMessages([])
+    setSessionId(null)
+    setChatSaved(false)
   }, [equipment?.id])
+
+  // Resume a saved conversation passed in from chat history (?session=...)
+  useEffect(() => {
+    if (!initialSession || appliedSessionRef.current === initialSession.id) return
+    appliedSessionRef.current = initialSession.id
+    setMessages(initialSession.messages)
+    setSessionId(initialSession.id)
+    setChatSaved(true)
+  }, [initialSession])
+
+  // Persist the current conversation to localStorage as a draft (debounced)
+  useEffect(() => {
+    const key = draftKey(equipment?.id)
+    const finalised = messages.filter(m => !m.isStreaming)
+    if (finalised.length === 0) {
+      try { localStorage.removeItem(key) } catch { /* ignore */ }
+      return
+    }
+    const t = setTimeout(() => {
+      try {
+        const draft: ChatDraft = { messages: finalised, sessionId, chatSaved }
+        localStorage.setItem(key, JSON.stringify(draft))
+      } catch { /* storage unavailable or quota exceeded — draft is best-effort */ }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [messages, sessionId, chatSaved, equipment?.id])
 
   // Scroll to bottom whenever messages update
   useEffect(() => {
@@ -303,6 +374,35 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     ta.style.height = 'auto'
     ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`
   }, [input])
+
+  // Best-effort background save — keeps a server copy of the conversation up to
+  // date as it grows, so it survives even if the local draft is lost (new
+  // device, cleared storage, etc). Creates a session on the first exchange,
+  // then updates it in place.
+  const persistConversation = useCallback(async (allMessages: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+    if (allMessages.length < 2) return
+    try {
+      const sid = sessionIdRef.current
+      if (sid) {
+        await fetch(`/api/chat/sessions/${sid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: allMessages }),
+        })
+      } else {
+        const title = allMessages.find(m => m.role === 'user')?.content.slice(0, 80) || 'Untitled'
+        const res = await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: allMessages, equipmentId: equipment?.id, mode, title }),
+        })
+        if (res.ok) {
+          const j = await res.json()
+          if (j?.id) setSessionId(j.id)
+        }
+      }
+    } catch { /* background save — failures are non-fatal */ }
+  }, [equipment, mode])
 
   const handleSubmit = useCallback(async (opts?: {
     overrideText?: string
@@ -328,6 +428,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
     const userMsg: ChatMessage = { id: userId, role: 'user', content: text }
     const assistantMsg: ChatMessage = { id: assistantId, role: 'assistant', content: '', isStreaming: true }
 
+    assistantContentRef.current = ''
     setMessages(prev => [...prev, userMsg, assistantMsg])
     setStreaming(true)
 
@@ -342,6 +443,8 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
         body: JSON.stringify({
           equipmentId: equipment?.id,
           mode,
+          domain: mode === 'EXPERT' ? domain : undefined,
+          escalate: mode === 'EXPERT' ? escalate : undefined,
           message: text,
           history,
         }),
@@ -394,6 +497,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
           switch (event.type) {
             case 'delta':
               if (event.text) {
+                assistantContentRef.current += event.text
                 setMessages(prev => prev.map(m =>
                   m.id === assistantId
                     ? { ...m, content: m.content + event.text! }
@@ -428,6 +532,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
                 setStreaming(false)
                 pendingSources = undefined
                 pendingComponentLinks = undefined
+                persistConversation([...history, { role: 'user', content: text }, { role: 'assistant', content: assistantContentRef.current }])
                 break
               }
 
@@ -471,7 +576,7 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       ))
       setStreaming(false)
     }
-  }, [input, streaming, messages, mode, equipment])
+  }, [input, streaming, messages, mode, equipment, domain, escalate, persistConversation])
 
   function handleRetry() {
     const text = lastSentMsgRef.current
@@ -500,20 +605,33 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       const messagesToSave = messages
         .filter(m => !m.isStreaming)
         .map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch('/api/chat/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messagesToSave,
-          equipmentId: equipment?.id,
-          mode,
-          title: saveTitle.trim(),
-        }),
-      })
+
+      // The conversation may already have been auto-saved in the background —
+      // update that session's title rather than creating a duplicate.
+      const res = sessionId
+        ? await fetch(`/api/chat/sessions/${sessionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: messagesToSave, title: saveTitle.trim() }),
+          })
+        : await fetch('/api/chat/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: messagesToSave,
+              equipmentId: equipment?.id,
+              mode,
+              title: saveTitle.trim(),
+            }),
+          })
       if (!res.ok) {
         const j = await res.json()
         setSaveError(j?.error ?? 'Failed to save')
         return
+      }
+      if (!sessionId) {
+        const j = await res.json()
+        if (j?.id) setSessionId(j.id)
       }
       setChatSaved(true)
       setShowSavePrompt(false)
@@ -661,6 +779,42 @@ export default function ChatPanel({ equipment, mode, onUpload }: Props) {
       {/* ── Input bar ── */}
       <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
         <div className="max-w-2xl mx-auto w-full">
+          {/* Domain & escalation controls — Expert mode only */}
+          {mode === 'EXPERT' && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                {(Object.keys(DOMAIN_CONFIG) as ChatDomain[]).map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setDomain(d)}
+                    className={[
+                      'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors',
+                      domain === d
+                        ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm'
+                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
+                    ].join(' ')}
+                    title={`${DOMAIN_CONFIG[d].label} knowledge base`}
+                  >
+                    {DOMAIN_CONFIG[d].icon}
+                    {DOMAIN_CONFIG[d].label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEscalate(e => !e)}
+                className={[
+                  'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors',
+                  escalate
+                    ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-400'
+                    : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
+                ].join(' ')}
+                title="Use a more capable model for harder diagnoses (slower, higher cost per message)"
+              >
+                <Zap size={11} />
+                Deep diagnosis
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-900/50 transition-all">
             <textarea
               ref={textareaRef}

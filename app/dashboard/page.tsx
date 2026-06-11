@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { buildSnapshot } from '@/lib/sensor'
-import type { Equipment, Document, ChatMode, User } from '@/types'
+import type { Equipment, Document, ChatMode, User, ChatMessage } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
   EXPERT:      'Expert',
@@ -45,8 +45,10 @@ export default function Dashboard() {
   const [fetchError,   setFetchError]   = useState<string | null>(null)
   const [alarmToast,   setAlarmToast]   = useState<string | null>(null)
   const [uploadToast,  setUploadToast]  = useState<{ type: 'uploading' | 'done' | 'error'; msg: string } | null>(null)
+  const [initialSession, setInitialSession] = useState<{ id: string; messages: ChatMessage[] } | null>(null)
   const equipmentRef = useRef<Equipment[]>([])
   const autoSelectedRef = useRef(false)
+  const pendingSessionEquipmentId = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { theme, toggle: toggleTheme } = useTheme()
@@ -97,6 +99,44 @@ export default function Dashboard() {
       const eq = equipment.find(e => e.id === equipId)
       if (eq) { setSelected(eq); autoSelectedRef.current = true }
     }
+  }, [equipment])
+
+  // Resume a saved conversation from chat history (?session=...)
+  useEffect(() => {
+    if (!currentUser) return
+    const params = new URLSearchParams(window.location.search)
+    const sessionId = params.get('session')
+    if (!sessionId) return
+
+    window.history.replaceState(null, '', window.location.pathname)
+
+    fetch(`/api/chat/sessions/${sessionId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data) return
+        if (data.mode === 'EXPERT' || data.mode === 'MAINTENANCE') setMode(data.mode)
+        pendingSessionEquipmentId.current = data.equipment_id ?? null
+
+        const messages: ChatMessage[] = (data.messages ?? [])
+          .slice()
+          .sort((a: { created_at: string }, b: { created_at: string }) => a.created_at.localeCompare(b.created_at))
+          .map((m: { id: string; role: 'user' | 'assistant'; content: string }) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+          }))
+
+        setInitialSession({ id: data.id, messages })
+      })
+      .catch(() => { /* resume is best-effort */ })
+  }, [currentUser])
+
+  // Apply the resumed session's equipment context once the equipment list loads
+  useEffect(() => {
+    if (!pendingSessionEquipmentId.current || equipment.length === 0) return
+    const eq = equipment.find(e => e.id === pendingSessionEquipmentId.current)
+    if (eq) { setSelected(eq); autoSelectedRef.current = true }
+    pendingSessionEquipmentId.current = null
   }, [equipment])
 
   // Auto-poll documents every 10s while any are still PROCESSING
@@ -309,7 +349,7 @@ export default function Dashboard() {
                 <AnnouncementBanner />
                 <div className="flex-1 min-h-0">
                   <Suspense>
-                    <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker}/>
+                    <ChatPanel equipment={selected} mode={mode} onUpload={openFilePicker} initialSession={initialSession}/>
                   </Suspense>
                 </div>
               </div>
