@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
+import { useLiveReadings } from '@/components/simulation/useLiveReadings'
+import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
@@ -157,7 +159,8 @@ type FaultKey =
   | 'underchargeModerate' | 'underchargeSevere' | 'overcharge'
   | 'filterDrierRestricted'
   | 'comp1Failed' | 'comp2Failed' | 'comp3Failed' | 'comp4Failed'
-  | 'txvNotFeeding' | 'defrostStuckOn'
+  | 'txvNotFeeding' | 'defrostStuckOn' | 'caseDoorsOpen'
+  | 'evapFanFailed' | 'coilIced' | 'txvOverfeeding' | 'caseDrierPlugged'
   | 'oilLow' | 'nonCondensables'
   | 'ltComp1Failed' | 'ltComp2Failed'
   | 'ltTxvNotFeeding' | 'ltDefrostStuckOn'
@@ -172,7 +175,8 @@ const INITIAL_FAULTS: FaultState = {
   underchargeModerate: false, underchargeSevere: false, overcharge: false,
   filterDrierRestricted: false,
   comp1Failed: false, comp2Failed: false, comp3Failed: false, comp4Failed: false,
-  txvNotFeeding: false, defrostStuckOn: false,
+  txvNotFeeding: false, defrostStuckOn: false, caseDoorsOpen: false,
+  evapFanFailed: false, coilIced: false, txvOverfeeding: false, caseDrierPlugged: false,
   oilLow: false, nonCondensables: false,
   ltComp1Failed: false, ltComp2Failed: false,
   ltTxvNotFeeding: false, ltDefrostStuckOn: false,
@@ -200,8 +204,13 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp3Failed',         label: 'Compressor 3 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp4Failed',         label: 'Compressor 4 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp1ValveWorn', label: 'Comp 1 — worn valves (bypassing)', hint: 'Internal bypass — comp still runs, amps look near-normal, but capacity is reduced ~35%; hard to find without individual analysis', group: 'Compressors' },
-  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load' },
+  { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load', mutuallyExcludes: ['txvOverfeeding'] },
+  { key: 'txvOverfeeding',      label: 'MT TXV overfeeding (floodback)', hint: 'Bulb loose or valve hunting wide open — superheat near zero, liquid back to the rack. Cool discharge, oil dilution drops the Y825 differential.', group: 'MT Load', mutuallyExcludes: ['txvNotFeeding'] },
   { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
+  { key: 'caseDoorsOpen',       label: 'Case doors propped open (stocking)', hint: 'Warm humid store air floods the cases — load and suction rise, case temps drift up, coils frost faster', group: 'MT Load' },
+  { key: 'evapFanFailed',       label: 'Evap fan motors out (Dairy)',   hint: 'Air stops moving across the coil — Dairy case warms while suction sags and SH runs low. Coil will ice next; check fan amps and blades.', group: 'MT Load' },
+  { key: 'coilIced',            label: 'Evaporator coil iced up (Produce)', hint: 'Solid frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warm case. Find why defrost didn\'t clear it.', group: 'MT Load' },
+  { key: 'caseDrierPlugged',    label: 'Case liquid drier plugged (Cheese)', hint: 'Drier at the case is restricting — that circuit starves (warm case, high SH) but the RACK drier ΔT reads normal. Check ΔT across the case drier.', group: 'MT Load' },
   { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',             group: 'LT Booster' },
   { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',              group: 'LT Booster' },
   { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',               group: 'LT Booster' },
@@ -335,12 +344,15 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     const coldOffset = Math.min(40 - oat, 40)
     subcooling += coldOffset * 0.5          // up to +20 °F SC from liquid migration
   }
-  // High ambient: compressor heat soak, increased case infiltration load
-  if (oat > 90) {
-    const hotOffset = oat - 90
+  // High ambient: compressor heat soak, increased case infiltration load.
+  // Store traffic + infiltration also lift the suction load itself — a rack
+  // at 105 °F OAT doesn't hold setpoint as crisply as one at 75 °F.
+  if (oat > 85) {
+    const hotOffset = oat - 85
     dischargeSuperheat += hotOffset * 0.4
     ampsMultiplier     *= 1 + hotOffset * 0.004
-    caseTemp           += hotOffset * 0.08  // heat infiltration into MT cases
+    caseTemp           += hotOffset * 0.10  // heat infiltration into MT cases
+    suctionSatTemp     += hotOffset * 0.06  // load rise lifts suction above setpoint
   }
 
   // ── Machine room ─────────────────────────────────────────────────────────
@@ -384,6 +396,14 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   // ── Load faults ───────────────────────────────────────────────────────────
   if (f.txvNotFeeding)  { suctionSatTemp -= 12; condensingSatTemp -= 10; superheat += 28; dischargeSuperheat += 22; caseTemp += 8 }
   if (f.defrostStuckOn) { suctionSatTemp += 7; caseTemp += 12; if (superheat > 8) superheat -= 8 }
+  if (f.caseDoorsOpen)  { suctionSatTemp += 3; caseTemp += 5; ampsMultiplier *= 1.06; if (superheat > 8) superheat -= 2 }
+  // Low-airflow faults — classic signature: case warms while suction AND superheat both drop
+  if (f.evapFanFailed)  { suctionSatTemp -= 1.5; caseTemp += 2; if (superheat > 6) superheat -= 3 }
+  if (f.coilIced)       { suctionSatTemp -= 4; caseTemp += 3; if (superheat > 7) superheat -= 5; ampsMultiplier *= 0.97 }
+  // Floodback — liquid back to the rack: SH collapses, discharge runs cool, oil dilutes
+  if (f.txvOverfeeding) { suctionSatTemp += 3; superheat = Math.min(superheat, 2); dischargeSuperheat -= 25; ampsMultiplier *= 1.05; oilDiff -= 6 }
+  // Case-level drier plugged — one circuit starves; rack drier ΔT stays normal
+  if (f.caseDrierPlugged) { suctionSatTemp -= 2; superheat += 6; caseTemp += 1.5 }
 
   // ── Oil / Misc ────────────────────────────────────────────────────────────
   if (f.oilLow)          { oilDiff = 8 }
@@ -406,9 +426,10 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   }
 
   // ── Clamp ─────────────────────────────────────────────────────────────────
-  subcooling        = Math.max(subcooling, 0.3)
-  superheat         = Math.max(superheat, 0)
-  oilDiff           = Math.max(oilDiff, 0)
+  subcooling         = Math.max(subcooling, 0.3)
+  superheat          = Math.max(superheat, 0)
+  oilDiff            = Math.max(oilDiff, 0)
+  dischargeSuperheat = Math.max(dischargeSuperheat, 12)
   condensingSatTemp = Math.max(condensingSatTemp, suctionSatTemp + 20)
 
   // ── Derived values ────────────────────────────────────────────────────────
@@ -1077,6 +1098,7 @@ export default function SimulationPage() {
   const [oat,          setOat]          = useState(80)        // °F — outdoor ambient
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
+  const [schematicOpen, setSchematicOpen] = useState(true)
 
   // Rack configuration — matches what techs read from the rack controller / setup sheet
   const [rackSettingsOpen, setRackSettingsOpen] = useState(false)
@@ -1100,7 +1122,10 @@ export default function SimulationPage() {
   const [submitted,      setSubmitted]      = useState(false)
 
   // Active values — scenarios override free-play faults and OAT
-  const activeFaults = scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults
+  const activeFaults = useMemo(
+    () => (scenarioMode && activeScenario ? { ...INITIAL_FAULTS, ...activeScenario.faults } : faults),
+    [scenarioMode, activeScenario, faults],
+  )
   const activeOat    = scenarioMode ? (activeScenario?.oat ?? 80) : oat
 
   // Derive sat-temp equivalents from the configured psig set points
@@ -1109,14 +1134,68 @@ export default function SimulationPage() {
   const mtSatSetpoint  = ptDewReverse(rackConfig.mtSuctionPsig, pt)   // MT suction → evap sat temp (dew)
   const ltSatSetpoint  = ptDewReverse(rackConfig.ltSuctionPsig, pt)   // LT suction → evap sat temp (dew)
 
-  const mt = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
-  const lt = useMemo(() => computeLT(activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mt.suctionSatTemp, ltSatSetpoint, pt])
+  const mtBase = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
+  const ltBase = useMemo(() => computeLT(activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt])
 
-  // Individual case temperatures — deviation from aggregate caseTemp × sensitivity
-  const caseTemps = useMemo(() => STORE_LINEUP.map(s => {
-    if (s.circuit === 'MT') return s.setpoint + (mt.caseTemp - BASELINE.caseTemp) * s.sensitivity
-    else                     return s.setpoint + (lt.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
-  }), [mt.caseTemp, lt.caseTemp])
+  // ── Live sensor layer — readings breathe around the model's steady state ──
+  const live = useLiveReadings([
+    { key: 'mtSuction', target: mtBase.suctionPsig,       jitter: 0.30, wander: 0.9,  period: 35, bias: 0.3 },
+    { key: 'discharge', target: mtBase.dischargePsig,     jitter: 0.50, wander: 2.2,  period: 55, bias: 0.8 },
+    { key: 'mtSH',      target: mtBase.suctionSuperheat,  jitter: 0.25, wander: 1.4,  period: 28, bias: 0.4 },  // TXV hunting
+    { key: 'sc',        target: mtBase.subcooling,        jitter: 0.15, wander: 0.7,  period: 60, bias: 0.3 },
+    { key: 'dischTemp', target: mtBase.dischargeTemp,     jitter: 0.40, wander: 2.0,  period: 70, bias: 1.0 },
+    { key: 'oilDiff',   target: mtBase.oilDiff,           jitter: 0.20, wander: 0.6,  period: 40 },
+    { key: 'ltSuction', target: ltBase.suctionPsig,       jitter: 0.18, wander: 0.5,  period: 38, bias: 0.2 },
+    { key: 'ltSH',      target: ltBase.superheat,         jitter: 0.25, wander: 1.2,  period: 30, bias: 0.4 },
+    { key: 'mtCase',    target: mtBase.caseTemp,          jitter: 0.10, wander: 0.8,  period: 90, bias: 0.4 },  // case cycling
+    { key: 'ltCase',    target: ltBase.caseTemp,          jitter: 0.10, wander: 0.7,  period: 80, bias: 0.4 },
+    { key: 'ampF',      target: 1,                        jitter: 0.004, wander: 0.012, period: 25 },
+    // per-case sensor deltas — each case sensor has its own bias + cycling phase
+    ...STORE_LINEUP.map((s, i) => ({ key: `case${i}`, target: 0, jitter: 0.10, wander: s.circuit === 'MT' ? 0.9 : 0.7, period: 75 + i * 7, bias: 0.7 })),
+  ])
+
+  // Display objects — JSX reads these; alarms/status logic stays on the clean model
+  const mt: SystemState = {
+    ...mtBase,
+    suctionPsig:      live.mtSuction,
+    dischargePsig:    live.discharge,
+    suctionSuperheat: live.mtSH,
+    subcooling:       live.sc,
+    dischargeTemp:    live.dischTemp,
+    oilDiff:          live.oilDiff,
+    oilPressurePsig:  live.mtSuction + live.oilDiff,
+    suctionGasTemp:   mtBase.suctionSatTemp + live.mtSH,
+    liquidTemp:       mtBase.condensingTemp - live.sc,
+    compressionRatio: (live.discharge + 14.696) / (live.mtSuction + 14.696),
+    liquidLinePsig:   Math.max(live.discharge - 8, 0),
+    dischargeDeviation: live.discharge - mtBase.expectedDischargePsig,
+    caseTemp:         live.mtCase,
+    compAmps:         mtBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+  }
+  const lt: LTState = {
+    ...ltBase,
+    suctionPsig:      live.ltSuction,
+    superheat:        live.ltSH,
+    suctionGasTemp:   ltBase.suctionSatTemp + live.ltSH,
+    compressionRatio: (ltBase.dischargePsig + 14.696) / (live.ltSuction + 14.696),
+    caseTemp:         live.ltCase,
+    compAmps:         ltBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
+  }
+
+  // Individual case temperatures — deviation from aggregate caseTemp × sensitivity,
+  // plus each sensor's own live bias/cycling so no two cases read identically.
+  // Case-level faults hit their named case hard while barely moving the aggregate.
+  const caseTemps = useMemo(() => STORE_LINEUP.map((s, i) => {
+    const base = s.circuit === 'MT'
+      ? s.setpoint + (mtBase.caseTemp - BASELINE.caseTemp) * s.sensitivity
+      : s.setpoint + (ltBase.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
+    const localFault =
+      (s.name === 'Dairy'   && activeFaults.evapFanFailed    ? 9  : 0) +
+      (s.name === 'Produce' && activeFaults.coilIced         ? 8  : 0) +
+      (s.name === 'Cheese'  && activeFaults.caseDrierPlugged ? 10 : 0)
+    return base + localFault + (live[`case${i}`] ?? 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [mtBase.caseTemp, ltBase.caseTemp, activeFaults, live])
 
   const allAlarms    = [...mt.alarms, ...lt.alarms]
   const hasCritical  = allAlarms.some(a => a.severity === 'CRITICAL')
@@ -1657,6 +1736,53 @@ export default function SimulationPage() {
           /* ── Sim readings (existing) ─────────────────────────────────────── */
           <div className="flex-1 overflow-y-auto p-3 md:p-4 pb-24 md:pb-4">
             <div className="max-w-4xl mx-auto space-y-3">
+
+            {/* ── Rack schematic ── */}
+            {(() => {
+              const conceal = scenarioMode
+              const compStatus = (running: boolean) => (running ? 'run' as const : 'trip' as const)
+              const mtCaseColor = mt.caseTemp >= 44 ? '#ef4444' : mt.caseTemp >= 40 ? '#f59e0b' : '#10b981'
+              const ltCaseColor = lt.caseTemp >= 10 ? '#ef4444' : lt.caseTemp >= 5 ? '#f59e0b' : '#10b981'
+              const receiverLevel = conceal ? 0.45
+                : activeFaults.underchargeSevere ? 0.10
+                : activeFaults.underchargeModerate ? 0.25
+                : activeFaults.overcharge ? 0.85 : 0.45
+              return (
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <button onClick={() => setSchematicOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                    <Activity size={13} className="text-slate-500 dark:text-slate-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rack Schematic</span>
+                    {conceal && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">controller view — inspection cues hidden</span>}
+                    <span className={`ml-auto text-slate-400 transition-transform ${schematicOpen ? 'rotate-180' : ''}`}>▾</span>
+                  </button>
+                  {schematicOpen && (
+                    <div className="px-2 pb-2">
+                      <ParallelRackVisual
+                        fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
+                        fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
+                        dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
+                        comps={mtBase.compRunning.map((r, i) => ({ label: `C${i + 1}`, status: compStatus(r), amps: mt.compAmps[i] }))}
+                        boosters={ltBase.compRunning.map((r, i) => ({ label: `LT${i + 1}`, status: compStatus(r), amps: lt.compAmps[i] }))}
+                        receiverLevel={receiverLevel}
+                        drierRestricted={!conceal && activeFaults.filterDrierRestricted}
+                        suctionPsig={mt.suctionPsig}
+                        dischargePsig={mt.dischargePsig}
+                        ltSuctionPsig={lt.suctionPsig}
+                        mtCaseTemp={mt.caseTemp} mtCaseColor={mtCaseColor}
+                        ltCaseTemp={lt.caseTemp} ltCaseColor={ltCaseColor}
+                        defrostStuck={!conceal && activeFaults.defrostStuckOn}
+                        ltDefrostStuck={!conceal && activeFaults.ltDefrostStuckOn}
+                        doorsOpen={!conceal && activeFaults.caseDoorsOpen}
+                        mtIced={!conceal && activeFaults.coilIced}
+                        mtFanOut={!conceal && activeFaults.evapFanFailed}
+                        floodback={mt.suctionSuperheat < 5}
+                        hpCtrlActive={mtBase.hpCtrlActive}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* ── OAT Slider ── */}
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
