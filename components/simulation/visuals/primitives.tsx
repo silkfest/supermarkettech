@@ -243,3 +243,18 @@ export function Tag({ x, y, text, color, anchor = 'middle' }: TagProps) {
     <text x={x} y={y} textAnchor={anchor} fontSize={9.5} fontWeight={700} fill={color}>{text}</text>
   )
 }
+
+// ── Tap-to-inspect hotspot — invisible hit area + selection ring ────────────────
+// Rendered in a layer above the artwork so existing drawing code stays untouched.
+interface HotspotProps { x: number; y: number; w: number; h: number; selected: boolean; onSelect: () => void }
+export function Hotspot({ x, y, w, h, selected, onSelect }: HotspotProps) {
+  return (
+    <g onClick={onSelect} style={{ cursor: 'pointer' }}>
+      <rect x={x - 4} y={y - 4} width={w + 8} height={h + 8} rx={8}
+        fill="transparent"
+        stroke={selected ? '#3b82f6' : 'transparent'}
+        strokeWidth={1.8}
+        strokeDasharray={selected ? '5 3' : undefined} />
+    </g>
+  )
+}

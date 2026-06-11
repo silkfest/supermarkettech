@@ -16,6 +16,36 @@ const MAX_SCALE = 5
 
 interface XY { x: number; y: number }
 
+// ── Tap-to-inspect detail payload (built by the rack visuals) ───────────────────
+export interface SchematicDetail {
+  id: string
+  title: string
+  subtitle?: string
+  rows: { label: string; value: string; color?: string }[]
+}
+
+export function SchematicInfoCard({ detail, onClose }: { detail: SchematicDetail; onClose: () => void }) {
+  return (
+    <div className="mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30">
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-xs font-bold text-blue-800 dark:text-blue-300">{detail.title}</span>
+        {detail.subtitle && <span className="text-[10px] text-blue-600/80 dark:text-blue-400/80">{detail.subtitle}</span>}
+        <button onClick={onClose} className="ml-auto p-1 -m-1 text-blue-400 hover:text-blue-700 dark:hover:text-blue-200" title="Close">
+          <X size={13} />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+        {detail.rows.map(r => (
+          <div key={r.label} className="flex items-baseline justify-between gap-2 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">{r.label}</span>
+            <span className={`font-mono font-semibold tabular-nums ${r.color ?? 'text-slate-800 dark:text-slate-100'}`}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ZoomSurface({ children, heightClass }: { children: ReactNode; heightClass?: string }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -24,7 +54,7 @@ function ZoomSurface({ children, heightClass }: { children: ReactNode; heightCla
 
   const pointers = useRef(new Map<number, XY>())
   const pinch = useRef<{ dist: number; scale: number; mid: XY; tx: number; ty: number } | null>(null)
-  const pan = useRef<{ start: XY; tx: number; ty: number } | null>(null)
+  const pan = useRef<{ start: XY; tx: number; ty: number; captured: boolean } | null>(null)
   const lastTap = useRef<{ t: number; x: number; y: number } | null>(null)
 
   function clampT(t: number, size: number, s: number) {
@@ -54,11 +84,14 @@ function ZoomSurface({ children, heightClass }: { children: ReactNode; heightCla
   function onPointerDown(e: RPointerEvent<HTMLDivElement>) {
     const el = outerRef.current
     if (!el) return
-    el.setPointerCapture(e.pointerId)
     const p = localPoint(e)
     pointers.current.set(e.pointerId, p)
 
     if (pointers.current.size === 2) {
+      // Pinch — capture both pointers (no taps expected mid-pinch)
+      for (const id of pointers.current.keys()) {
+        try { el.setPointerCapture(id) } catch { /* pointer may be gone */ }
+      }
       const [a, b] = [...pointers.current.values()]
       pinch.current = {
         dist: Math.hypot(a.x - b.x, a.y - b.y),
@@ -67,7 +100,9 @@ function ZoomSurface({ children, heightClass }: { children: ReactNode; heightCla
       }
       pan.current = null
     } else if (pointers.current.size === 1 && scale > 1) {
-      pan.current = { start: p, tx, ty }
+      // Don't capture yet — capturing here would swallow taps on schematic
+      // hotspots. We capture lazily once real pan movement starts.
+      pan.current = { start: p, tx, ty, captured: false }
     }
   }
 
@@ -86,6 +121,12 @@ function ZoomSurface({ children, heightClass }: { children: ReactNode; heightCla
     } else if (pointers.current.size === 1 && pan.current && scale > 1) {
       const el = outerRef.current
       if (!el) return
+      const moved = Math.hypot(p.x - pan.current.start.x, p.y - pan.current.start.y)
+      if (!pan.current.captured) {
+        if (moved <= 6) return   // still a potential tap — leave it to the hotspot
+        try { el.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+        pan.current.captured = true
+      }
       const rect = el.getBoundingClientRect()
       setTx(clampT(pan.current.tx + (p.x - pan.current.start.x), rect.width, scale))
       setTy(clampT(pan.current.ty + (p.y - pan.current.start.y), rect.height, scale))

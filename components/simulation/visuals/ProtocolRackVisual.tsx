@@ -1,5 +1,6 @@
 'use client'
-import { Defs, Pipe, Fan, Coil, Comp, Tag, C, type CompVisStatus } from './primitives'
+import { Defs, Pipe, Fan, Coil, Comp, Tag, Hotspot, C, type CompVisStatus } from './primitives'
+import type { SchematicDetail } from './SchematicViewer'
 
 // ── Hussmann Protocol Rack — Unit A schematic ───────────────────────────────────
 // 6 EVI scrolls (C1 digital lead) + condenser + 9 LT circuits on Remote Header A.
@@ -9,6 +10,9 @@ export interface ProtocolCircuitVis {
   status: 'OK' | 'TXV_FAIL' | 'DEF_STUCK' | 'SPARE' | 'FAN_OUT' | 'ICED' | 'DRIER' | 'OVERFEED'
   temp: number
   tempColor: string
+  sh?: number          // per-circuit superheat (NaN/undefined = n/a)
+  doors?: number
+  mbh?: number
 }
 
 export interface ProtocolRackVisualProps {
@@ -21,10 +25,26 @@ export interface ProtocolRackVisualProps {
   dischargePsig: number
   circuits: ProtocolCircuitVis[]      // 12 (incl. spares)
   doorsOpen: boolean
+  /** Tap-to-inspect */
+  selectedId?: string | null
+  onSelect?: (d: SchematicDetail | null) => void
+}
+
+const CIRCUIT_STATUS_TEXT: Record<string, { text: string; color?: string }> = {
+  OK:        { text: 'Normal', color: 'text-emerald-600 dark:text-emerald-400' },
+  TXV_FAIL:  { text: 'TXV not feeding', color: 'text-orange-600 dark:text-orange-400' },
+  DEF_STUCK: { text: 'Defrost stuck', color: 'text-amber-600 dark:text-amber-400' },
+  DRIER:     { text: 'Case drier plugged', color: 'text-orange-600 dark:text-orange-400' },
+  ICED:      { text: 'Coil iced', color: 'text-cyan-600 dark:text-cyan-400' },
+  FAN_OUT:   { text: 'Evap fans out', color: 'text-red-600 dark:text-red-400' },
+  OVERFEED:  { text: 'TXV overfeeding', color: 'text-violet-600 dark:text-violet-400' },
+  SPARE:     { text: 'Spare (capped)' },
 }
 
 export default function ProtocolRackVisual(p: ProtocolRackVisualProps) {
   const running = p.comps.some(c => c.status === 'run')
+  const fansUp = p.fansFailed.filter(f => !f).length
+  const pick = (detail: SchematicDetail) => () => p.onSelect?.(p.selectedId === detail.id ? null : detail)
   // circuit grid: 4 cols × 3 rows on the right
   const gx = 520, gy = 28, cw = 80, ch = 52, gxs = 86, gys = 62
 
@@ -128,6 +148,51 @@ export default function ProtocolRackVisual(p: ProtocolRackVisualProps) {
       {/* ── Reading tags ── */}
       <Tag x={252} y={112} text={`${p.dischargePsig.toFixed(0)} psig`} color={C.discharge} />
       <Tag x={300} y={284} text={`${p.suctionPsig.toFixed(1)} psig suction`} color={C.ltSuction} />
+
+      {/* ── Tap-to-inspect hotspots (top layer) ── */}
+      {p.onSelect && (
+        <g>
+          <Hotspot x={40} y={44} w={250} h={46} selected={p.selectedId === 'cond'} onSelect={pick({
+            id: 'cond', title: 'Air-Cooled Condenser', subtitle: '2-fan remote',
+            rows: [
+              { label: 'Discharge', value: `${p.dischargePsig.toFixed(0)} psig` },
+              { label: 'Fans', value: `${fansUp}/2 running`, color: fansUp < 2 ? 'text-red-600 dark:text-red-400' : undefined },
+              ...(p.dirtyCondenser ? [{ label: 'Coil', value: 'FOULED', color: 'text-amber-600 dark:text-amber-400' }] : []),
+            ],
+          })} />
+          <Hotspot x={356} y={136} w={48} h={28} selected={p.selectedId === 'drier'} onSelect={pick({
+            id: 'drier', title: 'Filter Drier (rack)',
+            rows: [{ label: 'ΔT', value: p.drierRestricted ? 'RESTRICTED' : 'Normal (<1 °F)', color: p.drierRestricted ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }],
+          })} />
+          {p.comps.map((c, i) => (
+            <Hotspot key={c.label} x={76 + i * 70} y={238} w={58} h={48} selected={p.selectedId === `comp${i}`} onSelect={pick({
+              id: `comp${i}`, title: `Compressor ${c.label}`, subtitle: i === 0 ? 'ZFD25KVE digital lead' : 'EVI scroll lag',
+              rows: [
+                { label: 'Status', value: c.status === 'run' ? 'Running' : c.status === 'trip' ? 'TRIPPED' : 'Standby',
+                  color: c.status === 'trip' ? 'text-red-600 dark:text-red-400' : c.status === 'run' ? 'text-emerald-600 dark:text-emerald-400' : undefined },
+                { label: 'Amps', value: c.status === 'run' ? `${c.amps.toFixed(1)} A` : '—' },
+                ...(i === 0 && c.status === 'run' && c.mod !== undefined ? [{ label: 'Modulation', value: `${Math.round(c.mod * 100)}%` }] : []),
+                { label: 'Suction', value: `${p.suctionPsig.toFixed(1)} psig` },
+              ],
+            })} />
+          ))}
+          {p.circuits.map((c, i) => {
+            const col = i % 4, row = Math.floor(i / 4)
+            const st = CIRCUIT_STATUS_TEXT[c.status] ?? CIRCUIT_STATUS_TEXT.OK
+            return (
+              <Hotspot key={c.id} x={520 + col * 86} y={28 + row * 62} w={80} h={52} selected={p.selectedId === `circ${i}`} onSelect={pick({
+                id: `circ${i}`, title: `Circuit ${c.id}`,
+                subtitle: c.status === 'SPARE' ? undefined : `${c.doors ?? '—'} doors · ${c.mbh?.toFixed(2) ?? '—'} MBH`,
+                rows: c.status === 'SPARE' ? [{ label: 'Status', value: 'Spare (capped)' }] : [
+                  { label: 'Case temp', value: `${c.temp.toFixed(1)} °F` },
+                  { label: 'Superheat', value: c.sh !== undefined && Number.isFinite(c.sh) ? `${c.sh.toFixed(0)} °F` : '—' },
+                  { label: 'Status', value: st.text, color: st.color },
+                ],
+              })} />
+            )
+          })}
+        </g>
+      )}
     </svg>
   )
 }

@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle, Wind,
   ChevronLeft, Thermometer, Gauge, Target, Trophy, Dices, BookOpen, Snowflake,
-  Eye, EyeOff, SlidersHorizontal, ClipboardList,
+  Eye, EyeOff, SlidersHorizontal, ClipboardList, GraduationCap,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import Co2BoosterVisual from '@/components/simulation/visuals/Co2BoosterVisual'
-import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
+import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -552,6 +552,7 @@ export default function Co2BoosterSimulatorPage() {
   // Instructor reveal (free-play only)
   const [instructorReveal, setInstructorReveal] = useState(false)
   const [schematicOpen, setSchematicOpen] = useState(true)
+  const [schemDetail, setSchemDetail] = useState<SchematicDetail | null>(null)
 
   const inScenario   = activeScenario !== null
   const activeFaults = useMemo(
@@ -653,6 +654,52 @@ export default function Co2BoosterSimulatorPage() {
     const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
     return { correct, total, fp, pct }
   })()
+
+  // Coach mode — after a scenario submit, hand the readings + the user's
+  // diagnosis to ColdIQ chat for a senior-tech walkthrough of the call.
+  function coachInColdIQ() {
+    if (!activeScenario || !submitted) return
+    const labelOf = (k: FaultKey) => FAULT_DEFS.find(d => d.key === k)?.label ?? k
+    const picked = FAULT_DEFS.filter(d => userGuess[d.key]).map(d => d.label)
+    const answer = activeScenario.answer.map(labelOf)
+    const missed = activeScenario.answer.filter(k => !userGuess[k]).map(labelOf)
+    const fps    = FAULT_DEFS.filter(d => userGuess[d.key] && !activeScenario.answer.includes(d.key)).map(d => d.label)
+    const mtCompLine = base.mtCompRunning.map((r, i) => r ? `MT${i + 1} ${result.mtAmps[i].toFixed(1)}A` : `MT${i + 1} OFF`).join(' · ')
+    const ltCompLine = base.ltCompRunning.map((r, i) => r ? `LT${i + 1} ${result.ltAmps[i].toFixed(1)}A` : `LT${i + 1} OFF`).join(' · ')
+    const caseLine = [
+      ...MT_CASES.map((c, i) => `${c.name} ${result.mtCaseTemps[i].toFixed(0)}°F (set ${c.setpoint})`),
+      ...LT_CASES.map((c, i) => `${c.name} ${result.ltCaseTemps[i].toFixed(0)}°F (set ${c.setpoint})`),
+    ].join(' · ')
+    const text = [
+      '=== ColdIQ Simulator Coach Request ===',
+      'System: CO2 Transcritical Booster | R-744 | MT + LT',
+      `Scenario: ${activeScenario.name} (${activeScenario.difficulty})`,
+      activeScenario.description,
+      '',
+      'READINGS AT SUBMIT:',
+      `  Conditions: OAT ${activeOat} °F · ${result.transcritical ? 'TRANSCRITICAL (gas cooler outlet above 87.8 °F critical point)' : 'subcritical (condensing)'}`,
+      `  High side: ${Math.round(result.headPsig)} psig · GC outlet ${Math.round(result.gcOutletTemp)} °F`,
+      `  Flash tank: ${Math.round(result.flashPsig)} psig (${Math.round(result.flashSatTemp)} °F sat) · RV margin ${Math.round(result.rvMarginPsig)} psig (lifts ${RV_LIFT_PSIG})`,
+      `  MT suction: ${Math.round(result.mtSuctionPsig)} psig / ${result.mtSST.toFixed(1)} °F SST · SH ${result.mtSH.toFixed(1)} °F`,
+      `  LT suction: ${Math.round(result.ltSuctionPsig)} psig / ${result.ltSST.toFixed(1)} °F SST · SH ${result.ltSH.toFixed(1)} °F`,
+      `  Compressors: ${mtCompLine} | ${ltCompLine}`,
+      `  Cases: ${caseLine}`,
+      `  Alarms: ${base.alarms.length ? base.alarms.map(a => `[${a.code}] ${a.message}`).join(' | ') : 'none'}`,
+      '',
+      `MY DIAGNOSIS: ${picked.length ? picked.join(', ') : '(nothing selected)'}`,
+      `CORRECT ANSWER: ${answer.join(', ')}`,
+      missed.length ? `I MISSED: ${missed.join(', ')}` : '',
+      fps.length ? `FALSE POSITIVES I PICKED: ${fps.join(', ')}` : '',
+      '',
+      'Coach me like a senior tech mentoring an apprentice:',
+      '1. Which readings above were the strongest clues to the correct fault(s), and why?',
+      '2. How do I tell the correct answer apart from the faults I wrongly picked (or missed)?',
+      '3. What would I physically check first on-site to confirm?',
+      'Reference the actual numbers above and keep it practical.',
+    ].filter(Boolean).join('\n')
+    try { localStorage.setItem('coldiq_prefill', text) } catch { /* ignore */ }
+    router.push('/dashboard')
+  }
 
   const activeFaultCount = inScenario ? 0 : Object.values(faults).filter(Boolean).length
   const hasCritical = result.alarms.some(a => a.severity === 'CRITICAL')
@@ -814,7 +861,10 @@ export default function Co2BoosterSimulatorPage() {
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-1 flex-wrap">
+                    <button onClick={coachInColdIQ} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5">
+                      <GraduationCap size={12}/> Coach me through it
+                    </button>
                     <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
                     {activeScenario.id === 'mystery' && (
                       <button onClick={() => loadScenario(generateMystery())} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11} /> New Mystery</button>
@@ -912,8 +962,11 @@ export default function Co2BoosterSimulatorPage() {
                     doorsOpen={!conceal && activeFaults.mtDoorsOpen}
                     ltIced={!conceal && activeFaults.ltCoilIced}
                     mtFanOut={!conceal && activeFaults.mtEvapFanOut}
+                    selectedId={schemDetail?.id ?? null}
+                    onSelect={setSchemDetail}
                   />
                   </SchematicViewer>
+                  {schemDetail && <SchematicInfoCard detail={schemDetail} onClose={() => setSchemDetail(null)} />}
                 </div>
               )}
             </div>

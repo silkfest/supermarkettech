@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Thermometer, Gauge, Wind, Zap, Activity, Info,
-  ChevronUp, MessageSquare, Trophy, Target, Package, Dices, BookOpen,
+  ChevronUp, MessageSquare, Trophy, Target, Package, Dices, BookOpen, GraduationCap,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
-import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
+import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 // ── Refrigerant saturation P-T data (psia) — manufacturer-sourced ────────────
@@ -1155,6 +1155,7 @@ export default function SimulationPage() {
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
   const [schematicOpen, setSchematicOpen] = useState(true)
+  const [schemDetail, setSchemDetail] = useState<SchematicDetail | null>(null)
 
   // Rack configuration — matches what techs read from the rack controller / setup sheet
   const [rackSettingsOpen, setRackSettingsOpen] = useState(false)
@@ -1309,6 +1310,37 @@ export default function SimulationPage() {
 
   function diagnoseInColdIQ() {
     try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant, pt)) } catch { /* ignore */ }
+    router.push('/dashboard')
+  }
+
+  // Coach mode — after a scenario submit, hand the full readings + the user's
+  // diagnosis to ColdIQ chat for a senior-tech walkthrough of the call.
+  function coachInColdIQ() {
+    if (!activeScenario || !submitted) return
+    const labelOf = (k: FaultKey) => FAULT_DEFS.find(d => d.key === k)?.label ?? k
+    const picked = FAULT_DEFS.filter(d => userGuess[d.key]).map(d => d.label)
+    const answer = activeScenario.answer.map(labelOf)
+    const missed = activeScenario.answer.filter(k => !userGuess[k]).map(labelOf)
+    const fps    = FAULT_DEFS.filter(d => userGuess[d.key] && !activeScenario.answer.includes(d.key)).map(d => d.label)
+    const text = [
+      '=== ColdIQ Simulator Coach Request ===',
+      `Scenario: ${activeScenario.name} (${activeScenario.difficulty})`,
+      activeScenario.description,
+      '',
+      buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant, pt),
+      '',
+      `MY DIAGNOSIS: ${picked.length ? picked.join(', ') : '(nothing selected)'}`,
+      `CORRECT ANSWER: ${answer.join(', ')}`,
+      missed.length ? `I MISSED: ${missed.join(', ')}` : '',
+      fps.length ? `FALSE POSITIVES I PICKED: ${fps.join(', ')}` : '',
+      '',
+      'Coach me like a senior tech mentoring an apprentice:',
+      '1. Which readings above were the strongest clues to the correct fault(s), and why?',
+      '2. How do I tell the correct answer apart from the faults I wrongly picked (or missed)?',
+      '3. What would I physically check first on-site to confirm?',
+      'Reference the actual numbers above and keep it practical.',
+    ].filter(Boolean).join('\n')
+    try { localStorage.setItem('coldiq_prefill', text) } catch { /* ignore */ }
     router.push('/dashboard')
   }
 
@@ -1683,8 +1715,11 @@ export default function SimulationPage() {
                         mtFanOut={!conceal && activeFaults.evapFanFailed}
                         floodback={mt.suctionSuperheat < 5}
                         hpCtrlActive={mtBase.hpCtrlActive}
+                        selectedId={schemDetail?.id ?? null}
+                        onSelect={setSchemDetail}
                       />
                       </SchematicViewer>
+                      {schemDetail && <SchematicInfoCard detail={schemDetail} onClose={() => setSchemDetail(null)} />}
                     </div>
                   )}
                 </div>
@@ -1846,7 +1881,10 @@ export default function SimulationPage() {
                             ))}
                           </div>
                         )}
-                        <div className="flex gap-2 pt-1">
+                        <div className="flex gap-2 pt-1 flex-wrap">
+                          <button onClick={coachInColdIQ} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5">
+                            <GraduationCap size={12}/> Coach me through it
+                          </button>
                           <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
                           {activeScenario.id === 'mystery' && (
                             <button onClick={loadMystery} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11}/> New Mystery</button>

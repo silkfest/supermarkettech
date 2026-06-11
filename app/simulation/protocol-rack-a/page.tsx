@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Wind, ChevronLeft, Clock, BookOpen, Target, Trophy, Dices,
-  Eye, EyeOff, SlidersHorizontal,
+  Eye, EyeOff, SlidersHorizontal, GraduationCap,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import ProtocolRackVisual from '@/components/simulation/visuals/ProtocolRackVisual'
-import SchematicViewer from '@/components/simulation/visuals/SchematicViewer'
+import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -836,6 +836,7 @@ export default function ProtocolRackASimulatorPage() {
   // Instructor reveal (free-play only)
   const [instructorReveal, setInstructorReveal] = useState(false)
   const [schematicOpen, setSchematicOpen] = useState(true)
+  const [schemDetail, setSchemDetail] = useState<SchematicDetail | null>(null)
 
   // In a scenario the hidden scenario faults drive the sim; the Faults tab
   // becomes the diagnosis sheet and edits userGuess instead of the live faults.
@@ -934,6 +935,56 @@ export default function ProtocolRackASimulatorPage() {
     const pct     = Math.max(0, Math.round(((correct - fp * 0.5) / total) * 100))
     return { correct, total, fp, pct }
   })()
+
+  // Coach mode — after a scenario submit, hand the readings + the user's
+  // diagnosis to ColdIQ chat for a senior-tech walkthrough of the call.
+  function coachInColdIQ() {
+    if (!activeScenario || !submitted) return
+    const labelOf = (k: FaultKey) => FAULT_DEFS.find(d => d.key === k)?.label ?? k
+    const picked = FAULT_DEFS.filter(d => userGuess[d.key]).map(d => d.label)
+    const answer = activeScenario.answer.map(labelOf)
+    const missed = activeScenario.answer.filter(k => !userGuess[k]).map(labelOf)
+    const fps    = FAULT_DEFS.filter(d => userGuess[d.key] && !activeScenario.answer.includes(d.key)).map(d => d.label)
+    const compLine = COMP_SPECS.map((c, i) => {
+      const s = base.compStatus[i]
+      if (s === 'TRIPPED') return `${c.id} TRIPPED`
+      if (s === 'STANDBY') return `${c.id} standby`
+      return `${c.id} ${result.compAmps[i].toFixed(1)}A${i === 0 ? ` (${Math.round(result.c1Modulation * 100)}% mod)` : ''}`
+    }).join(' · ')
+    const circLine = CIRCUITS.filter(c => c.active).map(c => {
+      const i = CIRCUITS.indexOf(c)
+      const sh = result.circuitSuperheatF[i]
+      return `${c.id} ${result.circuitCaseTemps[i].toFixed(0)}°F/SH ${Number.isFinite(sh) ? sh.toFixed(0) : '—'}°F`
+    }).join(' · ')
+    const text = [
+      '=== ColdIQ Simulator Coach Request ===',
+      'System: Hussmann Protocol Rack — Unit A | R-448A | LT frozen food',
+      `Scenario: ${activeScenario.name} (${activeScenario.difficulty})`,
+      activeScenario.description,
+      '',
+      'READINGS AT SUBMIT:',
+      `  Conditions: OAT ${ambient} °F · ${formatHour(timeOfDay)} (${period.label}, ${period.mult.toFixed(2)}×)`,
+      `  Suction: ${result.suctionPsig.toFixed(1)} psig / ${result.sst.toFixed(1)} °F SST · SH ${result.suctionSH.toFixed(1)} °F`,
+      `  Discharge: ${Math.round(result.dischargePsig)} psig / ${result.condensingBubble.toFixed(1)} °F sat · DT ${Math.round(result.dischargeTemp)} °F · SC ${result.subcooling.toFixed(1)} °F`,
+      `  Compressors: ${compLine}`,
+      `  Load: ${result.totalLoadMBH.toFixed(1)} of ${result.fullCapMBH.toFixed(1)} MBH (${Math.round(result.loadRatio * 100)}%) · staging: ${result.stagingStatus}`,
+      `  Circuits: ${circLine}`,
+      `  Alarms: ${base.alarms.length ? base.alarms.map(a => `[${a.code}] ${a.message}`).join(' | ') : 'none'}`,
+      '',
+      `MY DIAGNOSIS: ${picked.length ? picked.join(', ') : '(nothing selected)'}`,
+      `CORRECT ANSWER: ${answer.join(', ')}`,
+      missed.length ? `I MISSED: ${missed.join(', ')}` : '',
+      fps.length ? `FALSE POSITIVES I PICKED: ${fps.join(', ')}` : '',
+      '',
+      'Coach me like a senior tech mentoring an apprentice:',
+      '1. Which readings above were the strongest clues to the correct fault(s), and why?',
+      '2. How do I tell the correct answer apart from the faults I wrongly picked (or missed)?',
+      '3. What would I physically check first on-site to confirm?',
+      'Reference the actual numbers above and keep it practical.',
+    ].filter(Boolean).join('\n')
+    try { localStorage.setItem('coldiq_prefill', text) } catch { /* ignore */ }
+    router.push('/dashboard')
+  }
 
   function resetAll() {
     setFaults(INITIAL_FAULTS)
@@ -1049,6 +1100,9 @@ export default function ProtocolRackASimulatorPage() {
                       </div>
                     )}
                     <div className="flex gap-2 pt-1 flex-wrap">
+                      <button onClick={coachInColdIQ} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5">
+                        <GraduationCap size={12}/> Coach me through it
+                      </button>
                       <button onClick={() => loadScenario(activeScenario)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Try Again</button>
                       {activeScenario.id === 'mystery' && (
                         <button onClick={() => loadScenario(generateMystery())} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex items-center gap-1"><Dices size={11}/> New Mystery</button>
@@ -1166,11 +1220,19 @@ export default function ProtocolRackASimulatorPage() {
                       const tempColor = !c.active ? '#94a3b8'
                         : temp >= c.caseTargetF + 15 ? '#ef4444'
                         : temp >= c.caseTargetF + 8 ? '#f59e0b' : '#10b981'
-                      return { id: c.id, status, temp, tempColor }
+                      return {
+                        id: c.id, status, temp, tempColor,
+                        sh: result.circuitSuperheatF[i],
+                        doors: c.active ? c.doors : undefined,
+                        mbh: c.active ? c.designMBH : undefined,
+                      }
                     })}
                     doorsOpen={!conceal && activeFaults.doorsOpen}
+                    selectedId={schemDetail?.id ?? null}
+                    onSelect={setSchemDetail}
                   />
                   </SchematicViewer>
+                  {schemDetail && <SchematicInfoCard detail={schemDetail} onClose={() => setSchemDetail(null)} />}
                 </div>
               )}
             </div>
