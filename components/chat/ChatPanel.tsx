@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -9,6 +9,29 @@ import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationS
 const MAX_IMAGES = 3
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+
+// ── Web Speech API (voice dictation) ──────────────────────────────────────────
+// Minimal typings — lib.dom doesn't ship SpeechRecognition, and Safari/Chrome
+// expose it under the webkit prefix.
+interface SpeechRecognitionLike {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  start(): void
+  stop(): void
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+}
+
+function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike
+  }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
 
 // ── Mode display config ───────────────────────────────────────────────────────
 
@@ -281,6 +304,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [attachedImages, setAttachedImages] = useState<ChatImage[]>([])
   const [imageError, setImageError] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
 
   // Save conversation state
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
@@ -293,6 +318,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const imageInputRef    = useRef<HTMLInputElement>(null)
+  const recognitionRef   = useRef<SpeechRecognitionLike | null>(null)
+  const dictationBaseRef = useRef('')
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
   const sessionIdRef     = useRef<string | null>(null)
@@ -420,7 +447,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
         const res = await fetch('/api/chat/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: allMessages, equipmentId: equipment?.id, mode, title }),
+          body: JSON.stringify({ messages: allMessages, equipmentId: equipment?.id, mode, title, autoTitle: true }),
         })
         if (res.ok) {
           const j = await res.json()
@@ -467,6 +494,40 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setAttachedImages(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Voice dictation — hands-free input for techs on ladders or wearing gloves
+  useEffect(() => {
+    setVoiceSupported(getSpeechRecognition() !== null)
+    return () => { recognitionRef.current?.stop() }
+  }, [])
+
+  function toggleDictation() {
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const SR = getSpeechRecognition()
+    if (!SR) return
+
+    const rec = new SR()
+    rec.lang = navigator.language || 'en-US'
+    rec.continuous = true
+    rec.interimResults = true
+    dictationBaseRef.current = input.trim()
+
+    rec.onresult = (e) => {
+      let transcript = ''
+      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript
+      const base = dictationBaseRef.current
+      setInput(base ? `${base} ${transcript}` : transcript)
+    }
+    rec.onend = () => { setListening(false); recognitionRef.current = null }
+    rec.onerror = () => { setListening(false); recognitionRef.current = null }
+
+    recognitionRef.current = rec
+    setListening(true)
+    rec.start()
+  }
+
   const handleSubmit = useCallback(async (opts?: {
     overrideText?: string
     overrideHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
@@ -476,6 +537,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     if ((!rawText && images.length === 0) || streaming) return
     const text = rawText || 'What do you see in this photo? Help me identify it and any relevant details.'
 
+    recognitionRef.current?.stop()
     lastSentMsgRef.current = text
     setInput('')
     setAttachedImages([])
@@ -929,6 +991,22 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
             >
               <ImagePlus size={16} />
             </button>
+            {voiceSupported && (
+              <button
+                onClick={toggleDictation}
+                disabled={streaming}
+                aria-label={listening ? 'Stop dictation' : 'Dictate message'}
+                title={listening ? 'Stop dictation' : 'Dictate your message hands-free'}
+                className={[
+                  'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5',
+                  listening
+                    ? 'text-red-500 bg-red-50 dark:bg-red-950/50 animate-pulse'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700',
+                ].join(' ')}
+              >
+                <Mic size={16} />
+              </button>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
