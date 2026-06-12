@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { ArrowLeft, Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap, MessageCircle, AlertTriangle, Shield } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 
 interface TechRow {
@@ -13,6 +13,7 @@ interface TechRow {
   completedTasks: number; totalTasks: number
   earnedXP: number; totalXP: number
   joinedAt: string
+  certStatus: 'none' | 'ok' | 'expiring' | 'expired'
 }
 interface Journeyman { id: string; name: string }
 
@@ -100,6 +101,24 @@ export default function AdminApprenticesPage() {
     ? Math.round(apprentices.reduce((s, a) => s + (a.totalTasks > 0 ? a.completedTasks / a.totalTasks : 0), 0) / apprentices.length * 100)
     : 0
 
+  function CertBadge({ status }: { status: TechRow['certStatus'] }) {
+    if (status === 'expired') {
+      return (
+        <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30">
+          <AlertTriangle size={10} /> Cert expired
+        </span>
+      )
+    }
+    if (status === 'expiring') {
+      return (
+        <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30">
+          <AlertTriangle size={10} /> Cert expiring
+        </span>
+      )
+    }
+    return null
+  }
+
   function TechCard({ a, isJourneyman }: { a: TechRow; isJourneyman: boolean }) {
     const pct    = a.totalTasks > 0 ? Math.round((a.completedTasks / a.totalTasks) * 100) : 0
     const level  = getLevel(a.earnedXP)
@@ -119,6 +138,7 @@ export default function AdminApprenticesPage() {
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isJourneyman ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'}`}>
                 {isJourneyman ? 'Journeyman' : level.label}
               </span>
+              <CertBadge status={a.certStatus} />
             </div>
             <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-3">{a.email}</p>
 
@@ -224,6 +244,33 @@ export default function AdminApprenticesPage() {
       )}
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+        {/* Certification alerts */}
+        {(() => {
+          const expired = technicians.filter(t => t.certStatus === 'expired')
+          const expiring = technicians.filter(t => t.certStatus === 'expiring')
+          if (expired.length === 0 && expiring.length === 0) return null
+          return (
+            <div className="space-y-2">
+              {expired.length > 0 && (
+                <div className="flex items-start gap-2 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg text-sm text-red-700 dark:text-red-400">
+                  <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>{expired.length}</strong> team member{expired.length !== 1 ? 's have' : ' has'} expired certifications: {expired.map(t => t.name || t.email).join(', ')}
+                  </span>
+                </div>
+              )}
+              {expiring.length > 0 && (
+                <div className="flex items-start gap-2 px-4 py-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg text-sm text-amber-700 dark:text-amber-400">
+                  <Shield size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>{expiring.length}</strong> team member{expiring.length !== 1 ? 's have' : ' has'} certifications expiring within 90 days: {expiring.map(t => t.name || t.email).join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">
