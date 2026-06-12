@@ -10,9 +10,8 @@ import ChatPanel from '@/components/chat/ChatPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
 import AnnouncementBanner from '@/components/announcements/AnnouncementBanner'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
-import {
-  Menu, MessageSquare, WrenchIcon, AlertTriangle, BookOpen, UserCircle, Moon, Sun,
-} from 'lucide-react'
+import { Menu, AlertTriangle, Moon, Sun } from 'lucide-react'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { useTheme } from '@/components/ThemeProvider'
 import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User, ChatMessage } from '@/types'
@@ -21,18 +20,6 @@ const MODE_LABELS: Record<ChatMode, string> = {
   EXPERT:      'Expert',
   MAINTENANCE: 'Maintenance',
 }
-
-type NavItem =
-  | { id: ChatMode; icon: React.ReactNode; label: string; href?: never }
-  | { id: 'KNOWLEDGE' | 'PROFILE' | 'MAINTENANCE'; icon: React.ReactNode; label: string; href: string }
-
-const BOTTOM_NAV_ITEMS: NavItem[] = [
-  { id: 'EXPERT',      icon: <MessageSquare size={20}/>, label: 'Expert' },
-  { id: 'MAINTENANCE', icon: <WrenchIcon    size={20}/>, label: 'Maintenance', href: '/maintenance' },
-  { id: 'KNOWLEDGE',   icon: <BookOpen      size={20}/>, label: 'Knowledge', href: '/knowledge' },
-  { id: 'PROFILE',     icon: <UserCircle    size={20}/>, label: 'Profile', href: '/profile' },
-]
-
 
 export default function Dashboard() {
   const [equipment,    setEquipment]    = useState<Equipment[]>([])
@@ -359,24 +346,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <nav className="safe-bottom md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
-        {BOTTOM_NAV_ITEMS.map(item => {
-          const isActive = !item.href && mode === (item.id as ChatMode)
-          return (
-            <button
-              key={item.id}
-              onClick={() => item.href ? router.push(item.href) : setMode(item.id as ChatMode)}
-              className={[
-                'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
-                isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500',
-              ].join(' ')}
-            >
-              <span className={isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}>{item.icon}</span>
-              {item.label}
-            </button>
-          )
-        })}
-      </nav>
+      <MobileBottomNav onExpert={() => setMode('EXPERT')} expertActive={mode === 'EXPERT'} />
 
       {/* Hidden file input */}
       <input

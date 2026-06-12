@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
@@ -16,6 +16,8 @@ interface Session {
   mode: string
   created_at: string
   equipment_id: string | null
+  user_id: string | null
+  user: { id: string; name: string } | null
   equipment: { name: string; manufacturer: string; model: string } | null
   messages: SessionMessage[]
   tip: { id: string; title: string } | null
@@ -35,7 +37,7 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 
-function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: string) => void }) {
+function SessionCard({ session, onDelete, showUser }: { session: Session; onDelete: (id: string) => void; showUser?: boolean }) {
   const router = useRouter()
   const [expanded, setExpanded]   = useState(false)
   const [savingTip, setSavingTip] = useState(false)
@@ -84,6 +86,11 @@ function SessionCard({ session, onDelete }: { session: Session; onDelete: (id: s
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug">{session.title || 'Untitled session'}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+            {showUser && (
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {session.user?.name ?? 'Unknown user'}
+              </span>
+            )}
             {session.equipment && (
               <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Wrench size={10} />
@@ -213,8 +220,19 @@ export default function ChatHistoryPage() {
   const [loading, setLoading]           = useState(true)
   const [clearingAll, setClearingAll]   = useState(false)
   const [canClearAll, setCanClearAll]   = useState(false)
+  const [isPrivileged, setIsPrivileged] = useState(false)
+  const [users, setUsers]               = useState<{ id: string; name: string }[]>([])
+  const [userFilter, setUserFilter]     = useState('all')
   const [search, setSearch]             = useState('')
   const [filterMode, setFilterMode]     = useState<'all' | 'EXPERT' | 'MAINTENANCE'>('all')
+
+  const loadSessions = useCallback(async (uid: string) => {
+    setLoading(true)
+    const url = uid === 'all' ? '/api/chat/sessions' : `/api/chat/sessions?userId=${uid}`
+    const res = await fetch(url)
+    if (res.ok) setSessions(await res.json())
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -222,19 +240,29 @@ export default function ChatHistoryPage() {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      // Clearing all history affects every user's sessions — managers/admins only
+      // Clearing all history and viewing other users' sessions — managers/admins only
       const { data: profile } = await sb.from('users').select('role').eq('id', user.id).single()
       const role = (profile as { role?: string } | null)?.role
-      setCanClearAll(role === 'admin' || role === 'manager')
+      const privileged = role === 'admin' || role === 'manager'
+      setCanClearAll(privileged)
+      setIsPrivileged(privileged)
 
-      const res = await fetch('/api/chat/sessions')
-      if (res.ok) setSessions(await res.json())
-      setLoading(false)
+      if (privileged) {
+        const { data: allUsers } = await sb.from('users').select('id, name').order('name')
+        setUsers((allUsers ?? []) as { id: string; name: string }[])
+      }
+
+      await loadSessions('all')
     })()
-  }, [router])
+  }, [router, loadSessions])
 
   function handleDeleted(id: string) {
     setSessions(prev => prev.filter(s => s.id !== id))
+  }
+
+  function handleUserFilterChange(uid: string) {
+    setUserFilter(uid)
+    void loadSessions(uid)
   }
 
   async function handleClearAll() {
@@ -283,9 +311,23 @@ export default function ChatHistoryPage() {
               <MessageSquare size={20} className="text-blue-500" />
               Chat History
             </h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">All team conversations — expand to view, save as a tip, or delete</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+              {isPrivileged ? 'All team conversations — expand to view, save as a tip, or delete' : 'Your conversations — expand to view, save as a tip, or delete'}
+            </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            {isPrivileged && (
+              <select
+                value={userFilter}
+                onChange={e => handleUserFilterChange(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="all">All users</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            )}
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -331,7 +373,7 @@ export default function ChatHistoryPage() {
 
         <div className="space-y-3">
           {filtered.map(session => (
-            <SessionCard key={session.id} session={session} onDelete={handleDeleted} />
+            <SessionCard key={session.id} session={session} onDelete={handleDeleted} showUser={isPrivileged} />
           ))}
         </div>
       </div>

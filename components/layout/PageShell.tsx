@@ -3,6 +3,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import Sidebar from '@/components/layout/Sidebar'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import type { User } from '@/types'
 
 export default function PageShell({ children }: { children: ReactNode }) {
@@ -35,9 +36,10 @@ export default function PageShell({ children }: { children: ReactNode }) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="md:flex-1 md:overflow-y-auto">
+      <div className="md:flex-1 md:overflow-y-auto pb-nav md:pb-0">
         {children}
       </div>
+      <MobileBottomNav />
     </div>
   )
 }

@@ -1,10 +1,37 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Equipment, ChatMode, ChatDomain, ChatMessage, CitationSource, ComponentLink } from '@/types'
+import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationSource, ComponentLink } from '@/types'
+
+const MAX_IMAGES = 3
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
+const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+
+// ── Web Speech API (voice dictation) ──────────────────────────────────────────
+// Minimal typings — lib.dom doesn't ship SpeechRecognition, and Safari/Chrome
+// expose it under the webkit prefix.
+interface SpeechRecognitionLike {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  start(): void
+  stop(): void
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+}
+
+function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike
+  }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
 
 // ── Mode display config ───────────────────────────────────────────────────────
 
@@ -152,6 +179,21 @@ function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: 
           </div>
         )}
 
+        {/* Attached images */}
+        {isUser && msg.images && msg.images.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-1.5 justify-end">
+            {msg.images.map((img, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={`data:${img.mediaType};base64,${img.data}`}
+                alt="Attached photo"
+                className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+              />
+            ))}
+          </div>
+        )}
+
         {/* Bubble */}
         <div
           className={[
@@ -260,6 +302,10 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [domain, setDomain]       = useState<ChatDomain>('REFRIGERATION')
   const [escalate, setEscalate]   = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [attachedImages, setAttachedImages] = useState<ChatImage[]>([])
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
 
   // Save conversation state
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
@@ -271,6 +317,9 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
+  const imageInputRef    = useRef<HTMLInputElement>(null)
+  const recognitionRef   = useRef<SpeechRecognitionLike | null>(null)
+  const dictationBaseRef = useRef('')
   const abortRef         = useRef<AbortController | null>(null)
   const lastSentMsgRef   = useRef('')
   const sessionIdRef     = useRef<string | null>(null)
@@ -317,6 +366,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setShowSavePrompt(false)
     setSaveTitle('')
     setSaveError('')
+    setAttachedImages([])
+    setImageError(null)
 
     try {
       const raw = localStorage.getItem(draftKey(equipment?.id))
@@ -345,10 +396,12 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setChatSaved(true)
   }, [initialSession])
 
-  // Persist the current conversation to localStorage as a draft (debounced)
+  // Persist the current conversation to localStorage as a draft (debounced).
+  // Attached images are stripped — base64 photos would quickly blow the
+  // localStorage quota, so resumed drafts show the message text without them.
   useEffect(() => {
     const key = draftKey(equipment?.id)
-    const finalised = messages.filter(m => !m.isStreaming)
+    const finalised = messages.filter(m => !m.isStreaming).map(m => ({ ...m, images: undefined }))
     if (finalised.length === 0) {
       try { localStorage.removeItem(key) } catch { /* ignore */ }
       return
@@ -394,7 +447,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
         const res = await fetch('/api/chat/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: allMessages, equipmentId: equipment?.id, mode, title }),
+          body: JSON.stringify({ messages: allMessages, equipmentId: equipment?.id, mode, title, autoTitle: true }),
         })
         if (res.ok) {
           const j = await res.json()
@@ -404,15 +457,91 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     } catch { /* background save — failures are non-fatal */ }
   }, [equipment, mode])
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length) return
+
+    setImageError(null)
+    const room = MAX_IMAGES - attachedImages.length
+    if (room <= 0) {
+      setImageError(`You can attach up to ${MAX_IMAGES} photos per message.`)
+      return
+    }
+
+    for (const file of files.slice(0, room)) {
+      if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+        setImageError('Unsupported image type. Use JPEG, PNG, GIF, or WebP.')
+        continue
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setImageError('Image too large — max 5MB per photo.')
+        continue
+      }
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        const base64 = result.slice(result.indexOf(',') + 1)
+        setAttachedImages(prev => prev.length >= MAX_IMAGES
+          ? prev
+          : [...prev, { mediaType: file.type as ChatImage['mediaType'], data: base64 }])
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  function removeAttachedImage(index: number) {
+    setAttachedImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Voice dictation — hands-free input for techs on ladders or wearing gloves
+  useEffect(() => {
+    setVoiceSupported(getSpeechRecognition() !== null)
+    return () => { recognitionRef.current?.stop() }
+  }, [])
+
+  function toggleDictation() {
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const SR = getSpeechRecognition()
+    if (!SR) return
+
+    const rec = new SR()
+    rec.lang = navigator.language || 'en-US'
+    rec.continuous = true
+    rec.interimResults = true
+    dictationBaseRef.current = input.trim()
+
+    rec.onresult = (e) => {
+      let transcript = ''
+      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript
+      const base = dictationBaseRef.current
+      setInput(base ? `${base} ${transcript}` : transcript)
+    }
+    rec.onend = () => { setListening(false); recognitionRef.current = null }
+    rec.onerror = () => { setListening(false); recognitionRef.current = null }
+
+    recognitionRef.current = rec
+    setListening(true)
+    rec.start()
+  }
+
   const handleSubmit = useCallback(async (opts?: {
     overrideText?: string
     overrideHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
   }) => {
-    const text = (opts?.overrideText ?? input).trim()
-    if (!text || streaming) return
+    const images = attachedImages
+    const rawText = (opts?.overrideText ?? input).trim()
+    if ((!rawText && images.length === 0) || streaming) return
+    const text = rawText || 'What do you see in this photo? Help me identify it and any relevant details.'
 
+    recognitionRef.current?.stop()
     lastSentMsgRef.current = text
     setInput('')
+    setAttachedImages([])
+    setImageError(null)
     setError(null)
 
     // Build history from finalised messages only (max 40 per schema)
@@ -425,7 +554,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     const userId      = crypto.randomUUID()
     const assistantId = crypto.randomUUID()
 
-    const userMsg: ChatMessage = { id: userId, role: 'user', content: text }
+    const userMsg: ChatMessage = { id: userId, role: 'user', content: text, images: images.length ? images : undefined }
     const assistantMsg: ChatMessage = { id: assistantId, role: 'assistant', content: '', isStreaming: true }
 
     assistantContentRef.current = ''
@@ -446,6 +575,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
           domain: mode === 'EXPERT' ? domain : undefined,
           escalate: mode === 'EXPERT' ? escalate : undefined,
           message: text,
+          images: images.length ? images : undefined,
           history,
         }),
       })
@@ -576,7 +706,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       ))
       setStreaming(false)
     }
-  }, [input, streaming, messages, mode, equipment, domain, escalate, persistConversation])
+  }, [input, streaming, messages, mode, equipment, domain, escalate, attachedImages, persistConversation])
 
   function handleRetry() {
     const text = lastSentMsgRef.current
@@ -815,7 +945,68 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
               </button>
             </div>
           )}
+          {/* Attached image previews */}
+          {attachedImages.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {attachedImages.map((img, i) => (
+                <div key={i} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`data:${img.mediaType};base64,${img.data}`}
+                    alt="Attached photo"
+                    className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                  />
+                  <button
+                    onClick={() => removeAttachedImage(i)}
+                    aria-label="Remove photo"
+                    className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 flex items-center justify-center rounded-full bg-slate-700 text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {imageError && (
+            <p className="text-[11px] text-red-500 dark:text-red-400 mb-1.5">{imageError}</p>
+          )}
+
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+
           <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-900/50 transition-all">
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              disabled={streaming || attachedImages.length >= MAX_IMAGES}
+              aria-label="Attach photo"
+              title="Attach a photo (nameplate, fault screen, component, etc.)"
+              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+            >
+              <ImagePlus size={16} />
+            </button>
+            {voiceSupported && (
+              <button
+                onClick={toggleDictation}
+                disabled={streaming}
+                aria-label={listening ? 'Stop dictation' : 'Dictate message'}
+                title={listening ? 'Stop dictation' : 'Dictate your message hands-free'}
+                className={[
+                  'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5',
+                  listening
+                    ? 'text-red-500 bg-red-50 dark:bg-red-950/50 animate-pulse'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700',
+                ].join(' ')}
+              >
+                <Mic size={16} />
+              </button>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
@@ -829,18 +1020,18 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
             />
             <button
               onClick={() => handleSubmit()}
-              disabled={!input.trim() || streaming}
+              disabled={(!input.trim() && attachedImages.length === 0) || streaming}
               aria-label="Send message"
               className={[
                 'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all mb-0.5',
-                input.trim() && !streaming
+                (input.trim() || attachedImages.length > 0) && !streaming
                   ? 'bg-blue-600 hover:bg-blue-700 shadow-sm'
                   : 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed',
               ].join(' ')}
             >
               {streaming
                 ? <Loader2 size={14} className="text-white animate-spin" />
-                : <Send size={14} className={input.trim() ? 'text-white' : 'text-slate-400'} />
+                : <Send size={14} className={(input.trim() || attachedImages.length > 0) ? 'text-white' : 'text-slate-400'} />
               }
             </button>
           </div>

@@ -16,6 +16,8 @@ const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
 const SONNET_MODEL = 'claude-sonnet-4-6'
 const MAX_TOOL_ROUNDS = 2
 
+const MAX_IMAGE_BASE64_CHARS = 7_000_000 // ~5MB decoded
+
 const Schema = z.object({
   sessionId:   z.string().nullable().optional(),
   equipmentId: z.string().optional(),
@@ -23,6 +25,10 @@ const Schema = z.object({
   domain:      z.enum(['REFRIGERATION','HVAC']).optional(),
   escalate:    z.boolean().optional(),
   message:     z.string().min(1).max(4000),
+  images:      z.array(z.object({
+    mediaType: z.enum(['image/jpeg','image/png','image/gif','image/webp']),
+    data:      z.string().max(MAX_IMAGE_BASE64_CHARS),
+  })).max(3).optional(),
   history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
 })
 
@@ -97,7 +103,7 @@ export async function POST(req: NextRequest) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
 
-  const { equipmentId, mode, domain, escalate, message, history } = parsed.data
+  const { equipmentId, mode, domain, escalate, message, images, history } = parsed.data
 
   const ctx = equipmentId ? await loadEquipmentContext(equipmentId) : null
 
@@ -128,9 +134,15 @@ export async function POST(req: NextRequest) {
       let citationCounter = 0
 
       try {
+        const userContent: Anthropic.ContentBlockParam[] = []
+        for (const img of images ?? []) {
+          userContent.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })
+        }
+        userContent.push({ type: 'text', text: message })
+
         const messages: Anthropic.MessageParam[] = [
           ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-          { role: 'user', content: message },
+          { role: 'user', content: userContent },
         ]
 
         for (let round = 0; ; round++) {
