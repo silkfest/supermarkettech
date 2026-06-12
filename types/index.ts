@@ -149,10 +149,16 @@ export interface AppFeedback {
   users?: { name: string } | null
 }
 
+export interface ChatImage {
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+  data: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  images?: ChatImage[]
   sources?: CitationSource[]
   componentLinks?: ComponentLink[]
   isStreaming?: boolean
