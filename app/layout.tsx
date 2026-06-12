@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import OfflineBanner from '@/components/OfflineBanner'
 
 export const metadata: Metadata = {
   title: 'ColdIQ — Refrigeration Expert',
@@ -29,7 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full">
       <body className="h-full bg-white dark:bg-slate-950 antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegister />
+        <ThemeProvider>
+          <OfflineBanner />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
