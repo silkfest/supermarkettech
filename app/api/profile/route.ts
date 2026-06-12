@@ -54,6 +54,7 @@ export async function PATCH(req: NextRequest) {
   if (body.apprenticeship_hours      !== undefined) update.apprenticeship_hours      = Number(body.apprenticeship_hours)
   if (body.apprenticeship_year       !== undefined) update.apprenticeship_year       = Number(body.apprenticeship_year)
   if (body.name                      !== undefined) update.name                      = body.name.trim()
+  if (body.has_seen_onboarding       !== undefined) update.has_seen_onboarding       = Boolean(body.has_seen_onboarding)
 
   const { data, error } = await supabase.from('users').update(update).eq('id', targetId).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

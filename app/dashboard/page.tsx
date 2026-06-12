@@ -8,6 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import Sidebar from '@/components/layout/Sidebar'
 import ChatPanel from '@/components/chat/ChatPanel'
 import AddEquipmentModal from '@/components/equipment/AddEquipmentModal'
+import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import AnnouncementBanner from '@/components/announcements/AnnouncementBanner'
 import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import { Menu, AlertTriangle, Moon, Sun } from 'lucide-react'
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [mode,         setMode]         = useState<ChatMode>('EXPERT')
   const [documents,    setDocuments]    = useState<Document[]>([])
   const [showAdd,      setShowAdd]      = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentUser,  setCurrentUser]  = useState<User | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [fetchError,   setFetchError]   = useState<string | null>(null)
@@ -52,6 +54,8 @@ export default function Dashboard() {
       if (profile.status === 'pending') { router.push('/pending'); return }
       if (profile.status === 'suspended') { router.push('/login'); return }
       setCurrentUser(profile)
+      const forceTour = new URLSearchParams(window.location.search).get('tour') === '1'
+      if (forceTour || !profile.has_seen_onboarding) setShowOnboarding(true)
     }
     checkAuth()
   }, [router])
@@ -359,6 +363,18 @@ export default function Dashboard() {
 
       {/* Add equipment modal */}
       {showAdd && <AddEquipmentModal onClose={() => setShowAdd(false)} onCreated={loadEquipment}/>}
+
+      {/* Onboarding tour — first login, or replayed via ?tour=1 */}
+      {showOnboarding && (
+        <OnboardingModal
+          currentUser={currentUser}
+          onClose={() => {
+            setShowOnboarding(false)
+            setCurrentUser(u => u ? { ...u, has_seen_onboarding: true } : u)
+          }}
+        />
+      )}
+
     </div>
   )
 }

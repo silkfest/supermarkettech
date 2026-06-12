@@ -15,6 +15,7 @@ export interface User {
   status: UserStatus
   mentor_id: string | null
   created_at: string
+  has_seen_onboarding: boolean
 }
 
 export interface EquipmentSpec {
