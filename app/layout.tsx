@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import OfflineBanner from '@/components/OfflineBanner'
+import InstallPrompt from '@/components/InstallPrompt'
 
 export const metadata: Metadata = {
   title: 'ColdIQ — Refrigeration Expert',
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <OfflineBanner />
           {children}
+          <InstallPrompt />
         </ThemeProvider>
       </body>
     </html>

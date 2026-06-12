@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   Home, ArrowLeft, User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
-  FileText, Settings, MessageCircle, Send,
+  FileText, Settings, MessageCircle, Send, Compass,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 
@@ -745,6 +745,23 @@ function ProfileContent() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Settings</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Update your display name and change your password</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
+          </button>
+        )}
+
+        {/* ── Replay app tour ───────────────────────────────────────────────── */}
+        {isOwnProfile && (
+          <button
+            onClick={() => router.push('/dashboard?tour=1')}
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <Compass size={18} className="text-slate-500 dark:text-slate-400"/>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Replay app tour</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">See the getting-started walkthrough again</p>
             </div>
             <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
           </button>
