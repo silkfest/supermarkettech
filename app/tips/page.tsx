@@ -7,6 +7,7 @@ import { Home, ArrowLeft, Lightbulb, Trash2, ChevronDown, ChevronUp, User, Wrenc
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import EmptyState from '@/components/EmptyState'
 
 interface TipMessage { role: string; content: string }
 interface TipSession {
@@ -265,14 +266,12 @@ export default function TipsPage() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Lightbulb size={32} className="text-slate-200 dark:text-slate-700 mb-3" />
-            <p className="text-sm text-slate-400 dark:text-slate-500">
-              {search || activeTag
-                ? 'No tips match your filters.'
-                : 'No tips saved yet. After a useful chat, click "Save as troubleshooting tip".'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Lightbulb}
+            title={search || activeTag
+              ? 'No tips match your filters.'
+              : 'No tips saved yet. After a useful chat, click "Save as troubleshooting tip".'}
+          />
         )}
 
         <div className="space-y-3">

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -363,12 +364,10 @@ export default function ChatHistoryPage() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageSquare size={32} className="text-slate-200 dark:text-slate-700 mb-3" />
-            <p className="text-sm text-slate-400 dark:text-slate-500">
-              {search || filterMode !== 'all' ? 'No sessions match your filters.' : 'No chat sessions yet. Start a conversation on the dashboard.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={MessageSquare}
+            title={search || filterMode !== 'all' ? 'No sessions match your filters.' : 'No chat sessions yet. Start a conversation on the dashboard.'}
+          />
         )}
 
         <div className="space-y-3">

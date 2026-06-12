@@ -8,6 +8,7 @@ import {
   Package, Home,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 interface StoreCard {
@@ -126,10 +127,7 @@ export default function StoresPage() {
         {loading ? (
           <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500 text-sm">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
-            <Building2 size={36} className="mb-2 opacity-30" />
-            <p className="text-sm">{search ? 'No sites match your search' : 'No sites yet'}</p>
-          </div>
+          <EmptyState icon={Building2} title={search ? 'No sites match your search' : 'No sites yet'} />
         ) : (
           <div className="flex flex-col gap-3">
             {filtered.map(store => (

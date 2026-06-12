@@ -8,6 +8,7 @@ import {
   FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw, Sparkles,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
 
@@ -294,12 +295,10 @@ export default function LibraryPage() {
 
         {/* Empty */}
         {!loading && !error && docs.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen size={32} className="text-slate-200 mb-3"/>
-            <p className="text-sm text-slate-400 dark:text-slate-500">
-              {search || activeCategory ? 'No documents match your filters.' : 'No documents in the library yet.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={BookOpen}
+            title={search || activeCategory ? 'No documents match your filters.' : 'No documents in the library yet.'}
+          />
         )}
 
         {/* Document grid */}
