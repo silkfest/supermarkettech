@@ -213,7 +213,7 @@ Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownConten
 
 ### Phase 3 — Polish
 - [x] Reusable `EmptyState` component, apply across all pages
-- [ ] Report photo gallery/viewer on maintenance report detail pages
+- [x] Report photo gallery/viewer on maintenance report detail pages
 - [ ] Manager cert expiry: team-wide view on admin/team page
 - [ ] Pending user screen: add wait context + "notify admin again" button
 - [ ] Manager feedback view: "Reviews I've Written" tab on manager's profile
