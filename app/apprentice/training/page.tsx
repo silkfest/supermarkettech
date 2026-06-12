@@ -10,6 +10,7 @@ import {
   ExternalLink, Clock, Star, X, Check,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import EmptyState from '@/components/EmptyState'
 
 // ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
@@ -702,11 +703,11 @@ function TrainingInner() {
             )}
 
             {!coursesLoading && courses.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <BookOpen size={32} className="text-slate-700 mb-3"/>
-                <p className="text-sm text-slate-500">No courses yet.</p>
-                {isAdmin && !isReadOnly && <p className="text-xs text-slate-600 mt-1">Click &ldquo;Add Course&rdquo; above to create the first one.</p>}
-              </div>
+              <EmptyState
+                icon={BookOpen}
+                title="No courses yet."
+                description={isAdmin && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
+              />
             )}
 
             {!coursesLoading && Object.entries(coursesByCat).map(([cat, catCourses]) => (

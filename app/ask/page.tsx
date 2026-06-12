@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, X, MessageCircle, Clock, Tag, ChevronRight, HelpCircle, Pin, Trash2 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import EmptyState from '@/components/EmptyState'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 function timeAgo(dateStr: string): string {
@@ -218,17 +219,19 @@ export default function AskTeamPage() {
               ))}
             </div>
           ) : questions.length === 0 ? (
-            <div className="text-center py-16">
-              <HelpCircle size={36} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No questions yet</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Be the first to ask your team something</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                Ask a Question
-              </button>
-            </div>
+            <EmptyState
+              icon={HelpCircle}
+              title="No questions yet"
+              description="Be the first to ask your team something"
+              action={
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  Ask a Question
+                </button>
+              }
+            />
           ) : (
             <div className="space-y-2.5">
               {questions.map(q => (

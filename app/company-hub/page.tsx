@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
 
 // ─── Policies types & constants ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -886,11 +887,12 @@ export default function CompanyHubPage() {
           )}
 
           {!annLoading && !annError && announcements.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <Megaphone size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No announcements yet.</p>
-              {isManager && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;New Announcement&rdquo; in the header to post the first one.</p>}
-            </div>
+            <EmptyState
+              icon={Megaphone}
+              title="No announcements yet."
+              description={isManager ? 'Click "New Announcement" in the header to post the first one.' : undefined}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-14"
+            />
           )}
 
           {!annLoading && announcements.length > 0 && (
@@ -1108,11 +1110,12 @@ export default function CompanyHubPage() {
           )}
 
           {!conLoading && !conError && sections.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <Users size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No contacts yet</p>
-              {isManager && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;Edit&rdquo; then &ldquo;+ Add Section&rdquo; to get started.</p>}
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No contacts yet"
+              description={isManager ? 'Click "Edit" then "+ Add Section" to get started.' : undefined}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl"
+            />
           )}
 
           {!conLoading && sections.length > 0 && (
@@ -1167,10 +1170,11 @@ export default function CompanyHubPage() {
           )}
 
           {!fbLoading && !fbError && visibleFeedback.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <MessageSquareWarning size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No {fbFilter !== 'all' ? fbFilter : ''} feedback.</p>
-            </div>
+            <EmptyState
+              icon={MessageSquareWarning}
+              title={`No ${fbFilter !== 'all' ? fbFilter : ''} feedback.`}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-14"
+            />
           )}
 
           {!fbLoading && visibleFeedback.length > 0 && (

@@ -206,13 +206,13 @@ Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownConten
 ## Remaining Backlog
 
 ### Phase 2 — Feature integrations
-- [ ] Chat history scoping: non-admins see only own sessions; admins see all with user filter
-- [ ] Mobile bottom nav: move into PageShell so it renders on all authenticated pages
+- [x] Chat history scoping: non-admins see only own sessions; admins see all with user filter
+- [x] Mobile bottom nav: move into PageShell so it renders on all authenticated pages
 - [ ] Equipment selector + chat context for journeymen/apprentices *(blocked — see above)*
 - [ ] Read-only store/site view for non-admins *(blocked — see above)*
 
 ### Phase 3 — Polish
-- [ ] Reusable `EmptyState` component, apply across all pages
+- [x] Reusable `EmptyState` component, apply across all pages
 - [ ] Report photo gallery/viewer on maintenance report detail pages
 - [ ] Manager cert expiry: team-wide view on admin/team page
 - [ ] Pending user screen: add wait context + "notify admin again" button
