@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { ArrowLeft, Home, Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
+import PhotoGallery from '@/components/PhotoGallery'
 
 // ─── Refrigeration checklist labels ───────────────────────────────────────────
 const REFRIG_CHECKLIST: { id: string; label: string }[] = [
@@ -88,6 +89,7 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
   const units = data.units as Record<string, unknown> | null
   const checklist = data.checklist as Record<string, boolean> | null
   const notes = data.notes as Array<{ id: string; text: string; importance: string }> | null
+  const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const racks = (units?.racks as unknown[]) ?? []
   const technician = units?.technician as Record<string, string> | null
   const storeAddress = units?.storeAddress as string | null
@@ -231,6 +233,13 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
           </div>
         </SectionCard>
       )}
+
+      {/* Photos */}
+      {photos.length > 0 && (
+        <SectionCard title="Photos">
+          <PhotoGallery photos={photos} />
+        </SectionCard>
+      )}
     </div>
   )
 }
@@ -240,6 +249,7 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
   const units = data.units as Record<string, unknown> | null
   const checklist = data.checklist as Record<string, boolean> | null
   const notes = data.notes as Array<{ id: string; note: string; equipmentIndex: number | null; assetId: string; importance: string }> | null
+  const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const equipment = (units?.equipment as unknown[]) ?? []
   const technician = units?.technician as Record<string, string> | null
   const storeAddress = units?.storeAddress as string | null
@@ -350,6 +360,13 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
           </div>
         </SectionCard>
       )}
+
+      {/* Photos */}
+      {photos.length > 0 && (
+        <SectionCard title="Photos">
+          <PhotoGallery photos={photos} />
+        </SectionCard>
+      )}
     </div>
   )
 }
@@ -419,18 +436,7 @@ function IndividualView({ data }: { data: Record<string, unknown> }) {
       )}
       {photos.length > 0 && (
         <SectionCard title="Photos">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 print:grid-cols-2">
-            {photos.map((p, i) => (
-              <div key={i} className="space-y-1">
-                <img
-                  src={p.url}
-                  alt={p.label || `Photo ${i + 1}`}
-                  className="w-full h-44 object-cover rounded-lg border border-slate-200 print:h-auto print:max-h-64 print:object-contain print:rounded-none"
-                />
-                {p.label && <p className="text-xs text-slate-500">{p.label}</p>}
-              </div>
-            ))}
-          </div>
+          <PhotoGallery photos={photos} />
         </SectionCard>
       )}
     </div>

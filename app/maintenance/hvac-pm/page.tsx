@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, Home } from 'lucide-react'
+import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,6 +138,9 @@ function HvacPMContent() {
   const [checkItems, setCheckItems] = useState<CheckItems>(defaultCheckItems())
   const [checklistOpen, setChecklistOpen] = useState(true)
 
+  // Photos
+  const [photos, setPhotos] = useState<UploadPhoto[]>([])
+
   // Save state
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -189,6 +193,7 @@ function HvacPMContent() {
         if (Array.isArray(d.units.equipment)) setEquipment(d.units.equipment)
       }
       if (Array.isArray(d.notes)) setDeficiencies(d.notes)
+      setPhotos(d.photos ?? [])
     })
   }, [editId])
 
@@ -276,6 +281,7 @@ function HvacPMContent() {
       checklist: checkItems,
       units: { technician, storeAddress, equipment },
       notes: deficiencies,
+      photos,
     }
     const url = editId ? `/api/pm-reports/${editId}` : '/api/pm-reports'
     const method = editId ? 'PATCH' : 'POST'
@@ -618,6 +624,9 @@ function HvacPMContent() {
             </ul>
           )}
         </div>
+
+        {/* ── Photos ── */}
+        <PhotoUploadGrid photos={photos} onChange={setPhotos} />
       </div>
 
       {/* ── Equipment Type Modal ── */}
