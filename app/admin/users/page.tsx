@@ -17,6 +17,17 @@ interface UserRow {
   status: Status
   mentor_id: string | null
   created_at: string
+  notify_requested_at: string | null
+}
+
+function timeAgo(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / (60 * 1000)))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
 }
 
 export default function AdminUsersPage() {
@@ -122,6 +133,11 @@ export default function AdminUsersPage() {
           <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex items-center gap-2">
             <span>⏳</span>
             <span><strong>{users.filter(u => u.status === 'pending').length}</strong> user{users.filter(u => u.status === 'pending').length !== 1 ? 's' : ''} awaiting approval</span>
+            {users.some(u => u.status === 'pending' && u.notify_requested_at) && (
+              <span className="text-amber-700">
+                · {users.filter(u => u.status === 'pending' && u.notify_requested_at).length} re-requested attention
+              </span>
+            )}
           </div>
         )}
 
@@ -137,6 +153,11 @@ export default function AdminUsersPage() {
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <span className="font-semibold text-slate-800 text-sm">{user.name || '—'}</span>
                     {statusBadge(user.status)}
+                    {user.status === 'pending' && user.notify_requested_at && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border border-blue-200 bg-blue-50 text-blue-700">
+                        🔔 requested {timeAgo(user.notify_requested_at)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 truncate">{user.email}</p>
                 </div>
@@ -242,7 +263,16 @@ export default function AdminUsersPage() {
                     <div className="font-medium text-slate-800">{user.name || '—'}</div>
                     <div className="text-xs text-slate-500">{user.email}</div>
                   </td>
-                  <td className="px-4 py-3">{statusBadge(user.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {statusBadge(user.status)}
+                      {user.status === 'pending' && user.notify_requested_at && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border border-blue-200 bg-blue-50 text-blue-700">
+                          🔔 {timeAgo(user.notify_requested_at)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <select
                       value={user.role}
