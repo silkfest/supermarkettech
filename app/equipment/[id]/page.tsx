@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, Package, Wrench, Pencil, Check, X,
-  Building2, MapPin, Calendar, Thermometer, Tag, StickyNote,
+  MapPin, Calendar, Thermometer, Tag, StickyNote,
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
   FileText, ExternalLink, Loader2, ListChecks, Plus,
   Camera, Image as ImageIcon, Workflow,
@@ -64,15 +64,6 @@ interface DocRow {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────
-
-const EQUIP_TYPES = [
-  { value: 'rack',         label: 'Refrigeration Rack' },
-  { value: 'display_case', label: 'Display Case' },
-  { value: 'walk_in',      label: 'Walk-In Cooler/Freezer' },
-  { value: 'hvac',         label: 'HVAC Unit' },
-  { value: 'condenser',    label: 'Condenser Unit' },
-  { value: 'other',        label: 'Other' },
-]
 
 const TYPE_META: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
   rack:         { bg: 'bg-blue-50 dark:bg-blue-500/10',       text: 'text-blue-600 dark:text-blue-400',       icon: <RefrigeratorIcon size={20}/>, label: 'Refrigeration Rack' },
@@ -645,6 +636,7 @@ export default function EquipmentDetailPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
               {(equip.photos ?? []).map((p, i) => (
                 <div key={i} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt={p.label || `Photo ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200 dark:border-slate-700"/>
                   {isAdmin ? (
                     <input
@@ -707,6 +699,7 @@ export default function EquipmentDetailPage() {
                       </a>
                     ) : (
                       <a href={d.url} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={d.url} alt={d.label || `Diagram ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200 dark:border-slate-700"/>
                       </a>
                     )}
