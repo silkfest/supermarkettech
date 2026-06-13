@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
@@ -13,6 +12,7 @@ import {
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import PageHeader from '@/components/PageHeader'
 import type { ContentMatch } from '@/app/api/knowledge/search/route'
 
 // ── Color map — static class names so Tailwind purge can see them ─────────────
@@ -295,17 +295,7 @@ export default function KnowledgePage() {
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-blue-600">Cold</span>
-            <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-          </div>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Learning</span>
-        </div>
+        <PageHeader title="Learning" home={false} back="/dashboard" sticky={false} className="px-0 py-0 mb-3 bg-transparent dark:bg-transparent" />
         {/* Search bar + category filter */}
         <div className="flex gap-2">
           <div className="relative flex-1">
