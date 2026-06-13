@@ -52,6 +52,7 @@ import {
   GAS_COOLER_KNOWLEDGE,
   PRESSURE_REGULATOR_KNOWLEDGE,
   STANDBY_POWER_KNOWLEDGE,
+  RACK_VALVES_COMPONENTS_KNOWLEDGE,
 } from '@/lib/ai/prompts'
 
 export interface KnowledgeTopic {
@@ -691,6 +692,24 @@ export const TOPICS: KnowledgeTopic[] = [
     manualKeywords: ['pressure regulator', 'refrigerating specialties', 'mueller'],
     tags: ['Pressure Regulator', 'Check Valve', 'EPR', 'Parker', 'Mueller'],
     category: 'fundamentals',
+  },
+  {
+    slug: 'rack-valves-components',
+    title: 'Rack Valves & Components Reference',
+    shortTitle: 'Rack Valves & Components',
+    description: 'A walk-the-rack map of every valve and control component on HFC parallel and distributed Protocol racks — flooding/head-pressure valves, EPRs (ORIT/CDS/DT-EEPR), check valves, oil regulators, CPRs, discharge bypass, solenoids, relief valves and HPCO/LPCO — with ideal setpoints by refrigerant and condition, failure symptoms, and a fast symptom index.',
+    iconName: 'Settings2',
+    colorClass: 'blue',
+    content: RACK_VALVES_COMPONENTS_KNOWLEDGE,
+    manualKeywords: [
+      'check-all', 'suction filter', 'sight glass', 'moisture-indicator', 'ball valve', 'mueller',
+      'refrigerating specialties', 'condensed product catalog', 'electric pressure regulating',
+      'hot gas bypass valve', 'flash gas bypass', 'ics valve', 'electric regulating valve',
+      'cds valve', 'electric expansion valve', 'thermostatic expansion valve', 'dt-eepr',
+      'relief valve', 'catch-all', 'solenoid valve', 'oil regulator', 'wa-was',
+    ],
+    tags: ['Valves', 'Racks', 'Setpoints', 'EPR', 'Head Pressure'],
+    category: 'rack-systems',
   },
   {
     slug: 'standby-power',

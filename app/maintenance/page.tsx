@@ -2,9 +2,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, ArrowLeft, Clock, ChevronRight, Filter, AlertTriangle, User } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, Clock, ChevronRight, Filter, AlertTriangle, User } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 import PageShell from '@/components/layout/PageShell'
+import PageHeader from '@/components/PageHeader'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 interface RecentReport {
@@ -111,23 +112,7 @@ function MaintenanceHubContent() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
-          {equipmentName ? equipmentName : 'Maintenance Forms'}
-        </span>
-      </div>
+      <PageHeader title={equipmentName ? equipmentName : 'Maintenance Forms'} home={false} back="/dashboard" />
 
       <div className="max-w-4xl mx-auto px-4 py-6 pb-10 space-y-6">
         {storeError && (

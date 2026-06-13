@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
@@ -13,6 +12,8 @@ import {
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import PageHeader from '@/components/PageHeader'
+import EmptyState from '@/components/EmptyState'
 import type { ContentMatch } from '@/app/api/knowledge/search/route'
 
 // ── Color map — static class names so Tailwind purge can see them ─────────────
@@ -180,6 +181,7 @@ export default function KnowledgePage() {
   const [query, setQuery] = useState('')
   const [docMatchSlugs, setDocMatchSlugs] = useState<string[]>([])
   const [contentMatches, setContentMatches] = useState<ContentMatch[]>([])
+  const [searchError, setSearchError] = useState(false)
   const [dynamicTopics, setDynamicTopics] = useState<DynamicTopic[]>([])
   const [dynamicLoading, setDynamicLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<string>('all')
@@ -212,7 +214,7 @@ export default function KnowledgePage() {
     fetch('/api/knowledge/dynamic')
       .then(r => r.ok ? r.json() : [])
       .then((data: DynamicTopic[]) => { setDynamicTopics(Array.isArray(data) ? data : []); setDynamicLoading(false) })
-      .catch(() => setDynamicLoading(false))
+      .catch(err => { console.error('Failed to load dynamic topics', err); setDynamicLoading(false) })
   }, [])
 
   // Fetch manual counts for all topics in a single batched request
@@ -222,13 +224,13 @@ export default function KnowledgePage() {
       .then((data: Record<string, number>) => {
         setManualCounts(Object.entries(data).map(([slug, count]) => ({ slug, count })))
       })
-      .catch(() => setManualCounts([]))
+      .catch(err => { console.error('Failed to load manual counts', err); setManualCounts([]) })
   }, [])
 
   // Debounced search of document titles + knowledge content
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) { setDocMatchSlugs([]); setContentMatches([]); return }
+    if (q.length < 2) { setDocMatchSlugs([]); setContentMatches([]); setSearchError(false); return }
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`)
@@ -236,8 +238,14 @@ export default function KnowledgePage() {
           const { docSlugs, contentMatches: cm } = await res.json()
           setDocMatchSlugs(docSlugs ?? [])
           setContentMatches(cm ?? [])
+          setSearchError(false)
+        } else {
+          setSearchError(true)
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error('Knowledge search failed', err)
+        setSearchError(true)
+      }
     }, 300)
     return () => clearTimeout(timer)
   }, [query])
@@ -295,17 +303,7 @@ export default function KnowledgePage() {
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
       <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-blue-600">Cold</span>
-            <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-          </div>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Learning</span>
-        </div>
+        <PageHeader title="Learning" home={false} back="/dashboard" sticky={false} className="px-0 py-0 mb-3 bg-transparent dark:bg-transparent" />
         {/* Search bar + category filter */}
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -381,12 +379,22 @@ export default function KnowledgePage() {
               <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 {filteredTopics.length + (filteredDynamic?.length ?? 0)} topic{filteredTopics.length + (filteredDynamic?.length ?? 0) !== 1 ? 's' : ''} for &ldquo;{query.trim()}&rdquo;
               </p>
+              {searchError && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
+                  Manual and content search is temporarily unavailable — showing topic matches only.
+                </p>
+              )}
               {filteredTopics.length === 0 && contentMatches.length === 0 && (filteredDynamic?.length ?? 0) === 0 ? (
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No results match that search.</p>
-                  <button onClick={() => setQuery('')} className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                    Clear search
-                  </button>
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <EmptyState
+                    icon={Search}
+                    title="No results match that search."
+                    action={
+                      <button onClick={() => setQuery('')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                        Clear search
+                      </button>
+                    }
+                  />
                 </div>
               ) : filteredTopics.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

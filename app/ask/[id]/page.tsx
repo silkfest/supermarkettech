@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, MessageSquare, Tag, Clock, Send, CheckCircle2, Pin, PinOff, Trash2 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 function timeAgo(dateStr: string): string {
@@ -39,6 +40,7 @@ interface Answer {
 
 export default function AskDetailPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : ''
 
@@ -116,7 +118,7 @@ export default function AskDetailPage() {
   }
 
   async function handleDeleteQuestion() {
-    if (!confirm('Delete this question and all its answers?')) return
+    if (!await confirm({ message: 'Delete this question and all its answers?', confirmLabel: 'Delete', danger: true })) return
     setDeletingQuestion(true)
     try {
       await fetch(`/api/ask/${id}`, { method: 'DELETE' })
@@ -127,7 +129,7 @@ export default function AskDetailPage() {
   }
 
   async function handleDeleteAnswer(answerId: string) {
-    if (!confirm('Delete this answer?')) return
+    if (!await confirm({ message: 'Delete this answer?', confirmLabel: 'Delete', danger: true })) return
     setDeletingAnswer(answerId)
     try {
       await fetch(`/api/ask/${id}/answers/${answerId}`, { method: 'DELETE' })
@@ -158,6 +160,7 @@ export default function AskDetailPage() {
   return (
     <PageShell>
       <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
+        {confirmDialog}
         {/* Header */}
         <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
           <div className="max-w-3xl mx-auto flex items-center gap-3">

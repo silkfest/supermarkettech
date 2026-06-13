@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Plus, X, ChevronDown, Pencil, Loader2, BookOpen, Home } from 'lucide-react'
+import { Plus, X, ChevronDown, Pencil, Loader2, BookOpen } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
+import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -939,6 +941,9 @@ function RefrigerationPMContent() {
   const [checklist, setChecklist] = useState<ChecklistMap>(defaultChecklist())
   const [checklistOpen, setChecklistOpen] = useState(true)
 
+  // Photos
+  const [photos, setPhotos] = useState<UploadPhoto[]>([])
+
   // Save
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -1014,6 +1019,7 @@ function RefrigerationPMContent() {
         }
       }
       if (Array.isArray(d.notes)) setNotes(d.notes)
+      setPhotos(d.photos ?? [])
     })
   }, [editId])
 
@@ -1100,6 +1106,7 @@ function RefrigerationPMContent() {
       checklist,
       units: { technician, storeAddress, racks: units },
       notes,
+      photos,
     }
     const url = editId ? `/api/pm-reports/${editId}` : '/api/pm-reports'
     const method = editId ? 'PATCH' : 'POST'
@@ -1119,27 +1126,19 @@ function RefrigerationPMContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard"><Home size={18} /></button>
-          <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><ArrowLeft size={18} /></button>
-          <div className="flex items-baseline gap-0.5 flex-shrink-0">
-            <span className="text-lg font-bold text-blue-600">Cold</span>
-            <span className="text-lg font-bold text-slate-800">IQ</span>
-          </div>
-          <span className="text-slate-400 flex-shrink-0">/</span>
-          <span className="text-sm font-medium text-slate-700 truncate">Refrigeration PM{equipmentName ? ` · ${equipmentName}` : ''}</span>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || saved}
-          className="px-3 md:px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
-        >
-          {saving && <Loader2 size={14} className="animate-spin" />}
-          {saved ? '✓' : saving ? '…' : <><span className="hidden sm:inline">{editId ? 'Update' : 'Save'} Report</span><span className="sm:hidden">Save</span></>}
-        </button>
-      </div>
+      <PageHeader
+        title={`Refrigeration PM${equipmentName ? ` · ${equipmentName}` : ''}`}
+        actions={
+          <button
+            onClick={handleSave}
+            disabled={saving || saved}
+            className="px-3 md:px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
+          >
+            {saving && <Loader2 size={14} className="animate-spin" />}
+            {saved ? '✓' : saving ? '…' : <><span className="hidden sm:inline">{editId ? 'Update' : 'Save'} Report</span><span className="sm:hidden">Save</span></>}
+          </button>
+        }
+      />
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
@@ -1419,6 +1418,9 @@ function RefrigerationPMContent() {
             </ul>
           )}
         </div>
+
+        {/* ── Photos ── */}
+        <PhotoUploadGrid photos={photos} onChange={setPhotos} />
       </div>
 
       {/* ── Add Conventional Unit Modal ── */}

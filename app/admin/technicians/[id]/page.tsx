@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  ArrowLeft, Shield, Plus, Trash2, CheckCircle, AlertTriangle,
+  Shield, Plus, Trash2, CheckCircle, AlertTriangle,
   Loader2, Edit2, X, Save, Wrench, UserCircle,
 } from 'lucide-react'
-
-type Role   = 'admin' | 'manager' | 'journeyman' | 'apprentice'
-type Status = 'pending' | 'active' | 'suspended'
+import PageHeader from '@/components/PageHeader'
+import { ROLE_LABEL, ROLE_COLOR } from '@/lib/constants'
+import type { Role, Status } from '@/lib/constants'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface UserRow { id: string; email: string; name: string; role: Role; status: Status; created_at: string }
 interface Cert {
@@ -18,23 +19,18 @@ interface Cert {
 interface Report { id: string; store_name: string; performed_at: string; report_type?: string }
 
 const CERT_TYPES = ['313A', 'Gas 1', 'Gas 2', 'Gas 3', 'ODP Certificate', 'WHMIS', 'Working at Heights', 'First Aid', 'Other']
-const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', manager: 'Manager', journeyman: 'Journeyman', apprentice: 'Apprentice' }
-const ROLE_COLOR: Record<Role, string> = {
-  admin: 'bg-purple-100 text-purple-700', manager: 'bg-blue-100 text-blue-700',
-  journeyman: 'bg-emerald-100 text-emerald-700', apprentice: 'bg-amber-100 text-amber-700',
-}
 
-const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
+const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1'
 
 function certBadge(c: Cert) {
   if (!c.expiry_date) return null
   const now = new Date()
   const exp = new Date(c.expiry_date)
   const soon = new Date(); soon.setDate(soon.getDate() + 90)
-  if (exp < now) return <span className="flex items-center gap-1 text-red-600 text-[10px] font-semibold"><AlertTriangle size={10}/>Expired</span>
-  if (exp < soon) return <span className="flex items-center gap-1 text-amber-600 text-[10px] font-semibold"><AlertTriangle size={10}/>Expiring soon</span>
-  return <span className="flex items-center gap-1 text-emerald-600 text-[10px] font-semibold"><CheckCircle size={10}/>Valid</span>
+  if (exp < now) return <span className="flex items-center gap-1 text-red-600 dark:text-red-400 text-[10px] font-semibold"><AlertTriangle size={10}/>Expired</span>
+  if (exp < soon) return <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-[10px] font-semibold"><AlertTriangle size={10}/>Expiring soon</span>
+  return <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold"><CheckCircle size={10}/>Valid</span>
 }
 
 const emptyForm = { certType: CERT_TYPES[0], certSubtype: '', certNumber: '', issuedDate: '', expiryDate: '', notes: '' }
@@ -43,6 +39,7 @@ export default function TechnicianProfilePage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [tech, setTech]     = useState<UserRow | null>(null)
   const [certs, setCerts]   = useState<Cert[]>([])
@@ -128,7 +125,7 @@ export default function TechnicianProfilePage() {
   }
 
   async function deleteCert(certId: string) {
-    if (!confirm('Remove this certificate?')) return
+    if (!await confirm({ message: 'Remove this certificate?', confirmLabel: 'Remove', danger: true })) return
     setDeletingId(certId)
     await fetch(`/api/tech-certs/${certId}`, { method: 'DELETE' })
     setCerts(prev => prev.filter(c => c.id !== certId))
@@ -136,16 +133,16 @@ export default function TechnicianProfilePage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
       <Loader2 size={20} className="animate-spin mr-2"/> Loading…
     </div>
   )
   if (!tech) return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-2 text-sm text-slate-400">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-2 text-sm text-slate-400 dark:text-slate-500">
       <p>Tech not found.</p>
-      {loadError && <p className="text-xs text-red-400 max-w-xs text-center">{loadError}</p>}
-      <p className="text-xs text-slate-300">ID: {id || '(empty)'}</p>
-      <button onClick={() => router.back()} className="mt-2 text-xs text-blue-500 underline">Go back</button>
+      {loadError && <p className="text-xs text-red-400 dark:text-red-400 max-w-xs text-center">{loadError}</p>}
+      <p className="text-xs text-slate-300 dark:text-slate-600">ID: {id || '(empty)'}</p>
+      <button onClick={() => router.back()} className="mt-2 text-xs text-blue-500 dark:text-blue-400 underline">Go back</button>
     </div>
   )
 
@@ -155,64 +152,58 @@ export default function TechnicianProfilePage() {
   ].sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime()).slice(0, 12)
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
-        </div>
-        <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-700 truncate">{tech.name || tech.email}</span>
-        <div className="ml-auto">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
+      <PageHeader
+        title={tech.name || tech.email}
+        home={false}
+        back={true}
+        actions={
           <button
             onClick={() => router.push(`/profile?userId=${tech.id}`)}
-            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2.5 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2.5 py-1.5 border border-blue-200 dark:border-blue-500/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
           >
             Full profile →
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
         {/* Profile card */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4">
-          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-            <UserCircle size={32} className="text-slate-400" />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-start gap-4">
+          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+            <UserCircle size={32} className="text-slate-400 dark:text-slate-500" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h2 className="text-base font-bold text-slate-800">{tech.name || '—'}</h2>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">{tech.name || '—'}</h2>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLOR[tech.role]}`}>
                 {ROLE_LABEL[tech.role]}
               </span>
               {tech.status !== 'active' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">{tech.status}</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400">{tech.status}</span>
               )}
             </div>
-            <p className="text-sm text-slate-500">{tech.email}</p>
-            <p className="text-xs text-slate-400 mt-1">Member since {new Date(tech.created_at).toLocaleDateString()}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{tech.email}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Member since {new Date(tech.created_at).toLocaleDateString()}</p>
           </div>
           <div className="flex-shrink-0 text-right">
-            <p className="text-2xl font-bold text-slate-800">{reports.pm.length + reports.individual.length}</p>
-            <p className="text-xs text-slate-400">recent jobs</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{reports.pm.length + reports.individual.length}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">recent jobs</p>
           </div>
         </div>
 
         {/* Certifications */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <h3 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
               <Shield size={11} /> Certifications
             </h3>
             {!showForm && (
               <button
                 onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm) }}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
               >
                 <Plus size={13} /> Add
               </button>
@@ -221,7 +212,7 @@ export default function TechnicianProfilePage() {
 
           {/* Cert form */}
           {showForm && (
-            <div className="bg-white border border-blue-200 rounded-xl p-4 mb-3 space-y-3">
+            <div className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4 mb-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Certification</label>
@@ -245,7 +236,7 @@ export default function TechnicianProfilePage() {
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+                <label className={labelCls}>Notes <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span></label>
                 <input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. Issued by TSSA" className={inputCls} />
               </div>
               <div className="flex gap-2 pt-1">
@@ -255,7 +246,7 @@ export default function TechnicianProfilePage() {
                   {editId ? 'Save' : 'Add Cert'}
                 </button>
                 <button onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm) }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-600 text-sm rounded-lg hover:bg-slate-200">
+                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
                   <X size={13} /> Cancel
                 </button>
               </div>
@@ -263,35 +254,35 @@ export default function TechnicianProfilePage() {
           )}
 
           {certs.length === 0 && !showForm ? (
-            <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center">
-              <Shield size={24} className="text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">No certifications on record</p>
-              <p className="text-xs text-slate-300 mt-0.5">Add 313A, Gas tickets, or other credentials</p>
+            <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center">
+              <Shield size={24} className="text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="text-sm text-slate-400 dark:text-slate-500">No certifications on record</p>
+              <p className="text-xs text-slate-300 dark:text-slate-600 mt-0.5">Add 313A, Gas tickets, or other credentials</p>
             </div>
           ) : (
             <div className="space-y-2">
               {certs.map(c => (
-                <div key={c.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+                <div key={c.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <p className="text-sm font-semibold text-slate-800">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                         {c.cert_subtype || c.cert_type}
                       </p>
                       {certBadge(c)}
                     </div>
-                    {c.cert_number && <p className="text-xs text-slate-500">#{c.cert_number}</p>}
-                    <div className="flex gap-3 text-xs text-slate-400 mt-1">
+                    {c.cert_number && <p className="text-xs text-slate-500 dark:text-slate-400">#{c.cert_number}</p>}
+                    <div className="flex gap-3 text-xs text-slate-400 dark:text-slate-500 mt-1">
                       {c.issued_date && <span>Issued: {new Date(c.issued_date).toLocaleDateString()}</span>}
                       {c.expiry_date && <span>Expires: {new Date(c.expiry_date).toLocaleDateString()}</span>}
                     </div>
-                    {c.notes && <p className="text-xs text-slate-400 mt-0.5 italic">{c.notes}</p>}
+                    {c.notes && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 italic">{c.notes}</p>}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => startEdit(c)} className="p-1.5 text-slate-300 hover:text-blue-500 rounded-lg hover:bg-slate-50 transition-colors">
+                    <button onClick={() => startEdit(c)} className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => deleteCert(c.id)} disabled={deletingId === c.id}
-                      className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">
+                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
                       {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     </button>
                   </div>
@@ -304,10 +295,10 @@ export default function TechnicianProfilePage() {
         {/* Recent work */}
         {mergedReports.length > 0 && (
           <div>
-            <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <h3 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
               <Wrench size={11}/> Recent Work
             </h3>
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
               {mergedReports.map(r => (
                 <button
                   key={r.id}
@@ -316,7 +307,7 @@ export default function TechnicianProfilePage() {
                     : r.report_type === 'hvac' ? 'hvac-pm'
                     : 'refrigeration-pm'
                   }?id=${r.id}`)}
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     r.kind === 'individual' ? 'bg-purple-400'
@@ -324,12 +315,12 @@ export default function TechnicianProfilePage() {
                     : 'bg-blue-400'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{r.store_name}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{r.store_name}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       {r.kind === 'individual' ? 'Individual Report' : r.report_type === 'hvac' ? 'HVAC PM' : 'Refrigeration PM'}
                     </p>
                   </div>
-                  <span className="text-xs text-slate-400 flex-shrink-0">{new Date(r.performed_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{new Date(r.performed_at).toLocaleDateString()}</span>
                 </button>
               ))}
             </div>

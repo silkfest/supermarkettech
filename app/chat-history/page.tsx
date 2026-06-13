@@ -3,8 +3,11 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -39,6 +42,7 @@ function timeAgo(iso: string) {
 
 function SessionCard({ session, onDelete, showUser }: { session: Session; onDelete: (id: string) => void; showUser?: boolean }) {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [expanded, setExpanded]   = useState(false)
   const [savingTip, setSavingTip] = useState(false)
   const [tipSaved, setTipSaved]   = useState(!!session.tip)
@@ -66,7 +70,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this conversation? This cannot be undone.')) return
+    if (!await confirm({ message: 'Delete this conversation? This cannot be undone.', confirmLabel: 'Delete', danger: true })) return
     setDeleting(true)
     try {
       const res = await fetch(`/api/chat/sessions/${session.id}`, { method: 'DELETE' })
@@ -78,6 +82,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      {confirmDialog}
       {/* Header */}
       <div className="px-5 py-4 flex items-start gap-3">
         <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -216,6 +221,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
 
 export default function ChatHistoryPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [sessions, setSessions]         = useState<Session[]>([])
   const [loading, setLoading]           = useState(true)
   const [clearingAll, setClearingAll]   = useState(false)
@@ -266,7 +272,7 @@ export default function ChatHistoryPage() {
   }
 
   async function handleClearAll() {
-    if (!confirm(`Delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    if (!await confirm({ message: `Delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This cannot be undone.`, confirmLabel: 'Delete all', danger: true })) return
     setClearingAll(true)
     try {
       const res = await fetch('/api/chat/sessions', { method: 'DELETE' })
@@ -287,21 +293,8 @@ export default function ChatHistoryPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
-          <Home size={18} />
-        </button>
-        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Chat History</span>
-      </div>
+      {confirmDialog}
+      <PageHeader title="Chat History" />
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + filters */}
@@ -363,12 +356,10 @@ export default function ChatHistoryPage() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageSquare size={32} className="text-slate-200 dark:text-slate-700 mb-3" />
-            <p className="text-sm text-slate-400 dark:text-slate-500">
-              {search || filterMode !== 'all' ? 'No sessions match your filters.' : 'No chat sessions yet. Start a conversation on the dashboard.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={MessageSquare}
+            title={search || filterMode !== 'all' ? 'No sessions match your filters.' : 'No chat sessions yet. Start a conversation on the dashboard.'}
+          />
         )}
 
         <div className="space-y-3">

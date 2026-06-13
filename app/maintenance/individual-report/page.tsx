@@ -1,9 +1,11 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Plus, X, Camera, Loader2, Home } from 'lucide-react'
+import { Plus, X, Loader2 } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
+import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 
-interface Photo { url: string; label: string }
+type Photo = UploadPhoto
 interface EquipmentInfo {
   name: string
   manufacturer: string | null
@@ -25,7 +27,6 @@ function IndividualReportContent() {
   const equipmentId = searchParams.get('equipmentId')
   const equipmentName = searchParams.get('equipmentName') ?? ''
   const editId = searchParams.get('id')
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const [storeName, setStoreName] = useState('')
   // Initialise with LOCAL time so the datetime-local input shows the correct current time
@@ -38,7 +39,6 @@ function IndividualReportContent() {
   const [newPart, setNewPart] = useState('')
   const [photos, setPhotos] = useState<Photo[]>([])
   const [equipment, setEquipment] = useState<EquipmentInfo | null>(null)
-  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -68,32 +68,6 @@ function IndividualReportContent() {
       })
     }
   }, [editId])
-
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (!files.length) return
-    setUploading(true)
-
-    // Upload all selected files in parallel — no prompt() blocking
-    const results = await Promise.all(
-      files.map(async (file) => {
-        const fd = new FormData()
-        fd.append('file', file)
-        fd.append('label', '')   // label can be edited inline after upload
-        const res = await fetch('/api/upload-report-photo', { method: 'POST', body: fd })
-        if (!res.ok) return null
-        const data = await res.json()
-        return { url: data.url, label: data.label } as Photo
-      })
-    )
-    setPhotos(prev => [...prev, ...results.filter((p): p is Photo => p !== null)])
-    setUploading(false)
-    e.target.value = ''
-  }
-
-  function updatePhotoLabel(index: number, label: string) {
-    setPhotos(ph => ph.map((p, i) => i === index ? { ...p, label } : p))
-  }
 
   async function handleSave() {
     if (!storeName.trim()) { setError('Store name is required'); return }
@@ -132,27 +106,19 @@ function IndividualReportContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard"><Home size={18}/></button>
-          <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><ArrowLeft size={18}/></button>
-          <div className="flex items-baseline gap-0.5 flex-shrink-0">
-            <span className="text-lg font-bold text-blue-600">Cold</span>
-            <span className="text-lg font-bold text-slate-800">IQ</span>
-          </div>
-          <span className="text-slate-400 flex-shrink-0">/</span>
-          <span className="text-sm font-medium text-slate-700 truncate">Individual Report{equipmentName ? ` · ${equipmentName}` : ''}</span>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || saved}
-          className="px-3 md:px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
-        >
-          {saving && <Loader2 size={14} className="animate-spin"/>}
-          {saved ? '✓' : saving ? '…' : <><span className="hidden sm:inline">{editId ? 'Update' : 'Save'} Report</span><span className="sm:hidden">Save</span></>}
-        </button>
-      </div>
+      <PageHeader
+        title={`Individual Report${equipmentName ? ` · ${equipmentName}` : ''}`}
+        actions={
+          <button
+            onClick={handleSave}
+            disabled={saving || saved}
+            className="px-3 md:px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
+          >
+            {saving && <Loader2 size={14} className="animate-spin"/>}
+            {saved ? '✓' : saving ? '…' : <><span className="hidden sm:inline">{editId ? 'Update' : 'Save'} Report</span><span className="sm:hidden">Save</span></>}
+          </button>
+        }
+      />
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
@@ -273,50 +239,7 @@ function IndividualReportContent() {
         </div>
 
         {/* Photos */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-800">Photos</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Tap the caption below each photo to add a label</p>
-            </div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
-            >
-              {uploading ? <Loader2 size={13} className="animate-spin"/> : <Camera size={13}/>}
-              {uploading ? 'Uploading…' : 'Add Photos'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-          </div>
-          {photos.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">No photos yet — tap &ldquo;Add Photos&rdquo; to attach images</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {photos.map((p, i) => (
-                <div key={i} className="relative group">
-                  <img
-                    src={p.url}
-                    alt={p.label || `Photo ${i + 1}`}
-                    className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"
-                  />
-                  <input
-                    value={p.label}
-                    onChange={e => updatePhotoLabel(i, e.target.value)}
-                    placeholder="Add label…"
-                    className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
-                  />
-                  <button
-                    onClick={() => setPhotos(ph => ph.filter((_, j) => j !== i))}
-                    className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                  >
-                    <X size={11}/>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PhotoUploadGrid photos={photos} onChange={setPhotos} />
       </div>
     </div>
   )

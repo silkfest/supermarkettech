@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  Home, FileText, Plus, Pencil, Trash2, ExternalLink,
+  FileText, Plus, Pencil, Trash2, ExternalLink,
   Loader2, X, AlertTriangle, Users, Lock, Phone, Mail,
   ChevronDown, ChevronUp, GripVertical, Shield, Megaphone, Pin, PinOff, CheckCircle2,
   MessageSquareWarning, Lightbulb, Bug,
@@ -20,6 +20,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import PageShell from '@/components/layout/PageShell'
+import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Policies types & constants ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -34,12 +37,6 @@ const TRADES  = [
   { key: 'refrigeration', label: 'Refrigeration' },
   { key: 'hvac',          label: 'HVAC' },
 ]
-const CAT_COLOURS: Record<string, string> = {
-  company_policy:  'bg-blue-50 text-blue-700 border-blue-200',
-  store_procedure: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  oncall:          'bg-amber-50 text-amber-700 border-amber-200',
-  truck_stock:     'bg-slate-100 text-slate-600 border-slate-200',
-}
 const TRADE_COLOURS: Record<string, string> = {
   refrigeration: 'bg-cyan-50 text-cyan-700 border-cyan-200',
   hvac:          'bg-orange-50 text-orange-700 border-orange-200',
@@ -493,6 +490,7 @@ function SortableSection({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CompanyHubPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [activeTab, setActiveTab] = useState<'announcements' | 'policies' | 'contacts' | 'feedback'>('policies')
   const [isAdmin,   setIsAdmin]   = useState(false)
   const [isManager, setIsManager] = useState(false)
@@ -541,7 +539,7 @@ export default function CompanyHubPage() {
   useEffect(() => { loadAnnouncements() }, [loadAnnouncements])
 
   async function deleteAnnouncement(id: string) {
-    if (!confirm('Delete this announcement?')) return
+    if (!await confirm({ message: 'Delete this announcement?', confirmLabel: 'Delete', danger: true })) return
     setDeletingAnnId(id)
     await fetch(`/api/announcements/${id}`, { method: 'DELETE' })
     setAnnouncements(prev => prev.filter(a => a.id !== id))
@@ -640,7 +638,7 @@ export default function CompanyHubPage() {
   useEffect(() => { loadPolicies() }, [loadPolicies])
 
   async function deletePolicy(id: string) {
-    if (!confirm('Delete this policy?')) return
+    if (!await confirm({ message: 'Delete this policy?', confirmLabel: 'Delete', danger: true })) return
     setDeletingPolId(id)
     await fetch(`/api/policies/${id}`, { method: 'DELETE' })
     setPolicies(prev => prev.filter(p => p.id !== id))
@@ -695,7 +693,7 @@ export default function CompanyHubPage() {
   useEffect(() => { loadSections() }, [loadSections])
 
   function toggleCollapse(id: string) {
-    setCollapsedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setCollapsedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -728,7 +726,7 @@ export default function CompanyHubPage() {
   }
 
   async function deleteSection(id: string) {
-    if (!confirm('Delete this section and all its contacts?')) return
+    if (!await confirm({ message: 'Delete this section and all its contacts?', confirmLabel: 'Delete', danger: true })) return
     setDeletingConId(id)
     await fetch(`/api/contacts/sections/${id}`, { method: 'DELETE' })
     setSections(prev => prev.filter(s => s.id !== id))
@@ -746,7 +744,7 @@ export default function CompanyHubPage() {
   }
 
   async function deleteContact(sectionId: string, contactId: string) {
-    if (!confirm('Remove this contact?')) return
+    if (!await confirm({ message: 'Remove this contact?', confirmLabel: 'Remove', danger: true })) return
     setDeletingConId(contactId)
     await fetch(`/api/contacts/entries/${contactId}`, { method: 'DELETE' })
     setSections(prev => prev.map(s => s.id !== sectionId ? s : { ...s, directory_contacts: s.directory_contacts.filter(c => c.id !== contactId) }))
@@ -759,6 +757,7 @@ export default function CompanyHubPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
 
       {/* Modals */}
       {(showAnnouncementModal || editingAnnouncement) && (
@@ -778,46 +777,40 @@ export default function CompanyHubPage() {
           onClose={() => { setContactModal(false); setEditingContact(null) }} />
       )}
 
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-          <Home size={18}/>
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Company Hub</span>
-
-        {/* Contextual add button */}
-        {activeTab === 'announcements' && isManager && (
-          <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-            <Plus size={13}/> New Announcement
-          </button>
-        )}
-        {activeTab === 'policies' && isAdmin && (
-          <button onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-            <Plus size={13}/> Add
-          </button>
-        )}
-        {activeTab === 'contacts' && isManager && (
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setEditMode(e => !e)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${editMode ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              {editMode ? 'Done editing' : 'Edit'}
-            </button>
-            {editMode && (
-              <button onClick={() => { setEditingSection(null); setSectionModal(true) }}
+      <PageHeader
+        title="Company Hub"
+        back={false}
+        actions={
+          <>
+            {activeTab === 'announcements' && isManager && (
+              <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-                <Plus size={13}/> Add Section
+                <Plus size={13}/> New Announcement
               </button>
             )}
-          </div>
-        )}
-      </div>
+            {activeTab === 'policies' && isAdmin && (
+              <button onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
+                <Plus size={13}/> Add
+              </button>
+            )}
+            {activeTab === 'contacts' && isManager && (
+              <>
+                <button onClick={() => setEditMode(e => !e)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${editMode ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  {editMode ? 'Done editing' : 'Edit'}
+                </button>
+                {editMode && (
+                  <button onClick={() => { setEditingSection(null); setSectionModal(true) }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
+                    <Plus size={13}/> Add Section
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* Tab selector */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 flex items-center gap-0.5">
@@ -886,11 +879,12 @@ export default function CompanyHubPage() {
           )}
 
           {!annLoading && !annError && announcements.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <Megaphone size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No announcements yet.</p>
-              {isManager && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;New Announcement&rdquo; in the header to post the first one.</p>}
-            </div>
+            <EmptyState
+              icon={Megaphone}
+              title="No announcements yet."
+              description={isManager ? 'Click "New Announcement" in the header to post the first one.' : undefined}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-14"
+            />
           )}
 
           {!annLoading && announcements.length > 0 && (
@@ -1108,11 +1102,12 @@ export default function CompanyHubPage() {
           )}
 
           {!conLoading && !conError && sections.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <Users size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No contacts yet</p>
-              {isManager && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &ldquo;Edit&rdquo; then &ldquo;+ Add Section&rdquo; to get started.</p>}
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No contacts yet"
+              description={isManager ? 'Click "Edit" then "+ Add Section" to get started.' : undefined}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl"
+            />
           )}
 
           {!conLoading && sections.length > 0 && (
@@ -1167,10 +1162,11 @@ export default function CompanyHubPage() {
           )}
 
           {!fbLoading && !fbError && visibleFeedback.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-14 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <MessageSquareWarning size={32} className="text-slate-300 dark:text-slate-600 mb-3"/>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No {fbFilter !== 'all' ? fbFilter : ''} feedback.</p>
-            </div>
+            <EmptyState
+              icon={MessageSquareWarning}
+              title={`No ${fbFilter !== 'all' ? fbFilter : ''} feedback.`}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-14"
+            />
           )}
 
           {!fbLoading && visibleFeedback.length > 0 && (

@@ -5,11 +5,13 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  Home, ArrowLeft, User, Award, GraduationCap, Calendar,
+  User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
-  FileText, Settings, MessageCircle, Send, Compass,
+  Settings, MessageCircle, Send, Compass,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CERT_TYPES = [
@@ -58,6 +60,75 @@ interface FeedbackEntry {
   rating_teamwork: number | null
   created_at: string
   manager: { name: string; email: string; role: string } | null
+}
+interface WrittenFeedbackEntry {
+  id: string
+  content: string | null
+  strengths: string | null
+  improvements: string | null
+  review_period: string | null
+  rating_overall: number | null
+  rating_technical: number | null
+  rating_safety: number | null
+  rating_teamwork: number | null
+  created_at: string
+  technician: { id: string; name: string; email: string; role: string } | null
+}
+
+interface FeedbackBodyFields {
+  rating_technical: number | null
+  rating_safety: number | null
+  rating_teamwork: number | null
+  strengths: string | null
+  improvements: string | null
+  content: string | null
+}
+
+function FeedbackBody({ f }: { f: FeedbackBodyFields }) {
+  return (
+    <>
+      {/* Category ratings */}
+      {(f.rating_technical || f.rating_safety || f.rating_teamwork) && (
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { label: 'Technical', value: f.rating_technical },
+            { label: 'Safety',    value: f.rating_safety },
+            { label: 'Teamwork',  value: f.rating_teamwork },
+          ] as { label: string; value: number | null }[]).filter(r => r.value).map(r => (
+            <div key={r.label} className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 text-center">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">{r.label}</p>
+              <div className="flex justify-center gap-0.5">
+                {[1,2,3,4,5].map(n => (
+                  <span key={n} className={`text-xs ${n <= (r.value ?? 0) ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`}>★</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Strengths */}
+      {f.strengths && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-lg px-3 py-2">
+          <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Strengths</p>
+          <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">{f.strengths}</p>
+        </div>
+      )}
+
+      {/* Improvements */}
+      {f.improvements && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
+          <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Areas for Improvement</p>
+          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">{f.improvements}</p>
+        </div>
+      )}
+
+      {/* Notes */}
+      {f.content && (
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{f.content}</p>
+      )}
+    </>
+  )
 }
 
 function fmt(dateStr: string | null) {
@@ -183,6 +254,7 @@ function AddCertModal({ userId, onSave, onClose }: { userId: string; onSave: (c:
 function ProfileContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [currentUser,  setCurrentUser]  = useState<Profile | null>(null)
   const [profile,      setProfile]      = useState<Profile | null>(null)
@@ -201,6 +273,8 @@ function ProfileContent() {
 
   // Feedback
   const [feedback,        setFeedback]         = useState<FeedbackEntry[]>([])
+  const [writtenFeedback, setWrittenFeedback]  = useState<WrittenFeedbackEntry[]>([])
+  const [reviewsTab,      setReviewsTab]       = useState<'received' | 'written'>('received')
   const [fbStrengths,     setFbStrengths]      = useState('')
   const [fbImprovements,  setFbImprovements]   = useState('')
   const [fbNotes,         setFbNotes]          = useState('')
@@ -227,15 +301,20 @@ function ProfileContent() {
     setCurrentUser(me as Profile)
 
     const targetId = userId ?? targetUserId ?? user.id
-    const [res, fbRes] = await Promise.all([
+    const meRole = (me as Profile).role
+    const isManagerSelf = ['admin', 'manager'].includes(meRole) && targetId === user.id
+
+    const [res, fbRes, writtenRes] = await Promise.all([
       fetch(`/api/profile?userId=${targetId}`),
       fetch(`/api/feedback?userId=${targetId}`),
+      isManagerSelf ? fetch('/api/feedback?writtenBy=me') : Promise.resolve(null),
     ])
     if (!res.ok) { router.push('/dashboard'); return }
     const data = await res.json()
     setProfile(data.profile as Profile)
     setCerts(data.certs as Cert[])
     if (fbRes.ok) setFeedback(await fbRes.json())
+    if (writtenRes?.ok) setWrittenFeedback(await writtenRes.json())
 
     // Init editable fields
     setEditStartDate(data.profile.apprenticeship_start_date ?? '')
@@ -297,7 +376,7 @@ function ProfileContent() {
   }
 
   async function deleteCert(certId: string) {
-    if (!confirm('Remove this certificate?')) return
+    if (!await confirm({ message: 'Remove this certificate?', confirmLabel: 'Remove', danger: true })) return
     setDeletingCert(certId)
     await fetch(`/api/tech-certs/${certId}`, { method: 'DELETE' })
     setCerts(prev => prev.filter(c => c.id !== certId))
@@ -318,6 +397,7 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       {showAddCert && (
         <AddCertModal
           userId={profile.id}
@@ -326,17 +406,7 @@ function ProfileContent() {
         />
       )}
 
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><Home size={18}/></button>
-        <button onClick={() => router.back()}             className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><ArrowLeft size={18}/></button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Profile</span>
-      </div>
+      <PageHeader title="Profile" />
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5">
 
@@ -524,37 +594,29 @@ function ProfileContent() {
           )}
         </div>
 
-        {/* ── Policies & Procedures quick link ──────────────────────────────── */}
-        <button
-          onClick={() => router.push('/policies')}
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
-        >
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-            <FileText size={18} className="text-indigo-600 dark:text-indigo-400"/>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Policies &amp; Procedures</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Company policies, store procedures, on-call schedule, truck stock</p>
-          </div>
-          <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
-        </button>
-
-        {/* ── My Training quick link — apprentices and journeymen ────────────── */}
-        {isOwnProfile && ['apprentice', 'journeyman'].includes(profile.role) && (
-          <button
-            onClick={() => router.push('/apprentice/training')}
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <GraduationCap size={18} className="text-amber-600 dark:text-amber-400"/>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">My Training</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">View your training modules, progress, and assigned tasks</p>
-            </div>
-            <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
-          </button>
-        )}
+        {/* ── Training quick link — own profile, all roles ──────────────────── */}
+        {isOwnProfile && (() => {
+          const isField = ['apprentice', 'journeyman'].includes(profile.role)
+          return (
+            <button
+              onClick={() => router.push('/apprentice/training')}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <GraduationCap size={18} className="text-amber-600 dark:text-amber-400"/>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{isField ? 'My Training' : 'Training'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {isField
+                    ? 'View your training modules, progress, and assigned tasks'
+                    : 'Track apprentice courses, progress, and 313A task stats'}
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
+            </button>
+          )
+        })()}
 
         {/* ── Reviews & Feedback ───────────────────────────────────────────── */}
         {(isOwnProfile || ['admin', 'manager'].includes(currentUser?.role ?? '')) && (
@@ -562,13 +624,38 @@ function ProfileContent() {
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <MessageCircle size={15} className="text-slate-400 dark:text-slate-500"/>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reviews &amp; Feedback</p>
-              {feedback.length > 0 && (
+              {reviewsTab === 'received' && feedback.length > 0 && (
                 <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-slate-500">{feedback.length} review{feedback.length > 1 ? 's' : ''}</span>
+              )}
+              {reviewsTab === 'written' && writtenFeedback.length > 0 && (
+                <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-slate-500">{writtenFeedback.length} review{writtenFeedback.length > 1 ? 's' : ''}</span>
               )}
             </div>
 
+            {/* Received / Written tabs — manager's own profile only */}
+            {isOwnProfile && ['admin', 'manager'].includes(currentUser?.role ?? '') && (
+              <div className="px-4 pt-3 flex gap-1 border-b border-slate-100 dark:border-slate-800">
+                {([
+                  { key: 'received', label: 'Reviews I’ve Received' },
+                  { key: 'written',  label: 'Reviews I’ve Written' },
+                ] as { key: 'received' | 'written'; label: string }[]).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setReviewsTab(tab.key)}
+                    className={`px-3 py-1.5 -mb-px text-xs font-medium border-b-2 transition-colors ${
+                      reviewsTab === tab.key
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Manager write form */}
-            {!isOwnProfile && ['admin', 'manager'].includes(currentUser?.role ?? '') && (
+            {reviewsTab === 'received' && !isOwnProfile && ['admin', 'manager'].includes(currentUser?.role ?? '') && (
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-4">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">New Review</p>
 
@@ -661,75 +748,78 @@ function ProfileContent() {
               </div>
             )}
 
-            {/* Feedback list */}
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {feedback.length === 0 ? (
-                <p className="px-4 py-6 text-xs text-slate-400 dark:text-slate-500 text-center">No reviews yet.</p>
-              ) : feedback.map(f => (
-                <div key={f.id} className="p-4 space-y-3">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        {f.manager?.name ?? f.manager?.email ?? 'Manager'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                        {f.review_period ? `${f.review_period} · ` : ''}
-                        {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </p>
-                    </div>
-                    {/* Overall rating badge */}
-                    {f.rating_overall && (
-                      <div className="flex-shrink-0 flex items-center gap-0.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-2 py-1">
-                        <span className="text-amber-500 text-xs">★</span>
-                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{f.rating_overall}/5</span>
+            {/* Feedback list — received */}
+            {reviewsTab === 'received' && (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {feedback.length === 0 ? (
+                  <p className="px-4 py-6 text-xs text-slate-400 dark:text-slate-500 text-center">No reviews yet.</p>
+                ) : feedback.map(f => (
+                  <div key={f.id} className="p-4 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {f.manager?.name ?? f.manager?.email ?? 'Manager'}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          {f.review_period ? `${f.review_period} · ` : ''}
+                          {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Category ratings */}
-                  {(f.rating_technical || f.rating_safety || f.rating_teamwork) && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {([
-                        { label: 'Technical', value: f.rating_technical },
-                        { label: 'Safety',    value: f.rating_safety },
-                        { label: 'Teamwork',  value: f.rating_teamwork },
-                      ] as { label: string; value: number | null }[]).filter(r => r.value).map(r => (
-                        <div key={r.label} className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 text-center">
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">{r.label}</p>
-                          <div className="flex justify-center gap-0.5">
-                            {[1,2,3,4,5].map(n => (
-                              <span key={n} className={`text-xs ${n <= (r.value ?? 0) ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`}>★</span>
-                            ))}
-                          </div>
+                      {/* Overall rating badge */}
+                      {f.rating_overall && (
+                        <div className="flex-shrink-0 flex items-center gap-0.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-2 py-1">
+                          <span className="text-amber-500 text-xs">★</span>
+                          <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{f.rating_overall}/5</span>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
 
-                  {/* Strengths */}
-                  {f.strengths && (
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-lg px-3 py-2">
-                      <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Strengths</p>
-                      <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">{f.strengths}</p>
+                    <FeedbackBody f={f}/>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Feedback list — written by this manager */}
+            {reviewsTab === 'written' && (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {writtenFeedback.length === 0 ? (
+                  <p className="px-4 py-6 text-xs text-slate-400 dark:text-slate-500 text-center">You haven&apos;t written any reviews yet.</p>
+                ) : writtenFeedback.map(f => (
+                  <div key={f.id} className="p-4 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        {f.technician ? (
+                          <button
+                            onClick={() => router.push(`/profile?userId=${f.technician?.id}`)}
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                          >
+                            {f.technician.name ?? f.technician.email}
+                          </button>
+                        ) : (
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Technician</p>
+                        )}
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          {f.review_period ? `${f.review_period} · ` : ''}
+                          {new Date(f.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
+                      </div>
+                      {/* Overall rating badge */}
+                      {f.rating_overall && (
+                        <div className="flex-shrink-0 flex items-center gap-0.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-2 py-1">
+                          <span className="text-amber-500 text-xs">★</span>
+                          <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{f.rating_overall}/5</span>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {/* Improvements */}
-                  {f.improvements && (
-                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
-                      <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Areas for Improvement</p>
-                      <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">{f.improvements}</p>
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {f.content && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{f.content}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+                    <FeedbackBody f={f}/>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

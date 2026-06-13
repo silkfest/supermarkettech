@@ -5,10 +5,11 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle, Wind,
-  ChevronLeft, Thermometer, Gauge, Target, Trophy, Dices, BookOpen, Snowflake,
+  Thermometer, Gauge, Target, Trophy, Dices, BookOpen, Snowflake,
   Eye, EyeOff, SlidersHorizontal, ClipboardList, GraduationCap,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import PageHeader from '@/components/PageHeader'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import Co2BoosterVisual from '@/components/simulation/visuals/Co2BoosterVisual'
@@ -716,34 +717,30 @@ export default function Co2BoosterSimulatorPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
 
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap sticky top-0 z-10">
-        <button onClick={() => router.push('/simulation')}
-          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
-          title="Back to rack selection">
-          <ChevronLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-400">Cold</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">CO2 Transcritical Booster</span>
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>
-            {hasCritical ? 'ALARM' : hasWarning ? 'WARNING' : 'NORMAL'}
-          </span>
-          {activeFaultCount > 0 && (
-            <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
-              {activeFaultCount} fault{activeFaultCount !== 1 ? 's' : ''}
+      <PageHeader
+        title="CO2 Transcritical Booster"
+        home={false}
+        back="/simulation"
+        variant="learning"
+        className="flex-wrap sm:flex-nowrap gap-2 sm:gap-3 py-3"
+        actions={
+          <>
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>
+              {hasCritical ? 'ALARM' : hasWarning ? 'WARNING' : 'NORMAL'}
             </span>
-          )}
-          <button onClick={resetAll}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-            <RotateCcw size={13} />
-            Reset
-          </button>
-        </div>
-      </div>
+            {activeFaultCount > 0 && (
+              <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+                {activeFaultCount} fault{activeFaultCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            <button onClick={resetAll}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <RotateCcw size={13} />
+              Reset
+            </button>
+          </>
+        }
+      />
 
       <LearningTabBar />
       <div className="max-w-6xl mx-auto w-full px-4 py-4 space-y-4">

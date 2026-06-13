@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, Package, Wrench, Pencil, Check, X,
-  Building2, MapPin, Calendar, Thermometer, Tag, StickyNote,
+  MapPin, Calendar, Thermometer, Tag, StickyNote,
   ClipboardList, ChevronRight, Wind, RefrigeratorIcon, Home,
   FileText, ExternalLink, Loader2, ListChecks, Plus,
   Camera, Image as ImageIcon, Workflow,
@@ -65,30 +65,21 @@ interface DocRow {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const EQUIP_TYPES = [
-  { value: 'rack',         label: 'Refrigeration Rack' },
-  { value: 'display_case', label: 'Display Case' },
-  { value: 'walk_in',      label: 'Walk-In Cooler/Freezer' },
-  { value: 'hvac',         label: 'HVAC Unit' },
-  { value: 'condenser',    label: 'Condenser Unit' },
-  { value: 'other',        label: 'Other' },
-]
-
 const TYPE_META: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
-  rack:         { bg: 'bg-blue-50',    text: 'text-blue-600',   icon: <RefrigeratorIcon size={20}/>, label: 'Refrigeration Rack' },
-  display_case: { bg: 'bg-cyan-50',    text: 'text-cyan-600',   icon: <RefrigeratorIcon size={20}/>, label: 'Display Case' },
-  walk_in:      { bg: 'bg-indigo-50',  text: 'text-indigo-600', icon: <RefrigeratorIcon size={20}/>, label: 'Walk-In' },
-  hvac:         { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={20}/>,             label: 'HVAC Unit' },
-  condenser:    { bg: 'bg-violet-50',  text: 'text-violet-600', icon: <Thermometer size={20}/>,      label: 'Condenser' },
-  other:        { bg: 'bg-slate-100',  text: 'text-slate-500',  icon: <Package size={20}/>,          label: 'Other' },
+  rack:         { bg: 'bg-blue-50 dark:bg-blue-500/10',       text: 'text-blue-600 dark:text-blue-400',       icon: <RefrigeratorIcon size={20}/>, label: 'Refrigeration Rack' },
+  display_case: { bg: 'bg-cyan-50 dark:bg-cyan-500/10',       text: 'text-cyan-600 dark:text-cyan-400',       icon: <RefrigeratorIcon size={20}/>, label: 'Display Case' },
+  walk_in:      { bg: 'bg-indigo-50 dark:bg-indigo-500/10',   text: 'text-indigo-600 dark:text-indigo-400',   icon: <RefrigeratorIcon size={20}/>, label: 'Walk-In' },
+  hvac:         { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', icon: <Wind size={20}/>,             label: 'HVAC Unit' },
+  condenser:    { bg: 'bg-violet-50 dark:bg-violet-500/10',   text: 'text-violet-600 dark:text-violet-400',   icon: <Thermometer size={20}/>,      label: 'Condenser' },
+  other:        { bg: 'bg-slate-100 dark:bg-slate-800',       text: 'text-slate-500 dark:text-slate-400',     icon: <Package size={20}/>,          label: 'Other' },
 }
 
 const STATUS_STYLES: Record<string, { dot: string; badge: string }> = {
-  OK:      { dot: 'bg-green-500',  badge: 'bg-green-50 text-green-700 border-green-200' },
-  WARNING: { dot: 'bg-amber-400',  badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ALARM:   { dot: 'bg-red-500',    badge: 'bg-red-50 text-red-700 border-red-200' },
-  OFFLINE: { dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-600 border-slate-200' },
-  UNKNOWN: { dot: 'bg-slate-300',  badge: 'bg-slate-50 text-slate-500 border-slate-200' },
+  OK:      { dot: 'bg-green-500',  badge: 'bg-green-50 dark:bg-emerald-500/10 text-green-700 dark:text-emerald-400 border-green-200 dark:border-emerald-500/30' },
+  WARNING: { dot: 'bg-amber-400',  badge: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' },
+  ALARM:   { dot: 'bg-red-500',    badge: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30' },
+  OFFLINE: { dot: 'bg-slate-400',  badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700' },
+  UNKNOWN: { dot: 'bg-slate-300',  badge: 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700' },
 }
 
 const STATUSES = ['OK', 'WARNING', 'ALARM', 'OFFLINE', 'UNKNOWN']
@@ -241,13 +232,13 @@ export default function EquipmentDetailPage() {
   }
 
   if (loading) return (
-    <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
       Loading…
     </div>
   )
 
   if (!equip) return (
-    <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
       Equipment not found.
     </div>
   )
@@ -256,26 +247,26 @@ export default function EquipmentDetailPage() {
   const statusStyle = STATUS_STYLES[equip.status] ?? STATUS_STYLES.UNKNOWN
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => router.push('/dashboard')}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           title="Dashboard"
         >
           <Home size={18} />
         </button>
         <button
           onClick={() => equip.store_id ? router.push(`/stores/${equip.store_id}`) : router.back()}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           title="Back"
         >
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold text-slate-900 truncate">{equip.name}</h1>
-          <p className="text-xs text-slate-500">{equip.stores?.name ?? '—'}</p>
+          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">{equip.name}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{equip.stores?.name ?? '—'}</p>
         </div>
         <span className={`text-[11px] font-semibold px-2 py-1 rounded-full border ${statusStyle.badge}`}>
           {equip.status}
@@ -286,24 +277,24 @@ export default function EquipmentDetailPage() {
 
         {/* Save confirmation flash */}
         {savedField && (
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700 animate-pulse-once">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-xl text-xs text-green-700 dark:text-emerald-400 animate-pulse-once">
             <Check size={12}/> Saved
           </div>
         )}
 
         {/* Equipment card */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Type banner */}
-          <div className={`flex items-center gap-3 px-4 py-3 ${meta.bg} border-b border-slate-100`}>
+          <div className={`flex items-center gap-3 px-4 py-3 ${meta.bg} border-b border-slate-100 dark:border-slate-800`}>
             <div className={`${meta.text}`}>{meta.icon}</div>
             <div>
               <p className={`text-sm font-semibold ${meta.text}`}>{meta.label}</p>
-              <p className="text-xs text-slate-500">{equip.stores?.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{equip.stores?.name}</p>
             </div>
           </div>
 
           {/* Detail rows */}
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             <EditableRow label="Manufacturer" icon={<Tag size={13}/>} value={equip.manufacturer}
               isAdmin={isAdmin} fieldKey="manufacturer" editField={editField} editVal={editVal}
               saving={saving} placeholder="e.g. Copeland"
@@ -325,16 +316,16 @@ export default function EquipmentDetailPage() {
 
             {/* Refrigerant — select */}
             <div className="flex items-center gap-3 px-4 py-2.5">
-              <span className="text-slate-400 flex-shrink-0"><Thermometer size={13}/></span>
+              <span className="text-slate-400 dark:text-slate-500 flex-shrink-0"><Thermometer size={13}/></span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Refrigerant</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">Refrigerant</p>
                 {editField === 'refrigerant' ? (
                   <div className="flex items-center gap-2 mt-0.5">
                     <select
                       value={editVal}
                       onChange={e => setEditVal(e.target.value)}
                       autoFocus
-                      className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none bg-white"
+                      className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-lg focus:outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
                       <option value="">— select —</option>
                       {REFRIGERANTS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -343,17 +334,17 @@ export default function EquipmentDetailPage() {
                       className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                       <Check size={12}/>
                     </button>
-                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg">
+                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                       <X size={12}/>
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-800">{equip.refrigerant || <span className="text-slate-400 italic">Not set</span>}</p>
+                  <p className="text-sm text-slate-800 dark:text-slate-200">{equip.refrigerant || <span className="text-slate-400 dark:text-slate-500 italic">Not set</span>}</p>
                 )}
               </div>
               {isAdmin && editField !== 'refrigerant' && (
                 <button onClick={() => { setEditField('refrigerant'); setEditVal(equip.refrigerant ?? '') }}
-                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg flex-shrink-0">
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex-shrink-0">
                   <Pencil size={12}/>
                 </button>
               )}
@@ -361,18 +352,18 @@ export default function EquipmentDetailPage() {
 
             {/* Status — select */}
             <div className="flex items-center gap-3 px-4 py-2.5">
-              <span className="text-slate-400 flex-shrink-0">
+              <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">
                 <div className={`w-3 h-3 rounded-full ${statusStyle.dot}`}/>
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</p>
                 {editField === 'status' ? (
                   <div className="flex items-center gap-2 mt-0.5">
                     <select
                       value={editVal}
                       onChange={e => setEditVal(e.target.value)}
                       autoFocus
-                      className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none bg-white"
+                      className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-lg focus:outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
                       {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -380,17 +371,17 @@ export default function EquipmentDetailPage() {
                       className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                       <Check size={12}/>
                     </button>
-                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg">
+                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                       <X size={12}/>
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-800">{equip.status}</p>
+                  <p className="text-sm text-slate-800 dark:text-slate-200">{equip.status}</p>
                 )}
               </div>
               {isAdmin && editField !== 'status' && (
                 <button onClick={() => { setEditField('status'); setEditVal(equip.status) }}
-                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg flex-shrink-0">
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex-shrink-0">
                   <Pencil size={12}/>
                 </button>
               )}
@@ -405,9 +396,9 @@ export default function EquipmentDetailPage() {
 
             {/* Install date */}
             <div className="flex items-center gap-3 px-4 py-2.5">
-              <span className="text-slate-400 flex-shrink-0"><Calendar size={13}/></span>
+              <span className="text-slate-400 dark:text-slate-500 flex-shrink-0"><Calendar size={13}/></span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Install date</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">Install date</p>
                 {editField === 'installedAt' ? (
                   <div className="flex items-center gap-2 mt-0.5">
                     <input
@@ -415,23 +406,23 @@ export default function EquipmentDetailPage() {
                       value={editVal}
                       onChange={e => setEditVal(e.target.value)}
                       autoFocus
-                      className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none"
+                      className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-lg focus:outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                     <button onClick={() => saveField('installedAt', editVal)} disabled={saving}
                       className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                       <Check size={12}/>
                     </button>
-                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg">
+                    <button onClick={() => setEditField(null)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                       <X size={12}/>
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-800">{fmtDate(equip.installed_at)}</p>
+                  <p className="text-sm text-slate-800 dark:text-slate-200">{fmtDate(equip.installed_at)}</p>
                 )}
               </div>
               {isAdmin && editField !== 'installedAt' && (
                 <button onClick={() => { setEditField('installedAt'); setEditVal(equip.installed_at?.slice(0,10) ?? '') }}
-                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg flex-shrink-0">
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex-shrink-0">
                   <Pencil size={12}/>
                 </button>
               )}
@@ -439,9 +430,9 @@ export default function EquipmentDetailPage() {
           </div>
 
           {/* Specifications */}
-          <div className="px-4 py-3 border-t border-slate-100">
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <ListChecks size={13}/> Specifications
               </div>
               {isAdmin && !editingSpecs && (
@@ -450,7 +441,7 @@ export default function EquipmentDetailPage() {
                     setSpecsDraft(equip.specs && equip.specs.length ? equip.specs.map(s => ({ ...s })) : [{ label: '', value: '' }])
                     setEditingSpecs(true)
                   }}
-                  className="p-1 rounded-md hover:bg-slate-100 text-slate-400">
+                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500">
                   <Pencil size={12}/>
                 </button>
               )}
@@ -463,23 +454,23 @@ export default function EquipmentDetailPage() {
                       value={row.label}
                       onChange={e => setSpecsDraft(d => d.map((r, j) => j === i ? { ...r, label: e.target.value } : r))}
                       placeholder="Label (e.g. Compressor Voltage)"
-                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                     <input
                       value={row.value}
                       onChange={e => setSpecsDraft(d => d.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
                       placeholder="Value (e.g. 575V / 3-ph / 60Hz)"
-                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                     <button onClick={() => setSpecsDraft(d => d.filter((_, j) => j !== i))}
-                      className="p-1.5 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 flex-shrink-0">
+                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0">
                       <X size={13}/>
                     </button>
                   </div>
                 ))}
                 <div className="flex items-center gap-2 pt-0.5">
                   <button onClick={() => setSpecsDraft(d => [...d, { label: '', value: '' }])}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg hover:bg-slate-50">
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
                     <Plus size={12}/> Add row
                   </button>
                   <div className="flex-1"/>
@@ -487,34 +478,34 @@ export default function EquipmentDetailPage() {
                     className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50">
                     <Check size={12}/> Save
                   </button>
-                  <button onClick={() => setEditingSpecs(false)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">
+                  <button onClick={() => setEditingSpecs(false)} className="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                     Cancel
                   </button>
                 </div>
               </div>
             ) : equip.specs && equip.specs.length > 0 ? (
-              <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+              <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
                 {equip.specs.map((s, i) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60">
-                    <span className="text-xs text-slate-500 flex-1">{s.label}</span>
-                    <span className="text-xs font-medium text-slate-700 text-right">{s.value}</span>
+                  <div key={i} className="flex items-center gap-3 px-3 py-2 odd:bg-slate-50/60 dark:odd:bg-slate-800/60">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 flex-1">{s.label}</span>
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 text-right">{s.value}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 italic">No specifications added</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 italic">No specifications added</p>
             )}
           </div>
 
           {/* Notes */}
-          <div className="px-4 py-3 border-t border-slate-100">
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <StickyNote size={13}/> Notes
               </div>
               {isAdmin && editField !== 'notes' && (
                 <button onClick={() => { setEditField('notes'); setEditVal(equip.notes ?? '') }}
-                  className="p-1 rounded-md hover:bg-slate-100 text-slate-400">
+                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500">
                   <Pencil size={12}/>
                 </button>
               )}
@@ -525,7 +516,7 @@ export default function EquipmentDetailPage() {
                   value={editVal}
                   onChange={e => setEditVal(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   autoFocus
                 />
                 <div className="flex gap-2">
@@ -533,13 +524,13 @@ export default function EquipmentDetailPage() {
                     className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50">
                     <Check size={12}/> Save
                   </button>
-                  <button onClick={() => setEditField(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">
+                  <button onClick={() => setEditField(null)} className="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <p className={`text-sm whitespace-pre-wrap ${equip.notes ? 'text-slate-700' : 'text-slate-400 italic'}`}>
+              <p className={`text-sm whitespace-pre-wrap ${equip.notes ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500 italic'}`}>
                 {equip.notes || 'No notes'}
               </p>
             )}
@@ -550,35 +541,35 @@ export default function EquipmentDetailPage() {
         <div className="flex gap-2">
           <button
             onClick={() => router.push(`/maintenance/individual-report?equipmentId=${equip.id}&equipmentName=${encodeURIComponent(equip.name)}`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-purple-300 hover:shadow-sm transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 font-medium hover:border-purple-300 dark:hover:border-purple-500/50 hover:shadow-sm transition-all"
           >
             <ClipboardList size={15} className="text-purple-500"/> Individual Report
           </button>
           <button
             onClick={() => router.push(`/maintenance/components?equipmentId=${equip.id}&equipmentName=${encodeURIComponent(equip.name)}`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 font-medium hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-sm transition-all"
           >
             <Package size={15} className="text-blue-500"/> Components
           </button>
         </div>
 
         {/* Documents */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Manuals & Documents</p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Manuals & Documents</p>
           </div>
           {loadingDocs ? (
-            <div className="flex items-center gap-2 px-4 py-4 text-xs text-slate-400">
+            <div className="flex items-center gap-2 px-4 py-4 text-xs text-slate-400 dark:text-slate-500">
               <Loader2 size={12} className="animate-spin"/> Loading…
             </div>
           ) : documents.length === 0 ? (
             <div className="px-4 py-5 text-center">
-              <FileText size={20} className="text-slate-200 mx-auto mb-1.5"/>
-              <p className="text-xs text-slate-400">No manuals linked yet</p>
-              <p className="text-[11px] text-slate-300 mt-0.5">Open this unit in the dashboard to link or upload a manual</p>
+              <FileText size={20} className="text-slate-200 dark:text-slate-700 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No manuals linked yet</p>
+              <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-0.5">Open this unit in the dashboard to link or upload a manual</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {documents.map(doc => {
                 const ready = doc.status === 'READY' && doc.url
                 const processing = doc.status === 'PROCESSING'
@@ -588,27 +579,27 @@ export default function EquipmentDetailPage() {
                     href={doc.url!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     <FileText size={14} className="text-red-400 flex-shrink-0"/>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-blue-600 truncate">{doc.title}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">{doc.title}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
                         {doc.page_count ? `${doc.page_count} pages` : 'PDF'}
                         {doc.file_size ? ` · ${Math.round(doc.file_size / 1024)}KB` : ''}
                       </p>
                     </div>
-                    <ExternalLink size={12} className="text-slate-300 flex-shrink-0"/>
+                    <ExternalLink size={12} className="text-slate-300 dark:text-slate-600 flex-shrink-0"/>
                   </a>
                 ) : (
                   <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
                     {processing
                       ? <Loader2 size={14} className="text-amber-400 animate-spin flex-shrink-0"/>
-                      : <FileText size={14} className="text-slate-300 flex-shrink-0"/>
+                      : <FileText size={14} className="text-slate-300 dark:text-slate-600 flex-shrink-0"/>
                     }
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-500 truncate">{doc.title}</p>
-                      <p className="text-xs text-slate-400">{processing ? 'Processing…' : doc.status}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{doc.title}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{processing ? 'Processing…' : doc.status}</p>
                     </div>
                   </div>
                 )
@@ -618,16 +609,16 @@ export default function EquipmentDetailPage() {
         </div>
 
         {/* Photos */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <ImageIcon size={13}/> Photos
             </p>
             {isAdmin && (
               <button
                 onClick={() => photoFileRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 disabled:opacity-50"
               >
                 {uploadingPhoto ? <Loader2 size={12} className="animate-spin"/> : <Camera size={12}/>}
                 {uploadingPhoto ? 'Uploading…' : 'Add Photos'}
@@ -638,24 +629,25 @@ export default function EquipmentDetailPage() {
           </div>
           {(equip.photos ?? []).length === 0 ? (
             <div className="px-4 py-5 text-center">
-              <ImageIcon size={20} className="text-slate-200 mx-auto mb-1.5"/>
-              <p className="text-xs text-slate-400">No photos yet</p>
+              <ImageIcon size={20} className="text-slate-200 dark:text-slate-700 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No photos yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
               {(equip.photos ?? []).map((p, i) => (
                 <div key={i} className="relative group">
-                  <img src={p.url} alt={p.label || `Photo ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"/>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt={p.label || `Photo ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200 dark:border-slate-700"/>
                   {isAdmin ? (
                     <input
                       value={p.label}
                       onChange={e => updateMediaLabel('photos', i, e.target.value)}
                       onBlur={() => saveMedia('photos', equip.photos ?? [])}
                       placeholder="Add label…"
-                      className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
+                      className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 dark:text-slate-400 bg-transparent border border-transparent rounded hover:border-slate-200 dark:hover:border-slate-700 focus:border-blue-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 transition-colors"
                     />
                   ) : p.label ? (
-                    <p className="mt-1 px-1.5 text-[11px] text-slate-500 truncate">{p.label}</p>
+                    <p className="mt-1 px-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">{p.label}</p>
                   ) : null}
                   {isAdmin && (
                     <button onClick={() => removeMedia('photos', i)}
@@ -670,16 +662,16 @@ export default function EquipmentDetailPage() {
         </div>
 
         {/* Wiring Diagrams */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Workflow size={13}/> Wiring Diagrams
             </p>
             {isAdmin && (
               <button
                 onClick={() => diagramFileRef.current?.click()}
                 disabled={uploadingDiagram}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 disabled:opacity-50"
               >
                 {uploadingDiagram ? <Loader2 size={12} className="animate-spin"/> : <Plus size={12}/>}
                 {uploadingDiagram ? 'Uploading…' : 'Add Diagram'}
@@ -690,8 +682,8 @@ export default function EquipmentDetailPage() {
           </div>
           {(equip.wiring_diagrams ?? []).length === 0 ? (
             <div className="px-4 py-5 text-center">
-              <Workflow size={20} className="text-slate-200 mx-auto mb-1.5"/>
-              <p className="text-xs text-slate-400">No wiring diagrams yet</p>
+              <Workflow size={20} className="text-slate-200 dark:text-slate-700 mx-auto mb-1.5"/>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No wiring diagrams yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
@@ -701,13 +693,14 @@ export default function EquipmentDetailPage() {
                   <div key={i} className="relative group">
                     {isPdf ? (
                       <a href={d.url} target="_blank" rel="noopener noreferrer"
-                        className="w-full aspect-[4/3] flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                        className="w-full aspect-[4/3] flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                         <FileText size={22} className="text-red-400"/>
-                        <span className="text-[11px] text-blue-600">Open PDF</span>
+                        <span className="text-[11px] text-blue-600 dark:text-blue-400">Open PDF</span>
                       </a>
                     ) : (
                       <a href={d.url} target="_blank" rel="noopener noreferrer">
-                        <img src={d.url} alt={d.label || `Diagram ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200"/>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={d.url} alt={d.label || `Diagram ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-slate-200 dark:border-slate-700"/>
                       </a>
                     )}
                     {isAdmin ? (
@@ -716,10 +709,10 @@ export default function EquipmentDetailPage() {
                         onChange={e => updateMediaLabel('wiring_diagrams', i, e.target.value)}
                         onBlur={() => saveMedia('wiring_diagrams', equip.wiring_diagrams ?? [])}
                         placeholder="Add label…"
-                        className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 bg-transparent border border-transparent rounded hover:border-slate-200 focus:border-blue-400 focus:outline-none focus:bg-white transition-colors"
+                        className="w-full mt-1 px-1.5 py-0.5 text-[11px] text-slate-500 dark:text-slate-400 bg-transparent border border-transparent rounded hover:border-slate-200 dark:hover:border-slate-700 focus:border-blue-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 transition-colors"
                       />
                     ) : d.label ? (
-                      <p className="mt-1 px-1.5 text-[11px] text-slate-500 truncate">{d.label}</p>
+                      <p className="mt-1 px-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">{d.label}</p>
                     ) : null}
                     {isAdmin && (
                       <button onClick={() => removeMedia('wiring_diagrams', i)}
@@ -737,7 +730,7 @@ export default function EquipmentDetailPage() {
         {/* Service History — PM reports and individual reports combined into one spot, newest first */}
         {(equip.pm_history.length + equip.individual_reports.length) > 0 && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 px-1">
               Service history ({equip.pm_history.length + equip.individual_reports.length})
             </p>
             <div className="flex flex-col gap-2">
@@ -747,29 +740,29 @@ export default function EquipmentDetailPage() {
               ]
                 .sort((a, b) => +new Date(b.performed_at) - +new Date(a.performed_at))
                 .map(entry => entry.kind === 'pm' ? (
-                  <div key={`pm-${entry.id}`} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                      <Wrench size={14} className="text-slate-500"/>
+                  <div key={`pm-${entry.id}`} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                      <Wrench size={14} className="text-slate-500 dark:text-slate-400"/>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800">{fmtPmType(entry.report_type)}</p>
-                      <p className="text-xs text-slate-400">{fmtDate(entry.performed_at)}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{fmtPmType(entry.report_type)}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{fmtDate(entry.performed_at)}</p>
                     </div>
                   </div>
                 ) : (
                   <button
                     key={`ir-${entry.id}`}
                     onClick={() => router.push(`/maintenance/report/${entry.id}?type=individual&report_type=`)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:border-purple-300 hover:shadow-sm transition-all"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:border-purple-300 dark:hover:border-purple-500/50 hover:shadow-sm transition-all"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0">
                       <ClipboardList size={14} className="text-purple-500"/>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{entry.issue_explanation || 'Individual Report'}</p>
-                      <p className="text-xs text-slate-400">{fmtDate(entry.performed_at)}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{entry.issue_explanation || 'Individual Report'}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{fmtDate(entry.performed_at)}</p>
                     </div>
-                    <ChevronRight size={14} className="text-slate-300 flex-shrink-0"/>
+                    <ChevronRight size={14} className="text-slate-300 dark:text-slate-600 flex-shrink-0"/>
                   </button>
                 ))}
             </div>

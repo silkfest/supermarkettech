@@ -201,19 +201,53 @@ Use `![alt text](url)` on its own line. Optionally add a caption: `![alt](url "C
 Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownContent.tsx`. Insert with `[diagram:key-name]` on its own line. Currently registered:
 - `rack-style-1`, `rack-style-2`, `paragon-timer`, `compressor-terminals`, `ice-harvest-cycle`
 
+### PT Chart Ground Truth — Verify Before Citing
+
+Refrigerant pressure↔temperature pairings are easy to get subtly wrong from memory (a June 2026
+correction fixed a topic that paired 200 psig with ~70°F SCT for R-404A — the real value is
+~89°F). **Whenever new content states a saturation pressure/temperature pair, check it against
+the verified data points below** (sourced from Hudson Tech / National Refrigerants PT charts).
+If a pairing you need isn't covered, interpolate between the nearest two points below rather
+than relying on recalled values — or note it as approximate.
+
+**R-404A** (psig, saturation):
+| °F | psig | °F | psig |
+|---|---|---|---|
+| -20 | 4.3 | 32 | ~73 |
+| 0 | 26.1 | 70 | ~149 |
+| 20 | 45.9 | 80 | ~175 |
+| | | 90 | ~204 |
+
+**R-448A / R-449A** (psig, liquid/bubble — vapor runs noticeably lower at the same temp due to glide):
+| °F | psig (liquid) | psig (vapor) |
+|---|---|---|
+| -20 | 17.0 | 9.8 |
+| -10 | 24.9 | 16.4 |
+| 0 | 34.2 | 24.3 |
+| 20 | 57.8 | 44.6 |
+| 65 | 139.6 | 117.7 |
+| 75 | 164.9 | 140.9 |
+| 90 | 208.4 | — |
+| 95 | 224.4 | — |
+
+Key reference points worth memorizing: **200 psig ≈ 89°F SCT for R-404A**; **175 psig ≈ 78°F SCT
+for R-448A/R-449A**. R-448A/R-449A and R-404A run close to each other in pressure at the same
+temperature in the high-side range (within a few psig), despite R-448A/449A being lower-GWP —
+don't assume a large offset between them.
+
 ---
 
 ## Remaining Backlog
 
 ### Phase 2 — Feature integrations
-- [ ] Chat history scoping: non-admins see only own sessions; admins see all with user filter
-- [ ] Mobile bottom nav: move into PageShell so it renders on all authenticated pages
+- [x] Chat history scoping: non-admins see only own sessions; admins see all with user filter
+- [x] Mobile bottom nav: move into PageShell so it renders on all authenticated pages
 - [ ] Equipment selector + chat context for journeymen/apprentices *(blocked — see above)*
 - [ ] Read-only store/site view for non-admins *(blocked — see above)*
 
 ### Phase 3 — Polish
-- [ ] Reusable `EmptyState` component, apply across all pages
-- [ ] Report photo gallery/viewer on maintenance report detail pages
-- [ ] Manager cert expiry: team-wide view on admin/team page
-- [ ] Pending user screen: add wait context + "notify admin again" button
-- [ ] Manager feedback view: "Reviews I've Written" tab on manager's profile
+- [x] Reusable `EmptyState` component, apply across all pages
+- [x] Report photo gallery/viewer on maintenance report detail pages
+- [x] Manager cert expiry: team-wide view on admin/team page
+- [x] Pending user screen: add wait context + "notify admin again" button
+- [x] Manager feedback view: "Reviews I've Written" tab on manager's profile

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import PageHeader from '@/components/PageHeader'
 
 interface RackSummary { attempts: number; bestScore: number | null; avgScore: number | null; lastAt: string | null }
 
@@ -75,21 +76,14 @@ export default function SimulatorSelectPage() {
     fetch('/api/simulator/attempts')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.summary) setSummary(data.summary) })
-      .catch(() => {})
+      .catch(err => console.error('Failed to load simulator attempt stats', err))
   }, [])
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
 
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-400">Cold</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Rack Simulator</span>
-      </div>
+      <PageHeader title="Rack Simulator" home={false} back={false} variant="learning" />
 
       <LearningTabBar />
 

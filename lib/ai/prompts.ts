@@ -448,9 +448,9 @@ Fix order: find and repair leak → recover → evacuate (500 microns) → recha
 5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
 
 **Example — R-404A:**
-- Suction gauge reads 60 psig → PT chart dew point = 32°F (this is your SST)
-- Suction line thermocouple reads 45°F
-- Superheat = 45 − 32 = **13°F** ✓
+- Suction gauge reads 60 psig → PT chart dew point = 26°F (this is your SST)
+- Suction line thermocouple reads 39°F
+- Superheat = 39 − 26 = **13°F** ✓
 
 ### The 4 Stages of the Refrigeration Cycle
 
@@ -3222,7 +3222,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 
 #### Low ambient / low head pressure affecting TXV feed
 - TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
-- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈72°F / 22°C sat), **175 psig for R-448A** (≈68°F / 20°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
+- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈89°F / 32°C sat), **175 psig for R-448A** (≈78°F / 26°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
 
 #### Over-capacity for the load
 - Too many compressors on; LP cutout set too low; suction setpoint too aggressive
@@ -4247,7 +4247,7 @@ V/Hz ratio held constant below base speed to maintain motor flux.
 - Discharge or condensing pressure transducer → store controller PID → 0–10V or 4–20mA analog → VFD speed reference
 - Set minimum speed: 20–30 Hz minimum prevents motor overheating on PSC/NEMA motors
 - ECM/BLDC motors handle lower speeds than induction motors — check motor spec before setting min Hz
-- R-448A condensing target example: 175–200 psig (~88–95°F condensing) at design ambient
+- R-448A condensing target example: 175–200 psig (~78–90°F condensing) at design ambient
 - Fan arrays with multiple VFDs: stage fans on in sequence; running one at 60 Hz is more efficient than two at 30 Hz
 
 ---
@@ -9648,6 +9648,138 @@ UPS service notes:
 | Generator started but store never transferred | ATS contactor failure, standby voltage never qualified | Generator/electrical service call — do not force the contactor |
 | Repeated nuisance engine starts | Drop-out threshold marginal with utility sags | Review utility power quality; adjust start delay within 10–30 s range |
 | Alarms flood after every outage | Normal restage behaviour | Verify recovery completed, then clear; tune alarm delays if excessive |
+`
+
+export const RACK_VALVES_COMPONENTS_KNOWLEDGE = `
+## Rack Valves & Components Reference
+
+This is the field map of every valve and control component you will meet on an HFC parallel rack or a distributed Protocol-style rack — what each device does, the setpoint it should hold in different operating conditions, and how to tell at a glance whether it is working. It pulls together components that are also covered in depth in their own topics (Sporlan, Danfoss, Pressure Regulators, Relief Valves, Pressure Switches, Solenoid Valves, Filter-Driers, Temprite oil management) so you can walk the rack high-side to low-side in one place. When a number matters, verify it against the system design sheet and the device nameplate before you adjust anything.
+
+### How to Walk the Rack
+
+Trace the refrigerant and you trace the valves: compressors → discharge header → oil separator → condenser/gas cooler → head-pressure control → receiver → liquid header → filter-drier → sight glass → liquid-line solenoids → expansion device → evaporator → EPR → suction filter/accumulator → suction header → back to the compressors. Safety devices (relief valves, HPCO/LPCO) and service/access valves sit across the whole loop. Setpoints below assume R-404A or R-448A/R-449A unless noted; CO2 transcritical setpoints live in the Evapco LMP, Carnot, and Gas Cooler topics.
+
+### High Side — Discharge, Oil Separator & Check Valves
+
+**Discharge service valves** — front-seat to isolate a compressor for service, back-seat for normal run. Leave fully open or fully closed; a cracked service valve is a throttling restriction that drives up discharge temperature.
+
+**Discharge check valves (Sporlan Check-All / CK series, CSOV check-solenoid combos)** — stop hot discharge gas and refrigerant from migrating backward into an off compressor, and stop one suction group feeding another through a failed valve. Cracking pressure is typically 1–5 psi.
+
+**Oil separator, reservoir and oil level regulators (Temprite separators, TraxOil electronic / Kriwan / mechanical float regulators)** — strip oil from discharge gas and meter it back to each crankcase. Target crankcase oil level is about one-half the sight glass.
+
+| Component | Ideal condition / setpoint | Signs it is not working |
+|---|---|---|
+| Discharge check valve | Holds reverse flow; cracking 1–5 psi | Off compressor warms/backspins; suction groups cross-feed; oil migrates to idle crankcase |
+| Oil separator | Discharge gas leaves nearly oil-free; oil returns to reservoir | Oil collecting in evaporators/sight glasses downstream; reservoir level falling |
+| Oil level regulator (TraxOil) | Fills below ~1/2 glass after a short delay; level recovers within ~2 min | Crankcase low/foamy; oil-failure alarm; LED fault on TraxOil; level never recovers |
+| Crankcase heater | Oil warm before start, no foaming | Oil foams on startup after an off period — heater open; verify before any restart |
+
+### Head Pressure Control — Flooding Valves & Receiver Pressure
+
+Most supermarket racks control head pressure with **staged or VFD condenser fans** (see the VFD topic) and float head pressure as low as practical to save fan energy — but never below the floor that keeps the farthest TXV fed. Smaller racks, satellites, and air-cooled condensing units instead use **flooding (condenser-holdback) valves**: a Sporlan ORI inlet regulator at the condenser outlet that throttles closed as condensing pressure falls, backing liquid up into the condenser to raise head pressure, paired with an ORD differential bypass valve that feeds discharge gas to the receiver to keep receiver pressure up. A Parker RS A9 outlet regulator does the same receiver-pressure duty on larger lineups (see Pressure Regulators).
+
+| Refrigerant | Minimum head pressure (floor) | Flooding-valve / receiver target | Verify with |
+|---|---|---|---|
+| R-404A | ~200 psig (~89°F SCT) | ~230 psig (~97°F SCT) | Calibrated discharge gauge; subcooling at liquid header |
+| R-448A / R-449A | ~175 psig (~78°F SCT) | ~210 psig (~91°F dew) | Calibrated gauge; liquid sight glass clear |
+
+Signs of trouble: head pressure floats too low in cold weather → liquid-line subcooling collapses → flash gas → many TXVs starve at once (high superheat across multiple circuits, mimics low charge). Head pressure too high → check fan staging/VFD, fouled condenser, overcharge, non-condensables, or a flooding valve stuck closed. Flooding valve hunting → oversized valve or debris on the pilot seat.
+
+### Receiver, King Valve & Liquid Header
+
+The receiver stores the charge and feeds the liquid header; the **king valve** at the receiver outlet lets you pump down into the receiver for service. Keep it back-seated in normal run. Target **liquid subcooling at the header outlet is 10–15°F** — that is the single best indicator the high side and charge are healthy. Subcooling under ~5°F with bubbles in the sight glass = flash gas (low charge, restriction, or low head pressure). Subcooling over ~20°F = overcharge or non-condensables.
+
+### Liquid Line — Drier, Sight Glass & Solenoids
+
+- **Filter-drier (Sporlan Catch-All C/RC, suction RSF after a burnout)** — replace when pressure drop exceeds ~2 psi or the moisture indicator goes wet. See the Filter-Drier topic.
+- **Moisture-indicating sight glass (Sporlan See-All, Emerson IHL series)** — green = dry, yellow/gold = wet (change the drier now — acid formation is exponential), white/cloudy = system flooded with moisture. A steady stream of bubbles with confirmed-good charge points to a drier restriction or undersized/long liquid line, not "add gas."
+- **Liquid-line solenoids (Sporlan, Danfoss EVR)** — close on the off cycle for pump-down control. Stuck open = case overcools / runs continuously; stuck closed = circuit starves. Test coil at the terminals, not the panel (see Solenoid Valves).
+
+### Expansion Devices & Distributors
+
+TXVs and EEVs (Sporlan SER/SERI/SEHI, Danfoss/Carel drivers) meter liquid into the evaporator on **superheat** — typical evaporator superheat is about 6–12°F; verify against case design. A distributor with the correct nozzle splits flow evenly across circuits. Overfeeding (superheat under ~5°F) risks floodback; underfeeding (superheat over ~15–20°F) starves the coil. A partially blocked distributor nozzle frosts some circuits and leaves others warm. Full detail lives in the Sporlan and Danfoss topics.
+
+### Evaporator Pressure Regulation (EPR)
+
+An EPR holds a **minimum evaporator pressure** so a warmer case does not pull below its design temperature when it shares a suction group with colder loads. It does NOT control superheat. The setpoint is simply the saturation pressure of the case's minimum allowable SST.
+
+- **Pilot-operated (Sporlan ORIT / OREO, externally adjustable OROA; Danfoss ICS+CVP, KVP)** — mechanical, set with a gauge on the evaporator outlet; clockwise raises the held pressure.
+- **Stepper / electronic (Sporlan CDS / CDST, Micro Thermo DT-EEPR, Danfoss electric regulating valve)** — driven by the case controller to a temperature setpoint. Note: CDS is a stepper EPR valve, never a "case differential sensor."
+
+| Case minimum SST | R-404A EPR target (approx.) | R-448A/449A EPR target (approx.) |
+|---|---|---|
+| +20°F (MT produce/dairy) | ~46 psig | ~45 psig |
+| 0°F | ~26 psig | ~24 psig |
+| -10°F (LT) | ~15 psig | ~16 psig |
+
+Signs of trouble: EPR stuck open → case overcools, suction pressure on that circuit reads rack suction; stuck closed/over-set → case starves and warms. A stepper EPR throwing an "invalid" alarm means the controller cannot confirm position — check the step count matches the valve model and the drive wiring.
+
+### Suction Line — Filters, Accumulators & CPR
+
+- **Suction filter (Sporlan)** — protects compressors after a repair/burnout; rising suction-side pressure drop = clogged element, swap it.
+- **Suction accumulator** — traps liquid slugs (after defrost, at startup) and meters them back slowly; a bypassed or undersized accumulator shows as floodback/slugging on restart.
+- **Crankcase pressure regulator (CPR / holdback valve)** — limits compressor inlet pressure during pulldown and after defrost so the motor is not overloaded. Set it during a high-load pulldown so the suction pressure at the compressor does not exceed design and motor amps stay at or below RLA; there is no universal psi — it is matched to the compressor. CPR set too low strangles capacity (slow pulldown); too high lets the motor overload after defrost.
+
+### Defrost & Bypass Valves
+
+Hot-gas defrost valves (3-pipe systems and Hussmann KoolGas 2-pipe), reversing/defrost solenoids, and the EPR bypass solenoid that opens during the drip cycle are detailed in the Defrost and Rack Sequence topics — a bypassed EPR during the drip cycle is by design, not a fault. **Discharge bypass valves (Sporlan ADRS / SDR)** recirculate hot gas to the suction header at light load to stop short-cycling; they should open about 5–10 psig below the normal minimum suction and must be set **above the LPCO** so they never cause a nuisance low-pressure trip. A hot-gas or defrost solenoid leaking by shows as a stubbornly high suction on that group and a case that never quite holds temperature.
+
+### Safety Devices — Relief Valves & Pressure Cutouts
+
+The protection order is always: **controller acts first, mechanical HPCO second, relief valve last.**
+
+- **Relief valves (Farris, Superior, LESER)** — set pressure must equal the protected vessel's design pressure (MAWP) per CSA B52 / ASHRAE 15. Replace after any discharge event; never gag a weeping valve. HFC high-side vessels are commonly stamped around 450 psig; CO2 reliefs are far higher (flash tank ~45–60 bar, high side ~90–120 bar). See the Relief Valves topic.
+- **HPCO (high-pressure cutout)** — manual reset, set below the relief and above the controller's high-pressure unload point. R-448A/R-449A MT racks typically trip ≈ 400–425 psig.
+- **LPCO (low-pressure cutout)** — guards against deep vacuum / loss of charge; usually auto-reset just above the design SST vacuum.
+
+A switch that never trips on test (welded contacts, plugged capillary) is more dangerous than no switch — replace it, never bypass it. See Pressure Switches & Gauges.
+
+### Service & Access Valves
+
+- **Refrigeration ball valves (Refrigera, Mueller)** — full-port isolation; leave fully open or closed, and use the seal cap as the real seal. Wrap and cool the body when brazing — seat material is ruined by heat.
+- **Transducer / access (Schrader) valves (Mueller)** — let you change a transducer or gauge without pumping down; confirm the depressor core is present and working, and cap every port (the cap, not the core, is the seal).
+- **Superior WA / WAS packed angle service valves** — exercise annually so they actually operate in an emergency isolation.
+
+### Protocol & Distributed Racks — What's Different
+
+A distributed Protocol-style rack (for example the Hussmann Protocol units modeled in the simulator) moves the regulation out to each circuit instead of one EPR per suction group. Each circuit gets its **own electronic EEV plus an electronic EPR** — commonly a Micro Thermo DT-EEPR (distributed-temperature electronic EPR) driven by an MT-2 valve controller, or a Sporlan CDS stepper. The rack still has the same high-side, oil, head-pressure, and safety hardware; what changes is that case temperature and superheat are held per-circuit electronically, so a "warm case" is usually a single circuit's EEV/EEPR/controller rather than a rack-wide EPR. The Micro Thermo design guides (DT-EEPR medium- and low-temperature rack design, and the DT-EEPR troubleshooting guide) are the authority for per-circuit setpoints and stepper fault codes.
+
+### Setpoint Quick Reference
+
+| Item | R-404A | R-448A / R-449A | How to verify |
+|---|---|---|---|
+| Minimum head pressure (floor) | ~200 psig (~89°F SCT) | ~175 psig (~78°F SCT) | Calibrated discharge gauge |
+| Flooding-valve / receiver target | ~230 psig | ~210 psig | Gauge + clear sight glass |
+| Liquid subcooling at header | 10–15°F | 10–15°F | Liquid temp vs SCT from PT chart |
+| MT suction saturation | -15°F to +25°F | similar (account for glide) | Suction transducer / gauge |
+| LT suction saturation | -30°F to -20°F | similar (account for glide) | Suction transducer / gauge |
+| Evaporator superheat (typical) | 6–12°F | 6–12°F | Coil-out temp vs SST |
+| Discharge bypass opens | 5–10 psig below min suction (above LPCO) | same | Gauge while loading down |
+| HPCO trip (MT rack) | ≈ 405–425 psig manual reset | ≈ 400–425 psig manual reset | Supervised HPCO test |
+| Crankcase oil level | ~1/2 sight glass | ~1/2 sight glass | Oil sight glass under load |
+
+### Is It Working? — Fast Symptom Index
+
+| What you see | Suspect component(s) |
+|---|---|
+| Many circuits on one group warm at once, high superheat everywhere | Low head pressure / flooding valve, low charge, drier restriction — check subcooling first |
+| Single case warm, rest of group fine | That circuit's EEV/TXV, EPR/EEPR, or liquid-line solenoid |
+| Single case overcools / freezes product | EPR stuck open or set too low; LL solenoid stuck open |
+| Bubbles in sight glass, normal charge | Drier restriction or undersized/long liquid line, low head pressure |
+| Oil-failure trips, foamy crankcase | Crankcase heater, oil level regulator, separator bypass, floodback |
+| Floodback / slugging at startup or after defrost | Suction accumulator, overfeeding expansion valve, defrost valve not closing |
+| Suction won't pull down / motor overamps after defrost | CPR set wrong; too many compressors staged |
+| Head pressure won't come down | Fan staging/VFD, fouled condenser, overcharge, non-condensables, flooding valve stuck closed |
+| Relief vent oily/frosted | Relief has lifted — replace and find the overpressure cause |
+
+### PM Quick Hits
+
+- Read subcooling at the liquid header and superheat at a representative case every PM — these two numbers catch most valve and charge faults early.
+- Confirm floating head and floating suction are still enabled (they get disabled on service calls and never re-enabled).
+- Exercise ball/service valves and confirm every access-valve cap is present and tight.
+- Verify each EPR-held circuit holds its design SST under steady load, gauging at the case — not just the rack.
+- Check relief valve date tags and the moisture-indicator colour; a wet sight glass is an urgent drier change, not a watch item.
+- Confirm crankcase heaters are warm before any restart after a power event.
 `
 
 export interface BuildSystemPromptOptions {

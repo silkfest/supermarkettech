@@ -5,11 +5,14 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  ArrowLeft, ChevronDown, CheckCircle2, Circle, Loader2,
+  ChevronDown, CheckCircle2, Circle, Loader2,
   ChevronDown as Down, BookOpen, Plus, Pencil, Trash2,
-  ExternalLink, Clock, Star, X, Check,
+  ExternalLink, Clock, X,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
@@ -189,6 +192,7 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
 function TrainingInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [activeTab, setActiveTab]   = useState<'tasks' | 'courses'>('tasks')
 
@@ -265,7 +269,7 @@ function TrainingInner() {
       }
 
       await Promise.all([fetchTasks(targetUser.id), fetchCourses(targetUser.id)])
-      setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, true])))
+      setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, false])))
       setLoading(false)
     }
     load()
@@ -359,7 +363,7 @@ function TrainingInner() {
   }
 
   async function deleteCourse(id: string) {
-    if (!confirm('Delete this course? Completions will also be removed.')) return
+    if (!await confirm({ message: 'Delete this course? Completions will also be removed.', confirmLabel: 'Delete', danger: true })) return
     setDeletingCourse(id)
     await fetch(`/api/apprentice/courses/${id}`, { method: 'DELETE' })
     setCourses(prev => prev.filter(c => c.id !== id))
@@ -413,6 +417,8 @@ function TrainingInner() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+      {confirmDialog}
+
       {/* Badge toast */}
       {newBadge && (() => {
         const b = BADGES.find(x => x.id === newBadge)!
@@ -434,55 +440,50 @@ function TrainingInner() {
       )}
 
       {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={() => isAdmin ? router.push('/admin/apprentices') : router.push('/dashboard')}
-          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-400">Cold</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Training</span>
-
-        {isAdmin && apprentices.length > 0 && (
-          <div className="ml-auto relative">
-            <button
-              onClick={() => setShowSwitcher(s => !s)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 transition-colors"
-            >
-              <span className="font-medium truncate max-w-[120px]">
-                {isReadOnly ? displayUser?.name || displayUser?.email : 'View as apprentice'}
-              </span>
-              <Down size={12} className={`flex-shrink-0 transition-transform ${showSwitcher ? 'rotate-180' : ''}`} />
-            </button>
-            {showSwitcher && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="p-2 border-b border-slate-200 dark:border-slate-700">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest px-1">Switch apprentice</p>
-                </div>
-                <div className="max-h-60 overflow-y-auto py-1">
-                  {apprentices.map(a => (
-                    <button key={a.id} onClick={() => switchTo(a)}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${a.id === displayUser?.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-300'}`}
-                    >
-                      <p className="font-medium truncate">{a.name || a.email}</p>
-                      {a.name && <p className="text-slate-500 truncate">{a.email}</p>}
-                    </button>
-                  ))}
-                </div>
+      <PageHeader
+        title="Training"
+        home={false}
+        back={isAdmin ? '/admin/apprentices' : '/dashboard'}
+        variant="learning"
+        actions={
+          <>
+            {isAdmin && apprentices.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSwitcher(s => !s)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 transition-colors"
+                >
+                  <span className="font-medium truncate max-w-[120px]">
+                    {isReadOnly ? displayUser?.name || displayUser?.email : 'View as apprentice'}
+                  </span>
+                  <Down size={12} className={`flex-shrink-0 transition-transform ${showSwitcher ? 'rotate-180' : ''}`} />
+                </button>
+                {showSwitcher && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    <div className="p-2 border-b border-slate-200 dark:border-slate-700">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest px-1">Switch apprentice</p>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto py-1">
+                      {apprentices.map(a => (
+                        <button key={a.id} onClick={() => switchTo(a)}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${a.id === displayUser?.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-300'}`}
+                        >
+                          <p className="font-medium truncate">{a.name || a.email}</p>
+                          {a.name && <p className="text-slate-500 truncate">{a.email}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {!isAdmin && mentor && (
-          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">Journeyman: <span className="text-slate-700 dark:text-slate-200 font-medium">{mentor.name}</span></span>
-        )}
-      </div>
+            {!isAdmin && mentor && (
+              <span className="text-xs text-slate-500 dark:text-slate-400">Journeyman: <span className="text-slate-700 dark:text-slate-200 font-medium">{mentor.name}</span></span>
+            )}
+          </>
+        }
+      />
 
       {/* Learning tab bar */}
       <LearningTabBar />
@@ -630,7 +631,7 @@ function TrainingInner() {
             {categories.map(cat => {
               const catTasks = (tasksByCat[cat] ?? []).sort((a, b) => a.sort_order - b.sort_order)
               const catDone  = catTasks.filter(t => t.progress?.status === 'completed').length
-              const isOpen   = openCats[cat] ?? true
+              const isOpen   = openCats[cat] ?? false
               const ci       = CAT_COLORS[cat]
 
               return (
@@ -702,11 +703,11 @@ function TrainingInner() {
             )}
 
             {!coursesLoading && courses.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <BookOpen size={32} className="text-slate-700 mb-3"/>
-                <p className="text-sm text-slate-500">No courses yet.</p>
-                {isAdmin && !isReadOnly && <p className="text-xs text-slate-600 mt-1">Click &ldquo;Add Course&rdquo; above to create the first one.</p>}
-              </div>
+              <EmptyState
+                icon={BookOpen}
+                title="No courses yet."
+                description={isAdmin && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
+              />
             )}
 
             {!coursesLoading && Object.entries(coursesByCat).map(([cat, catCourses]) => (
