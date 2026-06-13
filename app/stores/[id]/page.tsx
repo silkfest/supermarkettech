@@ -77,15 +77,15 @@ const EQUIP_TYPES = [
 ]
 
 const TYPE_META: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-  rack:         { bg: 'bg-blue-50',    text: 'text-blue-600',   icon: <RefrigeratorIcon size={16}/> },
-  display_case: { bg: 'bg-cyan-50',    text: 'text-cyan-600',   icon: <RefrigeratorIcon size={16}/> },
-  case:         { bg: 'bg-cyan-50',    text: 'text-cyan-600',   icon: <RefrigeratorIcon size={16}/> },
-  walk_in:      { bg: 'bg-indigo-50',  text: 'text-indigo-600', icon: <RefrigeratorIcon size={16}/> },
-  condenser:    { bg: 'bg-violet-50',  text: 'text-violet-600', icon: <Thermometer size={16}/> },
-  hvac:         { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={16}/> },
-  rooftop:      { bg: 'bg-emerald-50', text: 'text-emerald-600',icon: <Wind size={16}/> },
-  compressor:   { bg: 'bg-orange-50',  text: 'text-orange-600', icon: <Thermometer size={16}/> },
-  other:        { bg: 'bg-slate-100',  text: 'text-slate-500',  icon: <Package size={16}/> },
+  rack:         { bg: 'bg-blue-50 dark:bg-blue-500/10',       text: 'text-blue-600 dark:text-blue-400',       icon: <RefrigeratorIcon size={16}/> },
+  display_case: { bg: 'bg-cyan-50 dark:bg-cyan-500/10',       text: 'text-cyan-600 dark:text-cyan-400',       icon: <RefrigeratorIcon size={16}/> },
+  case:         { bg: 'bg-cyan-50 dark:bg-cyan-500/10',       text: 'text-cyan-600 dark:text-cyan-400',       icon: <RefrigeratorIcon size={16}/> },
+  walk_in:      { bg: 'bg-indigo-50 dark:bg-indigo-500/10',   text: 'text-indigo-600 dark:text-indigo-400',   icon: <RefrigeratorIcon size={16}/> },
+  condenser:    { bg: 'bg-violet-50 dark:bg-violet-500/10',   text: 'text-violet-600 dark:text-violet-400',   icon: <Thermometer size={16}/> },
+  hvac:         { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', icon: <Wind size={16}/> },
+  rooftop:      { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', icon: <Wind size={16}/> },
+  compressor:   { bg: 'bg-orange-50 dark:bg-orange-500/10',   text: 'text-orange-600 dark:text-orange-400',   icon: <Thermometer size={16}/> },
+  other:        { bg: 'bg-slate-100 dark:bg-slate-800',       text: 'text-slate-500 dark:text-slate-400',     icon: <Package size={16}/> },
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -188,7 +188,7 @@ export default function StoreDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
         Loading…
       </div>
     )
@@ -196,33 +196,33 @@ export default function StoreDetailPage() {
 
   if (!store) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
         Site not found.
       </div>
     )
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => router.push('/dashboard')}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           title="Dashboard"
         >
           <Home size={18} />
         </button>
         <button
           onClick={() => router.push('/stores')}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           title="All sites"
         >
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold text-slate-900 truncate">{store.name}</h1>
-          <p className="text-xs text-slate-500">{store.equipment.length} unit{store.equipment.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">{store.name}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{store.equipment.length} unit{store.equipment.length !== 1 ? 's' : ''}</p>
         </div>
         {isAdmin && (
           <button
@@ -238,24 +238,24 @@ export default function StoreDetailPage() {
 
         {/* Save confirmation flash */}
         {savedField && (
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30 rounded-xl text-xs text-green-700 dark:text-emerald-400">
             <Check size={12}/> Saved
           </div>
         )}
 
         {/* Site info card */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
               <Building2 size={20} className="text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">{store.name}</p>
-              <p className="text-xs text-slate-400">Site profile</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{store.name}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Site profile</p>
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {/* Name */}
             <EditableRow
               label="Site name" icon={<Building2 size={13}/>} value={store.name}
@@ -301,14 +301,14 @@ export default function StoreDetailPage() {
           {/* Trending issues */}
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <AlertTriangle size={13} className="text-amber-500" />
                 Trending issues
               </div>
               {isAdmin && editField !== 'trendingIssues' && (
                 <button
                   onClick={() => { setEditField('trendingIssues'); setEditVal(store.trending_issues ?? '') }}
-                  className="p-1 rounded-md hover:bg-slate-100 text-slate-400"
+                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500"
                 >
                   <Pencil size={12} />
                 </button>
@@ -320,7 +320,7 @@ export default function StoreDetailPage() {
                   value={editVal}
                   onChange={e => setEditVal(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   placeholder="Known recurring issues…"
                   autoFocus
                 />
@@ -332,13 +332,13 @@ export default function StoreDetailPage() {
                   >
                     <Check size={12} /> Save
                   </button>
-                  <button onClick={() => setEditField(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">
+                  <button onClick={() => setEditField(null)} className="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <p className={`text-sm ${store.trending_issues ? 'text-amber-700 bg-amber-50 px-3 py-2 rounded-xl' : 'text-slate-400 italic'}`}>
+              <p className={`text-sm ${store.trending_issues ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 rounded-xl' : 'text-slate-400 dark:text-slate-500 italic'}`}>
                 {store.trending_issues || 'No trending issues noted'}
               </p>
             )}
@@ -349,13 +349,13 @@ export default function StoreDetailPage() {
         <div className="flex gap-2">
           <button
             onClick={() => router.push(`/maintenance/refrigeration-pm?storeId=${store.id}`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-blue-300 hover:shadow-sm transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 font-medium hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-sm transition-all"
           >
             <RefrigeratorIcon size={15} className="text-blue-500" /> Refrigeration PM
           </button>
           <button
             onClick={() => router.push(`/maintenance/hvac-pm?storeId=${store.id}`)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium hover:border-emerald-300 hover:shadow-sm transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-sm transition-all"
           >
             <Wind size={15} className="text-emerald-500" /> HVAC PM
           </button>
@@ -373,26 +373,26 @@ export default function StoreDetailPage() {
                 <div className={`w-6 h-6 rounded-lg ${meta.bg} flex items-center justify-center ${meta.text}`}>
                   {meta.icon}
                 </div>
-                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">{typeLabel}</p>
-                <span className="text-xs text-slate-400">({items.length})</span>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{typeLabel}</p>
+                <span className="text-xs text-slate-400 dark:text-slate-500">({items.length})</span>
               </div>
               <div className="flex flex-col gap-2">
                 {items.map(eq => (
                   <button
                     key={eq.id}
                     onClick={() => router.push(`/equipment/${eq.id}`)}
-                    className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-left hover:border-slate-300 hover:shadow-sm transition-all flex items-center gap-3"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all flex items-center gap-3"
                   >
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLORS[eq.status] ?? 'bg-slate-300'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{eq.name}</p>
-                      <p className="text-xs text-slate-500 truncate">
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{eq.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                         {[eq.manufacturer, eq.model].filter(Boolean).join(' · ')}
                         {eq.refrigerant ? ` · ${eq.refrigerant}` : ''}
                         {eq.location ? ` · ${eq.location}` : ''}
                       </p>
                     </div>
-                    <ChevronRight size={14} className="text-slate-400 flex-shrink-0" />
+                    <ChevronRight size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
                   </button>
                 ))}
               </div>
@@ -401,7 +401,7 @@ export default function StoreDetailPage() {
         })}
 
         {store.equipment.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white border border-dashed border-slate-200 rounded-2xl">
+          <div className="flex flex-col items-center justify-center py-10 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
             <Package size={28} className="mb-2 opacity-30" />
             <p className="text-sm">No equipment added yet</p>
             {isAdmin && (
@@ -418,14 +418,14 @@ export default function StoreDetailPage() {
         {/* Recent PMs */}
         {store.recent_pms.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">Recent PMs</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 px-1">Recent PMs</p>
             <div className="flex flex-col gap-2">
               {store.recent_pms.map(pm => (
-                <div key={pm.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <Wrench size={14} className="text-slate-400 flex-shrink-0" />
+                <div key={pm.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Wrench size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-800 truncate">{pm.report_type ?? 'PM Report'}</p>
-                    <p className="text-xs text-slate-400">{fmtDate(pm.performed_at)}</p>
+                    <p className="text-sm text-slate-800 dark:text-slate-200 truncate">{pm.report_type ?? 'PM Report'}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{fmtDate(pm.performed_at)}</p>
                   </div>
                 </div>
               ))}
@@ -437,29 +437,29 @@ export default function StoreDetailPage() {
       {/* Add Equipment Modal */}
       {showAddEquip && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl max-h-[90dvh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-3xl md:rounded-2xl max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h2 className="text-base font-semibold text-slate-900">Add unit</h2>
-              <button onClick={() => setShowAddEquip(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Add unit</h2>
+              <button onClick={() => setShowAddEquip(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500">
                 <X size={16} />
               </button>
             </div>
             <div className="px-5 pb-6 flex flex-col gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Unit name *</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Unit name *</label>
                 <input
                   value={equipForm.name}
                   onChange={e => setEquipForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Rack A — Island Dairy"
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Equipment type</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Equipment type</label>
                 <select
                   value={equipForm.equipmentType}
                   onChange={e => setEquipForm(f => ({ ...f, equipmentType: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {EQUIP_TYPES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -468,40 +468,40 @@ export default function StoreDetailPage() {
               </div>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Manufacturer</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Manufacturer</label>
                   <input
                     value={equipForm.manufacturer}
                     onChange={e => setEquipForm(f => ({ ...f, manufacturer: e.target.value }))}
                     placeholder="Copeland"
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Model</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Model</label>
                   <input
                     value={equipForm.model}
                     onChange={e => setEquipForm(f => ({ ...f, model: e.target.value }))}
                     placeholder="ZF34K4E-TFD"
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Serial #</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Serial #</label>
                   <input
                     value={equipForm.serialNumber}
                     onChange={e => setEquipForm(f => ({ ...f, serialNumber: e.target.value }))}
                     placeholder="SN-12345"
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Refrigerant</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Refrigerant</label>
                   <select
                     value={equipForm.refrigerant}
                     onChange={e => setEquipForm(f => ({ ...f, refrigerant: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
                     <option value="">— select —</option>
                     {REFRIGERANTS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -510,32 +510,32 @@ export default function StoreDetailPage() {
               </div>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Install date</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Install date</label>
                   <input
                     type="date"
                     value={equipForm.installedAt}
                     onChange={e => setEquipForm(f => ({ ...f, installedAt: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Location</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Location</label>
                   <input
                     value={equipForm.location}
                     onChange={e => setEquipForm(f => ({ ...f, location: e.target.value }))}
                     placeholder="Machine room"
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Notes</label>
                 <textarea
                   value={equipForm.notes}
                   onChange={e => setEquipForm(f => ({ ...f, notes: e.target.value }))}
                   placeholder="Any relevant notes…"
                   rows={2}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
               <button

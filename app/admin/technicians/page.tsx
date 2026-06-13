@@ -69,7 +69,7 @@ export default function TechniciansPage() {
   }, [router])
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">Loading…</div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading…</div>
   )
 
   const certsByUser: Record<string, Cert[]> = {}
@@ -79,31 +79,31 @@ export default function TechniciansPage() {
   }
 
   const CertIcon = ({ status }: { status: ReturnType<typeof certStatus> }) => {
-    if (status === 'none')     return <span className="text-xs text-slate-300">No certs</span>
+    if (status === 'none')     return <span className="text-xs text-slate-400 dark:text-slate-500">No certs</span>
     if (status === 'expired')  return <AlertTriangle size={14} className="text-red-500" />
     if (status === 'expiring') return <AlertTriangle size={14} className="text-amber-500" />
     return <CheckCircle size={14} className="text-emerald-500" />
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-700">Technicians</span>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Technicians</span>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-3">
         {/* Expired cert alert */}
         {users.some(u => certStatus(certsByUser[u.id] ?? []) === 'expired') && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg text-sm text-red-700 dark:text-red-400">
             <AlertTriangle size={15} />
             Some technicians have expired certifications — check their profiles.
           </div>
@@ -117,36 +117,36 @@ export default function TechniciansPage() {
               <button
                 key={u.id}
                 onClick={() => router.push(`/admin/technicians/${u.id}`)}
-                className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:shadow-md hover:border-blue-200 transition-all active:scale-[0.98] flex items-start gap-3"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-left hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500/50 transition-all active:scale-[0.98] flex items-start gap-3"
               >
-                <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <UserCircle size={22} className="text-slate-400" />
+                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                  <UserCircle size={22} className="text-slate-400 dark:text-slate-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{u.name || u.email}</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{u.name || u.email}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${ROLE_COLOR[u.role]}`}>
                       {ROLE_LABEL[u.role]}
                     </span>
                     {u.status !== 'active' && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                         {u.status}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-400 truncate mb-2">{u.email}</p>
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-2">{u.email}</p>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1">
                       <Shield size={11} />
                       <span>{(certsByUser[u.id] ?? []).length} cert{(certsByUser[u.id] ?? []).length !== 1 ? 's' : ''}</span>
                     </span>
                     <CertIcon status={cs} />
                     {jobCount > 0 && (
-                      <span className="text-slate-400">{jobCount} PM{jobCount !== 1 ? 's' : ''}</span>
+                      <span className="text-slate-400 dark:text-slate-500">{jobCount} PM{jobCount !== 1 ? 's' : ''}</span>
                     )}
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-slate-300 flex-shrink-0 mt-1" />
+                <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-1" />
               </button>
             )
           })}
