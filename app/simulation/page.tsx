@@ -76,7 +76,7 @@ export default function SimulatorSelectPage() {
     fetch('/api/simulator/attempts')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.summary) setSummary(data.summary) })
-      .catch(() => {})
+      .catch(err => console.error('Failed to load simulator attempt stats', err))
   }, [])
 
   return (
