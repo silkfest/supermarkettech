@@ -10,9 +10,10 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseServer()
   const userId = new URL(req.url).searchParams.get('userId') ?? user.id
 
-  const [coursesRes, completionsRes] = await Promise.all([
+  const [coursesRes, completionsRes, lessonsRes] = await Promise.all([
     supabase.from('courses').select('*').eq('is_published', true).order('sort_order').order('created_at'),
     supabase.from('course_completions').select('course_id, completed_at, notes').eq('user_id', userId),
+    supabase.from('course_lessons').select('course_id'),
   ])
 
   if (coursesRes.error) return NextResponse.json({ error: coursesRes.error.message }, { status: 500 })
@@ -22,9 +23,15 @@ export async function GET(req: NextRequest) {
     completionMap[c.course_id] = { completed_at: c.completed_at, notes: c.notes }
   }
 
+  const lessonCountMap: Record<string, number> = {}
+  for (const l of lessonsRes.data ?? []) {
+    lessonCountMap[l.course_id] = (lessonCountMap[l.course_id] ?? 0) + 1
+  }
+
   const merged = (coursesRes.data ?? []).map(course => ({
     ...course,
     completion: completionMap[course.id] ?? null,
+    lesson_count: lessonCountMap[course.id] ?? 0,
   }))
 
   return NextResponse.json(merged)

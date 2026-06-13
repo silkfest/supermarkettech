@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   ChevronDown, CheckCircle2, Circle, Loader2,
@@ -83,6 +84,7 @@ interface Course {
   type: string; url: string; duration_minutes: number; points: number
   sort_order: number; is_published: boolean; created_at: string
   completion: { completed_at: string; notes: string } | null
+  lesson_count: number
 }
 interface UserProfile { id: string; name: string; email: string; role: string; mentor_id: string | null }
 interface Apprentice  { id: string; name: string; email: string }
@@ -740,9 +742,18 @@ function TrainingInner() {
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <p className={`text-sm font-medium ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
-                              {course.title}
-                            </p>
+                            {course.lesson_count > 0 ? (
+                              <Link
+                                href={`/apprentice/training/courses/${course.id}`}
+                                className={`text-sm font-medium hover:underline ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}
+                              >
+                                {course.title}
+                              </Link>
+                            ) : (
+                              <p className={`text-sm font-medium ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                                {course.title}
+                              </p>
+                            )}
                             {/* Type badge */}
                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${tm.color}`}>
                               {tm.icon} {tm.label}
