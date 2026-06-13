@@ -216,4 +216,4 @@ Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownConten
 - [x] Report photo gallery/viewer on maintenance report detail pages
 - [x] Manager cert expiry: team-wide view on admin/team page
 - [x] Pending user screen: add wait context + "notify admin again" button
-- [ ] Manager feedback view: "Reviews I've Written" tab on manager's profile
+- [x] Manager feedback view: "Reviews I've Written" tab on manager's profile
