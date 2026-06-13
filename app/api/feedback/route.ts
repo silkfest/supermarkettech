@@ -3,14 +3,34 @@ import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
 const MANAGER_ROLES = ['admin', 'manager']
 const SELECT_FIELDS = 'id, content, strengths, improvements, review_period, rating_overall, rating_technical, rating_safety, rating_teamwork, created_at, manager:manager_id(name, email, role)'
+const WRITTEN_SELECT_FIELDS = 'id, content, strengths, improvements, review_period, rating_overall, rating_technical, rating_safety, rating_teamwork, created_at, technician:technician_id(id, name, email, role)'
 
 // GET /api/feedback?userId=xxx
+// GET /api/feedback?writtenBy=me — reviews the current manager/admin has written
 export async function GET(req: NextRequest) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = getSupabaseServer()
-  const targetId = new URL(req.url).searchParams.get('userId') ?? user.id
+  const { searchParams } = new URL(req.url)
+
+  if (searchParams.get('writtenBy') === 'me') {
+    const { data: me } = await supabase.from('users').select('role').eq('id', user.id).single()
+    if (!MANAGER_ROLES.includes((me as { role: string } | null)?.role ?? '')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { data, error } = await supabase
+      .from('feedback')
+      .select(WRITTEN_SELECT_FIELDS)
+      .eq('manager_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data ?? [])
+  }
+
+  const targetId = searchParams.get('userId') ?? user.id
 
   if (targetId !== user.id) {
     const { data: me } = await supabase.from('users').select('role').eq('id', user.id).single()
