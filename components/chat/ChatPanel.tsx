@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -325,6 +325,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const sessionIdRef     = useRef<string | null>(null)
   const assistantContentRef = useRef('')
   const appliedSessionRef   = useRef<string | null>(null)
+  const isFirstMountRef    = useRef(true)
 
   useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
@@ -361,7 +362,11 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     // Cancel any in-flight request
     abortRef.current?.abort()
     setError(null)
-    setInput('')
+    // On the very first mount, leave `input` alone — the ?q= / coldiq_prefill
+    // effects above may have just populated it, and this effect runs after
+    // them (declaration order) so clearing here would wipe out the prefill.
+    if (!isFirstMountRef.current) setInput('')
+    isFirstMountRef.current = false
     setStreaming(false)
     setShowSavePrompt(false)
     setSaveTitle('')
@@ -727,6 +732,23 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     handleSubmit({ overrideText: text, overrideHistory })
   }
 
+  function startNewConversation() {
+    abortRef.current?.abort()
+    setStreaming(false)
+    setError(null)
+    setInput('')
+    setMessages([])
+    setSessionId(null)
+    setChatSaved(false)
+    setShowSavePrompt(false)
+    setSaveTitle('')
+    setSaveError('')
+    setAttachedImages([])
+    setImageError(null)
+    try { localStorage.removeItem(draftKey(equipment?.id)) } catch { /* ignore */ }
+    setTimeout(() => textareaRef.current?.focus(), 50)
+  }
+
   async function handleSaveChat() {
     if (!saveTitle.trim() || savingChat) return
     setSavingChat(true)
@@ -1041,6 +1063,16 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
               Enter to send, Shift+Enter for new line
             </span>
             <div className="flex items-center gap-3">
+              {hasMessages && !streaming && (
+                <button
+                  onClick={startNewConversation}
+                  className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  title="Start a new conversation"
+                >
+                  <MessageSquarePlus size={9} />
+                  New chat
+                </button>
+              )}
               <button
                 onClick={() => router.push('/chat-history')}
                 className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
