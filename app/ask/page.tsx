@@ -7,6 +7,7 @@ import { Plus, X, MessageCircle, Clock, Tag, ChevronRight, HelpCircle, Pin, Tras
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import EmptyState from '@/components/EmptyState'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 function timeAgo(dateStr: string): string {
@@ -41,6 +42,7 @@ interface Question {
 
 export default function AskTeamPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -102,7 +104,7 @@ export default function AskTeamPage() {
 
   async function deleteQuestion(e: React.MouseEvent, id: string) {
     e.stopPropagation()
-    if (!confirm('Delete this question and all its answers?')) return
+    if (!await confirm({ message: 'Delete this question and all its answers?', confirmLabel: 'Delete', danger: true })) return
     setDeleting(id)
     try {
       await fetch(`/api/ask/${id}`, { method: 'DELETE' })
@@ -123,6 +125,7 @@ export default function AskTeamPage() {
   return (
     <PageShell>
       <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
+        {confirmDialog}
         {/* Header */}
         <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">

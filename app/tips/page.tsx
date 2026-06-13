@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface TipMessage { role: string; content: string }
 interface TipSession {
@@ -52,12 +53,13 @@ function TipCard({ tip, currentUserId, isAdmin, onDelete }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const canDelete = tip.saved_by === currentUserId || isAdmin
   const messages = tip.session?.messages ?? []
   const tags = tip.tags ?? []
 
   async function handleDelete() {
-    if (!confirm('Remove this troubleshooting tip?')) return
+    if (!await confirm({ message: 'Remove this troubleshooting tip?', confirmLabel: 'Remove', danger: true })) return
     setDeleting(true)
     const res = await fetch(`/api/tips/${tip.id}`, { method: 'DELETE' })
     if (res.ok) onDelete(tip.id)
@@ -66,6 +68,7 @@ function TipCard({ tip, currentUserId, isAdmin, onDelete }: {
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      {confirmDialog}
       {/* Header */}
       <div className="px-5 py-4 flex items-start gap-3">
         <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center flex-shrink-0 mt-0.5">

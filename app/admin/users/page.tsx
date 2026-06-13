@@ -6,6 +6,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 import { STATUS_BADGE } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
@@ -32,6 +33,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function AdminUsersPage() {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -96,6 +98,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       <PageHeader
         title="User Management"
         back={false}
@@ -202,8 +205,8 @@ export default function AdminUsersPage() {
                 )}
                 {user.status === 'active' && user.id !== currentUser?.id && (
                   <button
-                    onClick={() => {
-                      if (!confirm(`Suspend ${user.name || user.email}?`)) return
+                    onClick={async () => {
+                      if (!await confirm({ message: `Suspend ${user.name || user.email}?`, confirmLabel: 'Suspend', danger: true })) return
                       updateUser(user.id, { status: 'suspended' })
                     }}
                     disabled={saving === user.id}
@@ -214,8 +217,8 @@ export default function AdminUsersPage() {
                 )}
                 {user.status === 'suspended' && (
                   <button
-                    onClick={() => {
-                      if (!confirm(`Reactivate ${user.name || user.email}?`)) return
+                    onClick={async () => {
+                      if (!await confirm({ message: `Reactivate ${user.name || user.email}?`, confirmLabel: 'Reactivate' })) return
                       updateUser(user.id, { status: 'active' })
                     }}
                     disabled={saving === user.id}
@@ -307,8 +310,8 @@ export default function AdminUsersPage() {
                       )}
                       {user.status === 'active' && user.id !== currentUser?.id && (
                         <button
-                          onClick={() => {
-                            if (!confirm(`Suspend ${user.name || user.email}? They will not be able to sign in.`)) return
+                          onClick={async () => {
+                            if (!await confirm({ message: `Suspend ${user.name || user.email}? They will not be able to sign in.`, confirmLabel: 'Suspend', danger: true })) return
                             updateUser(user.id, { status: 'suspended' })
                           }}
                           disabled={saving === user.id}
@@ -319,8 +322,8 @@ export default function AdminUsersPage() {
                       )}
                       {user.status === 'suspended' && (
                         <button
-                          onClick={() => {
-                            if (!confirm(`Reactivate ${user.name || user.email}?`)) return
+                          onClick={async () => {
+                            if (!await confirm({ message: `Reactivate ${user.name || user.email}?`, confirmLabel: 'Reactivate' })) return
                             updateUser(user.id, { status: 'active' })
                           }}
                           disabled={saving === user.id}

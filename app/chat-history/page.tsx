@@ -7,6 +7,7 @@ import { MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Tr
 import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -41,6 +42,7 @@ function timeAgo(iso: string) {
 
 function SessionCard({ session, onDelete, showUser }: { session: Session; onDelete: (id: string) => void; showUser?: boolean }) {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [expanded, setExpanded]   = useState(false)
   const [savingTip, setSavingTip] = useState(false)
   const [tipSaved, setTipSaved]   = useState(!!session.tip)
@@ -68,7 +70,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this conversation? This cannot be undone.')) return
+    if (!await confirm({ message: 'Delete this conversation? This cannot be undone.', confirmLabel: 'Delete', danger: true })) return
     setDeleting(true)
     try {
       const res = await fetch(`/api/chat/sessions/${session.id}`, { method: 'DELETE' })
@@ -80,6 +82,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      {confirmDialog}
       {/* Header */}
       <div className="px-5 py-4 flex items-start gap-3">
         <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -218,6 +221,7 @@ function SessionCard({ session, onDelete, showUser }: { session: Session; onDele
 
 export default function ChatHistoryPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [sessions, setSessions]         = useState<Session[]>([])
   const [loading, setLoading]           = useState(true)
   const [clearingAll, setClearingAll]   = useState(false)
@@ -268,7 +272,7 @@ export default function ChatHistoryPage() {
   }
 
   async function handleClearAll() {
-    if (!confirm(`Delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    if (!await confirm({ message: `Delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This cannot be undone.`, confirmLabel: 'Delete all', danger: true })) return
     setClearingAll(true)
     try {
       const res = await fetch('/api/chat/sessions', { method: 'DELETE' })
@@ -289,6 +293,7 @@ export default function ChatHistoryPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       <PageHeader title="Chat History" />
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">

@@ -12,6 +12,7 @@ import {
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
@@ -191,6 +192,7 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
 function TrainingInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [activeTab, setActiveTab]   = useState<'tasks' | 'courses'>('tasks')
 
@@ -361,7 +363,7 @@ function TrainingInner() {
   }
 
   async function deleteCourse(id: string) {
-    if (!confirm('Delete this course? Completions will also be removed.')) return
+    if (!await confirm({ message: 'Delete this course? Completions will also be removed.', confirmLabel: 'Delete', danger: true })) return
     setDeletingCourse(id)
     await fetch(`/api/apprentice/courses/${id}`, { method: 'DELETE' })
     setCourses(prev => prev.filter(c => c.id !== id))
@@ -415,6 +417,8 @@ function TrainingInner() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+      {confirmDialog}
+
       {/* Badge toast */}
       {newBadge && (() => {
         const b = BADGES.find(x => x.id === newBadge)!

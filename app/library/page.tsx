@@ -10,6 +10,7 @@ import {
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
 import EmptyState from '@/components/EmptyState'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
 
@@ -46,6 +47,7 @@ function categoryColour(cat: string) {
 
 export default function LibraryPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [docs,         setDocs]         = useState<LibraryDoc[]>([])
   const [equipment,    setEquipment]    = useState<Equipment[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -148,7 +150,7 @@ export default function LibraryPage() {
   }
 
   async function deleteDoc(docId: string, title: string) {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return
+    if (!await confirm({ message: `Delete "${title}"? This cannot be undone.`, confirmLabel: 'Delete', danger: true })) return
     setDeletingId(docId)
     try {
       await fetch(`/api/documents/${docId}`, { method: 'DELETE' })
@@ -173,6 +175,7 @@ export default function LibraryPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       <PageHeader title="Manual Library" />
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">

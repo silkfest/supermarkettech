@@ -9,6 +9,7 @@ import {
 import PageHeader from '@/components/PageHeader'
 import { ROLE_LABEL, ROLE_COLOR } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface UserRow { id: string; email: string; name: string; role: Role; status: Status; created_at: string }
 interface Cert {
@@ -38,6 +39,7 @@ export default function TechnicianProfilePage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [tech, setTech]     = useState<UserRow | null>(null)
   const [certs, setCerts]   = useState<Cert[]>([])
@@ -123,7 +125,7 @@ export default function TechnicianProfilePage() {
   }
 
   async function deleteCert(certId: string) {
-    if (!confirm('Remove this certificate?')) return
+    if (!await confirm({ message: 'Remove this certificate?', confirmLabel: 'Remove', danger: true })) return
     setDeletingId(certId)
     await fetch(`/api/tech-certs/${certId}`, { method: 'DELETE' })
     setCerts(prev => prev.filter(c => c.id !== certId))
@@ -151,6 +153,7 @@ export default function TechnicianProfilePage() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       <PageHeader
         title={tech.name || tech.email}
         home={false}
