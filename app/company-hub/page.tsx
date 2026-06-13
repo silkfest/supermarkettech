@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Policies types & constants ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -489,6 +490,7 @@ function SortableSection({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CompanyHubPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [activeTab, setActiveTab] = useState<'announcements' | 'policies' | 'contacts' | 'feedback'>('policies')
   const [isAdmin,   setIsAdmin]   = useState(false)
   const [isManager, setIsManager] = useState(false)
@@ -537,7 +539,7 @@ export default function CompanyHubPage() {
   useEffect(() => { loadAnnouncements() }, [loadAnnouncements])
 
   async function deleteAnnouncement(id: string) {
-    if (!confirm('Delete this announcement?')) return
+    if (!await confirm({ message: 'Delete this announcement?', confirmLabel: 'Delete', danger: true })) return
     setDeletingAnnId(id)
     await fetch(`/api/announcements/${id}`, { method: 'DELETE' })
     setAnnouncements(prev => prev.filter(a => a.id !== id))
@@ -636,7 +638,7 @@ export default function CompanyHubPage() {
   useEffect(() => { loadPolicies() }, [loadPolicies])
 
   async function deletePolicy(id: string) {
-    if (!confirm('Delete this policy?')) return
+    if (!await confirm({ message: 'Delete this policy?', confirmLabel: 'Delete', danger: true })) return
     setDeletingPolId(id)
     await fetch(`/api/policies/${id}`, { method: 'DELETE' })
     setPolicies(prev => prev.filter(p => p.id !== id))
@@ -724,7 +726,7 @@ export default function CompanyHubPage() {
   }
 
   async function deleteSection(id: string) {
-    if (!confirm('Delete this section and all its contacts?')) return
+    if (!await confirm({ message: 'Delete this section and all its contacts?', confirmLabel: 'Delete', danger: true })) return
     setDeletingConId(id)
     await fetch(`/api/contacts/sections/${id}`, { method: 'DELETE' })
     setSections(prev => prev.filter(s => s.id !== id))
@@ -742,7 +744,7 @@ export default function CompanyHubPage() {
   }
 
   async function deleteContact(sectionId: string, contactId: string) {
-    if (!confirm('Remove this contact?')) return
+    if (!await confirm({ message: 'Remove this contact?', confirmLabel: 'Remove', danger: true })) return
     setDeletingConId(contactId)
     await fetch(`/api/contacts/entries/${contactId}`, { method: 'DELETE' })
     setSections(prev => prev.map(s => s.id !== sectionId ? s : { ...s, directory_contacts: s.directory_contacts.filter(c => c.id !== contactId) }))
@@ -755,6 +757,7 @@ export default function CompanyHubPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
 
       {/* Modals */}
       {(showAnnouncementModal || editingAnnouncement) && (

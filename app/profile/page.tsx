@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CERT_TYPES = [
@@ -253,6 +254,7 @@ function AddCertModal({ userId, onSave, onClose }: { userId: string; onSave: (c:
 function ProfileContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [currentUser,  setCurrentUser]  = useState<Profile | null>(null)
   const [profile,      setProfile]      = useState<Profile | null>(null)
@@ -374,7 +376,7 @@ function ProfileContent() {
   }
 
   async function deleteCert(certId: string) {
-    if (!confirm('Remove this certificate?')) return
+    if (!await confirm({ message: 'Remove this certificate?', confirmLabel: 'Remove', danger: true })) return
     setDeletingCert(certId)
     await fetch(`/api/tech-certs/${certId}`, { method: 'DELETE' })
     setCerts(prev => prev.filter(c => c.id !== certId))
@@ -395,6 +397,7 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {confirmDialog}
       {showAddCert && (
         <AddCertModal
           userId={profile.id}
