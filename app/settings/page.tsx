@@ -94,38 +94,38 @@ export default function SettingsPage() {
     }
   }
 
-  const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-  const labelCls = 'block text-xs font-medium text-slate-700 mb-1'
+  const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+  const labelCls = 'block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1'
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600" title="Dashboard">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center gap-3">
+        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
           <Home size={18} />
         </button>
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">
+        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-baseline gap-0.5">
           <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
         </div>
-        <span className="text-slate-400">/</span>
-        <span className="text-sm font-medium text-slate-700">Settings</span>
+        <span className="text-slate-400 dark:text-slate-500">/</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
       </div>
 
       <div className="max-w-xl mx-auto px-6 py-8 space-y-6">
         {/* Account info */}
         {userEmail && (
-          <div className="px-4 py-3 bg-slate-100 rounded-lg text-xs text-slate-500">
-            Signed in as <span className="font-medium text-slate-700">{userEmail}</span>
+          <div className="px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-500 dark:text-slate-400">
+            Signed in as <span className="font-medium text-slate-700 dark:text-slate-300">{userEmail}</span>
           </div>
         )}
 
         {/* Display Name */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-800">Display Name</h2>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Display Name</h2>
           <div>
             <label className={labelCls}>Name shown in reports</label>
             <input
@@ -135,9 +135,9 @@ export default function SettingsPage() {
               placeholder="Your name"
             />
           </div>
-          {nameError && <p className="text-xs text-red-600">{nameError}</p>}
+          {nameError && <p className="text-xs text-red-600 dark:text-red-400">{nameError}</p>}
           {nameSaved && (
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={13} /> Name updated successfully
             </div>
           )}
@@ -152,8 +152,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Change Password */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-800">Change Password</h2>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Change Password</h2>
           <div>
             <label className={labelCls}>Current Password</label>
             <input
@@ -187,9 +187,9 @@ export default function SettingsPage() {
               autoComplete="new-password"
             />
           </div>
-          {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
+          {passwordError && <p className="text-xs text-red-600 dark:text-red-400">{passwordError}</p>}
           {passwordSaved && (
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={13} /> Password changed successfully
             </div>
           )}
