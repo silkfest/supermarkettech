@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { ArrowLeft, Home, Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
+import { Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
 import PhotoGallery from '@/components/PhotoGallery'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Refrigeration checklist labels ───────────────────────────────────────────
 const REFRIG_CHECKLIST: { id: string; label: string }[] = [
@@ -549,66 +550,56 @@ function ReportViewContent() {
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="safe-top bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap items-center gap-2 no-print">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 flex-shrink-0" title="Dashboard">
-              <Home size={18} />
-            </button>
-            <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
-              <ArrowLeft size={18} />
-            </button>
-            <div className="flex items-baseline gap-0.5 flex-shrink-0">
-              <span className="text-lg font-bold text-blue-600">Cold</span>
-              <span className="text-lg font-bold text-slate-800">IQ</span>
-            </div>
-            <span className="text-slate-400 flex-shrink-0">/</span>
-            <span className="text-sm font-medium text-slate-700 truncate">{typeLabel}{storeName ? ` · ${storeName}` : ''}</span>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
-              title="Opens print dialog — choose 'Save as PDF' to download"
-            >
-              <Printer size={14} />
-              <span className="hidden sm:inline">Export PDF</span>
-            </button>
-            <button
-              onClick={() => router.push(editUrl)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
-            >
-              <Pencil size={14} />
-              <span className="hidden sm:inline">Edit</span>
-            </button>
-            {showDeleteConfirm ? (
-              <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs text-red-700 font-medium hidden sm:inline">Delete?</span>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
-                >
-                  {deleting && <Loader2 size={11} className="animate-spin" />}
-                  {deleting ? '…' : 'Yes'}
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-2 py-1 bg-white text-slate-600 text-xs font-medium rounded-md border border-slate-200 hover:bg-slate-50"
-                >
-                  No
-                </button>
-              </div>
-            ) : (
+        <PageHeader
+          className="no-print"
+          title={`${typeLabel}${storeName ? ` · ${storeName}` : ''}`}
+          actions={
+            <>
               <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                title="Opens print dialog — choose 'Save as PDF' to download"
               >
-                <Trash2 size={14} />
-                <span className="hidden sm:inline">Delete</span>
+                <Printer size={14} />
+                <span className="hidden sm:inline">Export PDF</span>
               </button>
-            )}
-          </div>
-        </div>
+              <button
+                onClick={() => router.push(editUrl)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+              >
+                <Pencil size={14} />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+              {showDeleteConfirm ? (
+                <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                  <span className="text-xs text-red-700 font-medium hidden sm:inline">Delete?</span>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {deleting && <Loader2 size={11} className="animate-spin" />}
+                    {deleting ? '…' : 'Yes'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-2 py-1 bg-white text-slate-600 text-xs font-medium rounded-md border border-slate-200 hover:bg-slate-50"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                >
+                  <Trash2 size={14} />
+                  <span className="hidden sm:inline">Delete</span>
+                </button>
+              )}
+            </>
+          }
+        />
 
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-5">
           {/* Report title block */}

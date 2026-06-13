@@ -4,11 +4,12 @@ export const dynamic = 'force-dynamic'
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, RotateCcw, AlertTriangle, CheckCircle2, XCircle,
+  RotateCcw, AlertTriangle, CheckCircle2, XCircle,
   Thermometer, Gauge, Wind, Zap, Activity, Info,
   ChevronUp, MessageSquare, Trophy, Target, Package, Dices, BookOpen, GraduationCap,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
+import PageHeader from '@/components/PageHeader'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
@@ -1384,56 +1385,52 @@ export default function SimulationPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
 
       {/* ── Header ── */}
-      <div className="safe-top bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap sticky top-0 z-10">
-        <button onClick={() => router.push('/simulation')}
-          className="p-1.5 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700" title="Back to rack selection">
-          <ChevronLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-400">Cold</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">Parallel Rack — MT + LT</span>
+      <PageHeader
+        title="Parallel Rack — MT + LT"
+        home={false}
+        back="/simulation"
+        variant="learning"
+        className="flex-wrap sm:flex-nowrap gap-2 sm:gap-3 py-3"
+        actions={
+          <>
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
 
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>{systemStatus}</span>
+            {!scenarioMode && activeFaultCount > 0 && (
+              <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+                {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
+              </span>
+            )}
 
-          {!scenarioMode && activeFaultCount > 0 && (
-            <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
-              {activeFaultCount} fault{activeFaultCount > 1 ? 's' : ''}
-            </span>
-          )}
-
-          <button
-            onClick={diagnoseInColdIQ}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-            title="Send current readings snapshot to ColdIQ Expert chat"
-          >
-            <MessageSquare size={12}/><span className="hidden sm:inline"> Diagnose</span>
-          </button>
-
-          <button
-            onClick={scenarioMode ? exitScenarioMode : enterScenarioMode}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-              scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
-            }`}
-            title={scenarioMode ? 'Exit Scenario Mode' : 'Scenario Mode'}
-          >
-            <Target size={12}/><span className="hidden sm:inline"> {scenarioMode ? 'Exit Scenario' : 'Scenario'}</span>
-          </button>
-
-          {!scenarioMode && (
             <button
-              onClick={resetAll}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-600"
-              title="Reset all faults"
+              onClick={diagnoseInColdIQ}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              title="Send current readings snapshot to ColdIQ Expert chat"
             >
-              <RotateCcw size={12}/><span className="hidden sm:inline"> Reset</span>
+              <MessageSquare size={12}/><span className="hidden sm:inline"> Diagnose</span>
             </button>
-          )}
-        </div>
-      </div>
+
+            <button
+              onClick={scenarioMode ? exitScenarioMode : enterScenarioMode}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                scenarioMode ? 'bg-violet-600 text-white border-violet-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
+              }`}
+              title={scenarioMode ? 'Exit Scenario Mode' : 'Scenario Mode'}
+            >
+              <Target size={12}/><span className="hidden sm:inline"> {scenarioMode ? 'Exit Scenario' : 'Scenario'}</span>
+            </button>
+
+            {!scenarioMode && (
+              <button
+                onClick={resetAll}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-600"
+                title="Reset all faults"
+              >
+                <RotateCcw size={12}/><span className="hidden sm:inline"> Reset</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* ── Learning tab bar ── */}
       <LearningTabBar />
