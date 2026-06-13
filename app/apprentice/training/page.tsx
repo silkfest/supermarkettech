@@ -269,7 +269,7 @@ function TrainingInner() {
       }
 
       await Promise.all([fetchTasks(targetUser.id), fetchCourses(targetUser.id)])
-      setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, true])))
+      setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, false])))
       setLoading(false)
     }
     load()
@@ -631,7 +631,7 @@ function TrainingInner() {
             {categories.map(cat => {
               const catTasks = (tasksByCat[cat] ?? []).sort((a, b) => a.sort_order - b.sort_order)
               const catDone  = catTasks.filter(t => t.progress?.status === 'completed').length
-              const isOpen   = openCats[cat] ?? true
+              const isOpen   = openCats[cat] ?? false
               const ci       = CAT_COLORS[cat]
 
               return (
