@@ -5,11 +5,12 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  Home, ArrowLeft, User, Award, GraduationCap, Calendar,
+  User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
   FileText, Settings, MessageCircle, Send, Compass,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CERT_TYPES = [
@@ -402,17 +403,7 @@ function ProfileContent() {
         />
       )}
 
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><Home size={18}/></button>
-        <button onClick={() => router.back()}             className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><ArrowLeft size={18}/></button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Profile</span>
-      </div>
+      <PageHeader title="Profile" />
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5">
 

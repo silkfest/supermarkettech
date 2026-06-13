@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  Home, FileText, Plus, Pencil, Trash2, ExternalLink,
+  FileText, Plus, Pencil, Trash2, ExternalLink,
   Loader2, X, AlertTriangle, Users, Lock, Phone, Mail,
   ChevronDown, ChevronUp, GripVertical, Shield, Megaphone, Pin, PinOff, CheckCircle2,
   MessageSquareWarning, Lightbulb, Bug,
@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
 
 // ─── Policies types & constants ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -779,46 +780,40 @@ export default function CompanyHubPage() {
           onClose={() => { setContactModal(false); setEditingContact(null) }} />
       )}
 
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-          <Home size={18}/>
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Company Hub</span>
-
-        {/* Contextual add button */}
-        {activeTab === 'announcements' && isManager && (
-          <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-            <Plus size={13}/> New Announcement
-          </button>
-        )}
-        {activeTab === 'policies' && isAdmin && (
-          <button onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-            <Plus size={13}/> Add
-          </button>
-        )}
-        {activeTab === 'contacts' && isManager && (
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setEditMode(e => !e)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${editMode ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              {editMode ? 'Done editing' : 'Edit'}
-            </button>
-            {editMode && (
-              <button onClick={() => { setEditingSection(null); setSectionModal(true) }}
+      <PageHeader
+        title="Company Hub"
+        back={false}
+        actions={
+          <>
+            {activeTab === 'announcements' && isManager && (
+              <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-                <Plus size={13}/> Add Section
+                <Plus size={13}/> New Announcement
               </button>
             )}
-          </div>
-        )}
-      </div>
+            {activeTab === 'policies' && isAdmin && (
+              <button onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
+                <Plus size={13}/> Add
+              </button>
+            )}
+            {activeTab === 'contacts' && isManager && (
+              <>
+                <button onClick={() => setEditMode(e => !e)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${editMode ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  {editMode ? 'Done editing' : 'Edit'}
+                </button>
+                {editMode && (
+                  <button onClick={() => { setEditingSection(null); setSectionModal(true) }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
+                    <Plus size={13}/> Add Section
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* Tab selector */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 flex items-center gap-0.5">

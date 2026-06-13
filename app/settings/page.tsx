@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import PageHeader from '@/components/PageHeader'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -99,21 +100,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
-          <Home size={18} />
-        </button>
-        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-500">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
-      </div>
+      <PageHeader title="Settings" />
 
       <div className="max-w-xl mx-auto px-6 py-8 space-y-6">
         {/* Account info */}

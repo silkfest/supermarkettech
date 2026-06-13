@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronUp, Wrench, Clock, Star, Loader2, Trash2, Play } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -288,21 +289,7 @@ export default function ChatHistoryPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
-          <Home size={18} />
-        </button>
-        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Chat History</span>
-      </div>
+      <PageHeader title="Chat History" />
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + filters */}
