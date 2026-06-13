@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   User, Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
-  FileText, Settings, MessageCircle, Send, Compass,
+  Settings, MessageCircle, Send, Compass,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
@@ -594,37 +594,29 @@ function ProfileContent() {
           )}
         </div>
 
-        {/* ── Policies & Procedures quick link ──────────────────────────────── */}
-        <button
-          onClick={() => router.push('/policies')}
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
-        >
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-            <FileText size={18} className="text-indigo-600 dark:text-indigo-400"/>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Policies &amp; Procedures</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Company policies, store procedures, on-call schedule, truck stock</p>
-          </div>
-          <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
-        </button>
-
-        {/* ── My Training quick link — apprentices and journeymen ────────────── */}
-        {isOwnProfile && ['apprentice', 'journeyman'].includes(profile.role) && (
-          <button
-            onClick={() => router.push('/apprentice/training')}
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <GraduationCap size={18} className="text-amber-600 dark:text-amber-400"/>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">My Training</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">View your training modules, progress, and assigned tasks</p>
-            </div>
-            <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
-          </button>
-        )}
+        {/* ── Training quick link — own profile, all roles ──────────────────── */}
+        {isOwnProfile && (() => {
+          const isField = ['apprentice', 'journeyman'].includes(profile.role)
+          return (
+            <button
+              onClick={() => router.push('/apprentice/training')}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <GraduationCap size={18} className="text-amber-600 dark:text-amber-400"/>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{isField ? 'My Training' : 'Training'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {isField
+                    ? 'View your training modules, progress, and assigned tasks'
+                    : 'Track apprentice courses, progress, and 313A task stats'}
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0"/>
+            </button>
+          )
+        })()}
 
         {/* ── Reviews & Feedback ───────────────────────────────────────────── */}
         {(isOwnProfile || ['admin', 'manager'].includes(currentUser?.role ?? '')) && (
