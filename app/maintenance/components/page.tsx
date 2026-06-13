@@ -4,12 +4,13 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Search, BookOpen, ExternalLink, X, ChevronRight, ChevronDown,
+  Search, BookOpen, ExternalLink, X, ChevronRight, ChevronDown,
   Loader2, Plus, Zap, Wind, Cpu, Sliders, Droplets, Package,
   Gauge, Snowflake, Server, Monitor, Filter, Box, LayoutGrid,
-  Pencil, Camera, Tag, Wrench, CalendarClock, Thermometer, Home,
+  Pencil, Camera, Tag, Wrench, CalendarClock, Thermometer,
 } from 'lucide-react'
 import ManualFinderModal from '@/components/maintenance/ManualFinderModal'
+import PageHeader from '@/components/PageHeader'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import type { ComponentRecord } from '@/app/api/components/route'
 import type { UserRole } from '@/types'
@@ -883,26 +884,15 @@ export default function ComponentRegistryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50">
-      {/* Header */}
-      <div className="safe-top bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" title="Dashboard">
-          <Home size={20}/>
-        </button>
-        <button onClick={() => router.push('/maintenance')} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" title="Maintenance">
-          <ArrowLeft size={20}/>
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800">IQ</span>
-        </div>
-        <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-700">Component Registry</span>
-        {isAdmin && (
-          <button onClick={() => setShowAdd(true)} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+      <PageHeader
+        title="Component Registry"
+        back="/maintenance"
+        actions={isAdmin && (
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
             <Plus size={13}/> Add
           </button>
         )}
-      </div>
+      />
 
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-4">
         {/* Search + filters */}

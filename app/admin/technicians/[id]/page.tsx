@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  ArrowLeft, Shield, Plus, Trash2, CheckCircle, AlertTriangle,
+  Shield, Plus, Trash2, CheckCircle, AlertTriangle,
   Loader2, Edit2, X, Save, Wrench, UserCircle,
 } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import { ROLE_LABEL, ROLE_COLOR } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
 
@@ -150,26 +151,19 @@ export default function TechnicianProfilePage() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{tech.name || tech.email}</span>
-        <div className="ml-auto">
+      <PageHeader
+        title={tech.name || tech.email}
+        home={false}
+        back={true}
+        actions={
           <button
             onClick={() => router.push(`/profile?userId=${tech.id}`)}
             className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2.5 py-1.5 border border-blue-200 dark:border-blue-500/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
           >
             Full profile →
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 

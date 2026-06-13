@@ -4,10 +4,11 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Home, ArrowLeft, BookOpen, Search, X, ExternalLink,
+  BookOpen, Search, X, ExternalLink,
   FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw, Sparkles,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
+import PageHeader from '@/components/PageHeader'
 import EmptyState from '@/components/EmptyState'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { formatBytes } from '@/lib/utils'
@@ -172,21 +173,7 @@ export default function LibraryPage() {
   return (
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="Dashboard">
-          <Home size={18}/>
-        </button>
-        <button onClick={() => router.back()} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
-          <ArrowLeft size={18}/>
-        </button>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-lg font-bold text-blue-600">Cold</span>
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">IQ</span>
-        </div>
-        <span className="text-slate-400 dark:text-slate-600">/</span>
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Manual Library</span>
-      </div>
+      <PageHeader title="Manual Library" />
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Title + search */}
