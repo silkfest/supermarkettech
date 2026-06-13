@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
     if (isManager) {
       return { ...a, acknowledged_by_me, total_active_users: totalActiveUsers }
     }
-    const { acknowledgements: _omit, ...rest } = a as unknown as Announcement
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { acknowledgements, ...rest } = a as unknown as Announcement
     return { ...rest, acknowledged_by_me }
   })
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { getSupabaseServer } from '@/lib/supabase/client'
 import { requireRole } from '@/lib/api/auth'
 
 export async function POST(req: NextRequest) {

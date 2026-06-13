@@ -14,7 +14,6 @@ import MaintenancePanel from '@/components/maintenance/MaintenancePanel'
 import { Menu, AlertTriangle, Moon, Sun } from 'lucide-react'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { useTheme } from '@/components/ThemeProvider'
-import { buildSnapshot } from '@/lib/sensor'
 import type { Equipment, Document, ChatMode, User, ChatMessage } from '@/types'
 
 const MODE_LABELS: Record<ChatMode, string> = {
@@ -212,8 +211,6 @@ export default function Dashboard() {
   }
 
   function openFilePicker() { fileInputRef.current?.click() }
-
-  const snapshot = selected ? buildSnapshot(selected.latest_readings ?? []) : undefined
 
   if (!currentUser) {
     return (

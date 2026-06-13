@@ -64,17 +64,6 @@ const TYPE_META: Record<string, { bg: string; text: string; badge: string; icon:
 }
 const DEFAULT_META = { bg: 'bg-slate-100', text: 'text-slate-500', badge: 'bg-slate-100 text-slate-600', icon: <Box size={22}/> }
 
-// Maps which component types are CO2-specific or HFC-specific (everything else = Both)
-const TYPE_SYSTEM: Record<string, 'CO2' | 'HFC'> = {
-  'Transcritical Compressor':           'CO2',
-  'Gas Cooler':                         'CO2',
-  'Flash Tank':                         'CO2',
-  'Economizer':                         'CO2',
-  'Adiabatic System':                   'CO2',
-  'CO2 Pump':                           'CO2',
-  'TXV / Thermostatic Expansion Valve': 'HFC',
-}
-
 const COMPONENT_TYPES = [
   // ── General / applies to most systems ──────────────────────────────────
   'Compressor', 'Condenser Unit', 'Evaporator', 'Accumulator', 'Receiver',
@@ -485,6 +474,7 @@ function EditComponentModal({
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Photo</p>
             <div className="flex items-center gap-3">
               {photoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={photoPreview}
                   alt="Component photo"
@@ -555,6 +545,7 @@ function ComponentCard({
     <div id={`comp-${c.catalogId}`} className={`bg-white border rounded-xl overflow-hidden transition-all ${isDecom ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
       {/* Photo banner if present */}
       {c.photoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={c.photoUrl}
           alt={`${c.manufacturer} ${c.model}`}

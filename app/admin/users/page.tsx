@@ -6,7 +6,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-import { ROLE_LABEL as _RL, STATUS_BADGE } from '@/lib/constants'
+import { STATUS_BADGE } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
 
 interface UserRow {

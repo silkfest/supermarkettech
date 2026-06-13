@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
   ArrowLeft, ChevronDown, CheckCircle2, Circle, Loader2,
   ChevronDown as Down, BookOpen, Plus, Pencil, Trash2,
-  ExternalLink, Clock, Star, X, Check,
+  ExternalLink, Clock, X,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import EmptyState from '@/components/EmptyState'
