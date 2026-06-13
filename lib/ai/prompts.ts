@@ -448,9 +448,9 @@ Fix order: find and repair leak → recover → evacuate (500 microns) → recha
 5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
 
 **Example — R-404A:**
-- Suction gauge reads 60 psig → PT chart dew point = 32°F (this is your SST)
-- Suction line thermocouple reads 45°F
-- Superheat = 45 − 32 = **13°F** ✓
+- Suction gauge reads 60 psig → PT chart dew point = 26°F (this is your SST)
+- Suction line thermocouple reads 39°F
+- Superheat = 39 − 26 = **13°F** ✓
 
 ### The 4 Stages of the Refrigeration Cycle
 
@@ -3222,7 +3222,7 @@ This guide covers systematic diagnosis for HFC multiplex parallel rack systems (
 
 #### Low ambient / low head pressure affecting TXV feed
 - TXVs require adequate pressure differential to feed — below ~50 psi differential the valve starves
-- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈72°F / 22°C sat), **175 psig for R-448A** (≈68°F / 20°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
+- Install head pressure control if not present; minimum condensing pressure ≈ **200 psig for R-404A** (≈89°F / 32°C sat), **175 psig for R-448A** (≈78°F / 26°C sat) — below these, TXVs starve and liquid flash gas forms in the liquid line
 
 #### Over-capacity for the load
 - Too many compressors on; LP cutout set too low; suction setpoint too aggressive
@@ -4247,7 +4247,7 @@ V/Hz ratio held constant below base speed to maintain motor flux.
 - Discharge or condensing pressure transducer → store controller PID → 0–10V or 4–20mA analog → VFD speed reference
 - Set minimum speed: 20–30 Hz minimum prevents motor overheating on PSC/NEMA motors
 - ECM/BLDC motors handle lower speeds than induction motors — check motor spec before setting min Hz
-- R-448A condensing target example: 175–200 psig (~88–95°F condensing) at design ambient
+- R-448A condensing target example: 175–200 psig (~78–90°F condensing) at design ambient
 - Fan arrays with multiple VFDs: stage fans on in sequence; running one at 60 Hz is more efficient than two at 30 Hz
 
 ---
@@ -9680,8 +9680,8 @@ Most supermarket racks control head pressure with **staged or VFD condenser fans
 
 | Refrigerant | Minimum head pressure (floor) | Flooding-valve / receiver target | Verify with |
 |---|---|---|---|
-| R-404A | ~200 psig (~70°F SCT) | ~230 psig (~80°F SCT) | Calibrated discharge gauge; subcooling at liquid header |
-| R-448A / R-449A | ~175 psig (~68°F SCT) | ~210 psig (~78°F dew) | Calibrated gauge; liquid sight glass clear |
+| R-404A | ~200 psig (~89°F SCT) | ~230 psig (~97°F SCT) | Calibrated discharge gauge; subcooling at liquid header |
+| R-448A / R-449A | ~175 psig (~78°F SCT) | ~210 psig (~91°F dew) | Calibrated gauge; liquid sight glass clear |
 
 Signs of trouble: head pressure floats too low in cold weather → liquid-line subcooling collapses → flash gas → many TXVs starve at once (high superheat across multiple circuits, mimics low charge). Head pressure too high → check fan staging/VFD, fouled condenser, overcharge, non-condensables, or a flooding valve stuck closed. Flooding valve hunting → oversized valve or debris on the pilot seat.
 
@@ -9708,9 +9708,9 @@ An EPR holds a **minimum evaporator pressure** so a warmer case does not pull be
 
 | Case minimum SST | R-404A EPR target (approx.) | R-448A/449A EPR target (approx.) |
 |---|---|---|
-| +20°F (MT produce/dairy) | ~57 psig | ~50 psig |
-| 0°F | ~24 psig | ~20 psig |
-| -10°F (LT) | ~13 psig | ~11 psig |
+| +20°F (MT produce/dairy) | ~46 psig | ~45 psig |
+| 0°F | ~26 psig | ~24 psig |
+| -10°F (LT) | ~15 psig | ~16 psig |
 
 Signs of trouble: EPR stuck open → case overcools, suction pressure on that circuit reads rack suction; stuck closed/over-set → case starves and warms. A stepper EPR throwing an "invalid" alarm means the controller cannot confirm position — check the step count matches the valve model and the drive wiring.
 
@@ -9748,7 +9748,7 @@ A distributed Protocol-style rack (for example the Hussmann Protocol units model
 
 | Item | R-404A | R-448A / R-449A | How to verify |
 |---|---|---|---|
-| Minimum head pressure (floor) | ~200 psig (~70°F SCT) | ~175 psig (~68°F SCT) | Calibrated discharge gauge |
+| Minimum head pressure (floor) | ~200 psig (~89°F SCT) | ~175 psig (~78°F SCT) | Calibrated discharge gauge |
 | Flooding-valve / receiver target | ~230 psig | ~210 psig | Gauge + clear sight glass |
 | Liquid subcooling at header | 10–15°F | 10–15°F | Liquid temp vs SCT from PT chart |
 | MT suction saturation | -15°F to +25°F | similar (account for glide) | Suction transducer / gauge |
