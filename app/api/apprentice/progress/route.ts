@@ -92,26 +92,56 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseServer()
 
   const body = await req.json()
-  // body: { userId, taskId, status: 'in_progress'|'completed', notes?, verifiedBy? }
+  // body: { userId, taskId, status?: 'in_progress'|'completed', notes?, verifiedBy?, action?: 'approve'|'reject' }
 
-  if (user.id !== body.userId) {
-    const role = await getCallerRole(supabase, user.id)
-    if (!role || !ELEVATED_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const callerRole = await getCallerRole(supabase, user.id)
+  const isElevated = !!callerRole && ELEVATED_ROLES.includes(callerRole)
+
+  if (user.id !== body.userId && !isElevated) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Approve/reject a pending submission — elevated roles only
+  if (body.action === 'approve' || body.action === 'reject') {
+    if (!isElevated) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const update = body.action === 'approve'
+      ? { status: 'completed', verified_by: user.id, completed_at: new Date().toISOString() }
+      : { status: 'in_progress', verified_by: null, completed_at: null }
+
+    const { data, error } = await supabase
+      .from('apprentice_progress')
+      .update(update)
+      .eq('user_id', body.userId)
+      .eq('task_id', body.taskId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[apprentice/progress POST review] error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json(data)
+  }
+
+  // Apprentices submitting a task as done go to pending_review until a manager/journeyman/admin approves it
+  let status = body.status
+  let completedAt: string | null = null
+  if (status === 'completed') {
+    if (isElevated) {
+      completedAt = new Date().toISOString()
+    } else {
+      status = 'pending_review'
     }
   }
 
   const upsertData: Record<string, unknown> = {
-    user_id:  body.userId,
-    task_id:  body.taskId,
-    status:   body.status,
-    notes:    body.notes ?? '',
+    user_id:     body.userId,
+    task_id:     body.taskId,
+    status,
+    notes:       body.notes ?? '',
     verified_by: body.verifiedBy ?? null,
-  }
-  if (body.status === 'completed') {
-    upsertData.completed_at = new Date().toISOString()
-  } else {
-    upsertData.completed_at = null
+    completed_at: completedAt,
   }
 
   const { data, error } = await supabase
