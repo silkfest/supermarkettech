@@ -26,14 +26,276 @@ BEHAVIOURAL RULES:
 // This is baked into every system prompt so the model has strong fundamentals
 // even when no manual chunk is retrieved for a question.
 export const REFRIGERATION_KNOWLEDGE = `
-## CO₂ (R-744) Transcritical Rack Systems — Operating Principles
+## Refrigeration Fundamentals — The Cycle, PT Relationships & Field Rules
 
 ![R-134a log P-h pressure-enthalpy diagram](https://upload.wikimedia.org/wikipedia/commons/7/79/Log_ph_Plot_-_R134a.svg "Pressure-enthalpy (log P-h) diagram — the core tool for analysing vapour compression refrigeration cycles")
 
-**The transcritical cycle:**
+Every refrigeration and air conditioning system — from a household fridge to a supermarket rack — runs the same basic cycle: a refrigerant absorbs heat at low pressure, gets compressed, rejects that heat at high pressure, and expands back down to start again. This lesson covers that cycle, how to read pressure as temperature using a PT chart, the two key measurements (superheat and subcooling) used to confirm a system is running correctly, refrigerant and oil basics, and the field rules of thumb you'll use on every service call.
+
+### The 4 Stages of the Refrigeration Cycle
+
+| Stage | Location | What Happens | Key Measurement |
+|---|---|---|---|
+| **1. Evaporation** | Evaporator coil | Liquid absorbs heat, boils to vapor | Superheat at coil outlet |
+| **2. Suction** | Suction line → compressor | Low-pressure vapor travels to compressor | Suction pressure & temp |
+| **3. Compression** | Compressor | Pressure and temperature rise | Discharge temp & pressure |
+| **4. Condensation** | Condenser → receiver | Hot vapor rejects heat, condenses to liquid | Subcooling at condenser outlet |
+
+### How to Read a PT Chart
+1. Identify the refrigerant — use the correct chart
+2. Read suction or discharge pressure on your gauge (psig)
+3. Find that pressure in the left column of the chart
+4. Read across to the saturation temperature column
+5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
+
+**Example — R-404A:**
+- Suction gauge reads 60 psig → PT chart dew point = 26°F (this is your SST)
+- Suction line thermocouple reads 39°F
+- Superheat = 39 − 26 = **13°F** ✓
+
+### Superheat & Subcooling
+
+**Superheat** = suction line temperature − SST (saturation suction temperature, from PT chart at measured suction pressure)
+- Too high (>20°F): starved evaporator — undercharge, TXV stuck closed, restriction
+- Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
+
+**Subcooling** = SCT (saturation condensing temperature, from PT chart at measured head pressure) − liquid line temperature
+- Too low (<5°F): undercharge, condenser fan failure, high load
+- Too high (>20°F): possible overcharge, cold ambient
+
+### TXV vs EPR — Key Difference
+
+| | TXV | EPR |
+|---|---|---|
+| **Controls** | Superheat (how much refrigerant enters evaporator) | Minimum evaporator pressure (minimum coil temperature) |
+| **Location** | Evaporator inlet | Evaporator outlet (suction line) |
+| **Senses** | Suction line temperature via remote bulb | Downstream suction pressure |
+| **Effect of failure** | Open = flooding; Closed = starving | Open = case overcools; Closed = case warms |
+
+Both are often used together: the TXV feeds the evaporator correctly, the EPR ensures the case doesn't drop below its minimum setpoint. The Refrigeration Components lesson covers what these and other components look like and where they sit in the system.
+
+### Refrigerants & Oils
+
+- **R-404A** — Zeotropic blend (R-125/R-143a/R-134a); dominant in older supermarket freezer systems; GWP 3,922; being phased down under AIM Act. Glide ≈ 0.5°F — near-azeotropic, negligible in practice.
+- **R-448A / R-449A** — Lower-GWP HFO blends; drop-in replacements for R-404A; glide ≈ 11°F — always **liquid-charge** and use dew point for suction-side calculations.
+- **R-410A** — Azeotropic blend (R-32/R-125 50/50); standard in commercial HVAC; GWP 2,088.
+- **R-744 / CO₂** — Carbon dioxide; natural refrigerant, near-zero GWP; critical point 87.8°F / 1,070 psi; used in transcritical booster systems (its own course covers this in depth).
+
+**Azeotropic vs Zeotropic:**
+- **Azeotropic** (R-410A, R-507): single boiling/condensing temperature at any pressure; behaves like a pure refrigerant; can be vapor-charged
+- **Zeotropic** (R-404A, R-448A): blend components have different boiling points; must be **liquid-charged** to maintain composition; vapor charging fractionates the blend
+
+**Oils:**
+- **POE** (Polyol Ester) — synthetic oil for HFC/HFO systems (R-410A, R-404A, R-448A); hygroscopic — keep containers sealed; incompatible with mineral oil
+- **Mineral Oil** — for legacy R-12 and R-22 systems; NOT compatible with HFC refrigerants
+- Viscosity grades (22, 32, 68, 100 cSt) must match the compressor manufacturer's spec — wrong viscosity causes bearing wear
+
+### Undercharge vs Overcharge
+
+| | Undercharge | Overcharge |
+|---|---|---|
+| **Suction pressure** | Low | Normal–High |
+| **Superheat** | High | Low |
+| **Subcooling** | Low | High |
+| **Sight glass** | Bubbles / flash gas | Clear |
+| **Discharge temp** | High | Normal–High |
+| **Cause** | Leak | Technician error |
+
+### Field Rules of Thumb
+
+#### Temperature Difference (TD) and Humidity
+| Application | Evaporator TD | Space RH |
+|---|---|---|
+| A/C | 35°F | ~50% |
+| Reach-in coolers | 20°F | ~65% |
+| Walk-in coolers | 10°F | ~85% |
+| Walk-in (high humidity) | 8°F | ~90% |
+
+#### Condenser Split (TD Over Ambient)
+- A/C (10 SEER and below): 30°F
+- Medium-temp refrigeration: 30°F
+- Low-temp refrigeration: 25°F
+- High-efficiency condensers: 20°F and below
+
+#### Superheat at Evaporator (TXV system)
+| Application | Target | Min | Max |
+|---|---|---|---|
+| A/C | 15°F | 5°F | 20°F |
+| Medium-temp | 10°F | 5°F | 20°F |
+| Low-temp | 5°F | 5°F | 20°F |
+Take superheat readings within 5°F of design conditions.
+
+#### Subcooling Targets
+- A/C: 15°F average
+- Standard refrigeration: 10°F average
+- Minimum: 5°F | Maximum: 20°F
+- Ambient below 70°F increases subcooling.
+
+#### Critical Temperature Limits
+- Compressor discharge: **225°F maximum**
+- Oil sump: **180°F maximum**
+- Standard condensing: 105–125°F max | High-efficiency: 85–100°F max
+
+#### Crankcase Heater
+Required when ambient drops below 50°F, on long off-cycles, or when using POE oil (R-410A, R-448A systems).
+
+#### Receiver Charge Level
+- Air-cooled systems: 70–80% of receiver volume
+- Water-cooled systems: 60–70%
+- Supermarket racks: half-full during normal operation
+`
+
+// ── Refrigeration components knowledge base ─────────────────────────────────
+export const REFRIGERATION_COMPONENTS_KNOWLEDGE = `
+## Basic Components of the Refrigeration Cycle
+
+Every vapor-compression system — supermarket rack, reach-in, or rooftop unit — is built from the same five core components. This lesson introduces what each one does and where it sits in the cycle. The Rack System Components course goes deeper on the valves and controls that surround them.
+
+### The Compressor
+The "heart" of the system. Draws in low-pressure refrigerant vapor from the suction line and compresses it, raising both its pressure and temperature, then discharges it toward the condenser. Common types in supermarket refrigeration: scroll, reciprocating (semi-hermetic), and screw compressors — multiple compressors are usually piped together on a parallel rack to share the load and provide capacity staging.
+
+### The Condenser (or Gas Cooler)
+Rejects the heat absorbed in the evaporator (plus the heat of compression) to outdoor air or water. Hot, high-pressure refrigerant vapor enters, gives up heat, and leaves as a subcooled liquid (or, for CO₂ operating transcritically, as a cooled supercritical gas — covered in the CO₂ course). A dirty or fouled condenser coil is the single most common cause of high head pressure.
+
+### The Metering Device (TXV / EEV)
+
+![Thermostatic expansion valve (TXV) cross-section](https://upload.wikimedia.org/wikipedia/commons/9/96/Thermostatic_expansion_valve.svg "TXV cross-section — refrigerant enters at high pressure on the left and exits at low pressure on the right, metered by the diaphragm and pin assembly")
+
+Located at the evaporator inlet, the metering device drops the high-pressure liquid refrigerant to a low pressure and meters the flow rate to match the evaporator load. A **thermostatic expansion valve (TXV)** uses a sensing bulb on the suction line to maintain target superheat mechanically; an **electronic expansion valve (EEV)** does the same job under controller command, using a stepper motor for finer, faster control.
+
+### The Evaporator
+Where the useful work happens — refrigerant boils (evaporates) as it absorbs heat from the air (or product) in the case, walk-in, or air handler. The refrigerant must fully boil off before leaving the coil (superheat confirms this) — any liquid carryover into the suction line risks compressor damage (liquid slugging).
+
+### Receivers and Accumulators
+- **Receiver** — a high-side vessel that stores excess liquid refrigerant between the condenser and the metering device, buffering charge as load conditions change.
+- **Accumulator** — a low-side vessel between the evaporator and the compressor that catches any liquid refrigerant before it reaches the compressor, protecting against floodback and slugging.
+
+### Putting It Together
+Refrigerant flows in one direction around a closed loop: **compressor → condenser → receiver → metering device → evaporator → accumulator (if fitted) → back to the compressor.** Every fault you'll diagnose comes down to refrigerant, airflow, or electrical issues at one of these five stages — which is exactly the framework the System Fault Diagnosis lesson builds on.
+`
+
+// ── System operation knowledge base ──────────────────────────────────────────
+export const SYSTEM_OPERATION_KNOWLEDGE = `
+## System Operation — HFC Rack Fundamentals
+
+Once you understand the cycle and its components, the next step is understanding how a multi-compressor HFC rack is actually operated day to day: target pressures, protecting the compressors from liquid and oil problems, capacity control, defrost, charging, and sizing rules. This lesson builds the operational foundation used across the Parallel Rack Systems and Sequence of Events topics.
+
+### HFC Operating Pressures & Targets
+
+**Typical rack suction pressure targets:**
+- LT (−35 to −25°C): 19–29 psia / 1.3–2.0 bar
+- MT (−10 to −5°C): 45–55 psia / 3.1–3.8 bar
+- Condensing (design): 100–130 psia / 6.9–9.0 bar
+
+**System pressures — R-404A / R-448A / R-449A:**
+
+Medium-temp:
+- Suction: 35–45 psig | SST: +15 to +25°F
+- Head: 180–250 psig | SCT: 90–110°F
+
+Low-temp:
+- Suction: 15–25 psig | SST: −10 to −20°F
+- Head: 180–250 psig | SCT: 90–110°F
+
+**Superheat and subcooling at the rack:**
+- Rack suction superheat (total): **10–20°F (5.5–11°C)** — below 8°F = flooding risk; above 25°F = undercharge or restriction
+- Individual case superheat at EEV/TXV outlet: **6–12°F (3.3–6.7°C)**
+- Liquid subcooling at rack condenser outlet: **10–20°F (5.5–11°C)**
+- Compressor discharge superheat: **40–80°F (22–44°C)** — above 100°F = investigate
+
+**Rack staging rules:**
+- Minimum compressor runtime: 5 min (prevents short cycling)
+- Target: 3–6 compressor starts per hour maximum
+- Oil return issues begin when suction superheat exceeds 20°F
+
+### Liquid Slugging — What It Is and Why It Destroys Compressors
+Liquid refrigerant reaching the compressor instead of vapor. Liquids are incompressible — when the piston tries to compress liquid, the connecting rod bends or breaks, valve plates shatter, and bearings seize. Failure is immediate and complete (repair cost $5,000–$15,000+).
+
+**Causes:** flooded evaporator (TXV overfeeding), refrigerant migration during off-cycle, failed accumulator
+**Prevention:** accumulator on suction line, crankcase heater during off-cycle, proper superheat, pump-down system
+
+### Pump-Down System
+Before the compressor shuts off:
+1. Controller closes the liquid line solenoid valve
+2. Compressor continues running, pulling suction pressure down to 0–5 psig
+3. Low-pressure switch trips → compressor stops
+4. All low-side refrigerant is stored in the condenser/receiver — no migration overnight
+
+At next startup: suction side is empty until the solenoid opens and refrigerant refills the circuit.
+
+### Oil Return
+Compressor oil circulates with refrigerant. Without good oil return:
+- Oil accumulates in evaporators → insulates the coil → reduced efficiency
+- Compressor loses oil → bearing failure, burnout
+
+Key components: **oil separator** (discharge line, ~95% recovery), **oil return line** (accumulator to crankcase), **crankcase heater** (boils dissolved refrigerant out of oil during off-cycle)
+
+### Compressor Capacity Control Methods
+1. **Unloading** — cylinder heads lifted or ported; compressor runs but doesn't compress; maintains oil circulation; 4-step unloaders common (0%, 33%, 67%, 100%)
+2. **VFD** — modulates RPM infinitely; most efficient; higher upfront cost
+3. **Pump Down / Stage Cycling** — bring additional compressors on/off the common suction header based on demand
+
+### Defrost Methods & Efficiency
+
+**Method selection (MT walk-ins):**
+- Box ≥ 37°F → off-cycle defrost (thermostat)
+- Box ~35°F → time-clock planned defrost
+- Box < 33°F → time-clock + heat defrost
+
+**Efficiency ranking:**
+1. Hot Gas Defrost (~90% efficient) — fastest, least case temperature rise
+2. Reverse Cycle (~80%)
+3. Electric Defrost (~40%) — most common, highest energy cost
+4. Off-Cycle (~10%) — only viable in warmer walk-ins
+
+Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defrosting only when frost is actually present.
+
+### Refrigerant Charging Rules
+- **Zeotropic blends** (R-404A, R-448A): always charge as **liquid** through the high side; vapor charging fractionates the blend
+- **Azeotropic blends** (R-410A, R-507): can vapor-charge the low side
+- Charge by weight whenever possible; use manufacturer's nameplate charge
+- After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min
+
+### Sizing & Airflow Reference
+
+#### Airflow (CFM per Ton)
+- A/C: 400 CFM/ton
+- Medium-temp: 250–350 CFM/ton
+- Low-temp: 175–250 CFM/ton
+
+#### Compressor Amperage (average draw)
+- Single-phase: 6–7 A/hp
+- Three-phase 208/230V: 2.5–3 A/hp
+- Three-phase 575V: 1.0–1.2 A/hp (Canadian standard; US equivalent 460V ≈ 1.25–1.5 A/hp)
+
+#### Compressor BTU Output (approximate)
+- A/C: 1 hp ≈ 12,000 BTU/h
+- Medium-temp: 1 hp ≈ 8,000 BTU/h
+- Low-temp: 1 hp ≈ 4,000 BTU/h
+
+#### Suction Line Velocity
+- Low-temp: 1,500–2,500 ft/min
+- Medium-temp: 1,000–2,000 ft/min
+- Liquid line minimum: 300 ft/min
+- Trap suction lines on vertical risers over 5 ft.
+
+#### Refrigerant Line Sizing (maximum runs)
+- ½" liquid line: up to 100 ft
+- ⅝" liquid line: up to 150 ft
+- ⅞" suction line: up to 75 ft
+Increase pipe size for longer runs to limit pressure drop.
+`
+
+// ── CO₂ transcritical knowledge base ─────────────────────────────────────────
+export const CO2_TRANSCRITICAL_KNOWLEDGE = `
+## CO₂ (R-744) Transcritical Rack Systems
+
+CO₂ (R-744) is a natural refrigerant with near-zero GWP, increasingly used in supermarket booster rack systems. Its behavior is different enough from HFC systems that it deserves its own course — this lesson covers the transcritical cycle, operating pressures, key components and controls unique to CO₂, oil management, defrost, and common fault patterns.
+
+### The Transcritical Cycle
 CO₂ has a critical point at 31.1°C / 87.8°F, 73.8 bar / 1070 psi. When ambient is below ~25°C the system can condense (subcritical). Above that the system operates transcritically — the high-side CO₂ never condenses; instead the gas cooler cools it as a gas. High-side pressure must be actively controlled (not determined by saturation) — this is the most critical operating parameter.
 
-**Typical CO₂ operating pressures:**
+### Typical CO₂ Operating Pressures
 | Point | Pressure | Temperature equiv. |
 |---|---|---|
 | LT suction (booster in) | 12–20 bar (174–290 psi) | −35 to −25°C sat |
@@ -43,287 +305,33 @@ CO₂ has a critical point at 31.1°C / 87.8°F, 73.8 bar / 1070 psi. When ambie
 | HPCO trip point | 130–140 bar (1885–2031 psi) | — |
 | LPCO trip point | 5–8 bar (73–116 psi) | −50 to −42°C sat |
 
-**High-pressure valve (HPV / gas cooler pressure valve):**
+### High-Pressure Valve (HPV / Gas Cooler Pressure Valve)
 Controls high-side pressure. Optimal setpoint ≈ 2.6 × T_gascooler_outlet(°C) + 7 bar — chasing this setpoint maximises COP. A stuck-closed HPV causes immediate HPCO trip. A stuck-open HPV causes loss of system capacity and liquid flood-back.
 
-**Flash tank / intermediate pressure vessel (IPV):**
+### Flash Tank / Intermediate Pressure Vessel (IPV)
 The flash tank separates liquid from flash gas after the main expansion valve. Booster compressors take suction from the LT cases and discharge into the flash tank. Main compressors take suction from the flash tank vapour + MT suction header. Flash tank level control is critical — too high floods main compressors; too low starves them.
 
-**Oil management in CO₂ systems:**
+### Oil Management in CO₂ Systems
 CO₂ has poor miscibility with polyol ester (POE) oil. Oil separators on each compressor discharge are essential. Oil level controllers (Kriwan INT69, Emerson OMB/OMC, Traxoil) cut compressors on low oil. After an HPCO trip, always check oil levels before restart — oil migration during off-cycle is common. Use the manufacturer's specified oil charge and viscosity.
 
-**CO₂ defrost:**
+### CO₂ Defrost
 Most CO₂ LT cases use electric or hot-gas defrost. Hot-gas defrost in CO₂ systems uses discharge gas — ensure the hot-gas solenoid is rated for CO₂ pressures (> 40 bar). Termination sensor typically set at 10–15°C on the coil. Failed termination = case floods, superheat drops, possible compressor damage.
 
-**Common CO₂ fault patterns:**
+### Common CO₂ Fault Patterns
 - **HPCO trip**: gas cooler fans failed or coil fouled; HPV fault; high ambient spike; refrigerant overcharge; non-condensables; liquid slugging on restart
 - **Low flash tank pressure / low MT suction**: MT expansion valves not opening; defrost stuck on; low MT load; flash tank level too high restricting vapour
 - **High suction superheat (booster)**: LT EEVs not feeding correctly; refrigerant shortage; liquid line restriction to LT cases
 - **Oil alarm**: oil separator bypass; migration during long off-cycle; wrong oil viscosity; oil pump fault
 - **System won't reach transcritical / poor capacity in summer**: gas cooler fouled, approach temperature > 5°C above ambient means cleaning needed
 
----
-
-## HFC Vapour Compression — Operating Reference (R-404A / R-448A / R-449A)
-
-**Typical rack suction pressure targets:**
-- LT (−35 to −25°C): 19–29 psia / 1.3–2.0 bar
-- MT (−10 to −5°C): 45–55 psia / 3.1–3.8 bar
-- Condensing (design): 100–130 psia / 6.9–9.0 bar
-
-**Superheat and subcooling:**
-- Rack suction superheat (total): **10–20°F (5.5–11°C)** — below 8°F = flooding risk; above 25°F = undercharge or restriction
-- Individual case superheat at EEV/TXV outlet: **6–12°F (3.3–6.7°C)**
-- Liquid subcooling at rack condenser outlet: **10–20°F (5.5–11°C)**
-- Compressor discharge superheat: **40–80°F (22–44°C)** — above 100°F = investigate
-
----
-
-## Systematic Fault Diagnosis Framework
-
-**High head pressure / high discharge pressure:**
-1. Condenser: dirty coil, failed fans, blocked airflow, high ambient — most common cause
-2. Refrigerant: slight overcharge (check subcooling), non-condensables (air in system)
-3. Liquid line: restriction, partially closed liquid line solenoid
-4. For CO₂: gas cooler approach temp > 5°C above ambient = clean/repair gas cooler
-
-**Low suction pressure:**
-1. Load: is demand genuinely low? (night setback, empty store, off-peak)
-2. Refrigerant: undercharge — check subcooling, sight glass
-3. Expansion: TXV/EEV not opening — compare individual case superheat to rack total superheat
-4. Filter drier: pressure drop > 2 psi / 0.14 bar = replace
-5. Suction line: ice buildup, kinked line, partially closed service valve
-
-**High suction superheat (> 20°F):**
-→ Undercharge, TXV/EEV not opening or undersized, failed sensing bulb, high load condition, blocked distributor or strainer
-
-**Low suction superheat / flooding (< 5°F):**
-→ EEV/TXV overfeeding, failed sensing bulb, defrost not terminating (liquid slugging from case), refrigerant overcharge
-
-**Defrost not terminating:**
-1. Check termination sensor: placement (must contact coil between fins, not in airstream), setpoint (typically 55–65°F / 13–18°C)
-2. Check controller: defrost schedule, manual defrost function
-3. Check drain: ice dam below coil can prevent termination temp being reached
-
-**Compressor short-cycling:**
-→ Pressure differential between cut-in and cut-out too narrow (minimum 10 psi recommended)
-→ Refrigerant overcharge, oversized compressor, liquid floodback from cases
-
-**Compressor tripping on high discharge temperature:**
-→ Low refrigerant charge, low suction pressure, high compression ratio, discharge valve leaking, failed cooling (injection or unloading)
-
----
-
-## Controller Alarm Interpretation
-
-**Emerson E2/E3:** Alarm codes appear in the Point Monitor and Alarm Log. Common: high/low case temp (sensor or air curtain fault), defrost overrun (termination sensor), compressor faults (check input module status). Use Setup → Alarm Configuration to adjust setpoints.
-
-**Danfoss AK-SM 800/850:** Alarms in Service → Alarm Log. AKC/AK2 case controllers report to the supervisor. Alarm code format: XX-YY where XX = controller address, YY = alarm type. Manual reset required for compressor safety alarms.
-
-**Microthermo (LMP CO₂ systems):** Pressure transducers are 0–652 psi and 0–2000 psi ranges — confirm correct transducer range before replacing. CO₂ detector triggers ventilation interlock — test monthly. Case control alarms include defrost fail, sensor fault, and temperature high/low.
-
----
-
-## Case Valve Types and Common Faults
-
-**EPR valves (Evaporator Pressure Regulating):** Hold evaporator pressure at a minimum setpoint regardless of rack suction. Essential for MT cases on shared LT/MT racks to prevent freezing. Types: pilot-operated (Sporlan ORI/OREO, Danfoss ICS), electrically driven stepper motor (Sporlan CDS series).
-
-**Sporlan CDS / CDST stepper motor pressure regulating valves:**
-- CDS = Sporlan stepper motor **evaporator pressure regulating valve** (NOT "case differential sensor")
-- Driven by a dedicated stepper motor driver board via 4-wire cable. Sizes: CDS-2, -4, -7, -9, -16, -17 (based on connection size, not pressure range)
-- On Micro Thermo: the controller drives the CDS valve directly. "Invalid" or "fault" status means the controller cannot verify valve position — usually a wiring fault, failed driver board, or valve motor winding failure
-- **Diagnosing CDS invalid on Micro Thermo:**
-  1. Check the 4-wire cable from controller to valve for damage, moisture, or loose pins at both ends
-  2. Verify the stepper motor driver board in the case controller has 24 VAC supply
-  3. Measure motor winding resistance at the valve connector — **CDS-2/-4/-7: ~100 Ω per phase; CDS-9/-16/-17: ~75 Ω per phase**; open or shorted winding = failed motor assembly
-  4. Cycle power to the case controller to force valve re-initialization (audible clicking during init is normal)
-  5. If the valve is not initialising, disconnect the load, run a manual init — if it clicks but still reads invalid, suspect the driver board or feedback circuit
-- **Effect of CDS invalid while valve stays open:** suction pressure rises to rack suction → case overcools (exactly the 13°F vs 27°F setpoint scenario)
-- **Effect of CDS invalid while valve stays closed:** case warms up, high superheat
-
-**Solenoid valve on liquid line (LL solenoid):**
-On thermostat-controlled MT cases (no electronic controller), the liquid line solenoid stops refrigerant flow when the thermostat is satisfied. If the LL solenoid sticks open, the case overcools continuously regardless of thermostat. If it sticks closed, the case warms. To test: listen for click on thermostat call; verify 24 VAC coil voltage; measure coil resistance (~200–400 Ω for most 24 V coils — open = failed coil).
-
----
-
-## Quick Reference — Field Rules of Thumb
-
-### Temperature Difference (TD) and Humidity
-| Application | Evaporator TD | Space RH |
-|---|---|---|
-| A/C | 35°F | ~50% |
-| Reach-in coolers | 20°F | ~65% |
-| Walk-in coolers | 10°F | ~85% |
-| Walk-in (high humidity) | 8°F | ~90% |
-
-### Condenser Split (TD Over Ambient)
-- A/C (10 SEER and below): 30°F
-- Medium-temp refrigeration: 30°F
-- Low-temp refrigeration: 25°F
-- High-efficiency condensers: 20°F and below
-
-### System Pressures — R-404A / R-448A / R-449A
-**Medium-temp:**
-- Suction: 35–45 psig | SST: +15 to +25°F
-- Head: 180–250 psig | SCT: 90–110°F
-
-**Low-temp:**
-- Suction: 15–25 psig | SST: −10 to −20°F
-- Head: 180–250 psig | SCT: 90–110°F
-
-### Defrost Method Selection (MT Walk-ins)
-- Box ≥ 37°F → off-cycle defrost (thermostat)
-- Box ~35°F → time-clock planned defrost
-- Box < 33°F → time-clock + heat defrost
-
-### Superheat at Evaporator (TXV system)
-| Application | Target | Min | Max |
-|---|---|---|---|
-| A/C | 15°F | 5°F | 20°F |
-| Medium-temp | 10°F | 5°F | 20°F |
-| Low-temp | 5°F | 5°F | 20°F |
-Take superheat readings within 5°F of design conditions.
-
-### Subcooling
-- A/C: 15°F average
-- Standard refrigeration: 10°F average
-- Minimum: 5°F | Maximum: 20°F
-- Ambient below 70°F increases subcooling.
-
-### Critical Temperature Limits
-- Compressor discharge: **225°F maximum**
-- Oil sump: **180°F maximum**
-- Standard condensing: 105–125°F max | High-efficiency: 85–100°F max
-
-### Rack System Operation
-- Minimum compressor runtime: 5 min (prevents short cycling)
-- Target: 3–6 compressor starts per hour maximum
-- Oil return issues begin when suction superheat exceeds 20°F
-
-### Airflow (CFM per Ton)
-- A/C: 400 CFM/ton
-- Medium-temp: 250–350 CFM/ton
-- Low-temp: 175–250 CFM/ton
-
-### Compressor Amperage (average draw)
-- Single-phase: 6–7 A/hp
-- Three-phase 208/230V: 2.5–3 A/hp
-- Three-phase 575V: 1.0–1.2 A/hp (Canadian standard; US equivalent 460V ≈ 1.25–1.5 A/hp)
-
-### Compressor BTU Output (approximate)
-- A/C: 1 hp ≈ 12,000 BTU/h
-- Medium-temp: 1 hp ≈ 8,000 BTU/h
-- Low-temp: 1 hp ≈ 4,000 BTU/h
-
-### Suction Line Velocity
-- Low-temp: 1,500–2,500 ft/min
-- Medium-temp: 1,000–2,000 ft/min
-- Liquid line minimum: 300 ft/min
-- Trap suction lines on vertical risers over 5 ft.
-
-### Refrigerant Line Sizing (maximum runs)
-- ½" liquid line: up to 100 ft
-- ⅝" liquid line: up to 150 ft
-- ⅞" suction line: up to 75 ft
-Increase pipe size for longer runs to limit pressure drop.
-
-### Crankcase Heater
-Required when ambient drops below 50°F, on long off-cycles, or when using POE oil (R-410A, R-448A systems).
-
-### Receiver Charge Level
-- Air-cooled systems: 70–80% of receiver volume
-- Water-cooled systems: 60–70%
-- Supermarket racks: half-full during normal operation
-
----
-
-## Reach-In Cooler / Freezer Troubleshooting
-
-Always work in order: Airflow → Electrical → Refrigerant Circuit.
-
-### 1. Airflow (check first)
-Without proper airflow the coil freezes or fails to cool regardless of refrigerant charge.
-
-| Issue | Symptoms | Fix |
-|---|---|---|
-| Dirty evaporator coil | Frost buildup, weak airflow, warm box | Clean coil thoroughly |
-| Failed evaporator fan | No air movement, ice buildup on coil | Replace fan motor |
-| Blocked vents / product overloading | Uneven cooling | Adjust product placement, clear vents |
-
-### 2. Electrical
-Electrical failures prevent cooling entirely and can damage compressors if missed.
-- No power: check supply voltage and breakers first
-- Start/run capacitors: test with a meter (capacitance function) — a weak or failed capacitor is the most common cause of a compressor that hums but won't start
-- Control circuit: verify correct voltage (24 V or 120 V depending on design) at thermostat and contactor coil
-- Compressor windings: if no hum at all, test windings before condemning
-
-### 3. Refrigerant Circuit
-Check only after airflow and electrical are confirmed good.
-- Low charge: low suction pressure, high superheat, bubbles in sight glass, frost before TXV
-- TXV / cap tube: high superheat with normal pressures → starving; low superheat / flooding → overfeeding or sensing bulb fault
-- Compressor valve failure: low head, high suction, no temperature difference across compressor
-
-### Single-Phase Compressor Winding Test (multimeter, Ω)
-Terminals: **C** (Common), **S** (Start), **R** (Run)
-
-| Test | Expected |
-|---|---|
-| C → S | Highest resistance |
-| C → R | Medium resistance |
-| R → S | = (C→S) + (C→R) — must equal sum |
-| Any terminal → ground | OL (∞) — any reading = ground fault, replace compressor |
-
-If any winding reads open (OL) or shorted (near 0 Ω), the compressor is failed internally.
-
----
-
-## General HVAC Troubleshooting
-
-### Initial Assessment — Check These Before Anything Else
-- Power/electrical supply
-- Thermostat settings, mode, and battery
-- Air filter condition
-- Outdoor unit status
-
-### No Cooling
-*Unit not cooling, warm air from vents, running but not effective, or not running at all.*
-
-Work through in order:
-1. **Thermostat** — correct mode (Cool)? Set below room temp? Battery good?
-2. **Breakers** — check both indoor and outdoor disconnect/breaker
-3. **Air filter** — clogged filter is one of the most common causes of poor cooling and coil freeze-up
-4. **Outdoor unit** — is it running? Dirty coil? Fan spinning?
-5. **Indoor blower** — operating? Belt intact and tensioned?
-
-### Electrical Issues
-*Unit not starting, tripping breakers, intermittent operation, strange hum.*
-
-- **Contactor not pulling in:** check 24 V control voltage at coil terminals; if voltage present but no pull-in → bad contactor
-- **Capacitor failure:** motor hums but won't start; test capacitance with meter (must be within 6% of rating); start capacitor failure is most common
-- **Loose/burnt connections:** check all terminal blocks and wiring connectors — inspect contactor contacts for pitting
-- **Transformer:** verify primary voltage present; measure secondary (usually 24 VAC); if primary OK but no secondary → failed transformer
-
-### Refrigerant Circuit
-*Poor cooling, ice on lines or coil, high electric bills, hissing sounds.*
-
-- Check superheat (evap outlet) and subcooling (condenser outlet) — these tell you if the charge and metering are correct
-- Oil spots on coil, line connections, or under unit = likely leak location
-- Frozen evaporator coil = low airflow, low charge, or metering device fault (run defrost, find root cause before restarting)
-- Compare head and suction pressures to expected values for refrigerant and conditions
-
-Fix order: find and repair leak → recover → evacuate (500 microns) → recharge by weight or target superheat/subcooling values.
-
-### Airflow Problems
-*Uneven cooling, weak airflow, excessive noise, frequent cycling.*
-
-- Dirty or clogged air filter — replace first, always
-- Blocked return air grilles or supply registers
-- Ductwork: disconnected, crushed, or leaking (feel for air leaks in unconditioned space)
-- Blower motor: check amp draw vs. nameplate; belt-drive units — check belt tension and condition
-
----
-
+For symptom-based CO₂ diagnosis (GC pressure issues, flash tank level problems, MT/LT suction crossover), see the System Fault Diagnosis topic.
+`
+
+// ── HVACR glossary knowledge base ────────────────────────────────────────────
+export const HVACR_GLOSSARY_KNOWLEDGE = `
 ## HVACR Acronyms & Abbreviations Reference
+
+A quick-reference glossary for the abbreviations and acronyms used across this knowledge base — components, refrigerants, oils, measurements, controls, defrost methods, and system types.
 
 ### System Components
 
@@ -435,103 +443,7 @@ Fix order: find and repair leak → recover → evacuate (500 microns) → recha
 - **Cascade** — Two refrigeration cycles at different pressures; low-temp circuit (CO₂ or R-404A) cools the condenser of the high-temp circuit
 - **Self-Contained** — All components (compressor, condenser, evaporator) in one sealed unit; no field piping; reach-ins, chest freezers
 - **Pump Down** — Before compressor shuts off, liquid line solenoid closes and compressor evacuates low-side refrigerant to condenser/receiver; protects against migration during off-cycle
-
----
-
-## Fundamental Knowledge
-
-### How to Read a PT Chart
-1. Identify the refrigerant — use the correct chart
-2. Read suction or discharge pressure on your gauge (psig)
-3. Find that pressure in the left column of the chart
-4. Read across to the saturation temperature column
-5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
-
-**Example — R-404A:**
-- Suction gauge reads 60 psig → PT chart dew point = 26°F (this is your SST)
-- Suction line thermocouple reads 39°F
-- Superheat = 39 − 26 = **13°F** ✓
-
-### The 4 Stages of the Refrigeration Cycle
-
-| Stage | Location | What Happens | Key Measurement |
-|---|---|---|---|
-| **1. Evaporation** | Evaporator coil | Liquid absorbs heat, boils to vapor | Superheat at coil outlet |
-| **2. Suction** | Suction line → compressor | Low-pressure vapor travels to compressor | Suction pressure & temp |
-| **3. Compression** | Compressor | Pressure and temperature rise | Discharge temp & pressure |
-| **4. Condensation** | Condenser → receiver | Hot vapor rejects heat, condenses to liquid | Subcooling at condenser outlet |
-
-### Superheat & Subcooling
-
-**Superheat** = suction line temperature − SST (from PT chart at measured suction pressure)
-- Too high (>20°F): starved evaporator — undercharge, TXV stuck closed, restriction
-- Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
-
-**Subcooling** = SCT (from PT chart at measured head pressure) − liquid line temperature
-- Too low (<5°F): undercharge, condenser fan failure, high load
-- Too high (>20°F): possible overcharge, cold ambient
-
-### TXV vs EPR — Key Difference
-
-| | TXV | EPR |
-|---|---|---|
-| **Controls** | Superheat (how much refrigerant enters evaporator) | Minimum evaporator pressure (minimum coil temperature) |
-| **Location** | Evaporator inlet | Evaporator outlet (suction line) |
-| **Senses** | Suction line temperature via remote bulb | Downstream suction pressure |
-| **Effect of failure** | Open = flooding; Closed = starving | Open = case overcools; Closed = case warms |
-
-Both are often used together: TXV feeds the evaporator correctly, EPR ensures the case doesn't drop below its minimum setpoint.
-
-### Liquid Slugging — What It Is and Why It Destroys Compressors
-Liquid refrigerant reaching the compressor instead of vapor. Liquids are incompressible — when the piston tries to compress liquid, the connecting rod bends or breaks, valve plates shatter, and bearings seize. Failure is immediate and complete (repair cost $5,000–$15,000+).
-
-**Causes:** flooded evaporator (TXV overfeeding), refrigerant migration during off-cycle, failed accumulator
-**Prevention:** accumulator on suction line, crankcase heater during off-cycle, proper superheat, pump-down system
-
-### Pump Down System
-Before the compressor shuts off:
-1. Controller closes the liquid line solenoid valve
-2. Compressor continues running, pulling suction pressure down to 0–5 psig
-3. Low-pressure switch trips → compressor stops
-4. All low-side refrigerant is stored in the condenser/receiver — no migration overnight
-
-At next startup: suction side is empty until the solenoid opens and refrigerant refills the circuit.
-
-### Oil Return
-Compressor oil circulates with refrigerant. Without good oil return:
-- Oil accumulates in evaporators → insulates the coil → reduced efficiency
-- Compressor loses oil → bearing failure, burnout
-Key components: **oil separator** (discharge line, ~95% recovery), **oil return line** (accumulator to crankcase), **crankcase heater** (boils dissolved refrigerant out of oil during off-cycle)
-
-### Undercharge vs Overcharge
-
-| | Undercharge | Overcharge |
-|---|---|---|
-| **Suction pressure** | Low | Normal–High |
-| **Superheat** | High | Low |
-| **Subcooling** | Low | High |
-| **Sight glass** | Bubbles / flash gas | Clear |
-| **Discharge temp** | High | Normal–High |
-| **Cause** | Leak | Technician error |
-
-### Compressor Capacity Control Methods
-1. **Unloading** — cylinder heads lifted or ported; compressor runs but doesn't compress; maintains oil circulation; 4-step unloaders common (0%, 33%, 67%, 100%)
-2. **VFD** — modulates RPM infinitely; most efficient; higher upfront cost
-3. **Pump Down / Stage Cycling** — bring additional compressors on/off the common suction header based on demand
-
-### Defrost Efficiency Ranking
-1. Hot Gas Defrost (~90% efficient) — fastest, least case temperature rise
-2. Reverse Cycle (~80%)
-3. Electric Defrost (~40%) — most common, highest energy cost
-4. Off-Cycle (~10%) — only viable in warmer walk-ins
-
-Defrost on Demand (adaptive) saves 30–40% energy vs timer-only control by defrosting only when frost is actually present.
-
-### Refrigerant Charging Rules
-- **Zeotropic blends** (R-404A, R-448A): always charge as **liquid** through the high side; vapor charging fractionates the blend
-- **Azeotropic blends** (R-410A, R-507): can vapor-charge the low side
-- Charge by weight whenever possible; use manufacturer's nameplate charge
-- After repairs: triple evacuate (nitrogen break between pulls) to 500 microns; decay test 30 min`
+`
 
 // ── Sporlan product knowledge base ──────────────────────────────────────────
 export const SPORLAN_KNOWLEDGE = `
