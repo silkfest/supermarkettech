@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
-const ELEVATED_ROLES = ['admin', 'manager', 'journeyman']
+const ELEVATED_ROLES = ['admin', 'manager']
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

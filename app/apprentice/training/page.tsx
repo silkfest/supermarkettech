@@ -222,6 +222,7 @@ function TrainingInner() {
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   const isAdmin    = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
+  const canManageCourses = ['admin', 'manager'].includes(currentUser?.role ?? '')
   const isReadOnly = isAdmin && viewingUser !== null && viewingUser.id !== currentUser?.id
   const displayUser = viewingUser ?? currentUser
 
@@ -688,8 +689,8 @@ function TrainingInner() {
         {/* ── Courses tab ────────────────────────────────────────────────────── */}
         {activeTab === 'courses' && (
           <div className="space-y-4">
-            {/* Add course button (admins/managers/journeymen) */}
-            {isAdmin && !isReadOnly && (
+            {/* Add course button (admins/managers) */}
+            {canManageCourses && !isReadOnly && (
               <button
                 onClick={() => { setEditingCourse(null); setShowCourseModal(true) }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl text-slate-400 hover:text-blue-500 text-sm font-medium transition-colors"
@@ -708,7 +709,7 @@ function TrainingInner() {
               <EmptyState
                 icon={BookOpen}
                 title="No courses yet."
-                description={isAdmin && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
+                description={canManageCourses && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
               />
             )}
 
@@ -726,18 +727,26 @@ function TrainingInner() {
                     const busy = togglingCourse === course.id
                     const tm   = COURSE_TYPE_META[course.type] ?? COURSE_TYPE_META.article
 
+                    const hasLessons = course.lesson_count > 0
+
                     return (
                       <div key={course.id} className={`px-4 py-4 flex items-start gap-3 ${done ? 'opacity-70' : ''}`}>
-                        {/* Complete toggle */}
-                        <button
-                          onClick={() => !isReadOnly && toggleCourse(course)}
-                          disabled={busy || isReadOnly}
-                          className={`flex-shrink-0 mt-0.5 transition-transform ${isReadOnly ? 'cursor-default' : 'active:scale-90'}`}
-                        >
-                          {busy ? <Loader2 size={20} className="animate-spin text-blue-400"/>
-                            : done ? <CheckCircle2 size={20} className="text-emerald-400"/>
-                            : <Circle size={20} className={isReadOnly ? 'text-slate-700' : 'text-slate-600 hover:text-slate-400'}/>}
-                        </button>
+                        {/* Complete toggle — lesson-based courses are completed automatically via the course player */}
+                        {hasLessons ? (
+                          <div className="flex-shrink-0 mt-0.5" title={done ? 'Course completed' : 'Complete all lessons to finish this course'}>
+                            {done ? <CheckCircle2 size={20} className="text-emerald-400"/> : <Circle size={20} className="text-slate-600"/>}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => !isReadOnly && toggleCourse(course)}
+                            disabled={busy || isReadOnly}
+                            className={`flex-shrink-0 mt-0.5 transition-transform ${isReadOnly ? 'cursor-default' : 'active:scale-90'}`}
+                          >
+                            {busy ? <Loader2 size={20} className="animate-spin text-blue-400"/>
+                              : done ? <CheckCircle2 size={20} className="text-emerald-400"/>
+                              : <Circle size={20} className={isReadOnly ? 'text-slate-700' : 'text-slate-600 hover:text-slate-400'}/>}
+                          </button>
+                        )}
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
@@ -789,7 +798,7 @@ function TrainingInner() {
                               <ExternalLink size={14}/>
                             </a>
                           )}
-                          {isAdmin && !isReadOnly && (
+                          {canManageCourses && !isReadOnly && (
                             <>
                               <button
                                 onClick={() => { setEditingCourse(course); setShowCourseModal(true) }}
