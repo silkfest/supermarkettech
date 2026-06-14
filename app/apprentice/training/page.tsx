@@ -279,9 +279,15 @@ function TrainingInner() {
   }, [router, fetchTasks, fetchCourses, searchParams])
 
   // ── Task toggle ──────────────────────────────────────────────────────────────
+  const isElevatedSelf = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
+
   async function toggleTask(task: Task) {
     if (!currentUser || isReadOnly) return
-    const wasComplete = task.progress?.status === 'completed'
+    const status = task.progress?.status
+    // Apprentices can't undo a manager-verified completion
+    if (status === 'completed' && !isElevatedSelf) return
+
+    const wasActive = status === 'completed' || status === 'pending_review'
     setToggling(task.id)
     setToggleError(null)
 
@@ -289,13 +295,23 @@ function TrainingInner() {
     const prevBadgeCount = computeEarnedBadges(tasks).length
     const newTasks = tasks.map(t =>
       t.id === task.id
-        ? { ...t, progress: wasComplete ? null : { status: 'completed', completed_at: new Date().toISOString(), notes: '', verifier: null } }
+        ? {
+            ...t,
+            progress: wasActive
+              ? null
+              : {
+                  status:       isElevatedSelf ? 'completed' : 'pending_review',
+                  completed_at: isElevatedSelf ? new Date().toISOString() : null,
+                  notes: '',
+                  verifier: null,
+                },
+          }
         : t
     )
     setTasks(newTasks)
 
     const userId = viewingUser?.id ?? currentUser.id
-    if (wasComplete) {
+    if (wasActive) {
       const res = await fetch('/api/apprentice/progress', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -311,7 +327,7 @@ function TrainingInner() {
       if (!res.ok) {
         setTasks(prevTasks)
         setToggleError('Failed to save — please try again')
-      } else {
+      } else if (isElevatedSelf) {
         const newBadgeCount = computeEarnedBadges(newTasks).length
         if (newBadgeCount > prevBadgeCount) {
           const earned  = computeEarnedBadges(newTasks)
@@ -321,6 +337,35 @@ function TrainingInner() {
         }
       }
     }
+    setToggling(null)
+  }
+
+  // ── Approve / reject a pending task submission (managers, journeymen, admins) ─
+  async function reviewTask(task: Task, action: 'approve' | 'reject') {
+    if (!currentUser || !isReadOnly) return
+    setToggling(task.id)
+    setToggleError(null)
+
+    const prevTasks = tasks
+    const newTasks = tasks.map(t =>
+      t.id === task.id
+        ? {
+            ...t,
+            progress: action === 'approve'
+              ? { status: 'completed', completed_at: new Date().toISOString(), notes: t.progress?.notes ?? '', verifier: { name: currentUser.name } }
+              : null,
+          }
+        : t
+    )
+    setTasks(newTasks)
+
+    const userId = viewingUser?.id ?? currentUser.id
+    const res = await fetch('/api/apprentice/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, taskId: task.id, action }),
+    })
+    if (!res.ok) { setTasks(prevTasks); setToggleError('Failed to save — please try again') }
     setToggling(null)
   }
 
@@ -403,6 +448,7 @@ function TrainingInner() {
   const pct          = totalXP > 0 ? Math.round((earnedXP / totalXP) * 100) : 0
   const level        = getLevel(earnedXP)
   const nextLevel    = LEVELS.find(l => l.min > earnedXP)
+  const pendingTasks = tasks.filter(t => t.progress?.status === 'pending_review')
   const earnedBadges = computeEarnedBadges(tasks)
   const categories   = Object.keys(CAT_COLORS)
   const tasksByCat: Record<string, Task[]> = {}
@@ -587,6 +633,11 @@ function TrainingInner() {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'tasks' ? 'bg-blue-100 dark:bg-slate-500 text-blue-700 dark:text-slate-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
               {completed.length}/{tasks.length}
             </span>
+            {pendingTasks.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                {pendingTasks.length} pending
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('courses')}
@@ -653,26 +704,46 @@ function TrainingInner() {
                     <div className="divide-y divide-slate-200 dark:divide-slate-700/50">
                       {catTasks.map(task => {
                         const done = task.progress?.status === 'completed'
+                        const pending = task.progress?.status === 'pending_review'
                         const busy = toggling === task.id
+                        const canToggle = !isReadOnly && !(done && !isElevatedSelf)
                         return (
                           <div key={task.id} className={`px-4 py-3.5 flex items-start gap-3 transition-colors ${done ? 'opacity-70' : ''}`}>
-                            <button onClick={() => !isReadOnly && toggleTask(task)} disabled={busy || isReadOnly}
-                              className={`flex-shrink-0 mt-0.5 transition-transform ${isReadOnly ? 'cursor-default' : 'active:scale-90'}`}
+                            <button onClick={() => canToggle && toggleTask(task)} disabled={busy || !canToggle}
+                              className={`flex-shrink-0 mt-0.5 transition-transform ${canToggle ? 'active:scale-90' : 'cursor-default'}`}
+                              title={pending && !isReadOnly ? 'Tap to withdraw submission' : undefined}
                             >
                               {busy ? <Loader2 size={20} className="animate-spin text-blue-400" />
                                 : done ? <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                : pending ? <Clock size={20} className="text-amber-500 dark:text-amber-400" />
                                 : <Circle size={20} className={isReadOnly ? 'text-slate-700' : 'text-slate-600 hover:text-slate-400'} />}
                             </button>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                 <p className={`text-sm font-medium ${done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>{task.title}</p>
                                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${DIFF_BADGE[task.difficulty]}`}>{task.difficulty}</span>
+                                {pending && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">Pending review</span>}
                               </div>
                               <p className="text-xs text-slate-400 leading-relaxed">{task.description}</p>
-                              {done && task.progress?.verifier && <p className="text-[10px] text-emerald-500 mt-1">✓ Verified by {task.progress.verifier.name}</p>}
+                              {done && task.progress?.verifier && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">✓ Verified by {task.progress.verifier.name}</p>}
                               {done && task.progress?.completed_at && <p className="text-[10px] text-slate-500 mt-0.5">Completed {new Date(task.progress.completed_at).toLocaleDateString()}</p>}
+                              {pending && !isReadOnly && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Submitted — awaiting manager approval. Tap the clock icon to withdraw.</p>}
+                              {pending && isReadOnly && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <button onClick={() => reviewTask(task, 'approve')} disabled={busy}
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-medium rounded-lg transition-colors"
+                                  >
+                                    <CheckCircle2 size={12}/> Approve
+                                  </button>
+                                  <button onClick={() => reviewTask(task, 'reject')} disabled={busy}
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-[11px] font-medium rounded-lg transition-colors"
+                                  >
+                                    <X size={12}/> Reject
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                            <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : pending ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                               +{task.points} XP
                             </span>
                           </div>
