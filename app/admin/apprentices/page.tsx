@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap, MessageCircle, AlertTriangle, Shield } from 'lucide-react'
+import { Star, Award, CheckCircle2, ChevronRight, UserCircle, Loader2, GraduationCap, MessageCircle, AlertTriangle, Shield, Clock, X } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
 
@@ -17,6 +17,16 @@ interface TechRow {
   certStatus: 'none' | 'ok' | 'expiring' | 'expired'
 }
 interface Journeyman { id: string; name: string }
+interface PendingApproval {
+  user_id: string; user_name: string; task_id: string; task_title: string
+  category: string; difficulty: string; points: number; notes: string
+}
+
+const DIFF_BADGE: Record<string, string> = {
+  beginner:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  intermediate: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  advanced:     'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+}
 
 const BADGES_COUNT_THRESHOLDS = [
   { id: 'first_step', check: (r: TechRow) => r.completedTasks >= 1 },
@@ -46,6 +56,8 @@ export default function AdminApprenticesPage() {
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState<string | null>(null)
   const [saveError,   setSaveError]   = useState<string | null>(null)
+  const [approvals,   setApprovals]   = useState<PendingApproval[]>([])
+  const [reviewing,   setReviewing]   = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -56,17 +68,47 @@ export default function AdminApprenticesPage() {
       const role = (me as { role: string } | null)?.role
       if (!role || !['admin', 'manager', 'journeyman'].includes(role)) { router.push('/dashboard'); return }
 
-      const [overviewRes, jRes] = await Promise.all([
+      const [overviewRes, jRes, approvalsRes] = await Promise.all([
         fetch('/api/apprentice/overview'),
         sb.from('users').select('id,name').in('role', ['journeyman', 'admin', 'manager']).order('name'),
+        fetch('/api/apprentice/approvals'),
       ])
       const data = await overviewRes.json()
       if (Array.isArray(data)) setTechnicians(data)
       setJourneymen((jRes.data ?? []) as Journeyman[])
+      const appData = await approvalsRes.json().catch(() => [])
+      if (Array.isArray(appData)) setApprovals(appData)
       setLoading(false)
     }
     load()
   }, [router])
+
+  async function reviewSubmission(a: PendingApproval, action: 'approve' | 'reject') {
+    const key = `${a.user_id}:${a.task_id}`
+    setReviewing(key)
+    setSaveError(null)
+    const res = await fetch('/api/apprentice/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: a.user_id, taskId: a.task_id, action }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Failed to update submission' }))
+      setSaveError(error ?? 'Failed to update submission')
+      setReviewing(null)
+      return
+    }
+    // Drop the handled submission; on approve, credit the apprentice's totals
+    setApprovals(prev => prev.filter(p => !(p.user_id === a.user_id && p.task_id === a.task_id)))
+    if (action === 'approve') {
+      setTechnicians(prev => prev.map(t =>
+        t.id === a.user_id
+          ? { ...t, completedTasks: t.completedTasks + 1, earnedXP: t.earnedXP + a.points }
+          : t
+      ))
+    }
+    setReviewing(null)
+  }
 
   async function assignMentor(techId: string, mentorId: string | null) {
     setSaving(techId)
@@ -261,6 +303,55 @@ export default function AdminApprenticesPage() {
             </div>
           )
         })()}
+
+        {/* Pending approvals */}
+        {approvals.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-500/30 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/30">
+              <Clock size={15} className="text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Pending approvals</span>
+              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">{approvals.length}</span>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {approvals.map(a => {
+                const key = `${a.user_id}:${a.task_id}`
+                const busy = reviewing === key
+                return (
+                  <div key={key} className="px-4 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{a.task_title}</span>
+                        {a.difficulty && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${DIFF_BADGE[a.difficulty] ?? 'bg-slate-100 text-slate-600'}`}>{a.difficulty}</span>}
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">+{a.points} XP</span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Submitted by <span className="font-medium text-slate-700 dark:text-slate-300">{a.user_name}</span>
+                        {a.category && <span className="text-slate-400 dark:text-slate-500"> · {a.category}</span>}
+                      </p>
+                      {a.notes && <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">“{a.notes}”</p>}
+                    </div>
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <button
+                        onClick={() => reviewSubmission(a, 'approve')}
+                        disabled={busy}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-medium rounded-lg transition-colors"
+                      >
+                        {busy ? <Loader2 size={12} className="animate-spin"/> : <CheckCircle2 size={12}/>} Approve
+                      </button>
+                      <button
+                        onClick={() => reviewSubmission(a, 'reject')}
+                        disabled={busy}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-[11px] font-medium rounded-lg transition-colors"
+                      >
+                        <X size={12}/> Reject
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">

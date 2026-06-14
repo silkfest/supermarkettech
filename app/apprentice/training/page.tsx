@@ -204,6 +204,8 @@ function TrainingInner() {
   const [toggleError, setToggleError] = useState<string | null>(null)
   const [openCats, setOpenCats]     = useState<Record<string, boolean>>({})
   const [newBadge, setNewBadge]     = useState<string | null>(null)
+  const [submitModalTask, setSubmitModalTask] = useState<Task | null>(null)
+  const [submitNote, setSubmitNote] = useState('')
 
   // Courses state
   const [courses, setCourses]           = useState<Course[]>([])
@@ -280,6 +282,45 @@ function TrainingInner() {
 
   // ── Task toggle ──────────────────────────────────────────────────────────────
   const isElevatedSelf = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
+
+  // Decide what tapping a task does: apprentices submitting open a note modal;
+  // elevated users complete instantly; an active task toggles off (withdraw).
+  function handleTaskClick(task: Task) {
+    if (isReadOnly) return
+    const status = task.progress?.status
+    if (status === 'completed' && !isElevatedSelf) return
+    const wasActive = status === 'completed' || status === 'pending_review'
+    if (!wasActive && !isElevatedSelf) {
+      setSubmitNote('')
+      setSubmitModalTask(task)
+      return
+    }
+    toggleTask(task)
+  }
+
+  async function submitForReview(task: Task, note: string) {
+    if (!currentUser) return
+    setSubmitModalTask(null)
+    setToggling(task.id)
+    setToggleError(null)
+
+    const prevTasks = tasks
+    const newTasks = tasks.map(t =>
+      t.id === task.id
+        ? { ...t, progress: { status: 'pending_review', completed_at: null, notes: note, verifier: null } }
+        : t
+    )
+    setTasks(newTasks)
+
+    const userId = viewingUser?.id ?? currentUser.id
+    const res = await fetch('/api/apprentice/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, taskId: task.id, status: 'completed', notes: note }),
+    })
+    if (!res.ok) { setTasks(prevTasks); setToggleError('Failed to save — please try again') }
+    setToggling(null)
+  }
 
   async function toggleTask(task: Task) {
     if (!currentUser || isReadOnly) return
@@ -486,6 +527,38 @@ function TrainingInner() {
           onSave={handleCourseSaved}
           onClose={() => { setShowCourseModal(false); setEditingCourse(null) }}
         />
+      )}
+
+      {/* Submit-for-review modal */}
+      {submitModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSubmitModalTask(null)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Submit task for review</h3>
+              <button onClick={() => setSubmitModalTask(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18}/></button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{submitModalTask.title}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Your journeyman or manager will review this and approve it before you get credit. Add a note about how/where you completed it (optional).
+            </p>
+            <textarea
+              value={submitNote}
+              onChange={e => setSubmitNote(e.target.value)}
+              rows={3}
+              placeholder="e.g. Completed during the PM at Fortino's Mall Rd…"
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setSubmitModalTask(null)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Cancel</button>
+              <button
+                onClick={() => submitForReview(submitModalTask, submitNote.trim())}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+              >
+                Submit for review
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -709,7 +782,7 @@ function TrainingInner() {
                         const canToggle = !isReadOnly && !(done && !isElevatedSelf)
                         return (
                           <div key={task.id} className={`px-4 py-3.5 flex items-start gap-3 transition-colors ${done ? 'opacity-70' : ''}`}>
-                            <button onClick={() => canToggle && toggleTask(task)} disabled={busy || !canToggle}
+                            <button onClick={() => canToggle && handleTaskClick(task)} disabled={busy || !canToggle}
                               className={`flex-shrink-0 mt-0.5 transition-transform ${canToggle ? 'active:scale-90' : 'cursor-default'}`}
                               title={pending && !isReadOnly ? 'Tap to withdraw submission' : undefined}
                             >
@@ -727,6 +800,7 @@ function TrainingInner() {
                               <p className="text-xs text-slate-400 leading-relaxed">{task.description}</p>
                               {done && task.progress?.verifier && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">✓ Verified by {task.progress.verifier.name}</p>}
                               {done && task.progress?.completed_at && <p className="text-[10px] text-slate-500 mt-0.5">Completed {new Date(task.progress.completed_at).toLocaleDateString()}</p>}
+                              {pending && task.progress?.notes && <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 italic">“{task.progress.notes}”</p>}
                               {pending && !isReadOnly && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Submitted — awaiting manager approval. Tap the clock icon to withdraw.</p>}
                               {pending && isReadOnly && (
                                 <div className="flex items-center gap-2 mt-2">
