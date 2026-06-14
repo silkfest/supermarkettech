@@ -335,6 +335,8 @@ export default function CoursePlayerPage() {
   const atFirst = stepIdx === 0
   const atLast = stepIdx === steps.length - 1
   const stepPct = steps.length ? Math.round(((stepIdx + 1) / steps.length) * 100) : 0
+  // Must pass a quiz before moving past it
+  const quizBlocked = step?.kind === 'quiz' && !lessonDone(step.lesson)
 
   return (
     <PageShell>
@@ -472,15 +474,19 @@ export default function CoursePlayerPage() {
               <ChevronLeft size={15}/> Back
             </button>
 
-            <button
-              onClick={goNext}
-              disabled={marking}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {marking && <Loader2 size={14} className="animate-spin"/>}
-              {atLast ? 'Finish' : 'Next'}
-              {!atLast && <ChevronRight size={15}/>}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={goNext}
+                disabled={marking || quizBlocked}
+                title={quizBlocked ? 'Pass the quiz to continue' : undefined}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {marking && <Loader2 size={14} className="animate-spin"/>}
+                {atLast ? 'Finish' : 'Next'}
+                {!atLast && <ChevronRight size={15}/>}
+              </button>
+              {quizBlocked && <p className="text-[11px] text-amber-600 dark:text-amber-400">Pass the quiz to continue</p>}
+            </div>
           </div>
         )}
       </div>
