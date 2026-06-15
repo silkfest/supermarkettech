@@ -30,6 +30,42 @@ const BADGES = [
   { id: 'journeyman',    icon: '⭐', name: 'Journeyman Ready',   desc: 'Complete all 313A required tasks',              check: (c: number, t: number) => t > 0 && c >= t },
 ]
 
+// ─── Course completion badges ───────────────────────────────────────────────
+const COURSE_MILESTONE_BADGES = [
+  { id: 'course_first', icon: '🎓', name: 'First Course',   desc: 'Complete your first training course', check: (done: number) => done >= 1 },
+  { id: 'course_half',  icon: '📖', name: 'Halfway Scholar', desc: 'Complete 50% of training courses',    check: (done: number, total: number) => total > 0 && done / total >= 0.5 },
+  { id: 'course_all',   icon: '🏆', name: 'Course Graduate', desc: 'Complete every training course',      check: (done: number, total: number) => total > 0 && done >= total },
+]
+
+function getCourseMilestoneBadges(courseList: Course[]) {
+  const done  = courseList.filter(c => !!c.completion).length
+  const total = courseList.length
+  return COURSE_MILESTONE_BADGES.map(b => ({ ...b, earned: b.check(done, total) }))
+}
+
+function getPerCourseBadges(courseList: Course[]) {
+  return courseList.map(c => ({
+    id: `course-${c.id}`,
+    icon: '🎓',
+    name: c.title,
+    desc: `Complete the "${c.title}" course`,
+    earned: !!c.completion,
+  }))
+}
+
+// ─── Badge cell ──────────────────────────────────────────────────────────────
+function BadgeCell({ icon, name, desc, earned, isNew }: { icon: string; name: string; desc: string; earned: boolean; isNew: boolean }) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-white dark:ring-offset-slate-900' : 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-40 grayscale'}`}
+      title={`${name}: ${desc}`}
+    >
+      <span className="text-xl sm:text-2xl">{icon}</span>
+      <span className="text-[10px] text-center text-slate-600 dark:text-slate-300 font-medium leading-tight">{name}</span>
+    </div>
+  )
+}
+
 // ─── Level system ────────────────────────────────────────────────────────────
 const LEVELS = [
   { min: 0,    label: 'Rookie',            color: 'text-slate-500' },
@@ -430,10 +466,18 @@ function TrainingInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       })
-      setCourses(prev => prev.map(c => c.id === course.id
+      const newCourses = courses.map(c => c.id === course.id
         ? { ...c, completion: { completed_at: new Date().toISOString(), notes: '' } }
         : c
-      ))
+      )
+      setCourses(newCourses)
+      if (isElevatedSelf) {
+        const prevMilestones = getCourseMilestoneBadges(courses).filter(b => b.earned)
+        const newMilestones  = getCourseMilestoneBadges(newCourses).filter(b => b.earned)
+        const newMilestone   = newMilestones.find(b => !prevMilestones.find(p => p.id === b.id))
+        setNewBadge(newMilestone?.id ?? `course-${course.id}`)
+        setTimeout(() => setNewBadge(null), 4000)
+      }
     }
     setTogglingCourse(null)
   }
@@ -491,6 +535,11 @@ function TrainingInner() {
   const nextLevel    = LEVELS.find(l => l.min > earnedXP)
   const pendingTasks = tasks.filter(t => t.progress?.status === 'pending_review')
   const earnedBadges = computeEarnedBadges(tasks)
+  const courseMilestoneBadges = getCourseMilestoneBadges(courses)
+  const perCourseBadges       = getPerCourseBadges(courses)
+  const totalBadgeCount = earnedBadges.length
+    + courseMilestoneBadges.filter(b => b.earned).length
+    + perCourseBadges.filter(b => b.earned).length
   const categories   = Object.keys(CAT_COLORS)
   const tasksByCat: Record<string, Task[]> = {}
   for (const t of tasks) {
@@ -511,7 +560,8 @@ function TrainingInner() {
 
       {/* Badge toast */}
       {newBadge && (() => {
-        const b = BADGES.find(x => x.id === newBadge)!
+        const b = [...BADGES, ...courseMilestoneBadges, ...perCourseBadges].find(x => x.id === newBadge)
+        if (!b) return null
         return (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-yellow-400 text-yellow-900 rounded-full shadow-2xl font-bold text-sm animate-bounce">
             <span className="text-2xl">{b.icon}</span>
@@ -662,7 +712,7 @@ function TrainingInner() {
             </div>
             <div className="w-px bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{earnedBadges.length}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{totalBadgeCount}</p>
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Badges</p>
             </div>
             <div className="w-px bg-slate-300 dark:bg-slate-600" />
@@ -677,21 +727,27 @@ function TrainingInner() {
         <div>
           <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Badges</h3>
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-            {BADGES.map(b => {
-              const earned = earnedBadges.some(e => e.id === b.id)
-              const isNew  = newBadge === b.id
-              return (
-                <div key={b.id}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${earned ? isNew ? 'bg-yellow-400/20 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 ring-offset-white dark:ring-offset-slate-900' : 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-40 grayscale'}`}
-                  title={`${b.name}: ${b.desc}`}
-                >
-                  <span className="text-xl sm:text-2xl">{b.icon}</span>
-                  <span className="text-[10px] text-center text-slate-600 dark:text-slate-300 font-medium leading-tight">{b.name}</span>
-                </div>
-              )
-            })}
+            {BADGES.map(b => (
+              <BadgeCell key={b.id} icon={b.icon} name={b.name} desc={b.desc}
+                earned={earnedBadges.some(e => e.id === b.id)} isNew={newBadge === b.id} />
+            ))}
           </div>
         </div>
+
+        {/* Course badges */}
+        {courses.length > 0 && (
+          <div>
+            <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Course Badges</h3>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              {courseMilestoneBadges.map(b => (
+                <BadgeCell key={b.id} icon={b.icon} name={b.name} desc={b.desc} earned={b.earned} isNew={newBadge === b.id} />
+              ))}
+              {perCourseBadges.map(b => (
+                <BadgeCell key={b.id} icon={b.icon} name={b.name} desc={b.desc} earned={b.earned} isNew={newBadge === b.id} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tab switcher */}
         <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
