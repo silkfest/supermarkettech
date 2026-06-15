@@ -6,19 +6,33 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   CheckCircle2, Circle, Loader2, BookOpen, Video, HelpCircle,
   ExternalLink, RotateCcw, ChevronLeft, ChevronRight, ListChecks, X,
+  Gauge, ClipboardCheck,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
 import YouTubeEmbed from '@/components/training/YouTubeEmbed'
 import MarkdownContent from '@/components/knowledge/MarkdownContent'
+import HotspotDiagram, { type HotspotPoint } from '@/components/training/HotspotDiagram'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 
 interface LessonCompletion { completed_at: string; score: number | null; total: number | null; passed: boolean | null }
-interface QuizQuestion { id: string; question: string; options: string[]; sort_order: number; correct_index?: number; explanation?: string }
+type QuestionType = 'single' | 'multiple' | 'true_false' | 'fill_blank' | 'hotspot'
+interface QuizQuestion {
+  id: string; question: string; options: string[]; sort_order: number; question_type: QuestionType
+  placement?: 'end' | 'inline'; section_anchor?: string | null
+  hotspot_diagram?: string | null; hotspot_points?: HotspotPoint[]
+  correct_index?: number; correct_indices?: number[]; correct_text?: string[]; explanation?: string
+}
+type Answer = number | number[] | string | Record<string, string> | null
+
+interface TaskInfo { id: string; title: string; category: string; status: string }
+
 interface Lesson {
-  id: string; title: string; description: string; lesson_type: 'kb_topic' | 'video' | 'quiz'
+  id: string; title: string; description: string; lesson_type: 'kb_topic' | 'video' | 'quiz' | 'simulator' | 'field_task'
   kb_topic_slug: string | null; video_url: string | null; sort_order: number
+  simulator_path?: string | null; training_task_id?: string | null; task?: TaskInfo | null
   questions?: QuizQuestion[]
+  inlineQuestions?: QuizQuestion[]
   completion: LessonCompletion | null
   // resolved client-side for kb_topic lessons
   sections?: { title: string; body: string }[]
@@ -31,7 +45,9 @@ interface CourseInfo {
 }
 
 interface QuizResult {
-  question_id: string; correct_index: number; explanation: string; submitted: unknown; is_correct: boolean
+  question_id: string
+  correct_index?: number; correct_indices?: number[]; correct_text?: string[]; hotspot_points?: HotspotPoint[]
+  explanation: string; submitted: unknown; is_correct: boolean
 }
 interface QuizResponse {
   score: number; total: number; percent: number; passed: boolean; pass_threshold: number; results: QuizResult[]
@@ -41,6 +57,22 @@ const LESSON_ICON: Record<Lesson['lesson_type'], React.ComponentType<{ size?: nu
   kb_topic: BookOpen,
   video: Video,
   quiz: HelpCircle,
+  simulator: Gauge,
+  field_task: ClipboardCheck,
+}
+
+function emptyAnswer(type: QuestionType): Answer {
+  if (type === 'multiple') return []
+  if (type === 'fill_blank') return ''
+  if (type === 'hotspot') return {}
+  return null
+}
+
+function isAnswered(type: QuestionType, answer: Answer): boolean {
+  if (type === 'multiple') return Array.isArray(answer) && answer.length > 0
+  if (type === 'fill_blank') return typeof answer === 'string' && answer.trim().length > 0
+  if (type === 'hotspot') return !!answer && typeof answer === 'object' && !Array.isArray(answer) && Object.keys(answer).length > 0
+  return answer !== null
 }
 
 // Strip leading emoji (matches extractSections in MarkdownContent)
@@ -74,14 +106,175 @@ function splitSections(content: string): { title: string; body: string }[] {
   return sections
 }
 
+// ── Single-question interaction (shared by end-of-lesson quizzes and inline checks) ──
+function QuestionBody({
+  q, answer, onChange, disabled, result,
+}: {
+  q: QuizQuestion; answer: Answer; onChange: (a: Answer) => void; disabled: boolean; result?: QuizResult
+}) {
+  const [selectedWord, setSelectedWord] = useState<string | null>(null)
+
+  if (q.question_type === 'multiple') {
+    const selected = Array.isArray(answer) ? answer : []
+    return (
+      <div className="space-y-1.5">
+        {q.options.map((opt, oi) => {
+          const isSelected = selected.includes(oi)
+          const correctSet = new Set(result?.correct_indices ?? [])
+          let cls = 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
+          if (result) {
+            if (correctSet.has(oi)) cls = 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-500'
+            else if (isSelected) cls = 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500'
+          } else if (isSelected) {
+            cls = 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500'
+          }
+          return (
+            <button
+              key={oi}
+              disabled={disabled}
+              onClick={() => onChange(isSelected ? selected.filter(i => i !== oi) : [...selected, oi])}
+              className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-colors disabled:cursor-default ${cls} text-slate-700 dark:text-slate-200`}
+            >
+              {opt}
+            </button>
+          )
+        })}
+        <p className="text-[11px] text-slate-400">Select all that apply.</p>
+      </div>
+    )
+  }
+
+  if (q.question_type === 'fill_blank') {
+    const value = typeof answer === 'string' ? answer : ''
+    let cls = 'border-slate-200 dark:border-slate-700 focus:border-blue-400'
+    if (result) cls = result.is_correct ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' : 'border-red-400 bg-red-50 dark:bg-red-900/20'
+    return (
+      <div className="space-y-1.5">
+        <input
+          type="text"
+          value={value}
+          disabled={disabled}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Type your answer..."
+          className={`w-full text-sm px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 outline-none ${cls} text-slate-700 dark:text-slate-200`}
+        />
+        {result && !result.is_correct && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">Accepted answer: {(result.correct_text ?? []).join(' / ')}</p>
+        )}
+      </div>
+    )
+  }
+
+  if (q.question_type === 'hotspot') {
+    const value = (answer && typeof answer === 'object' && !Array.isArray(answer)) ? answer as Record<string, string> : {}
+    const points = q.hotspot_points ?? []
+    const resultPoints = result?.hotspot_points
+    const pointResult: Record<string, boolean> | undefined = resultPoints
+      ? Object.fromEntries(resultPoints.map(p => [p.id, value[p.id] === p.label]))
+      : undefined
+    return (
+      <HotspotDiagram
+        diagram={q.hotspot_diagram ?? ''}
+        points={points}
+        value={value}
+        onChange={(next) => onChange(next)}
+        disabled={disabled}
+        result={pointResult}
+        selectedWord={selectedWord}
+        onSelectWord={setSelectedWord}
+      />
+    )
+  }
+
+  // single / true_false
+  const selected = typeof answer === 'number' ? answer : null
+  return (
+    <div className="space-y-1.5">
+      {q.options.map((opt, oi) => {
+        const isSelected = selected === oi
+        let cls = 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
+        if (result) {
+          if (oi === result.correct_index) cls = 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-500'
+          else if (isSelected) cls = 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500'
+        } else if (isSelected) {
+          cls = 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500'
+        }
+        return (
+          <button
+            key={oi}
+            disabled={disabled}
+            onClick={() => onChange(oi)}
+            className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-colors disabled:cursor-default ${cls} text-slate-700 dark:text-slate-200`}
+          >
+            {opt}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Inline knowledge check (shown within a kb_topic section) ────────────────────
+function InlineCheck({ q }: { q: QuizQuestion }) {
+  const [answer, setAnswer] = useState<Answer>(() => emptyAnswer(q.question_type))
+  const [result, setResult] = useState<QuizResult | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  async function check() {
+    setChecking(true)
+    const res = await fetch(`/api/apprentice/questions/${q.id}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer }),
+    })
+    const data = await res.json()
+    setChecking(false)
+    if (res.ok) setResult({ question_id: q.id, submitted: answer, ...data })
+  }
+
+  function retry() {
+    setResult(null)
+    setAnswer(emptyAnswer(q.question_type))
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-200 dark:border-blue-700/50 bg-blue-50/50 dark:bg-blue-900/10 p-3 my-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-500 dark:text-blue-400 mb-1.5">Quick check</p>
+      <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-2">{q.question}</p>
+      <QuestionBody q={q} answer={answer} onChange={setAnswer} disabled={!!result} result={result ?? undefined} />
+      {!result ? (
+        <button
+          onClick={check}
+          disabled={!isAnswered(q.question_type, answer) || checking}
+          className="mt-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-40 flex items-center gap-2"
+        >
+          {checking && <Loader2 size={12} className="animate-spin"/>}
+          Check answer
+        </button>
+      ) : (
+        <div className="mt-2">
+          <p className={`text-xs ${result.is_correct ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            {result.is_correct ? 'Correct! ' : 'Not quite. '}{result.explanation}
+          </p>
+          {!result.is_correct && (
+            <button onClick={retry} className="mt-1.5 text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline">
+              <RotateCcw size={12}/> Try again
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Quiz step ──────────────────────────────────────────────────────────────────
 function QuizLesson({ lesson, onCompleted }: { lesson: Lesson; onCompleted: (completion: LessonCompletion) => void }) {
   const questions = lesson.questions ?? []
-  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null))
+  const [answers, setAnswers] = useState<Answer[]>(() => questions.map(q => emptyAnswer(q.question_type)))
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<QuizResponse | null>(null)
 
-  const allAnswered = answers.every(a => a !== null)
+  const allAnswered = questions.every((q, i) => isAnswered(q.question_type, answers[i]))
 
   async function submit() {
     setSubmitting(true)
@@ -100,7 +293,7 @@ function QuizLesson({ lesson, onCompleted }: { lesson: Lesson; onCompleted: (com
 
   function retry() {
     setResult(null)
-    setAnswers(questions.map(() => null))
+    setAnswers(questions.map(q => emptyAnswer(q.question_type)))
   }
 
   return (
@@ -110,28 +303,7 @@ function QuizLesson({ lesson, onCompleted }: { lesson: Lesson; onCompleted: (com
         return (
           <div key={q.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-2">{qi + 1}. {q.question}</p>
-            <div className="space-y-1.5">
-              {q.options.map((opt, oi) => {
-                const selected = answers[qi] === oi
-                let cls = 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
-                if (result) {
-                  if (oi === r?.correct_index) cls = 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-500'
-                  else if (selected) cls = 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500'
-                } else if (selected) {
-                  cls = 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500'
-                }
-                return (
-                  <button
-                    key={oi}
-                    disabled={!!result}
-                    onClick={() => setAnswers(prev => prev.map((a, i) => i === qi ? oi : a))}
-                    className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-colors disabled:cursor-default ${cls} text-slate-700 dark:text-slate-200`}
-                  >
-                    {opt}
-                  </button>
-                )
-              })}
-            </div>
+            <QuestionBody q={q} answer={answers[qi]} onChange={(a) => setAnswers(prev => prev.map((p, i) => i === qi ? a : p))} disabled={!!result} result={r}/>
             {result && r && (
               <p className={`text-xs mt-2 ${r.is_correct ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                 {r.is_correct ? 'Correct! ' : 'Incorrect. '}{r.explanation}
@@ -174,9 +346,24 @@ type Step =
   | { kind: 'kb-link'; lesson: Lesson; lessonIndex: number; lastOfLesson: boolean }
   | { kind: 'video'; lesson: Lesson; lessonIndex: number; lastOfLesson: boolean }
   | { kind: 'quiz'; lesson: Lesson; lessonIndex: number; lastOfLesson: boolean }
+  | { kind: 'simulator'; lesson: Lesson; lessonIndex: number; lastOfLesson: boolean }
+  | { kind: 'field-task'; lesson: Lesson; lessonIndex: number; lastOfLesson: boolean }
 
 function lessonDone(l: Lesson) {
   return !!l.completion && (l.lesson_type !== 'quiz' || l.completion.passed)
+}
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  not_started: 'Not started',
+  in_progress: 'In progress',
+  pending_review: 'Pending manager review',
+  completed: 'Completed',
+}
+const TASK_STATUS_CLASS: Record<string, string> = {
+  not_started: 'text-slate-500 dark:text-slate-400',
+  in_progress: 'text-blue-600 dark:text-blue-400',
+  pending_review: 'text-amber-600 dark:text-amber-400',
+  completed: 'text-emerald-600 dark:text-emerald-400',
 }
 
 export default function CoursePlayerPage() {
@@ -259,6 +446,10 @@ export default function CoursePlayerPage() {
         out.push({ kind: 'video', lesson, lessonIndex, lastOfLesson: true })
       } else if (lesson.lesson_type === 'quiz') {
         out.push({ kind: 'quiz', lesson, lessonIndex, lastOfLesson: true })
+      } else if (lesson.lesson_type === 'simulator') {
+        out.push({ kind: 'simulator', lesson, lessonIndex, lastOfLesson: true })
+      } else if (lesson.lesson_type === 'field_task') {
+        out.push({ kind: 'field-task', lesson, lessonIndex, lastOfLesson: true })
       }
     })
     return out
@@ -299,8 +490,10 @@ export default function CoursePlayerPage() {
   async function goNext() {
     const step = steps[stepIdx]
     if (!step) return
-    // Reading lessons (KB last section, external KB link, or video) auto-complete on advancing
-    if ((step.kind === 'kb' && step.lastOfLesson) || step.kind === 'kb-link' || step.kind === 'video') {
+    // Reading lessons (KB last section, external KB link, video, simulator, field task)
+    // auto-complete on advancing — like kb-link, these are self-reported.
+    if ((step.kind === 'kb' && step.lastOfLesson) || step.kind === 'kb-link' || step.kind === 'video'
+      || step.kind === 'simulator' || step.kind === 'field-task') {
       await markComplete(step.lesson)
     }
     if (stepIdx < steps.length - 1) {
@@ -425,7 +618,12 @@ export default function CoursePlayerPage() {
 
             <div className="p-4 md:p-5">
               {step.kind === 'kb' && (
-                <MarkdownContent content={step.section.body} />
+                <>
+                  <MarkdownContent content={step.section.body} />
+                  {(step.lesson.inlineQuestions ?? [])
+                    .filter(q => q.section_anchor === step.section.title)
+                    .map(q => <InlineCheck key={q.id} q={q} />)}
+                </>
               )}
 
               {step.kind === 'kb-link' && (
@@ -457,6 +655,48 @@ export default function CoursePlayerPage() {
                 <div className="space-y-3">
                   {step.lesson.description && <p className="text-sm text-slate-500 dark:text-slate-400">{step.lesson.description}</p>}
                   <QuizLesson lesson={step.lesson} onCompleted={(c) => onQuizCompleted(step.lesson.id, c)}/>
+                </div>
+              )}
+
+              {step.kind === 'simulator' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {step.lesson.description || 'Apply what you just learned in the rack simulator.'}
+                  </p>
+                  {step.lesson.simulator_path && (
+                    <a
+                      href={step.lesson.simulator_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700"
+                    >
+                      <Gauge size={14}/> Open simulator <ExternalLink size={13}/>
+                    </a>
+                  )}
+                  <p className="text-[11px] text-slate-400">Run at least one scenario attempt, then mark this lesson done.</p>
+                </div>
+              )}
+
+              {step.kind === 'field-task' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {step.lesson.description || 'Apply this on the job and have your manager sign off in the Tasks tab.'}
+                  </p>
+                  {step.lesson.task && (
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{step.lesson.task.category}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{step.lesson.task.title}</p>
+                      <p className={`text-xs mt-1 ${TASK_STATUS_CLASS[step.lesson.task.status] ?? 'text-slate-500'}`}>
+                        Status: {TASK_STATUS_LABEL[step.lesson.task.status] ?? step.lesson.task.status}
+                      </p>
+                    </div>
+                  )}
+                  <a
+                    href="/apprentice/training"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <ClipboardCheck size={14}/> Go to Tasks <ExternalLink size={13}/>
+                  </a>
                 </div>
               )}
             </div>

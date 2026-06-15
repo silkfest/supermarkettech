@@ -6,6 +6,7 @@ import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
 import { ParagonTimerDiagram } from './diagrams/ParagonTimerDiagram'
 import { CompressorTerminalDiagram } from './diagrams/CompressorTerminalDiagram'
 import { IceHarvestCycleDiagram } from './diagrams/IceHarvestCycleDiagram'
+import { BasicRefrigerationCycleDiagram } from './diagrams/BasicRefrigerationCycleDiagram'
 
 export type OpenPdfFn = (url: string, title: string) => void
 
@@ -15,6 +16,7 @@ const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode>
   'paragon-timer': () => <ParagonTimerDiagram />,
   'compressor-terminals': () => <CompressorTerminalDiagram />,
   'ice-harvest-cycle': () => <IceHarvestCycleDiagram />,
+  'basic-refrigeration-cycle': () => <BasicRefrigerationCycleDiagram />,
 }
 
 // ── Inline formatter ──────────────────────────────────────────────────────────

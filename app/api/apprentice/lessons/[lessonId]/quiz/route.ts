@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { maybeCompleteCourse, QUIZ_PASS_PERCENT } from '@/lib/apprentice/lessonCompletion'
+import { gradeQuestion, type GradableQuestion } from '@/lib/apprentice/gradeQuestion'
+
+function gradeAnswer(q: GradableQuestion, submitted: unknown): boolean {
+  return gradeQuestion(q, submitted)
+}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params
@@ -23,8 +28,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ les
 
   const { data: questions, error: questionsError } = await supabase
     .from('quiz_questions')
-    .select('id, correct_index, explanation, options, question')
+    .select('id, correct_index, correct_indices, correct_text, hotspot_points, explanation, options, question, question_type')
     .eq('lesson_id', lessonId)
+    .eq('placement', 'end')
     .order('sort_order')
     .order('created_at')
 
@@ -34,14 +40,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ les
   let correctCount = 0
   const results = questions.map((q, i) => {
     const submitted = answers[i]
-    const isCorrect = submitted === q.correct_index
+    const isCorrect = gradeAnswer(q, submitted)
     if (isCorrect) correctCount++
     return {
-      question_id:   q.id,
-      correct_index: q.correct_index,
-      explanation:   q.explanation,
+      question_id:     q.id,
+      correct_index:   q.correct_index,
+      correct_indices: q.correct_indices,
+      correct_text:    q.correct_text,
+      hotspot_points:  q.hotspot_points,
+      explanation:     q.explanation,
       submitted,
-      is_correct:    isCorrect,
+      is_correct:      isCorrect,
     }
   })
 

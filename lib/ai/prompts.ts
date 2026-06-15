@@ -28,8 +28,6 @@ BEHAVIOURAL RULES:
 export const REFRIGERATION_KNOWLEDGE = `
 ## Refrigeration Fundamentals — The Cycle, PT Relationships & Field Rules
 
-![R-134a log P-h pressure-enthalpy diagram](https://upload.wikimedia.org/wikipedia/commons/7/79/Log_ph_Plot_-_R134a.svg "Pressure-enthalpy (log P-h) diagram — the core tool for analysing vapour compression refrigeration cycles")
-
 Every refrigeration and air conditioning system — from a household fridge to a supermarket rack — runs the same basic cycle: a refrigerant absorbs heat at low pressure, gets compressed, rejects that heat at high pressure, and expands back down to start again. This lesson covers that cycle, how to read pressure as temperature using a PT chart, the two key measurements (superheat and subcooling) used to confirm a system is running correctly, refrigerant and oil basics, and the field rules of thumb you'll use on every service call.
 
 ### The 4 Stages of the Refrigeration Cycle
@@ -44,24 +42,48 @@ Every refrigeration and air conditioning system — from a household fridge to a
 ### How to Read a PT Chart
 1. Identify the refrigerant — use the correct chart
 2. Read suction or discharge pressure on your gauge (psig)
-3. Find that pressure in the left column of the chart
-4. Read across to the saturation temperature column
-5. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction side, **bubble point** on the liquid side
+3. Find that pressure in the chart and read across to the saturation temperature
+4. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction (vapor) side, **bubble point** on the liquid side
 
-**Example — R-404A:**
-- Suction gauge reads 60 psig → PT chart dew point = 26°F (this is your SST)
-- Suction line thermocouple reads 39°F
-- Superheat = 39 − 26 = **13°F** ✓
+**R-404A — saturation pressure/temperature (psig):**
+
+| Temp (°F) | Pressure (psig) |
+|---|---|
+| -20 | 4.3 |
+| 0 | 26.1 |
+| 20 | 45.9 |
+| 32 | ~73 |
+| 70 | ~149 |
+| 80 | ~175 |
+| 90 | ~204 |
+
+R-404A is near-azeotropic (glide ≈ 0.5°F), so one column covers both liquid and vapor in practice. Example: suction gauge reads ~46 psig → PT chart shows SST ≈ 20°F.
+
+**R-448A / R-449A — saturation pressure/temperature (psig), liquid (bubble point) vs vapor (dew point):**
+
+| Temp (°F) | Liquid (psig) | Vapor (psig) |
+|---|---|---|
+| -20 | 17.0 | 9.8 |
+| 0 | 34.2 | 24.3 |
+| 20 | 57.8 | 44.6 |
+| 65 | 139.6 | 117.7 |
+| 75 | 164.9 | 140.9 |
+
+R-448A/R-449A have roughly **11°F of glide** between the bubble point and dew point at the same pressure — always read the **dew point (vapor)** column for suction-side superheat work and the **bubble point (liquid)** column for liquid-side subcooling work. Example: head gauge reads ~140 psig (liquid) → SCT ≈ 65°F; suction gauge reads ~45 psig (vapor) → interpolating between 0°F/24.3 psig and 20°F/44.6 psig gives SST ≈ 19–20°F.
 
 ### Superheat & Subcooling
 
-**Superheat** = suction line temperature − SST (saturation suction temperature, from PT chart at measured suction pressure)
+**Superheat** = suction line temperature − SST (saturation suction temperature, read from the dew point column at measured suction pressure)
 - Too high (>20°F): starved evaporator — undercharge, TXV stuck closed, restriction
 - Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
 
-**Subcooling** = SCT (saturation condensing temperature, from PT chart at measured head pressure) − liquid line temperature
+**Worked example (R-404A):** suction gauge reads 60 psig → interpolating the table above (between 45.9 psig/20°F and ~73 psig/32°F) gives SST ≈ 26°F. Suction line thermocouple reads 39°F. Superheat = 39 − 26 = **13°F** ✓
+
+**Subcooling** = SCT (saturation condensing temperature, read from the bubble point column at measured head pressure) − liquid line temperature
 - Too low (<5°F): undercharge, condenser fan failure, high load
 - Too high (>20°F): possible overcharge, cold ambient
+
+**Worked example (R-448A):** head gauge reads ~140 psig (liquid) → SCT ≈ 65°F. Liquid line thermocouple reads 58°F. Subcooling = 65 − 58 = **7°F** ✓
 
 ### TXV vs EPR — Key Difference
 
@@ -151,27 +173,29 @@ export const REFRIGERATION_COMPONENTS_KNOWLEDGE = `
 
 Every vapor-compression system — supermarket rack, reach-in, or rooftop unit — is built from the same five core components. This lesson introduces what each one does and where it sits in the cycle. The Rack System Components course goes deeper on the valves and controls that surround them.
 
+[diagram:basic-refrigeration-cycle]
+
 ### The Compressor
-The "heart" of the system. Draws in low-pressure refrigerant vapor from the suction line and compresses it, raising both its pressure and temperature, then discharges it toward the condenser. Common types in supermarket refrigeration: scroll, reciprocating (semi-hermetic), and screw compressors — multiple compressors are usually piped together on a parallel rack to share the load and provide capacity staging.
+The "heart" of the system. Draws in low-pressure **superheated vapor** from the suction line and compresses it, raising both its pressure and temperature, then discharges it toward the condenser as high-pressure **superheated vapor**. Common types in supermarket refrigeration: scroll, reciprocating (semi-hermetic), and screw compressors — multiple compressors are usually piped together on a parallel rack to share the load and provide capacity staging.
 
 ### The Condenser (or Gas Cooler)
-Rejects the heat absorbed in the evaporator (plus the heat of compression) to outdoor air or water. Hot, high-pressure refrigerant vapor enters, gives up heat, and leaves as a subcooled liquid (or, for CO₂ operating transcritically, as a cooled supercritical gas — covered in the CO₂ course). A dirty or fouled condenser coil is the single most common cause of high head pressure.
+Rejects the heat absorbed in the evaporator (plus the heat of compression) to outdoor air or water. High-pressure **superheated vapor** enters and is first desuperheated, then passes through a **saturated liquid/vapor mixture** as it condenses at a constant temperature (the saturation condensing temperature, or SCT), and finally leaves as a **subcooled liquid** (or, for CO₂ operating transcritically, as a cooled supercritical gas — covered in the CO₂ course). A dirty or fouled condenser coil is the single most common cause of high head pressure.
 
 ### The Metering Device (TXV / EEV)
 
 ![Thermostatic expansion valve (TXV) cross-section](https://upload.wikimedia.org/wikipedia/commons/9/96/Thermostatic_expansion_valve.svg "TXV cross-section — refrigerant enters at high pressure on the left and exits at low pressure on the right, metered by the diaphragm and pin assembly")
 
-Located at the evaporator inlet, the metering device drops the high-pressure liquid refrigerant to a low pressure and meters the flow rate to match the evaporator load. A **thermostatic expansion valve (TXV)** uses a sensing bulb on the suction line to maintain target superheat mechanically; an **electronic expansion valve (EEV)** does the same job under controller command, using a stepper motor for finer, faster control.
+Located at the evaporator inlet, the metering device drops the high-pressure **subcooled liquid** to a low pressure and meters the flow rate to match the evaporator load. As it drops in pressure, some of the liquid flashes to vapor, so what enters the evaporator is a low-pressure **saturated liquid/vapor mixture**. A **thermostatic expansion valve (TXV)** uses a sensing bulb on the suction line to maintain target superheat mechanically; an **electronic expansion valve (EEV)** does the same job under controller command, using a stepper motor for finer, faster control.
 
 ### The Evaporator
-Where the useful work happens — refrigerant boils (evaporates) as it absorbs heat from the air (or product) in the case, walk-in, or air handler. The refrigerant must fully boil off before leaving the coil (superheat confirms this) — any liquid carryover into the suction line risks compressor damage (liquid slugging).
+Where the useful work happens. The low-pressure **saturated liquid/vapor mixture** entering the coil boils off (saturated liquid → saturated vapor) at a constant temperature (the saturation suction temperature, or SST) as it absorbs heat from the air (or product) in the case, walk-in, or air handler. The refrigerant must fully boil off before leaving the coil — leaving as **superheated vapor** confirms this (superheat) — any liquid carryover into the suction line risks compressor damage (liquid slugging).
 
 ### Receivers and Accumulators
-- **Receiver** — a high-side vessel that stores excess liquid refrigerant between the condenser and the metering device, buffering charge as load conditions change.
+- **Receiver** — a high-side vessel that stores excess **subcooled liquid** refrigerant between the condenser and the metering device, buffering charge as load conditions change.
 - **Accumulator** — a low-side vessel between the evaporator and the compressor that catches any liquid refrigerant before it reaches the compressor, protecting against floodback and slugging.
 
 ### Putting It Together
-Refrigerant flows in one direction around a closed loop: **compressor → condenser → receiver → metering device → evaporator → accumulator (if fitted) → back to the compressor.** Every fault you'll diagnose comes down to refrigerant, airflow, or electrical issues at one of these five stages — which is exactly the framework the System Fault Diagnosis lesson builds on.
+Refrigerant flows in one direction around a closed loop: **compressor → condenser → receiver → metering device → evaporator → accumulator (if fitted) → back to the compressor.** Along the way it cycles between four states — **superheated vapor** (compressor discharge and evaporator outlet/suction line), **saturated liquid/vapor mixture** (inside the condenser and evaporator while changing phase), and **subcooled liquid** (condenser outlet and liquid line). Every fault you'll diagnose comes down to refrigerant, airflow, or electrical issues at one of these five stages — which is exactly the framework the System Fault Diagnosis lesson builds on.
 `
 
 // ── System operation knowledge base ──────────────────────────────────────────
