@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic, Copy } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -314,6 +314,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [savingChat,     setSavingChat]     = useState(false)
   const [chatSaved,      setChatSaved]      = useState(false)
   const [saveError,      setSaveError]      = useState('')
+  const [copied,         setCopied]         = useState(false)
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
@@ -794,6 +795,20 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     }
   }
 
+  async function copyConversation() {
+    const transcript = messages
+      .filter(m => m.content.trim())
+      .map(m => `${m.role === 'user' ? 'You' : 'ColdIQ Expert'}: ${m.content.trim()}`)
+      .join('\n\n')
+    try {
+      await navigator.clipboard.writeText(transcript)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setSaveError('Could not copy — please try again')
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -869,7 +884,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       {/* ── Save conversation bar ── shown after any completed exchange */}
       {!streaming && messages.length >= 2 && (
         <div className="flex-shrink-0 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2">
-          <div className="max-w-2xl mx-auto w-full">
+          <div className="max-w-2xl mx-auto w-full flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
             {chatSaved ? (
               <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 py-1">
                 <Check size={13} /> Conversation saved
@@ -906,6 +922,19 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
                 Save this conversation
               </button>
             )}
+            </div>
+
+            <button
+              onClick={copyConversation}
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs transition-colors py-1 ${
+                copied
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400'
+              }`}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? 'Copied!' : 'Copy conversation'}
+            </button>
           </div>
         </div>
       )}
