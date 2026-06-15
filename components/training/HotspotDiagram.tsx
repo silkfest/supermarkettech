@@ -42,6 +42,43 @@ const DIAGRAMS: Record<string, DiagramLayout> = {
       </g>
     ),
   },
+
+  // Where each diagnostic reading is taken on the loop. Same layout as basic-cycle,
+  // but markers sit on the pipe segments (not the components) so students learn the
+  // measurement location for head pressure, subcooling, superheat, and box temp.
+  'measurement-points': {
+    viewBox: '0 0 400 240',
+    markers: [
+      { id: 'head-pressure', x: 60,  y: 70 },   // discharge/hot-gas line
+      { id: 'subcooling',    x: 340, y: 70 },   // liquid line
+      { id: 'superheat',     x: 60,  y: 175 },  // suction line
+      { id: 'box-temp',      x: 200, y: 210 },  // evaporator / case
+    ],
+    render: () => (
+      <g>
+        {/* Loop pipe */}
+        <rect x="90" y="15" width="220" height="30" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+        <rect x="20" y="95" width="80" height="50" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+        <rect x="90" y="195" width="220" height="30" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+        <rect x="300" y="95" width="80" height="50" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+        {/* Component labels */}
+        <text x="200" y="34" textAnchor="middle" dominantBaseline="middle" fontSize="11" fontWeight="600" fill="#475569">Condenser</text>
+        <text x="60"  y="120" textAnchor="middle" dominantBaseline="middle" fontSize="10" fontWeight="600" fill="#475569">Comp</text>
+        <text x="200" y="214" textAnchor="middle" dominantBaseline="middle" fontSize="11" fontWeight="600" fill="#475569">Evaporator</text>
+        <text x="340" y="120" textAnchor="middle" dominantBaseline="middle" fontSize="10" fontWeight="600" fill="#475569">TXV</text>
+        {/* Flow lines (clockwise) */}
+        <path d="M60 95 V45 H90" fill="none" stroke="#ef4444" strokeWidth="3" markerEnd="url(#hsArrow2)" />
+        <path d="M310 30 H340 V95" fill="none" stroke="#f59e0b" strokeWidth="3" markerEnd="url(#hsArrow2)" />
+        <path d="M340 145 V190 H310" fill="none" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#hsArrow2)" />
+        <path d="M90 210 H60 V145" fill="none" stroke="#06b6d4" strokeWidth="3" markerEnd="url(#hsArrow2)" />
+        <defs>
+          <marker id="hsArrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8" />
+          </marker>
+        </defs>
+      </g>
+    ),
+  },
 }
 
 interface HotspotDiagramProps {
