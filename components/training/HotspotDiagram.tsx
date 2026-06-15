@@ -13,9 +13,9 @@ const DIAGRAMS: Record<string, DiagramLayout> = {
     viewBox: '0 0 400 240',
     markers: [
       { id: 'condenser', x: 200, y: 30 },
-      { id: 'metering-device', x: 60, y: 120 },
+      { id: 'compressor', x: 60, y: 120 },
       { id: 'evaporator', x: 200, y: 210 },
-      { id: 'compressor', x: 340, y: 120 },
+      { id: 'metering-device', x: 340, y: 120 },
     ],
     render: () => (
       <g>
@@ -24,12 +24,16 @@ const DIAGRAMS: Record<string, DiagramLayout> = {
         <rect x="20" y="95" width="80" height="50" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
         <rect x="90" y="195" width="220" height="30" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
         <rect x="300" y="95" width="80" height="50" rx="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
-        {/* Connecting lines forming the loop with arrows */}
-        <path d="M310 30 H340 V95" fill="none" stroke="#94a3b8" strokeWidth="3" markerEnd="url(#hsArrow)" />
-        <path d="M340 145 V190 H310" fill="none" stroke="#ef4444" strokeWidth="3" markerEnd="url(#hsArrow)" />
-        <path d="M90 210 H100" fill="none" stroke="#f59e0b" strokeWidth="3" markerEnd="url(#hsArrow)" />
-        <path d="M60 195 V145" fill="none" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#hsArrow)" />
-        <path d="M60 95 V45 H90" fill="none" stroke="#f59e0b" strokeWidth="3" markerEnd="url(#hsArrow)" />
+        {/* Connecting lines forming the loop with arrows (clockwise:
+            compressor → condenser → metering device → evaporator → compressor) */}
+        {/* compressor → condenser (hot discharge) */}
+        <path d="M60 95 V45 H90" fill="none" stroke="#ef4444" strokeWidth="3" markerEnd="url(#hsArrow)" />
+        {/* condenser → metering device (subcooled liquid line) */}
+        <path d="M310 30 H340 V95" fill="none" stroke="#f59e0b" strokeWidth="3" markerEnd="url(#hsArrow)" />
+        {/* metering device → evaporator (low-pressure mix) */}
+        <path d="M340 145 V190 H310" fill="none" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#hsArrow)" />
+        {/* evaporator → compressor (low-pressure suction vapor) */}
+        <path d="M90 210 H60 V145" fill="none" stroke="#06b6d4" strokeWidth="3" markerEnd="url(#hsArrow)" />
         <defs>
           <marker id="hsArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8" />
