@@ -113,6 +113,14 @@ export default function KnowledgeTopicPage() {
       .catch(() => {})
   }, [slug, topic])
 
+  // Persist last-viewed topic in localStorage for "Continue reading" on the index page
+  useEffect(() => {
+    if (!topic) return
+    try {
+      localStorage.setItem('coldiq_last_topic', JSON.stringify({ slug: topic.slug, title: topic.title, description: topic.description }))
+    } catch {}
+  }, [topic])
+
   // Scroll-spy: highlight TOC entry for the section currently in the top ~20% of viewport
   useEffect(() => {
     if (sections.length === 0) return

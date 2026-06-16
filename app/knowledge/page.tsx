@@ -7,7 +7,7 @@ import {
   Snowflake, Sliders, Zap, LayoutGrid, Cpu, Store, Thermometer, Calculator,
   CircuitBoard, Gauge, ToggleRight, Wind, Monitor, Activity, Flame, Warehouse, Layers,
   ShoppingBag, Settings2, RefreshCcw,
-  BookOpen, Search, X, Sparkles, SlidersHorizontal, ChevronDown,
+  BookOpen, Search, X, Sparkles, SlidersHorizontal, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
@@ -187,6 +187,7 @@ export default function KnowledgePage() {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
+  const [lastTopic, setLastTopic] = useState<{ slug: string; title: string; description: string } | null>(null)
 
   const CATEGORIES = [
     { key: 'all',            label: 'All Topics' },
@@ -207,6 +208,14 @@ export default function KnowledgePage() {
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  // Read last-viewed topic from localStorage (set by the topic detail page)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('coldiq_last_topic')
+      if (stored) setLastTopic(JSON.parse(stored))
+    } catch {}
   }, [])
 
   // Fetch dynamic (DB-generated) topics
@@ -454,6 +463,32 @@ export default function KnowledgePage() {
           </>
         ) : (
           <>
+            {/* Continue reading banner */}
+            {lastTopic && activeCategory === 'all' && (
+              <div className="flex items-center gap-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">Continue reading</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{lastTopic.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{lastTopic.description}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => router.push(`/knowledge/${lastTopic.slug}`)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    Resume <ChevronRight size={12} />
+                  </button>
+                  <button
+                    onClick={() => { setLastTopic(null); localStorage.removeItem('coldiq_last_topic') }}
+                    className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 rounded-lg transition-colors"
+                    title="Dismiss"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Rack Systems */}
             {(activeCategory === 'all' || activeCategory === 'rack-systems') && (
             <section>
