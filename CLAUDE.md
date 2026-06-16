@@ -181,6 +181,28 @@ All knowledge topic content lives in `lib/ai/prompts.ts` as exported template-li
 - `#### Sub-heading` — sub-sections within a section (smaller, no TOC entry).
 - Never use a second `## ` heading — subsequent `## ` headings are silently dropped by the renderer.
 
+### Callouts (Admonitions)
+The renderer supports GitHub-style typed callout boxes using blockquote syntax. Put each
+callout on its own block, every line prefixed with `> `. The first line declares the type
+(and an optional custom title); the remaining `> ` lines are the body. Body lines support
+**bold**, `code`, and `- ` bullet lists (prefix the bullets with `> ` too).
+
+- `> [!NOTE]` — neutral clarification / "key point" (blue)
+- `> [!TIP]` — field tip, shortcut, best practice (emerald)
+- `> [!WARNING]` — do-not-do / damage-risk / "verify first" cautions (amber)
+- `> [!SAFETY]` — genuine life-safety hazards only: asphyxiation, flammable A3, electrical, never-bypass-a-safety (red)
+- `> [!EXAMPLE]` — worked examples and model/serial-number decodes (violet)
+
+Example:
+- `> [!EXAMPLE] Superheat — R-404A`
+- `> Suction gauge reads 60 psig → ... Superheat = **13°F** ✓`
+
+Rules:
+- Use a custom title sparingly — only when it adds context (e.g. `[!EXAMPLE] Model decode — ZXG08...`). With no title the box shows the default label.
+- Reserve `[!SAFETY]` for real hazards; don't dilute it. Routine "don't field-repair" cautions are `[!WARNING]`.
+- Convert standalone `**Worked example:**`, `**Warning:**`, `**Note:**`, `*Tip:*` paragraphs to the matching callout — but do **not** break a list/table to do it (a callout body can't contain a markdown table; leave table-based examples as-is).
+- Because topic strings are also injected into the ColdIQ AI system prompt, `[!WARNING]` etc. read fine as plain emphasis to the model — the syntax is safe in dual-purpose content.
+
 ### No Sources Blocks
 Do **not** add `*Sources: ...*` citation lines to topic content. Manuals and references belong in the Related Manuals section (DB documents linked via `manualKeywords`). Sources text clutters the page and becomes outdated.
 

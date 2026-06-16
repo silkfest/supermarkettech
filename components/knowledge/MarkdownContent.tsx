@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { Info, Lightbulb, AlertTriangle, ShieldAlert, FlaskConical } from 'lucide-react'
 import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
 import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
 import { ParagonTimerDiagram } from './diagrams/ParagonTimerDiagram'
@@ -69,6 +70,93 @@ function slugify(title: string): string {
     .replace(/\s+/g, '-')
 }
 
+// ── Callout (admonition) config ───────────────────────────────────────────────
+// Styled boxes driven by `> [!TYPE]` blockquote syntax. Colors follow the
+// light/dark conventions in CLAUDE.md so text stays readable on both backgrounds.
+type CalloutType = 'NOTE' | 'TIP' | 'WARNING' | 'SAFETY' | 'EXAMPLE'
+
+const CALLOUT_CONFIG: Record<CalloutType, {
+  icon: React.ReactNode
+  label: string
+  box: string
+  title: string
+}> = {
+  NOTE: {
+    icon: <Info size={15} />,
+    label: 'Note',
+    box: 'bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30',
+    title: 'text-blue-700 dark:text-blue-400',
+  },
+  TIP: {
+    icon: <Lightbulb size={15} />,
+    label: 'Tip',
+    box: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30',
+    title: 'text-emerald-700 dark:text-emerald-400',
+  },
+  WARNING: {
+    icon: <AlertTriangle size={15} />,
+    label: 'Warning',
+    box: 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30',
+    title: 'text-amber-700 dark:text-amber-400',
+  },
+  SAFETY: {
+    icon: <ShieldAlert size={15} />,
+    label: 'Safety',
+    box: 'bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30',
+    title: 'text-red-600 dark:text-red-400',
+  },
+  EXAMPLE: {
+    icon: <FlaskConical size={15} />,
+    label: 'Worked Example',
+    box: 'bg-violet-50 border-violet-200 dark:bg-violet-500/10 dark:border-violet-500/30',
+    title: 'text-violet-700 dark:text-violet-400',
+  },
+}
+
+// Render the body of a callout — supports paragraphs and `- ` bullet lists.
+function renderCalloutBody(lines: string[]): React.ReactNode[] {
+  const out: React.ReactNode[] = []
+  let bullets: string[] | null = null
+  const flush = () => {
+    if (bullets) {
+      out.push(
+        <ul key={out.length} className="space-y-1 ml-4 list-disc list-outside my-1.5">
+          {bullets.map((b, bi) => <li key={bi}>{parseInline(b)}</li>)}
+        </ul>
+      )
+      bullets = null
+    }
+  }
+  for (const raw of lines) {
+    const t = raw.trim()
+    if (t === '') { flush(); continue }
+    if (t.startsWith('- ')) {
+      if (!bullets) bullets = []
+      bullets.push(t.slice(2))
+      continue
+    }
+    flush()
+    out.push(<p key={out.length} className="my-1.5 first:mt-0 last:mb-0">{parseInline(t)}</p>)
+  }
+  flush()
+  return out
+}
+
+function renderCallout(type: CalloutType, title: string | null, body: string[], key: number): React.ReactNode {
+  const cfg = CALLOUT_CONFIG[type]
+  return (
+    <div key={key} className={`my-4 rounded-lg border px-4 py-3 ${cfg.box}`}>
+      <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wide mb-1.5 ${cfg.title}`}>
+        {cfg.icon}
+        <span>{title || cfg.label}</span>
+      </div>
+      <div className="text-[15px] text-slate-700 dark:text-slate-300 leading-7">
+        {renderCalloutBody(body)}
+      </div>
+    </div>
+  )
+}
+
 // ── Table renderer ────────────────────────────────────────────────────────────
 function renderTable(rows: string[], key: number): React.ReactNode {
   // rows[0] = header row, rows[1] = separator row (|---|---|...), rows[2+] = data
@@ -80,16 +168,32 @@ function renderTable(rows: string[], key: number): React.ReactNode {
 
   const headerCells = parseRow(rows[0])
   const dataRows = rows.slice(2) // skip separator
+  const parsedData = dataRows.map(parseRow)
+
+  // A column is "numeric" when every non-empty data cell reads as a number
+  // (allowing ~, ±, °, %, leading sign, ranges like "4–5", and units). These
+  // get right-aligned + tabular figures so PT charts and spec tables line up.
+  const NUMERIC_RE = /^[~±<>]?\s*[-+]?\d[\d,.\s]*(?:[–-]\d[\d,.]*)?\s*(?:°?[fcFC%])?\.?$/
+  const isNumericCol = (ci: number) => {
+    const cells = parsedData.map(r => r[ci]).filter(c => c && c !== '—' && c !== '-')
+    return cells.length > 0 && cells.every(c => NUMERIC_RE.test(c))
+  }
+  const numericCols = headerCells.map((_, ci) => isNumericCol(ci))
+  const cellAlign = (ci: number) => numericCols[ci] ? 'text-right tabular-nums' : 'text-left'
+
+  // Tall tables get a scroll container with a sticky header so column labels
+  // stay visible while scrolling a long chart.
+  const isTall = parsedData.length > 14
 
   return (
-    <div key={key} className="overflow-x-auto my-4">
+    <div key={key} className={`overflow-auto my-4 rounded-lg border border-slate-200 dark:border-slate-700 ${isTall ? 'max-h-[28rem]' : ''}`}>
       <table className="w-full text-xs border-collapse">
-        <thead>
+        <thead className={isTall ? 'sticky top-0 z-10' : ''}>
           <tr className="bg-slate-100 dark:bg-slate-800">
             {headerCells.map((cell, ci) => (
               <th
                 key={ci}
-                className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap"
+                className={`border-b border-slate-200 dark:border-slate-700 px-2.5 py-2 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap ${cellAlign(ci)} ${isTall ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
               >
                 {parseInline(cell)}
               </th>
@@ -97,18 +201,15 @@ function renderTable(rows: string[], key: number): React.ReactNode {
           </tr>
         </thead>
         <tbody>
-          {dataRows.map((row, ri) => {
-            const cells = parseRow(row)
-            return (
-              <tr key={ri} className={ri % 2 === 1 ? 'bg-slate-50 dark:bg-slate-900/50' : ''}>
-                {cells.map((cell, ci) => (
-                  <td key={ci} className="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-slate-700 dark:text-slate-300 align-top">
-                    {parseInline(cell)}
-                  </td>
-                ))}
-              </tr>
-            )
-          })}
+          {parsedData.map((cells, ri) => (
+            <tr key={ri} className={ri % 2 === 1 ? 'bg-slate-50 dark:bg-slate-900/50' : 'bg-white dark:bg-slate-900'}>
+              {cells.map((cell, ci) => (
+                <td key={ci} className={`border-b border-slate-100 dark:border-slate-800 px-2.5 py-1.5 text-slate-700 dark:text-slate-300 align-top ${cellAlign(ci)}`}>
+                  {parseInline(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -123,6 +224,7 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
   let isFirstH2 = true
   let listBuffer: { type: 'ul' | 'ol'; items: string[] } | null = null
   let tableBuffer: string[] | null = null
+  let calloutBuffer: string[] | null = null
 
   function flushList() {
     if (!listBuffer) return
@@ -130,17 +232,17 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
     const key = nodes.length
     if (type === 'ul') {
       nodes.push(
-        <ul key={key} className="space-y-1 ml-4 list-disc list-outside text-sm text-slate-700 dark:text-slate-300 my-2">
+        <ul key={key} className="space-y-1.5 ml-5 list-disc list-outside text-[15px] text-slate-700 dark:text-slate-300 leading-7 my-3 marker:text-slate-400 dark:marker:text-slate-500">
           {items.map((item, ii) => (
-            <li key={ii}>{parseInline(item)}</li>
+            <li key={ii} className="pl-1">{parseInline(item)}</li>
           ))}
         </ul>
       )
     } else {
       nodes.push(
-        <ol key={key} className="space-y-1 ml-4 list-decimal list-outside text-sm text-slate-700 dark:text-slate-300 my-2">
+        <ol key={key} className="space-y-1.5 ml-5 list-decimal list-outside text-[15px] text-slate-700 dark:text-slate-300 leading-7 my-3 marker:text-slate-400 dark:marker:text-slate-500">
           {items.map((item, ii) => (
-            <li key={ii}>{parseInline(item)}</li>
+            <li key={ii} className="pl-1">{parseInline(item)}</li>
           ))}
         </ol>
       )
@@ -157,9 +259,40 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
     tableBuffer = null
   }
 
+  function flushCallout() {
+    if (!calloutBuffer || calloutBuffer.length === 0) {
+      calloutBuffer = null
+      return
+    }
+    let type: CalloutType = 'NOTE'
+    let title: string | null = null
+    let body = calloutBuffer
+    const head = calloutBuffer[0].trim().match(/^\[!(NOTE|TIP|WARNING|SAFETY|EXAMPLE)\]\s*(.*)$/i)
+    if (head) {
+      type = head[1].toUpperCase() as CalloutType
+      title = head[2].trim() || null
+      body = calloutBuffer.slice(1)
+    }
+    nodes.push(renderCallout(type, title, body, nodes.length))
+    calloutBuffer = null
+  }
+
   while (i < lines.length) {
     const line = lines[i]
     const trimmed = line.trim()
+
+    // ── Callout / blockquote block ── (must run before other blocks so any
+    // non-blockquote line flushes an open callout)
+    if (trimmed.startsWith('>')) {
+      flushList()
+      flushTable()
+      if (!calloutBuffer) calloutBuffer = []
+      calloutBuffer.push(trimmed.replace(/^>\s?/, ''))
+      i++
+      continue
+    } else {
+      flushCallout()
+    }
 
     // ── Table row ──
     if (trimmed.startsWith('|')) {
@@ -203,7 +336,7 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
       const title = trimmed.slice(3).trim()
       if (isFirstH2) {
         nodes.push(
-          <h2 key={nodes.length} className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-0 mb-4">
+          <h2 key={nodes.length} className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0 mb-4 tracking-tight">
             {parseInline(title)}
           </h2>
         )
@@ -220,8 +353,9 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
       const title = trimmed.slice(4).trim()
       const id = slugify(title)
       nodes.push(
-        <div key={nodes.length} id={id} className="scroll-mt-20">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">
+        <div key={nodes.length} id={id} className="scroll-mt-24 mt-8 mb-3 pt-1 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:mt-0 first:pt-0">
+          <h3 className="text-[17px] font-semibold text-slate-900 dark:text-slate-100 mt-4 first:mt-3 flex items-center gap-2">
+            <span className="inline-block w-1 h-4 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
             {parseInline(title)}
           </h3>
         </div>
@@ -297,16 +431,17 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
     // ── Regular paragraph ──
     flushList()
     nodes.push(
-      <p key={nodes.length} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed my-2">
+      <p key={nodes.length} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7 my-3">
         {parseInline(trimmed)}
       </p>
     )
     i++
   }
 
-  // Flush any remaining list or table
+  // Flush any remaining list, table, or callout
   flushList()
   flushTable()
+  flushCallout()
 
   return nodes
 }

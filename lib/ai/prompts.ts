@@ -77,13 +77,15 @@ R-448A/R-449A have roughly **11°F of glide** between the bubble point and dew p
 - Too high (>20°F): starved evaporator — undercharge, TXV stuck closed, restriction
 - Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
 
-**Worked example (R-404A):** suction gauge reads 60 psig → interpolating the table above (between 45.9 psig/20°F and ~73 psig/32°F) gives SST ≈ 26°F. Suction line thermocouple reads 39°F. Superheat = 39 − 26 = **13°F** ✓
+> [!EXAMPLE] Superheat — R-404A
+> Suction gauge reads 60 psig → interpolating the table above (between 45.9 psig/20°F and ~73 psig/32°F) gives SST ≈ 26°F. Suction line thermocouple reads 39°F. Superheat = 39 − 26 = **13°F** ✓
 
 **Subcooling** = SCT (saturation condensing temperature, read from the bubble point column at measured head pressure) − liquid line temperature
 - Too low (<5°F): undercharge, condenser fan failure, high load
 - Too high (>20°F): possible overcharge, cold ambient
 
-**Worked example (R-448A):** head gauge reads ~140 psig (liquid) → SCT ≈ 65°F. Liquid line thermocouple reads 58°F. Subcooling = 65 − 58 = **7°F** ✓
+> [!EXAMPLE] Subcooling — R-448A
+> Head gauge reads ~140 psig (liquid) → SCT ≈ 65°F. Liquid line thermocouple reads 58°F. Subcooling = 65 − 58 = **7°F** ✓
 
 ### TXV vs EPR — Key Difference
 
@@ -2711,7 +2713,8 @@ Carnot's key differentiator is an integrated ejector for flash gas recovery and 
 - Eliminates the energy penalty of compressor-driven defrost
 - Defrost pressure and return pressure setpoints are set per system; verify on startup sheet
 
-**Field note:** If flash tank pressure is unstable or the ejector appears to be bypassing (both motive and suction pressures equalizing), suspect a stuck or leaking ejector check valve or a fouled ejector nozzle. Contact M&M Carnot service — do not attempt ejector disassembly in the field without factory guidance.
+> [!WARNING] Ejector field note
+> If flash tank pressure is unstable or the ejector appears to be bypassing (both motive and suction pressures equalizing), suspect a stuck or leaking ejector check valve or a fouled ejector nozzle. Contact M&M Carnot service — do not attempt ejector disassembly in the field without factory guidance.
 
 ---
 
@@ -4723,7 +4726,8 @@ The status LED flashes a number of times, pauses, then repeats. Count flashes in
 | 7 | Low flame signal (microamp signal below threshold during operation) |
 | 8 | Polarity reversed (L1/L2 swapped at unit disconnect — fix incoming wiring) |
 
-**Note:** Prodigy 1 does not store fault history. You must observe the LED in real time during a fault condition.
+> [!NOTE]
+> Prodigy 1 does not store fault history. You must observe the LED in real time during a fault condition.
 
 #### Prodigy 2 Fault Codes and Navigation
 
@@ -4782,7 +4786,8 @@ Found on later-production LGH/LCH units and some field-replacement actuators:
 - Grey = damper open/control signal from Y1 (or 0–10VDC on modulating economizer)
 - Pink = position feedback signal (0–10VDC output back to Prodigy 2 board) OR second control input on 3-point floating actuators
 
-**⚠️ Always verify against the unit wiring diagram** — the diagram is on the inside of the control panel door and is the definitive reference for that specific unit. Wire colours vary by actuator manufacturer, vintage, and whether the economizer is 2-position or modulating. Never assume functions by colour alone.
+> [!WARNING] Always verify against the unit wiring diagram
+> The diagram is on the inside of the control panel door and is the definitive reference for that specific unit. Wire colours vary by actuator manufacturer, vintage, and whether the economizer is 2-position or modulating. Never assume functions by colour alone.
 
 **Replacement procedure for 102691-04:**
 1. Shut off unit power at disconnect
@@ -4880,7 +4885,8 @@ Found on later-production LGH/LCH units and some field-replacement actuators:
 3. Dye test: introduce non-toxic smoke/dye into combustion chamber; observe supply air for traces with UV light (use appropriate dye formulated for HX testing)
 4. If CO confirmed: immediately shut down heating section, tag unit, notify building owner
 
-**Important:** A cracked heat exchanger requires full heat exchanger assembly replacement — do not attempt field repair.
+> [!WARNING] Cracked heat exchanger
+> A cracked heat exchanger requires full heat exchanger assembly replacement — do not attempt field repair.
 
 #### High-Limit Trip
 
@@ -5248,13 +5254,13 @@ The Quantum board is York's standard RTU controller across Predator and most Sun
 
 ### ZXG Model Decode
 
-**Example: ZXG08F2C3A41B1111A3**
-- **ZXG** = Predator commercial gas/electric RTU, current production
-- **08** = capacity code (cross-reference York capacity table — larger ZXG units are dual-compressor circuit)
-- **F** = R-410A refrigerant
-- **2** = 208/230V, 3-phase, 60 Hz
-- **C3A4** = factory-installed configuration options
-- **1B / 1111A3** = cabinet variant and manufacturing sequence
+> [!EXAMPLE] Model decode — ZXG08F2C3A41B1111A3
+> - **ZXG** = Predator commercial gas/electric RTU, current production
+> - **08** = capacity code (cross-reference York capacity table — larger ZXG units are dual-compressor circuit)
+> - **F** = R-410A refrigerant
+> - **2** = 208/230V, 3-phase, 60 Hz
+> - **C3A4** = factory-installed configuration options
+> - **1B / 1111A3** = cabinet variant and manufacturing sequence
 
 ZXG units use the **Simplicity SE** control platform (SE-SPU1002-10 board), not the older Quantum board. Dual-compressor ZXG units have independent refrigerant circuits — one circuit can run while the other is locked out.
 
@@ -6829,7 +6835,8 @@ A heat exchanger placed in the discharge line **before** the condenser. Hot disc
 - Water outlet temp achievable: 120–160°F for domestic hot water or floor heating
 - Heat exchanger types: **brazed plate (BPHE)** most common (Alfa Laval, SWEP, Danfoss); tube-in-tube for higher pressure CO₂ applications
 
-**Key point:** The desuperheater does NOT replace the condenser — the refrigerant must still condense normally downstream. The desuperheater only captures superheat energy.
+> [!NOTE] Key point
+> The desuperheater does NOT replace the condenser — the refrigerant must still condense normally downstream. The desuperheater only captures superheat energy.
 
 ### 2. Heat Reclaim Condenser (total / partial heat reclaim)
 A dedicated refrigerant-to-air coil installed in the store's HVAC air handler. Discharge gas is **diverted** to this coil first; the refrigerant condenses inside the store coil, rejecting heat into the store air stream.
@@ -7957,7 +7964,8 @@ Canada's **HFC Phase-Down Regulations** (in force since 2019, updated 2021) cap 
 | +25°C | 8.97 bar / 130 psi | 10.36 bar / 150 psi |
 | +40°C | 14.69 bar / 213 psi | 16.65 bar / 241 psi |
 
-*Note: Use dew point for suction superheat calculations. Use bubble point for liquid line subcooling.*
+> [!NOTE]
+> Use dew point for suction superheat calculations. Use bubble point for liquid line subcooling.
 
 **R-454B (replacing R-410A in HVAC)**
 | Saturation Temp | Pressure (dew) |
@@ -8018,7 +8026,8 @@ export const TECUMSEH_KNOWLEDGE = `
 | 9 | X | Voltage variant |
 | 10 | A | Engineering revision |
 
-*Tip: Capacity code 4460 = 4,460 BTU/hr at −10°F evap / 90°F condensing (standard ARI conditions for low-temp)*
+> [!TIP]
+> Capacity code 4460 = 4,460 BTU/hr at −10°F evap / 90°F condensing (standard ARI conditions for low-temp)
 
 ### Voltage Configurations — Quick Reference
 | Code | Voltage | Phase | Hz |
@@ -8083,7 +8092,8 @@ Semi-hermetic Tecumseh (RKA/TSK) have suction and discharge service valves.
 - **Mid-position (cracked off back-seat):** open to system AND gauge port — normal service position
 - **Fully front-seated (CW):** system closed, gauge port open — isolates compressor for service
 
-**Warning:** Never run a compressor with the suction service valve front-seated — the compressor will be starved and fail immediately.
+> [!WARNING]
+> Never run a compressor with the suction service valve front-seated — the compressor will be starved and fail immediately.
 
 ### Application Guide — Refrigerant Compatibility
 | Tecumseh Series | Primary Refrigerant | Compatible Substitutes |
@@ -8737,7 +8747,8 @@ Embraco and Secop compressors are **replace, not repair** — hermetic welded ca
 | R-290 (propane) | POE or alkylbenzene | ISO 15 |
 | R-600a (isobutane) | Mineral or alkylbenzene | ISO 15 |
 
-**Warning:** R-290 and R-600a systems are A3 (highly flammable) — charge size limits per EN 378 / CSA B52 apply. These are typically factory-sealed systems; field charging requires special procedures.
+> [!SAFETY] A3 flammable refrigerants
+> R-290 and R-600a systems are A3 (highly flammable) — charge size limits per EN 378 / CSA B52 apply. These are typically factory-sealed systems; field charging requires special procedures.
 `
 
 // ── Zero Zone Display Cases ───────────────────────────────────────────────────
@@ -9319,7 +9330,10 @@ A spring holds the seat closed until vessel pressure reaches **set pressure**; t
 - **Capacity** (lb/min of air or refrigerant) — must meet or exceed the code-required capacity for the vessel size
 - **CRN / ASME UV stamp** — registration for the jurisdiction
 
-CO₂ systems use the same principle at much higher settings (flash tank reliefs typically 45–60 bar, high-side reliefs 90–120 bar) and often relieve to atmosphere through dedicated vent headers; a discharging CO₂ relief can ice up and roar — treat a vented machine room as an asphyxiation hazard and ventilate before entry.
+CO₂ systems use the same principle at much higher settings (flash tank reliefs typically 45–60 bar, high-side reliefs 90–120 bar) and often relieve to atmosphere through dedicated vent headers; a discharging CO₂ relief can ice up and roar.
+
+> [!SAFETY] Vented CO₂ machine room
+> A discharged CO₂ relief displaces oxygen — treat a vented machine room as an asphyxiation hazard and ventilate before entry.
 
 ### Installation Rules (B52 / ASHRAE 15 Basics)
 
@@ -9668,7 +9682,8 @@ The protection order is always: **controller acts first, mechanical HPCO second,
 - **HPCO (high-pressure cutout)** — manual reset, set below the relief and above the controller's high-pressure unload point. R-448A/R-449A MT racks typically trip ≈ 400–425 psig.
 - **LPCO (low-pressure cutout)** — guards against deep vacuum / loss of charge; usually auto-reset just above the design SST vacuum.
 
-A switch that never trips on test (welded contacts, plugged capillary) is more dangerous than no switch — replace it, never bypass it. See Pressure Switches & Gauges.
+> [!SAFETY] Never bypass a safety switch
+> A switch that never trips on test (welded contacts, plugged capillary) is more dangerous than no switch — replace it, never bypass it. See Pressure Switches & Gauges.
 
 ### Service & Access Valves
 
