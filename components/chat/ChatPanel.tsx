@@ -171,15 +171,15 @@ function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
   const sources = msg.sources
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[82%]`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-5`}>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[86%]`}>
         {/* Avatar row for assistant */}
         {!isUser && (
-          <div className="flex items-center gap-1.5 mb-1">
-            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm ring-1 ring-blue-600/20">
               <span className="text-[8px] text-white font-bold tracking-tight">CQ</span>
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">ColdIQ</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tracking-tight">ColdIQ</span>
           </div>
         )}
 
@@ -201,10 +201,10 @@ function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
         {/* Bubble */}
         <div
           className={[
-            'px-4 py-2.5 text-sm leading-relaxed',
+            'px-4 py-3 text-sm leading-relaxed',
             isUser
-              ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
-              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm shadow-sm',
+              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl rounded-br-sm shadow-sm'
+              : 'bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm shadow-sm',
           ].join(' ')}
         >
           {/* Show typing dots while waiting for first token */}
