@@ -1,7 +1,7 @@
 'use client'
 
-import React from 'react'
-import { Info, Lightbulb, AlertTriangle, ShieldAlert, FlaskConical } from 'lucide-react'
+import React, { useState } from 'react'
+import { Info, Lightbulb, AlertTriangle, ShieldAlert, FlaskConical, Link2, Check } from 'lucide-react'
 import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
 import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
 import { ParagonTimerDiagram } from './diagrams/ParagonTimerDiagram'
@@ -68,6 +68,39 @@ function slugify(title: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
+}
+
+// ── Section heading with hover-to-copy deep-link anchor ────────────────────────
+function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false)
+
+  function copyLink() {
+    const url = `${window.location.origin}${window.location.pathname}#${id}`
+    history.replaceState(null, '', `#${id}`)
+    const done = () => { setCopied(true); setTimeout(() => setCopied(false), 1500) }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(done)
+    } else {
+      done()
+    }
+  }
+
+  return (
+    <div id={id} className="group scroll-mt-24 mt-8 mb-3 pt-1 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:mt-0 first:pt-0">
+      <h3 className="text-[17px] font-semibold text-slate-900 dark:text-slate-100 mt-4 first:mt-3 flex items-center gap-2">
+        <span className="inline-block w-1 h-4 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
+        <span>{children}</span>
+        <button
+          onClick={copyLink}
+          aria-label={copied ? 'Link copied' : 'Copy link to section'}
+          title={copied ? 'Link copied' : 'Copy link to this section'}
+          className="flex-shrink-0 p-1 rounded text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+        >
+          {copied ? <Check size={13} className="text-emerald-600 dark:text-emerald-400" /> : <Link2 size={13} />}
+        </button>
+      </h3>
+    </div>
+  )
 }
 
 // ── Callout (admonition) config ───────────────────────────────────────────────
@@ -222,6 +255,7 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
   const nodes: React.ReactNode[] = []
   let i = 0
   let isFirstH2 = true
+  let isFirstParagraph = true
   let listBuffer: { type: 'ul' | 'ol'; items: string[] } | null = null
   let tableBuffer: string[] | null = null
   let calloutBuffer: string[] | null = null
@@ -353,12 +387,7 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
       const title = trimmed.slice(4).trim()
       const id = slugify(title)
       nodes.push(
-        <div key={nodes.length} id={id} className="scroll-mt-24 mt-8 mb-3 pt-1 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:mt-0 first:pt-0">
-          <h3 className="text-[17px] font-semibold text-slate-900 dark:text-slate-100 mt-4 first:mt-3 flex items-center gap-2">
-            <span className="inline-block w-1 h-4 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
-            {parseInline(title)}
-          </h3>
-        </div>
+        <SectionHeading key={nodes.length} id={id}>{parseInline(title)}</SectionHeading>
       )
       i++
       continue
@@ -430,11 +459,20 @@ export function renderMarkdown(content: string, onOpenPdf?: OpenPdfFn): React.Re
 
     // ── Regular paragraph ──
     flushList()
-    nodes.push(
-      <p key={nodes.length} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7 my-3">
-        {parseInline(trimmed)}
-      </p>
-    )
+    if (isFirstParagraph) {
+      isFirstParagraph = false
+      nodes.push(
+        <p key={nodes.length} className="text-[16px] text-slate-600 dark:text-slate-400 leading-8 my-3 font-normal tracking-[0.01em]">
+          {parseInline(trimmed)}
+        </p>
+      )
+    } else {
+      nodes.push(
+        <p key={nodes.length} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7 my-3">
+          {parseInline(trimmed)}
+        </p>
+      )
+    }
     i++
   }
 
