@@ -187,6 +187,7 @@ export default function KnowledgePage() {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const [lastTopic, setLastTopic] = useState<{ slug: string; title: string; description: string } | null>(null)
 
   const CATEGORIES = [
@@ -216,6 +217,22 @@ export default function KnowledgePage() {
       const stored = localStorage.getItem('coldiq_last_topic')
       if (stored) setLastTopic(JSON.parse(stored))
     } catch {}
+  }, [])
+
+  // "/" key focuses the search input
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (
+        e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   }, [])
 
   // Fetch dynamic (DB-generated) topics
@@ -318,19 +335,22 @@ export default function KnowledgePage() {
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
             <input
+              ref={searchRef}
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search topics, manuals, model numbers…"
               className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700"
             />
-            {query && (
+            {query ? (
               <button
                 onClick={() => setQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 <X size={14} />
               </button>
+            ) : (
+              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded pointer-events-none">/</kbd>
             )}
           </div>
 
