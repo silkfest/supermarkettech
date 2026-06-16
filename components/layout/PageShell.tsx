@@ -36,7 +36,7 @@ export default function PageShell({ children }: { children: ReactNode }) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="md:flex-1 md:overflow-y-auto pb-nav md:pb-0">
+      <div className="md:flex-1 md:overflow-y-auto pb-nav md:pb-0 page-fade-in">
         {children}
       </div>
       <MobileBottomNav />

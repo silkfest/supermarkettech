@@ -3,10 +3,10 @@ import { useRouter, usePathname } from 'next/navigation'
 import { MessageSquare, WrenchIcon, BookOpen, UserCircle } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { id: 'expert',      icon: <MessageSquare size={20}/>, label: 'Expert',      href: '/dashboard' },
-  { id: 'maintenance', icon: <WrenchIcon    size={20}/>, label: 'Maintenance', href: '/maintenance' },
-  { id: 'knowledge',   icon: <BookOpen      size={20}/>, label: 'Knowledge',   href: '/knowledge' },
-  { id: 'profile',     icon: <UserCircle    size={20}/>, label: 'Profile',     href: '/profile' },
+  { id: 'expert',      icon: <MessageSquare size={22}/>, label: 'Expert',      href: '/dashboard' },
+  { id: 'maintenance', icon: <WrenchIcon    size={22}/>, label: 'Maintenance', href: '/maintenance' },
+  { id: 'knowledge',   icon: <BookOpen      size={22}/>, label: 'Knowledge',   href: '/knowledge' },
+  { id: 'profile',     icon: <UserCircle    size={22}/>, label: 'Profile',     href: '/profile' },
 ] as const
 
 interface Props {
@@ -31,11 +31,15 @@ export default function MobileBottomNav({ onExpert, expertActive }: Props) {
             key={item.id}
             onClick={() => (item.id === 'expert' && onExpert) ? onExpert() : router.push(item.href)}
             className={[
-              'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
+              'relative flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] font-medium transition-colors',
               isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500',
             ].join(' ')}
           >
-            <span className={isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}>{item.icon}</span>
+            {/* Active indicator bar */}
+            {isActive && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-500 rounded-full" />
+            )}
+            <span>{item.icon}</span>
             {item.label}
           </button>
         )

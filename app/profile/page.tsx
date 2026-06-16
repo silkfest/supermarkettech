@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import {
-  User, Award, GraduationCap, Calendar,
+  Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
   Settings, MessageCircle, Send, Compass,
 } from 'lucide-react'
@@ -413,8 +413,17 @@ function ProfileContent() {
         {/* ── Identity card ──────────────────────────────────────────────────── */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-              <User size={26} className="text-blue-600 dark:text-blue-400"/>
+            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0 select-none">
+              <span className="text-xl font-bold text-white tracking-tight">
+                {(profile.name || profile.email)
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map((w: string) => w[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()
+                }
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 truncate">{profile.name || profile.email}</h1>

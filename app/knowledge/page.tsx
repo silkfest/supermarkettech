@@ -83,7 +83,7 @@ function DynamicTopicCard({ topic, onClick }: { topic: DynamicTopic; onClick: ()
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-600 transition-all group"
+      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-600 hover:-translate-y-0.5 transition-all group"
     >
       <div className="flex items-start gap-3 mb-2">
         <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${colors.bg} ${colors.text}`}>
@@ -129,7 +129,7 @@ function TopicCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
+      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all group"
     >
       {/* Icon + title row */}
       <div className="flex items-start gap-3 mb-2">
