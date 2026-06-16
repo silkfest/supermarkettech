@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from 'react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { Skeleton } from '@/components/Skeleton'
 
 interface RecentReport {
   id: string
@@ -291,7 +292,21 @@ function MaintenanceHubContent() {
 export default function MaintenanceHubPage() {
   return (
     <PageShell>
-      <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading…</div>}>
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+            </div>
+            <div>
+              <Skeleton className="h-3 w-32 mb-3 rounded" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+              </div>
+            </div>
+          </div>
+        </div>
+      }>
         <MaintenanceHubContent />
       </Suspense>
     </PageShell>

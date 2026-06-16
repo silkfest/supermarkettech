@@ -8,6 +8,7 @@ import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { Skeleton } from '@/components/Skeleton'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
@@ -352,7 +353,25 @@ export default function ChatHistoryPage() {
         </div>
 
         {loading && (
-          <div className="flex justify-center py-16 text-slate-400 dark:text-slate-500 text-sm">Loading history…</div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-start gap-3">
+                <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 rounded" style={{ width: `${55 + (i * 17) % 35}%` }} />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-3.5 w-20 rounded" />
+                    <Skeleton className="h-3.5 w-16 rounded" />
+                    <Skeleton className="h-3.5 w-12 rounded" />
+                  </div>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <Skeleton className="h-6 w-16 rounded-lg" />
+                  <Skeleton className="h-6 w-6 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && filtered.length === 0 && (
