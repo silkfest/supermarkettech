@@ -82,6 +82,15 @@ function getLevel(xp: number) {
   return lv
 }
 
+const LEVEL_STYLES: Record<string, { ring: string; bar: string }> = {
+  'Rookie':            { ring: 'ring-slate-300 dark:ring-slate-500/40',          bar: 'bg-slate-500' },
+  'Apprentice I':      { ring: 'ring-amber-300/70 dark:ring-amber-500/40',        bar: 'bg-amber-500' },
+  'Apprentice II':     { ring: 'ring-orange-300/70 dark:ring-orange-500/40',      bar: 'bg-orange-500' },
+  'Apprentice III':    { ring: 'ring-blue-300/70 dark:ring-blue-500/40',          bar: 'bg-blue-500' },
+  'Senior Apprentice': { ring: 'ring-violet-300/70 dark:ring-violet-500/40',      bar: 'bg-violet-500' },
+  'Journeyman Ready!': { ring: 'ring-emerald-300/70 dark:ring-emerald-500/40',    bar: 'bg-emerald-500' },
+}
+
 const DIFF_BADGE: Record<string, string> = {
   beginner:     'bg-emerald-100 text-emerald-700',
   intermediate: 'bg-amber-100 text-amber-700',
@@ -242,6 +251,7 @@ function TrainingInner() {
   const [newBadge, setNewBadge]     = useState<string | null>(null)
   const [submitModalTask, setSubmitModalTask] = useState<Task | null>(null)
   const [submitNote, setSubmitNote] = useState('')
+  const [streak, setStreak] = useState(0)
 
   // Courses state
   const [courses, setCourses]           = useState<Course[]>([])
@@ -278,6 +288,12 @@ function TrainingInner() {
     setCoursesLoading(false)
   }, [])
 
+  const fetchStreak = useCallback(async (userId: string) => {
+    const res  = await fetch(`/api/apprentice/streak?userId=${userId}`)
+    const data = await res.json()
+    setStreak(data.streak ?? 0)
+  }, [])
+
   useEffect(() => {
     async function load() {
       const sb = getSupabaseBrowser()
@@ -309,12 +325,12 @@ function TrainingInner() {
         setApprentices((apps ?? []) as Apprentice[])
       }
 
-      await Promise.all([fetchTasks(targetUser.id), fetchCourses(targetUser.id)])
+      await Promise.all([fetchTasks(targetUser.id), fetchCourses(targetUser.id), fetchStreak(targetUser.id)])
       setOpenCats(Object.fromEntries(Object.keys(CAT_COLORS).map(k => [k, false])))
       setLoading(false)
     }
     load()
-  }, [router, fetchTasks, fetchCourses, searchParams])
+  }, [router, fetchTasks, fetchCourses, fetchStreak, searchParams])
 
   // ── Task toggle ──────────────────────────────────────────────────────────────
   const isElevatedSelf = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
@@ -532,6 +548,7 @@ function TrainingInner() {
   const totalXP      = taskXP + totalCourseXP
   const pct          = totalXP > 0 ? Math.round((earnedXP / totalXP) * 100) : 0
   const level        = getLevel(earnedXP)
+  const lvStyle      = LEVEL_STYLES[level.label] ?? { ring: 'ring-slate-300 dark:ring-slate-600', bar: 'bg-blue-500' }
   const nextLevel    = LEVELS.find(l => l.min > earnedXP)
   const pendingTasks = tasks.filter(t => t.progress?.status === 'pending_review')
   const earnedBadges = computeEarnedBadges(tasks)
@@ -679,7 +696,7 @@ function TrainingInner() {
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
         {/* XP / Level card */}
-        <div className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl p-5">
+        <div className={`bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 ring-2 ${lvStyle.ring} rounded-2xl p-5`}>
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-1">Level</p>
@@ -693,13 +710,22 @@ function TrainingInner() {
           </div>
           <div className="mb-2">
             <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+              <div className={`h-full ${lvStyle.bar} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
             </div>
           </div>
           <div className="flex justify-between text-xs text-slate-400">
             <span>{pct}% complete</span>
             {nextLevel && <span>{nextLevel.min - earnedXP} XP to {nextLevel.label}</span>}
           </div>
+          {streak > 0 && (
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg px-3 py-1.5 mt-3">
+              <span className="text-base leading-none">🔥</span>
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{streak}-day streak</span>
+              <span className="ml-auto text-[10px] text-amber-500 dark:text-amber-500 uppercase tracking-wide">
+                {streak >= 7 ? 'On fire!' : streak >= 3 ? 'Keep it up!' : 'Going!'}
+              </span>
+            </div>
+          )}
           <div className="flex gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
             <div className="text-center">
               <p className="text-lg font-bold text-slate-900 dark:text-white">{completed.length}</p>

@@ -136,14 +136,28 @@ export default function SimulatorSelectPage() {
                   ))}
                 </ul>
 
-                <div className="border-t border-slate-100 dark:border-slate-700 pt-2.5 space-y-1">
-                  {s && s.attempts > 0 && (
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                      <Trophy size={10} className="text-amber-500 dark:text-amber-400 flex-shrink-0" />
-                      {s.attempts} attempt{s.attempts !== 1 ? 's' : ''}
-                      {s.bestScore !== null && <> · best {s.bestScore}%</>}
-                      {s.avgScore !== null && <> · avg {s.avgScore}%</>}
-                    </p>
+                <div className="border-t border-slate-100 dark:border-slate-700 pt-2.5 space-y-1.5">
+                  {s && s.attempts > 0 ? (
+                    <div className="flex items-center gap-2">
+                      {s.bestScore !== null && (
+                        <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                          s.bestScore >= 90
+                            ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-400'
+                            : s.bestScore >= 70
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          <Trophy size={9} />
+                          {s.bestScore}%
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        {s.attempts} run{s.attempts !== 1 ? 's' : ''}
+                        {s.avgScore !== null && ` · avg ${s.avgScore}%`}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">No attempts yet</p>
                   )}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500">{rack.source}</p>
                 </div>

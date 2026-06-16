@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic, Copy } from 'lucide-react'
+import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic, Copy, ThumbsUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -162,20 +162,24 @@ function processInlineCitations(content: string): string {
   return content.replace(/\[Doc (\d+)[^\]]*\]/g, (_, n) => `[${n}](#cite-${n})`)
 }
 
-function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: string, title: string) => void }) {
+function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
+  msg: ChatMessage
+  onOpenPdf: (url: string, title: string) => void
+  onMarkHelpful?: () => void
+}) {
   const isUser = msg.role === 'user'
   const sources = msg.sources
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[82%]`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-5`}>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[86%]`}>
         {/* Avatar row for assistant */}
         {!isUser && (
-          <div className="flex items-center gap-1.5 mb-1">
-            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-sm ring-1 ring-blue-600/20">
               <span className="text-[8px] text-white font-bold tracking-tight">CQ</span>
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">ColdIQ</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tracking-tight">ColdIQ</span>
           </div>
         )}
 
@@ -197,10 +201,10 @@ function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: 
         {/* Bubble */}
         <div
           className={[
-            'px-4 py-2.5 text-sm leading-relaxed',
+            'px-4 py-3 text-sm leading-relaxed',
             isUser
-              ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
-              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm shadow-sm',
+              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl rounded-br-sm shadow-sm'
+              : 'bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm shadow-sm',
           ].join(' ')}
         >
           {/* Show typing dots while waiting for first token */}
@@ -264,28 +268,64 @@ function MessageBubble({ msg, onOpenPdf }: { msg: ChatMessage; onOpenPdf: (url: 
         {!isUser && !msg.isStreaming && msg.componentLinks && msg.componentLinks.length > 0 && (
           <ComponentLinks links={msg.componentLinks} />
         )}
+
+        {/* Helpful reaction */}
+        {!isUser && !msg.isStreaming && onMarkHelpful && (
+          <div className="mt-1.5 flex items-center gap-1">
+            <button
+              onClick={onMarkHelpful}
+              disabled={msg.helpful}
+              title={msg.helpful ? 'Marked as helpful' : 'Mark as helpful'}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] transition-colors ${
+                msg.helpful
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/40 cursor-default'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-700/40'
+              }`}
+            >
+              <ThumbsUp size={11} className={msg.helpful ? 'fill-current' : ''} />
+              {msg.helpful && <span>Helpful</span>}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function EmptyState({ mode }: { mode: ChatMode }) {
+function EmptyState({ mode, prompts, onSelectPrompt }: {
+  mode: ChatMode
+  prompts: string[]
+  onSelectPrompt: (p: string) => void
+}) {
   const modeHints: Record<ChatMode, string> = {
-    EXPERT:      'Ask about a fault, alarm code, or refrigeration system. The AI draws on an in-depth knowledge base covering Copeland, Hussmann, Danfoss, Sporlan, Bitzer, and more — or from manuals you\'ve uploaded.',
-    MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done and I\'ll help document it.',
+    EXPERT:      'Ask about a fault, alarm code, or refrigeration system.',
+    MAINTENANCE: 'Ask about PM intervals, service procedures, or describe work done.',
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center px-8 select-none">
-      <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center mb-3 shadow-sm">
+    <div className="h-full flex flex-col items-center justify-center px-6 select-none">
+      <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center mb-3 shadow-sm flex-shrink-0">
         <MessageSquare size={18} className="text-white" />
       </div>
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
         ColdIQ Expert
       </p>
-      <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed">
+      <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed text-center mb-5">
         {modeHints[mode]}
       </p>
+      {prompts.length > 0 && (
+        <div className="w-full max-w-sm space-y-2">
+          {prompts.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => onSelectPrompt(p)}
+              className="w-full text-left px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-300 transition-colors leading-relaxed shadow-sm"
+            >
+              {p.length > 120 ? p.slice(0, 117) + '…' : p}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -314,7 +354,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [savingChat,     setSavingChat]     = useState(false)
   const [chatSaved,      setChatSaved]      = useState(false)
   const [saveError,      setSaveError]      = useState('')
-  const [copied,         setCopied]         = useState(false)
+  const [copied,           setCopied]           = useState(false)
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
@@ -354,6 +395,14 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
         setTimeout(() => textareaRef.current?.focus(), 100)
       }
     } catch { /* ignore – SSR or private browsing */ }
+  }, [])
+
+  // Fetch suggested prompts for the empty state once on mount
+  useEffect(() => {
+    fetch('/api/chat/suggested-prompts')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.prompts?.length) setSuggestedPrompts(d.prompts) })
+      .catch(() => {})
   }, [])
 
   // Reset chat when the selected equipment changes — restoring that unit's
@@ -795,6 +844,16 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     }
   }
 
+  function markHelpful(assistantMsgId: string, questionText: string) {
+    if (!questionText.trim() || questionText.trim().length < 10) return
+    setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, helpful: true } : m))
+    fetch('/api/chat/helpful', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionText: questionText.trim(), sessionId }),
+    }).catch(() => {})
+  }
+
   async function copyConversation() {
     const transcript = messages
       .filter(m => m.content.trim())
@@ -853,11 +912,27 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       {/* ── Message list ── */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
         {!hasMessages ? (
-          <EmptyState mode={mode} />
+          <EmptyState
+            mode={mode}
+            prompts={suggestedPrompts}
+            onSelectPrompt={p => { setInput(p); setTimeout(() => textareaRef.current?.focus(), 50) }}
+          />
         ) : (
           <div className="max-w-2xl mx-auto w-full">
-            {messages.map(msg => (
-              <MessageBubble key={msg.id} msg={msg} onOpenPdf={(url, title) => setPdfViewer({ url, title })} />
+            {messages.map((msg, idx) => (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                onOpenPdf={(url, title) => setPdfViewer({ url, title })}
+                onMarkHelpful={
+                  msg.role === 'assistant' && !msg.isStreaming && !msg.helpful && sessionId
+                    ? () => {
+                        const question = messages[idx - 1]?.content ?? ''
+                        markHelpful(msg.id, question)
+                      }
+                    : undefined
+                }
+              />
             ))}
 
             {/* Error banner */}
