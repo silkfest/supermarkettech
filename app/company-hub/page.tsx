@@ -23,6 +23,7 @@ import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { Skeleton } from '@/components/Skeleton'
 
 // ─── Policies types & constants ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -873,8 +874,17 @@ export default function CompanyHubPage() {
           )}
 
           {annLoading && (
-            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
-              <Loader2 size={16} className="animate-spin"/> Loading…
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex gap-3">
+                  <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48 rounded" />
+                    <Skeleton className="h-3 w-full rounded" />
+                    <Skeleton className="h-3 w-3/4 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1014,8 +1024,20 @@ export default function CompanyHubPage() {
           )}
 
           {polLoading && (
-            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
-              <Loader2 size={16} className="animate-spin"/> Loading…
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center gap-3">
+                  <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 rounded" style={{ width: `${48 + (i * 13) % 30}%` }} />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </div>
+                  </div>
+                  <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+                </div>
+              ))}
             </div>
           )}
 
@@ -1096,8 +1118,26 @@ export default function CompanyHubPage() {
           )}
 
           {conLoading && (
-            <div className="flex justify-center py-16 text-slate-400 text-sm gap-2">
-              <Loader2 size={16} className="animate-spin"/> Loading…
+            <div className="space-y-3">
+              {[1, 2].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+                    <Skeleton className="h-5 w-36 rounded" />
+                    <Skeleton className="h-5 w-16 rounded-full ml-auto" />
+                  </div>
+                  <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[1, 2, 3].map(j => (
+                      <div key={j} className="border border-slate-100 dark:border-slate-800 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+                          <Skeleton className="h-4 flex-1 rounded" />
+                        </div>
+                        <Skeleton className="h-3 w-3/4 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1156,8 +1196,20 @@ export default function CompanyHubPage() {
           )}
 
           {fbLoading && (
-            <div className="flex justify-center py-12 text-slate-400 text-sm gap-2">
-              <Loader2 size={16} className="animate-spin"/> Loading…
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex gap-3">
+                  <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <Skeleton className="h-3 w-full rounded" />
+                    <Skeleton className="h-3 w-2/3 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
