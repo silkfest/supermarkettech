@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
@@ -75,6 +75,10 @@ export default function KnowledgeTopicPage() {
   const [figures, setFigures] = useState<TopicFigure[]>([])
   const [tocOpen, setTocOpen] = useState(false)
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const intersectingRef = useRef<Set<string>>(new Set())
+
+  const sections = useMemo(() => topic ? extractSections(topic.content) : [], [topic])
 
   // For dynamic topics, fetch from DB
   useEffect(() => {
@@ -108,6 +112,32 @@ export default function KnowledgeTopicPage() {
       .catch(() => {})
   }, [slug, topic])
 
+  // Scroll-spy: highlight TOC entry for the section currently in the top ~20% of viewport
+  useEffect(() => {
+    if (sections.length === 0) return
+    const set = intersectingRef.current
+    set.clear()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            set.add(entry.target.id)
+          } else {
+            set.delete(entry.target.id)
+          }
+        })
+        const active = sections.find(s => set.has(s.id))
+        setActiveSection(active?.id ?? null)
+      },
+      { rootMargin: '0px 0px -80% 0px', threshold: 0 }
+    )
+    sections.forEach(({ id }) => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+  }, [sections])
+
   if (topicLoading) {
     return (
       <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center">
@@ -128,8 +158,6 @@ export default function KnowledgeTopicPage() {
       </div>
     )
   }
-
-  const sections = extractSections(topic.content)
 
   function scrollToSection(id: string) {
     const el = document.getElementById(id)
@@ -202,7 +230,12 @@ export default function KnowledgeTopicPage() {
                   <button
                     key={section.id}
                     onClick={() => scrollToSection(section.id)}
-                    className="block w-full text-left text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-1 px-2 rounded hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    className={[
+                      'block w-full text-left text-xs py-1 px-2 rounded transition-colors',
+                      section.id === activeSection
+                        ? 'text-blue-700 dark:text-blue-300 font-semibold bg-blue-50 dark:bg-blue-950/50'
+                        : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50',
+                    ].join(' ')}
                   >
                     {section.title}
                   </button>
@@ -266,7 +299,12 @@ export default function KnowledgeTopicPage() {
                 <button
                   key={section.id}
                   onClick={() => scrollToSection(section.id)}
-                  className="block w-full text-left text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 py-1.5 px-2 rounded transition-colors leading-snug"
+                  className={[
+                    'block w-full text-left text-xs py-1.5 px-2 rounded transition-colors leading-snug',
+                    section.id === activeSection
+                      ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 font-medium'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50',
+                  ].join(' ')}
                 >
                   {section.title}
                 </button>

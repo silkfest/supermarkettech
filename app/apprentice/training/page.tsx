@@ -82,6 +82,15 @@ function getLevel(xp: number) {
   return lv
 }
 
+const LEVEL_STYLES: Record<string, { ring: string; bar: string }> = {
+  'Rookie':            { ring: 'ring-slate-300 dark:ring-slate-500/40',          bar: 'bg-slate-500' },
+  'Apprentice I':      { ring: 'ring-amber-300/70 dark:ring-amber-500/40',        bar: 'bg-amber-500' },
+  'Apprentice II':     { ring: 'ring-orange-300/70 dark:ring-orange-500/40',      bar: 'bg-orange-500' },
+  'Apprentice III':    { ring: 'ring-blue-300/70 dark:ring-blue-500/40',          bar: 'bg-blue-500' },
+  'Senior Apprentice': { ring: 'ring-violet-300/70 dark:ring-violet-500/40',      bar: 'bg-violet-500' },
+  'Journeyman Ready!': { ring: 'ring-emerald-300/70 dark:ring-emerald-500/40',    bar: 'bg-emerald-500' },
+}
+
 const DIFF_BADGE: Record<string, string> = {
   beginner:     'bg-emerald-100 text-emerald-700',
   intermediate: 'bg-amber-100 text-amber-700',
@@ -539,6 +548,7 @@ function TrainingInner() {
   const totalXP      = taskXP + totalCourseXP
   const pct          = totalXP > 0 ? Math.round((earnedXP / totalXP) * 100) : 0
   const level        = getLevel(earnedXP)
+  const lvStyle      = LEVEL_STYLES[level.label] ?? { ring: 'ring-slate-300 dark:ring-slate-600', bar: 'bg-blue-500' }
   const nextLevel    = LEVELS.find(l => l.min > earnedXP)
   const pendingTasks = tasks.filter(t => t.progress?.status === 'pending_review')
   const earnedBadges = computeEarnedBadges(tasks)
@@ -686,7 +696,7 @@ function TrainingInner() {
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
         {/* XP / Level card */}
-        <div className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl p-5">
+        <div className={`bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 ring-2 ${lvStyle.ring} rounded-2xl p-5`}>
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-1">Level</p>
@@ -700,7 +710,7 @@ function TrainingInner() {
           </div>
           <div className="mb-2">
             <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+              <div className={`h-full ${lvStyle.bar} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
             </div>
           </div>
           <div className="flex justify-between text-xs text-slate-400">
