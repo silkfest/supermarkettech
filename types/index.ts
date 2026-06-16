@@ -163,4 +163,5 @@ export interface ChatMessage {
   sources?: CitationSource[]
   componentLinks?: ComponentLink[]
   isStreaming?: boolean
+  helpful?: boolean
 }
