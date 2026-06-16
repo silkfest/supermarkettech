@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { Skeleton } from '@/components/Skeleton'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
@@ -140,9 +141,51 @@ export default function KnowledgeTopicPage() {
 
   if (topicLoading) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center">
-        <p className="text-slate-400 text-sm">Loading…</p>
-      </div>
+      <PageShell>
+        <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
+          <div className="safe-top bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-8 sticky top-0 z-10">
+            <div className="max-w-6xl mx-auto flex items-center gap-3">
+              <Skeleton className="h-4 w-24 rounded" />
+              <Skeleton className="h-4 w-px rounded" />
+              <Skeleton className="h-4 w-52 rounded" />
+            </div>
+          </div>
+          <LearningTabBar />
+          <div className="max-w-6xl mx-auto px-4 py-6 md:px-8 flex gap-6">
+            <aside className="hidden md:block w-56 flex-shrink-0">
+              <div className="sticky top-20 space-y-2">
+                <Skeleton className="h-3 w-20 mb-3 rounded" />
+                {[62, 80, 55, 70, 48, 65].map((w, i) => (
+                  <Skeleton key={i} className="h-6 rounded" style={{ width: `${w}%` }} />
+                ))}
+              </div>
+            </aside>
+            <main className="flex-1 min-w-0">
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 md:p-8 space-y-3">
+                <Skeleton className="h-6 w-3/4 rounded" />
+                <div className="space-y-2 pt-1">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-5/6 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-4/5 rounded" />
+                </div>
+                <div className="pt-4 space-y-2">
+                  <Skeleton className="h-5 w-48 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
+                </div>
+                <div className="pt-4 space-y-2">
+                  <Skeleton className="h-5 w-40 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-5/6 rounded" />
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </PageShell>
     )
   }
 

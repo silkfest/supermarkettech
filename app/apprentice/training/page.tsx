@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { Skeleton } from '@/components/Skeleton'
 import {
   ChevronDown, CheckCircle2, Circle, Loader2,
   ChevronDown as Down, BookOpen, Plus, Pencil, Trash2,
@@ -534,8 +535,51 @@ function TrainingInner() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
-      <Loader2 size={24} className="animate-spin text-blue-400" />
+    <div className="min-h-screen bg-white dark:bg-slate-900">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* XP card skeleton */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-5 space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-12 rounded" />
+              <Skeleton className="h-7 w-36 rounded" />
+              <Skeleton className="h-4 w-28 rounded" />
+            </div>
+            <div className="text-right space-y-2">
+              <Skeleton className="h-9 w-16 rounded ml-auto" />
+              <Skeleton className="h-3 w-20 rounded ml-auto" />
+            </div>
+          </div>
+          <Skeleton className="h-3 w-full rounded-full" />
+          <div className="flex gap-6 pt-2 border-t border-slate-200 dark:border-slate-600">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="space-y-1">
+                <Skeleton className="h-5 w-8 rounded" />
+                <Skeleton className="h-3 w-14 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Badges skeleton */}
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+          {[1,2,3,4,5,6,7,8,9,10].map(i => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        {/* Task list skeleton */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="px-4 py-3.5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <Skeleton className="w-5 h-5 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 rounded" style={{ width: `${55 + (i * 7) % 35}%` }} />
+                <Skeleton className="h-3 w-20 rounded" />
+              </div>
+              <Skeleton className="h-5 w-12 rounded-full flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
@@ -1062,8 +1106,14 @@ function TrainingInner() {
 export default function TrainingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-blue-400" />
+      <div className="min-h-screen bg-white dark:bg-slate-900">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+          <Skeleton className="h-36 w-full rounded-2xl" />
+          <div className="grid grid-cols-5 gap-2">
+            {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
       </div>
     }>
       <TrainingInner />

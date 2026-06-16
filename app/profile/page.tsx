@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { Skeleton } from '@/components/Skeleton'
 import {
   Award, GraduationCap, Calendar,
   Clock, Loader2, Plus, Trash2, Pencil, Check, X, ChevronRight,
@@ -384,8 +385,45 @@ function ProfileContent() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-      <Loader2 size={24} className="animate-spin text-blue-500"/>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5">
+        {/* Identity card skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6">
+          <div className="flex items-start gap-4">
+            <Skeleton className="w-14 h-14 rounded-2xl flex-shrink-0" />
+            <div className="flex-1 space-y-2 pt-1">
+              <Skeleton className="h-5 w-44 rounded" />
+              <Skeleton className="h-3.5 w-32 rounded" />
+              <div className="flex gap-2 pt-1">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-28 rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Apprenticeship card skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6 space-y-4">
+          <Skeleton className="h-4 w-36 rounded" />
+          <div className="flex gap-3">
+            <Skeleton className="h-14 flex-1 rounded-xl" />
+            <Skeleton className="h-14 flex-1 rounded-xl" />
+            <Skeleton className="h-14 flex-1 rounded-xl" />
+          </div>
+        </div>
+        {/* Certs card skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 md:p-6 space-y-3">
+          <Skeleton className="h-4 w-28 rounded" />
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-36 rounded" />
+                <Skeleton className="h-3 w-24 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
   if (!profile) return null
@@ -874,7 +912,15 @@ function ProfileContent() {
 export default function ProfilePage() {
   return (
     <PageShell>
-      <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-blue-500"/></div>}>
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+          <div className="space-y-3 w-full max-w-2xl px-4">
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          </div>
+        </div>
+      }>
         <ProfileContent/>
       </Suspense>
     </PageShell>
