@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Sparkles,
   Package,
+  ArrowUp,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
@@ -78,6 +79,7 @@ export default function KnowledgeTopicPage() {
   const [pdfViewer, setPdfViewer] = useState<{ url: string; title: string } | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const intersectingRef = useRef<Set<string>>(new Set())
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
   const sections = useMemo(() => topic ? extractSections(topic.content) : [], [topic])
 
@@ -146,6 +148,13 @@ export default function KnowledgeTopicPage() {
     })
     return () => observer.disconnect()
   }, [sections])
+
+  // Show back-to-top after scrolling 400px
+  useEffect(() => {
+    function onScroll() { setShowBackToTop(window.scrollY > 400) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   if (topicLoading) {
     return (
@@ -477,6 +486,18 @@ export default function KnowledgeTopicPage() {
         </div>
         <iframe src={pdfViewer.url} className="flex-1 w-full border-0" title={pdfViewer.title} />
       </div>
+    )}
+
+    {/* Back to top — appears after scrolling 400px, hidden while PDF viewer is open */}
+    {showBackToTop && !pdfViewer && (
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Back to top"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-full shadow-md hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+      >
+        <ArrowUp size={13} />
+        Top
+      </button>
     )}
     </PageShell>
   )
