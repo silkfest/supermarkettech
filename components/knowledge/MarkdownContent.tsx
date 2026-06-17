@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Info, Lightbulb, AlertTriangle, ShieldAlert, FlaskConical, Link2, Check } from 'lucide-react'
 import { RackStyle1Diagram } from './diagrams/RackStyle1Diagram'
 import { RackStyle2Diagram } from './diagrams/RackStyle2Diagram'
@@ -11,6 +12,15 @@ import { BasicRefrigerationCycleDiagram } from './diagrams/BasicRefrigerationCyc
 
 export type OpenPdfFn = (url: string, title: string) => void
 
+// WebGL-based diagrams are loaded client-only and code-split so the three.js bundle
+// is never pulled into pages that don't render a 3D diagram.
+const TXVCutaway3D = dynamic(() => import('./diagrams/TXVCutaway3D').then(m => m.TXVCutaway3D), {
+  ssr: false,
+  loading: () => (
+    <div className="my-6 h-72 sm:h-96 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 animate-pulse" />
+  ),
+})
+
 const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode> = {
   'rack-style-1': (openPdf) => <RackStyle1Diagram openPdf={openPdf} />,
   'rack-style-2': (openPdf) => <RackStyle2Diagram openPdf={openPdf} />,
@@ -18,6 +28,7 @@ const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode>
   'compressor-terminals': () => <CompressorTerminalDiagram />,
   'ice-harvest-cycle': () => <IceHarvestCycleDiagram />,
   'basic-refrigeration-cycle': () => <BasicRefrigerationCycleDiagram />,
+  'txv-cutaway-3d': () => <TXVCutaway3D />,
 }
 
 // ── Inline formatter ──────────────────────────────────────────────────────────
