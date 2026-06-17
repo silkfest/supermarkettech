@@ -16,6 +16,21 @@ import PageHeader from '@/components/PageHeader'
 import EmptyState from '@/components/EmptyState'
 import type { ContentMatch } from '@/app/api/knowledge/search/route'
 
+// ── Highlight matched query words within a search excerpt ─────────────────────
+function highlightMatches(text: string, query: string) {
+  const words = query.trim().split(/\s+/).filter(w => w.length > 1)
+  if (words.length === 0) return text
+  const pattern = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
+  // With a single capturing group, String.split alternates [unmatched, matched, unmatched, ...]
+  // so odd indices are always the matched words — no need to re-run the stateful global regex.
+  const parts = text.split(pattern)
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <mark key={i} className="bg-amber-200/70 dark:bg-amber-500/30 text-slate-900 dark:text-slate-100 rounded-sm px-0.5">{part}</mark>
+      : part
+  )
+}
+
 // ── Color map — static class names so Tailwind purge can see them ─────────────
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag: string }> = {
   sky:     { bg: 'bg-sky-100',     text: 'text-sky-600',     border: 'border-sky-200',    tag: 'bg-sky-50 text-sky-700 border-sky-200' },
@@ -464,7 +479,7 @@ export default function KnowledgePage() {
                   {contentMatches.map((match, i) => (
                     <button
                       key={i}
-                      onClick={() => router.push(`/knowledge/${match.topicSlug}`)}
+                      onClick={() => router.push(match.sectionId ? `/knowledge/${match.topicSlug}#${match.sectionId}` : `/knowledge/${match.topicSlug}`)}
                       className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all group"
                     >
                       <div className="flex items-center gap-1.5 mb-1">
@@ -473,7 +488,7 @@ export default function KnowledgePage() {
                         <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{match.sectionTitle}</span>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 group-hover:text-slate-800 dark:group-hover:text-slate-100">
-                        {match.excerpt}
+                        {highlightMatches(match.excerpt, query)}
                       </p>
                     </button>
                   ))}

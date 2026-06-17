@@ -847,6 +847,20 @@ export default function Co2BoosterSimulatorPage() {
                       </div>
                     )
                   })}
+                  {score.fp > 0 && (
+                    <>
+                      <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 pt-1">You also flagged (not part of this fault):</p>
+                      {FAULT_DEFS.filter(d => userGuess[d.key] && !activeScenario.answer.includes(d.key)).map(d => (
+                        <div key={d.key} className="flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+                          <AlertTriangle size={12} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"/>
+                          <div>
+                            <span className="text-amber-700 dark:text-amber-300">{d.label}</span>
+                            <span className="text-slate-500 ml-1.5">— would show: {d.hint}. Not present here.</span>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                   {(activeScenario.knowledge?.length ?? 0) > 0 && (
                     <div className="flex items-center gap-2 flex-wrap pt-1">
                       <span className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10} /> Read more:</span>

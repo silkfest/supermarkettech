@@ -123,6 +123,18 @@ export default function KnowledgeTopicPage() {
     } catch {}
   }, [topic])
 
+  // Jump to a deep-linked section (e.g. from a search result excerpt) once the markdown
+  // has rendered — a plain browser hash-scroll fires before this content exists yet.
+  useEffect(() => {
+    if (!topic || sections.length === 0) return
+    const id = window.location.hash.slice(1)
+    if (!id) return
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [topic, sections])
+
   // Scroll-spy: highlight TOC entry for the section currently in the top ~20% of viewport
   useEffect(() => {
     if (sections.length === 0) return
