@@ -14,15 +14,31 @@ export interface ContentMatch {
   topicSlug: string
   topicTitle: string
   sectionTitle: string
+  sectionId: string
   excerpt: string
 }
 
+// Mirrors the slugify + emoji-strip logic in components/knowledge/MarkdownContent.tsx
+// so a content match's sectionId lines up with the heading anchor rendered on the page.
+function slugifySection(title: string): string {
+  const cleaned = title.replace(/^[\u{1F300}-\u{1FAF8}\u{2600}-\u{26FF}\u{2700}-\u{27BF}️⃣]+\s*/u, '')
+  return (cleaned || title)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+}
+
 function extractMatches(slug: string, title: string, content: string, query: string): ContentMatch[] {
-  const lower = query.toLowerCase()
+  // Require every query word to appear somewhere in the line (in any order) rather than
+  // an exact phrase match, so multi-word queries like "txv superheat" find relevant lines
+  // even when the words aren't adjacent in the source text.
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   const lines = content.split('\n')
   const results: ContentMatch[] = []
   const seenSections = new Set<string>()
   let currentSection = 'Overview'
+  let currentSectionId = ''
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -30,10 +46,13 @@ function extractMatches(slug: string, title: string, content: string, query: str
 
     if (/^#{1,3}\s/.test(trimmed)) {
       currentSection = trimmed.replace(/^#+\s+/, '')
+      currentSectionId = slugifySection(currentSection)
       continue
     }
 
-    if (!trimmed || trimmed.toLowerCase().includes(lower) === false) continue
+    if (!trimmed) continue
+    const lowerLine = trimmed.toLowerCase()
+    if (!words.every(w => lowerLine.includes(w))) continue
     if (seenSections.has(currentSection)) continue
 
     // Build a clean excerpt: merge up to 4 surrounding lines, strip markdown symbols
@@ -49,10 +68,10 @@ function extractMatches(slug: string, title: string, content: string, query: str
       ? raw.slice(0, raw.lastIndexOf(' ', 220)) + '…'
       : raw
 
-    results.push({ topicSlug: slug, topicTitle: title, sectionTitle: currentSection, excerpt: truncated })
+    results.push({ topicSlug: slug, topicTitle: title, sectionTitle: currentSection, sectionId: currentSectionId, excerpt: truncated })
     seenSections.add(currentSection)
 
-    if (results.length >= 4) break
+    if (results.length >= 6) break
   }
 
   return results
