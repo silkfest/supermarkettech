@@ -4,7 +4,9 @@ import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 import { buildSystemPromptParts } from '@/lib/ai/prompts'
 import { retrieveChunks, formatToolResult, chunksToCitationsFrom } from '@/lib/ai/rag'
 import { buildSnapshot } from '@/lib/sensor'
-import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ChatDomain, ComponentLink, CitationSource } from '@/types'
+import { getTopicBySlug } from '@/lib/knowledge/topics'
+import { slugifySection } from '@/lib/knowledge/slugify'
+import type { Equipment, MaintenanceLog, AlarmEvent, ChatMode, ChatDomain, ComponentLink, CitationSource, KnowledgeSource } from '@/types'
 import { z } from 'zod'
 export const maxDuration = 60
 
@@ -31,6 +33,20 @@ const Schema = z.object({
   })).max(3).optional(),
   history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
 })
+
+// Finds the real ### heading in a topic's content matching the model's cited heading text
+// (case-insensitive, whitespace-trimmed) and returns its anchor slug. Guards against the model
+// citing a section it hallucinated rather than one that actually exists on the page.
+function resolveSectionId(content: string, citedHeading: string): string | undefined {
+  const target = citedHeading.trim().toLowerCase()
+  for (const line of content.split('\n')) {
+    const m = /^###\s+(.+)$/.exec(line.trim())
+    if (m && m[1].trim().toLowerCase() === target) {
+      return slugifySection(m[1].trim())
+    }
+  }
+  return undefined
+}
 
 async function loadEquipmentContext(equipmentId: string) {
   const supabase = getSupabaseServer()
@@ -220,6 +236,31 @@ export async function POST(req: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'component_links', componentLinks: citedLinks })}\n\n`))
           }
         }
+
+        // Extract cited [KB: slug] / [KB: slug | heading] markers, validating each against
+        // the real topic registry so the technician never gets a broken or hallucinated link.
+        const knowledgeSources: KnowledgeSource[] = []
+        const seenKb = new Set<string>()
+        for (const m of fullContent.matchAll(/\[KB:\s*([a-z0-9-]+)(?:\s*\|\s*([^\]]+))?\]/gi)) {
+          const slug = m[1].toLowerCase()
+          const topic = getTopicBySlug(slug)
+          if (!topic) continue
+          const citedHeading = m[2]?.trim()
+          const sectionId = citedHeading ? resolveSectionId(topic.content, citedHeading) : undefined
+          const key = `${slug}::${sectionId ?? ''}`
+          if (seenKb.has(key)) continue
+          seenKb.add(key)
+          knowledgeSources.push({
+            slug,
+            topicTitle: topic.title,
+            sectionTitle: sectionId ? citedHeading : undefined,
+            sectionId,
+          })
+        }
+        if (knowledgeSources.length > 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'knowledge_sources', knowledgeSources })}\n\n`))
+        }
+
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err)
