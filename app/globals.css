@@ -36,6 +36,10 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
+/* Horizontally-scrollable tab strips: hide the scrollbar but keep swipe/scroll */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Override Chrome autofill background so the caret stays visible */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
