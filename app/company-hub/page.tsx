@@ -814,49 +814,49 @@ export default function CompanyHubPage() {
       />
 
       {/* Tab selector */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+      <div className={`grid ${isManager ? 'grid-cols-4' : 'grid-cols-3'} md:flex md:items-center md:gap-0.5 md:px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700`}>
         <button
           onClick={() => setActiveTab('announcements')}
-          className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
+          className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-0.5 md:gap-1.5 px-1 md:px-3 py-2 md:py-2.5 text-[10px] md:text-xs font-medium text-center leading-tight border-b-2 transition-colors -mb-px ${
             activeTab === 'announcements'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <Megaphone size={12}/> Announcements
+          <Megaphone size={14}/> <span>Announcements</span>
         </button>
         <button
           onClick={() => setActiveTab('policies')}
-          className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
+          className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-0.5 md:gap-1.5 px-1 md:px-3 py-2 md:py-2.5 text-[10px] md:text-xs font-medium text-center leading-tight border-b-2 transition-colors -mb-px ${
             activeTab === 'policies'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <Shield size={12}/> Policies &amp; Procedures
+          <Shield size={14}/> <span>Policies &amp; Procedures</span>
         </button>
         <button
           onClick={() => setActiveTab('contacts')}
-          className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
+          className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-0.5 md:gap-1.5 px-1 md:px-3 py-2 md:py-2.5 text-[10px] md:text-xs font-medium text-center leading-tight border-b-2 transition-colors -mb-px ${
             activeTab === 'contacts'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <Users size={12}/> Contact Directory
+          <Users size={14}/> <span>Contact Directory</span>
         </button>
         {isManager && (
           <button
             onClick={() => setActiveTab('feedback')}
-            className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
+            className={`relative flex flex-col md:flex-row items-center justify-center md:justify-start gap-0.5 md:gap-1.5 px-1 md:px-3 py-2 md:py-2.5 text-[10px] md:text-xs font-medium text-center leading-tight border-b-2 transition-colors -mb-px ${
               activeTab === 'feedback'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            <MessageSquareWarning size={12}/> Feedback
+            <MessageSquareWarning size={14}/> <span>Feedback</span>
             {feedbackItems.some(f => f.status === 'open') && (
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="absolute top-1 right-2 md:static md:top-auto md:right-auto w-1.5 h-1.5 rounded-full bg-red-500" />
             )}
           </button>
         )}
