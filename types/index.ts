@@ -116,6 +116,13 @@ export interface ComponentLink {
   manualTitle: string
 }
 
+export interface KnowledgeSource {
+  slug: string
+  topicTitle: string
+  sectionTitle?: string
+  sectionId?: string
+}
+
 export interface AnnouncementAck {
   user_id: string
   acknowledged_at: string
@@ -162,6 +169,7 @@ export interface ChatMessage {
   images?: ChatImage[]
   sources?: CitationSource[]
   componentLinks?: ComponentLink[]
+  knowledgeSources?: KnowledgeSource[]
   isStreaming?: boolean
   helpful?: boolean
 }

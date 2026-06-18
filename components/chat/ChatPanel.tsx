@@ -4,7 +4,7 @@ import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, Aler
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationSource, ComponentLink } from '@/types'
+import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationSource, ComponentLink, KnowledgeSource } from '@/types'
 
 const MAX_IMAGES = 3
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
@@ -55,10 +55,11 @@ interface Props {
 }
 
 interface StreamEvent {
-  type: 'delta' | 'sources' | 'component_links' | 'done' | 'error'
+  type: 'delta' | 'sources' | 'component_links' | 'knowledge_sources' | 'done' | 'error'
   text?: string
   sources?: CitationSource[]
   componentLinks?: ComponentLink[]
+  knowledgeSources?: KnowledgeSource[]
   sessionId?: string
   message?: string
 }
@@ -139,6 +140,39 @@ function ComponentLinks({ links }: { links: ComponentLink[] }) {
   )
 }
 
+function KnowledgeSources({ sources }: { sources: KnowledgeSource[] }) {
+  const router = useRouter()
+  if (!sources.length) return null
+  return (
+    <div className="mt-2">
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1">
+        <BookOpen size={9} />
+        From the Knowledge Base — learn more or verify
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {sources.map(s => (
+          <button
+            key={`${s.slug}-${s.sectionId ?? ''}`}
+            onClick={() => router.push(`/knowledge/${s.slug}${s.sectionId ? `#${s.sectionId}` : ''}`)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors group"
+            title={s.sectionTitle ? `${s.topicTitle} — ${s.sectionTitle}` : s.topicTitle}
+          >
+            <BookOpen size={10} className="text-indigo-400 flex-shrink-0" />
+            <span className="font-medium">{s.topicTitle}</span>
+            {s.sectionTitle && (
+              <>
+                <span className="text-indigo-500">·</span>
+                <span className="truncate max-w-[160px]">{s.sectionTitle}</span>
+              </>
+            )}
+            <ExternalLink size={9} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function pdfUrl(signedUrl: string, pageNumber?: number | null): string {
   return pageNumber != null ? `${signedUrl}#page=${pageNumber}` : signedUrl
 }
@@ -159,7 +193,10 @@ interface ChatDraft {
 
 function processInlineCitations(content: string): string {
   // Match [Doc N] or [Doc N: any title text] — the model sometimes includes the full label
-  return content.replace(/\[Doc (\d+)[^\]]*\]/g, (_, n) => `[${n}](#cite-${n})`)
+  const withDocBadges = content.replace(/\[Doc (\d+)[^\]]*\]/g, (_, n) => `[${n}](#cite-${n})`)
+  // [KB: slug] / [KB: slug | heading] markers are shown only in the Knowledge Base sources
+  // block below the message, not inline — strip them from the rendered text entirely.
+  return withDocBadges.replace(/\s?\[KB:\s*[a-z0-9-]+(?:\s*\|\s*[^\]]+)?\]/gi, '')
 }
 
 function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
@@ -267,6 +304,11 @@ function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
         {/* Component registry links — shown after streaming completes */}
         {!isUser && !msg.isStreaming && msg.componentLinks && msg.componentLinks.length > 0 && (
           <ComponentLinks links={msg.componentLinks} />
+        )}
+
+        {/* Knowledge Base sources — shown after streaming completes */}
+        {!isUser && !msg.isStreaming && msg.knowledgeSources && msg.knowledgeSources.length > 0 && (
+          <KnowledgeSources sources={msg.knowledgeSources} />
         )}
 
         {/* Helpful reaction */}
@@ -658,6 +700,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       let buffer = ''
       let pendingSources: CitationSource[] | undefined
       let pendingComponentLinks: ComponentLink[] | undefined
+      let pendingKnowledgeSources: KnowledgeSource[] | undefined
 
       while (true) {
         const { done, value } = await reader.read()
@@ -703,20 +746,28 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
               }
               break
 
+            case 'knowledge_sources':
+              if (event.knowledgeSources?.length) {
+                pendingKnowledgeSources = event.knowledgeSources
+              }
+              break
+
             case 'done': {
                 // Snapshot before reset — React batches state updaters and executes
                 // them after the current synchronous block. Without snapshots the
                 // closure would read the already-reset `undefined` values.
                 const snapshotSources = pendingSources
                 const snapshotLinks   = pendingComponentLinks
+                const snapshotKnowledgeSources = pendingKnowledgeSources
                 setMessages(prev => prev.map(m =>
                   m.id === assistantId
-                    ? { ...m, isStreaming: false, sources: snapshotSources, componentLinks: snapshotLinks }
+                    ? { ...m, isStreaming: false, sources: snapshotSources, componentLinks: snapshotLinks, knowledgeSources: snapshotKnowledgeSources }
                     : m
                 ))
                 setStreaming(false)
                 pendingSources = undefined
                 pendingComponentLinks = undefined
+                pendingKnowledgeSources = undefined
                 persistConversation([...history, { role: 'user', content: text }, { role: 'assistant', content: assistantContentRef.current }])
                 break
               }

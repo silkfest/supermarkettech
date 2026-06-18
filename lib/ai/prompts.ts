@@ -7030,6 +7030,68 @@ come back empty or irrelevant, say so and answer from general knowledge instead 
 endlessly. Cite results using [Doc N] as described in RESPONSE FORMAT.
 `
 
+// ── Knowledge Base citation legend ────────────────────────────────────────────
+// Slug/title pairs mirroring the KNOWLEDGE constants injected into each domain's static
+// system prompt above. Kept here as a plain hardcoded list (not imported from
+// lib/knowledge/topics.ts) because that file imports its `content` fields FROM this one —
+// importing it back here would create a circular import. app/api/chat/route.ts is the
+// authoritative validator: it checks every cited slug/heading against the real TOPICS array
+// before showing it to the technician, so a stale entry here just means a missed citation,
+// never a broken or hallucinated link.
+const KB_TOPICS_REFRIGERATION: { slug: string; title: string }[] = [
+  { slug: 'refrigeration-fundamentals', title: 'Refrigeration Fundamentals' },
+  { slug: 'sporlan', title: 'Sporlan' },
+  { slug: 'copeland', title: 'Copeland / Emerson' },
+  { slug: 'hussmann', title: 'Hussmann' },
+  { slug: 'danfoss', title: 'Danfoss' },
+  { slug: 'arneg', title: 'Arneg' },
+  { slug: 'keeprite', title: 'Keeprite' },
+  { slug: 'math-electrical', title: 'Math & Electrical Reference' },
+  { slug: 'micro-thermo', title: 'Micro Thermo (MT-Alliance)' },
+  { slug: 'evapco-lmp', title: 'Evapco LMP' },
+  { slug: 'penn-controls', title: 'Penn Controls (Johnson Controls)' },
+  { slug: 'carnot', title: 'Carnot (M&M Carnot / JCI)' },
+  { slug: 'emerson-e2-e3', title: 'Emerson E2 / E3 Controllers' },
+  { slug: 'walk-in-troubleshooting', title: 'Walk-In Cooler & Freezer Troubleshooting' },
+  { slug: 'parallel-rack-systems', title: 'Parallel Rack Systems (HFC Multiplex)' },
+  { slug: 'vfd', title: 'Variable Frequency Drives (VFDs)' },
+  { slug: 'refrigerant-retrofit', title: 'R-404A → R-448A / R-449A Retrofit' },
+  { slug: 'tyler-hill-phoenix', title: 'Tyler & Hill Phoenix' },
+  { slug: 'heatcraft-bohn', title: 'Heatcraft / Bohn / Larkin' },
+  { slug: 'bitzer', title: 'Bitzer Compressors' },
+]
+
+const KB_TOPICS_HVAC: { slug: string; title: string }[] = [
+  { slug: 'math-electrical', title: 'Math & Electrical Reference' },
+  { slug: 'micro-thermo', title: 'Micro Thermo (MT-Alliance)' },
+  { slug: 'penn-controls', title: 'Penn Controls (Johnson Controls)' },
+  { slug: 'carnot', title: 'Carnot (M&M Carnot / JCI)' },
+  { slug: 'emerson-e2-e3', title: 'Emerson E2 / E3 Controllers' },
+  { slug: 'vfd', title: 'Variable Frequency Drives (VFDs)' },
+]
+
+function buildKbCitationInstructions(topics: { slug: string; title: string }[]): string {
+  const legend = topics.map(t => `- ${t.slug} — ${t.title}`).join('\n')
+  return `
+KNOWLEDGE BASE CITATIONS:
+The built-in knowledge above is drawn from these curated Knowledge Base topics (technicians can
+open any of them at /knowledge/<slug> to read more or verify):
+${legend}
+
+When you state a fact, procedure, or setpoint that comes from one of these topics, cite it inline
+with [KB: slug] — for example [KB: sporlan]. If you can point to the specific section, add the
+exact ### heading text from that topic after a pipe: [KB: sporlan | TXV Troubleshooting]. The
+heading must match a real ### heading in that topic word-for-word — if you're not sure of the
+exact wording, just cite the topic alone without a heading. Use ONLY a slug from the list above;
+never invent one. Place the marker at the end of the relevant sentence, the same way you place
+[Doc N]. Only cite a KB topic for content genuinely drawn from this built-in knowledge — not for
+general knowledge, and not for content that came from search_manuals (use [Doc N] for that).
+`
+}
+
+const KB_CITATION_INSTRUCTIONS_REFRIGERATION = buildKbCitationInstructions(KB_TOPICS_REFRIGERATION)
+const KB_CITATION_INSTRUCTIONS_HVAC = buildKbCitationInstructions(KB_TOPICS_HVAC)
+
 export const RACK_SEQUENCE_KNOWLEDGE = `
 # Parallel Rack — Sequence of Events
 
@@ -9769,6 +9831,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
     BIG_PICTURE_METHODOLOGY,
     FORMAT_INSTRUCTIONS,
     MANUAL_SEARCH_TOOL_INSTRUCTIONS,
+    KB_CITATION_INSTRUCTIONS_HVAC,
   ] : [
     EXPERT_IDENTITY,
     REFRIGERATION_KNOWLEDGE,
@@ -9794,6 +9857,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
     BIG_PICTURE_METHODOLOGY,
     FORMAT_INSTRUCTIONS,
     MANUAL_SEARCH_TOOL_INSTRUCTIONS,
+    KB_CITATION_INSTRUCTIONS_REFRIGERATION,
   ]).join('\n\n')
 
   const dynamicParts: string[] = []
