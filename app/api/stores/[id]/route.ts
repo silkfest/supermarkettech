@@ -21,6 +21,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (storeResult.error) return NextResponse.json({ error: storeResult.error.message }, { status: 404 })
 
   const store = storeResult.data as Record<string, unknown>
+  const equipment = equipResult.data ?? []
+
+  // Pull manual catalog rows for this store's equipment (used e.g. by Refrigeration PM
+  // auto-fill to link compressor manuals by model)
+  const equipmentIds = equipment.map((e: { id: string }) => e.id)
+  let manualComponents: Record<string, unknown>[] = []
+  if (equipmentIds.length > 0) {
+    const { data: comps } = await supabase
+      .from('manual_components')
+      .select('equipment_id, type, manufacturer, model, document_id, documents(title)')
+      .in('equipment_id', equipmentIds)
+    manualComponents = comps ?? []
+  }
+  const compsByEquipment = new Map<string, Record<string, unknown>[]>()
+  for (const c of manualComponents) {
+    const eqId = c.equipment_id as string
+    if (!compsByEquipment.has(eqId)) compsByEquipment.set(eqId, [])
+    compsByEquipment.get(eqId)!.push(c)
+  }
+  const equipmentWithManuals = equipment.map((e: { id: string }) => ({
+    ...e,
+    manual_components: compsByEquipment.get(e.id) ?? [],
+  }))
 
   // Match PMs by store_id (preferred) OR store_name fallback for older records
   const storePms = (pmResult.data ?? []).filter(
@@ -30,7 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   return NextResponse.json({
     ...store,
-    equipment:   equipResult.data  ?? [],
+    equipment:   equipmentWithManuals,
     recent_pms:  storePms,
   })
 }
