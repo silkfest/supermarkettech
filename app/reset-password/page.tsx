@@ -29,9 +29,10 @@ export default function ResetPasswordPage() {
 
     // Fallback: the auth event may have already fired (URL auto-processed)
     // before this listener attached — check for an established session.
-    sb.auth.getSession().then(({ data: { session } }) => {
+    ;(async () => {
+      const { data: { session } } = await sb.auth.getSession()
       if (session) markReady()
-    })
+    })()
 
     // If no recovery session ever materialises, the link is bad/expired.
     const timer = setTimeout(() => {
