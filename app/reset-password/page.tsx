@@ -15,11 +15,30 @@ export default function ResetPasswordPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Supabase puts the session tokens in the URL hash after redirect
     const sb = getSupabaseBrowser()
-    sb.auth.onAuthStateChange((event: AuthChangeEvent) => {
-      if (event === 'PASSWORD_RECOVERY') setReady(true)
+    let done = false
+    const markReady = () => { if (!done) { done = true; setReady(true) } }
+
+    // @supabase/ssr uses the PKCE flow, so the reset link lands on
+    // /reset-password?code=... with no type=recovery marker — supabase-js
+    // can't tell it's a recovery and emits SIGNED_IN rather than
+    // PASSWORD_RECOVERY. Accept either so the form unlocks in both flows.
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event: AuthChangeEvent) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') markReady()
     })
+
+    // Fallback: the auth event may have already fired (URL auto-processed)
+    // before this listener attached — check for an established session.
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) markReady()
+    })
+
+    // If no recovery session ever materialises, the link is bad/expired.
+    const timer = setTimeout(() => {
+      if (!done) setError('This password reset link is invalid or has expired. Please request a new one from the sign-in page.')
+    }, 4000)
+
+    return () => { subscription.unsubscribe(); clearTimeout(timer) }
   }, [])
 
   async function onSubmit(e: React.FormEvent) {
@@ -45,7 +64,14 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-slate-500">Set a new password</p>
         </div>
         {!ready ? (
-          <p className="text-sm text-slate-500 text-center">Verifying reset link…</p>
+          error ? (
+            <div className="text-center">
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-lg mb-4">{error}</p>
+              <a href="/login" className="text-xs text-blue-600 hover:underline">Back to sign in</a>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center">Verifying reset link…</p>
+          )
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
