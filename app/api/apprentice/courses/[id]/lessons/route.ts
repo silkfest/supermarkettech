@@ -13,6 +13,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const role = (profile as { role: string } | null)?.role ?? ''
   const isElevated = ELEVATED_ROLES.includes(role)
 
+  // Learners may only open a course that's assigned to them (directly or by role).
+  if (!isElevated) {
+    const { data: assignment } = await supabase
+      .from('course_assignments')
+      .select('id')
+      .eq('course_id', id)
+      .or(`user_id.eq.${user.id},role.eq.${role}`)
+      .limit(1)
+      .maybeSingle()
+    if (!assignment) return NextResponse.json({ error: 'This course is not assigned to you' }, { status: 403 })
+  }
+
   const [courseRes, lessonsRes, courseCompletionRes] = await Promise.all([
     supabase.from('courses').select('*').eq('id', id).single(),
     supabase.from('course_lessons').select('*').eq('course_id', id).order('sort_order').order('created_at'),

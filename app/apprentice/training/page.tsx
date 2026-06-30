@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/Skeleton'
 import {
   ChevronDown, CheckCircle2, Circle, Loader2,
   ChevronDown as Down, BookOpen, Plus, Pencil, Trash2,
-  ExternalLink, Clock, X,
+  ExternalLink, Clock, X, Users, UserPlus, Check,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import EmptyState from '@/components/EmptyState'
@@ -131,9 +131,11 @@ interface Course {
   sort_order: number; is_published: boolean; created_at: string
   completion: { completed_at: string; notes: string } | null
   lesson_count: number
+  assigned_to_target?: boolean
 }
 interface UserProfile { id: string; name: string; email: string; role: string; mentor_id: string | null }
 interface Apprentice  { id: string; name: string; email: string }
+interface AssignableUser { id: string; name: string; email: string; role: string }
 
 // ─── Course modal ─────────────────────────────────────────────────────────────
 interface CourseModalProps {
@@ -236,6 +238,149 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
   )
 }
 
+// ─── Assignment modal ──────────────────────────────────────────────────────────
+const ASSIGNABLE_ROLE_OPTIONS: { role: string; label: string; icon: string }[] = [
+  { role: 'apprentice', label: 'All Apprentices', icon: '🎓' },
+  { role: 'journeyman', label: 'All Journeymen',  icon: '🔧' },
+]
+
+interface AssignmentModalProps {
+  course: Course
+  onClose: () => void
+}
+function AssignmentModal({ course, onClose }: AssignmentModalProps) {
+  const [roles, setRoles]   = useState<Set<string>>(new Set())
+  const [userIds, setUserIds] = useState<Set<string>>(new Set())
+  const [people, setPeople] = useState<AssignableUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [busy, setBusy]     = useState<string | null>(null)
+  const [error, setError]   = useState('')
+
+  useEffect(() => {
+    async function load() {
+      const sb = getSupabaseBrowser()
+      const [assignRes, usersRes] = await Promise.all([
+        fetch(`/api/apprentice/courses/${course.id}/assignments`).then(r => r.ok ? r.json() : { users: [], roles: [] }),
+        sb.from('users').select('id,name,email,role').in('role', ['apprentice', 'journeyman']).order('name'),
+      ])
+      setRoles(new Set(assignRes.roles ?? []))
+      setUserIds(new Set(assignRes.users ?? []))
+      setPeople((usersRes.data ?? []) as AssignableUser[])
+      setLoading(false)
+    }
+    load()
+  }, [course.id])
+
+  async function toggle(kind: 'role' | 'user', value: string, on: boolean) {
+    setBusy(`${kind}:${value}`)
+    setError('')
+    const body = kind === 'role' ? { role: value } : { userId: value }
+    const res = await fetch(`/api/apprentice/courses/${course.id}/assignments`, {
+      method: on ? 'POST' : 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? 'Failed to update assignment')
+      setBusy(null)
+      return
+    }
+    const setter = kind === 'role' ? setRoles : setUserIds
+    setter(prev => {
+      const next = new Set(prev)
+      if (on) next.add(value); else next.delete(value)
+      return next
+    })
+    setBusy(null)
+  }
+
+  const filtered = people.filter(p => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return (p.name ?? '').toLowerCase().includes(q) || (p.email ?? '').toLowerCase().includes(q)
+  })
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Assign course</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{course.title}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 flex-shrink-0"><X size={18}/></button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12 text-slate-500 text-sm gap-2"><Loader2 size={16} className="animate-spin"/> Loading…</div>
+        ) : (
+          <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 text-xs rounded-lg">{error}</div>}
+
+            {/* By role */}
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Assign by role</p>
+              <div className="space-y-1.5">
+                {ASSIGNABLE_ROLE_OPTIONS.map(opt => {
+                  const on = roles.has(opt.role)
+                  const isBusy = busy === `role:${opt.role}`
+                  return (
+                    <button key={opt.role} onClick={() => toggle('role', opt.role, !on)} disabled={isBusy}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm transition-colors ${on ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'}`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="flex-1 text-left font-medium">{opt.label}</span>
+                      {isBusy ? <Loader2 size={15} className="animate-spin"/> : on ? <Check size={15}/> : <Plus size={15} className="text-slate-400"/>}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">Role assignments cover everyone with that role, including new hires.</p>
+            </div>
+
+            {/* By individual */}
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Assign to individuals</p>
+              <input
+                value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email…"
+                className="w-full px-3 py-2 mb-2 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                {filtered.length === 0 && <p className="text-xs text-slate-400 px-1 py-2">No matching users.</p>}
+                {filtered.map(p => {
+                  const coveredByRole = roles.has(p.role)
+                  const on = userIds.has(p.id) || coveredByRole
+                  const isBusy = busy === `user:${p.id}`
+                  return (
+                    <button key={p.id} onClick={() => !coveredByRole && toggle('user', p.id, !userIds.has(p.id))} disabled={isBusy || coveredByRole}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-sm transition-colors ${coveredByRole ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 opacity-70 cursor-default' : on ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
+                    >
+                      <div className="flex-1 text-left min-w-0">
+                        <p className={`font-medium truncate ${on ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}>{p.name || p.email}</p>
+                        <p className="text-[11px] text-slate-400 truncate capitalize">{p.role}{p.name ? ` · ${p.email}` : ''}</p>
+                      </div>
+                      {isBusy ? <Loader2 size={15} className="animate-spin"/>
+                        : coveredByRole ? <span className="text-[10px] text-slate-400">via role</span>
+                        : on ? <Check size={15} className="text-blue-600 dark:text-blue-400"/>
+                        : <Plus size={15} className="text-slate-400"/>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">Done</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 function TrainingInner() {
   const router       = useRouter()
@@ -261,6 +406,8 @@ function TrainingInner() {
   const [showCourseModal, setShowCourseModal] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [deletingCourse, setDeletingCourse] = useState<string | null>(null)
+  const [assigningCourse, setAssigningCourse] = useState<Course | null>(null)
+  const [togglingAssign, setTogglingAssign] = useState<string | null>(null)
 
   // User state
   const [currentUser, setUser]      = useState<UserProfile | null>(null)
@@ -274,6 +421,9 @@ function TrainingInner() {
   const canManageCourses = ['admin', 'manager'].includes(currentUser?.role ?? '')
   const isReadOnly = isAdmin && viewingUser !== null && viewingUser.id !== currentUser?.id
   const displayUser = viewingUser ?? currentUser
+  // When a manager/admin is viewing a specific learner, each course shows a quick
+  // "assign to this person" toggle in addition to the full assignment modal.
+  const viewingLearner = canManageCourses && isReadOnly && ['apprentice', 'journeyman'].includes(displayUser?.role ?? '')
 
   const fetchTasks = useCallback(async (userId: string) => {
     const res  = await fetch(`/api/apprentice/progress?userId=${userId}`)
@@ -520,6 +670,22 @@ function TrainingInner() {
     setDeletingCourse(null)
   }
 
+  // Quick per-person assignment toggle (used when viewing a specific learner)
+  async function toggleAssignment(course: Course) {
+    if (!displayUser) return
+    const on = !course.assigned_to_target
+    setTogglingAssign(course.id)
+    const res = await fetch(`/api/apprentice/courses/${course.id}/assignments`, {
+      method: on ? 'POST' : 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: displayUser.id }),
+    })
+    if (res.ok) {
+      setCourses(prev => prev.map(c => c.id === course.id ? { ...c, assigned_to_target: on } : c))
+    }
+    setTogglingAssign(null)
+  }
+
   function computeEarnedBadges(taskList: Task[]) {
     const completed   = taskList.filter(t => t.progress?.status === 'completed')
     const byCat: Record<string, number>  = {}
@@ -637,6 +803,18 @@ function TrainingInner() {
           initial={editingCourse}
           onSave={handleCourseSaved}
           onClose={() => { setShowCourseModal(false); setEditingCourse(null) }}
+        />
+      )}
+
+      {/* Assignment modal */}
+      {assigningCourse && (
+        <AssignmentModal
+          course={assigningCourse}
+          onClose={() => {
+            const id = viewingUser?.id ?? currentUser?.id ?? ''
+            setAssigningCourse(null)
+            if (id) fetchCourses(id) // refresh assigned-to-target indicators
+          }}
         />
       )}
 
@@ -1058,6 +1236,23 @@ function TrainingInner() {
 
                         {/* Right side: XP + link + admin actions */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* Quick assign toggle when viewing a specific learner */}
+                          {viewingLearner && (
+                            <button
+                              onClick={() => toggleAssignment(course)}
+                              disabled={togglingAssign === course.id}
+                              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors disabled:opacity-50 ${
+                                course.assigned_to_target
+                                  ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                                  : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-blue-400'
+                              }`}
+                              title={course.assigned_to_target ? `Assigned to ${displayUser?.name || 'this user'} — tap to unassign` : `Assign to ${displayUser?.name || 'this user'}`}
+                            >
+                              {togglingAssign === course.id ? <Loader2 size={11} className="animate-spin"/>
+                                : course.assigned_to_target ? <Check size={11}/> : <UserPlus size={11}/>}
+                              {course.assigned_to_target ? 'Assigned' : 'Assign'}
+                            </button>
+                          )}
                           <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                             +{course.points} XP
                           </span>
@@ -1068,6 +1263,15 @@ function TrainingInner() {
                             >
                               <ExternalLink size={14}/>
                             </a>
+                          )}
+                          {canManageCourses && (
+                            <button
+                              onClick={() => setAssigningCourse(course)}
+                              className="p-1.5 text-slate-500 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                              title="Assign course to people or roles"
+                            >
+                              <Users size={13}/>
+                            </button>
                           )}
                           {canManageCourses && !isReadOnly && (
                             <>
