@@ -14,6 +14,7 @@ import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
+import { useIsMobile } from '@/components/simulation/useIsMobile'
 import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -571,7 +572,7 @@ function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: numbe
   const compRunning    = [true, true]
   const dischargeSatTemp = mtSuctionSatTemp  // boosters discharge into MT suction header
 
-  if (f.ltComp1Failed) { compRunning[0] = false; suctionSatTemp += 8; caseTemp += 8; ampsMultiplier *= 1.80 }
+  if (f.ltComp1Failed) { compRunning[0] = false; suctionSatTemp += 8; caseTemp += 8; ampsMultiplier *= 1.45 }
   if (f.ltComp2Failed) { compRunning[1] = false; suctionSatTemp += 18; caseTemp += 18 }
   if (f.ltTxvNotFeeding)   { suctionSatTemp -= 12; superheat += 25; caseTemp += 12 }
   if (f.ltDefrostStuckOn)  { suctionSatTemp += 8;  caseTemp  += 18; if (superheat > 5) superheat -= 5 }
@@ -1149,6 +1150,7 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SimulationPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   // Free-play state
   const [faults,       setFaults]       = useState<FaultState>(INITIAL_FAULTS)
@@ -1712,6 +1714,7 @@ export default function SimulationPage() {
                         mtFanOut={!conceal && activeFaults.evapFanFailed}
                         floodback={mt.suctionSuperheat < 5}
                         hpCtrlActive={mtBase.hpCtrlActive}
+                        layout={isMobile ? 'tall' : 'wide'}
                         selectedId={schemDetail?.id ?? null}
                         onSelect={setSchemDetail}
                       />

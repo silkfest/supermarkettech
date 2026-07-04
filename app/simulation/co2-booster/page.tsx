@@ -13,6 +13,7 @@ import PageHeader from '@/components/PageHeader'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import Co2BoosterVisual from '@/components/simulation/visuals/Co2BoosterVisual'
+import { useIsMobile } from '@/components/simulation/useIsMobile'
 import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
@@ -92,6 +93,9 @@ const LT_SST = -22          // °F — low temp saturated suction (≈ 190 psig)
 const FLASH_TANK_SET = 38   // °F sat ≈ 531 psig receiver set point
 const RV_WARN_PSIG = 640    // flash tank relief valve approach warning
 const RV_LIFT_PSIG = 690    // relief valve lift
+// Controller's maximum gas cooler pressure target (~103 bar). The optimization
+// curve is followed up to this cap; beyond it the rack runs capacity-limited.
+const GC_MAX_TARGET_PSIG = 1500
 const BASE_APPROACH = 5     // °F gas cooler approach, clean coil
 const MT_BASE_AMPS = 28
 const LT_BASE_AMPS = 17
@@ -136,10 +140,16 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   // High side pressure
   let headPsig: number
   let condensingTemp: number | null
+  let gcCapacityLimited = false
   if (transcritical) {
-    // optimal gas cooler pressure ≈ (2.7 × T_out °C + 6.1) bar — standard CO2 control curve
+    // Optimal gas cooler pressure ≈ (2.7 × T_out °C − 6.1) bar abs — the
+    // Liao–Jakobsen optimization curve pack controllers follow. The controller
+    // caps its target at GC_MAX_TARGET_PSIG; past that the rack loses capacity
+    // instead of chasing pressure (gas cooler exit enthalpy rises → more flash gas).
     const tC = (gcOutletTemp - 32) / 1.8
-    headPsig = Math.max((2.7 * tC + 6.1) * 14.5 - 14.7, 1080)
+    const curvePsig = (2.7 * tC - 6.1) * 14.5 - 14.7
+    gcCapacityLimited = curvePsig > GC_MAX_TARGET_PSIG
+    headPsig = Math.min(Math.max(curvePsig, 1080), GC_MAX_TARGET_PSIG)
     condensingTemp = null
   } else {
     condensingTemp = Math.max(gcOutletTemp + 8, 50)   // head pressure control floor 50 °F
@@ -208,6 +218,7 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.fgbvStuckOpen)  mtCaseOffset += 3
   if (f.mtDoorsOpen)    mtCaseOffset += 4
   if (oat > 90)         mtCaseOffset += (oat - 90) * 0.07
+  if (gcCapacityLimited) mtCaseOffset += 2.5   // head pinned at max target — extra flash gas eats capacity
   const mtCaseTemps = MT_CASES.map(c =>
     c.setpoint + mtCaseOffset
     + (f.mtEevStarved        && c.name === 'Dairy' ? 9  : 0)
@@ -229,6 +240,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
     alarms.push({ code: 'GC-HI', severity: 'CRITICAL', message: `Gas cooler pressure ${Math.round(headPsig)} psig — high pressure trip imminent.` })
   else if (headPsig >= 1450)
     alarms.push({ code: 'GC-HI-W', severity: 'WARNING', message: `Gas cooler pressure elevated — ${Math.round(headPsig)} psig.` })
+  if (gcCapacityLimited && headPsig < 1550)
+    alarms.push({ code: 'GC-MAX', severity: 'WARNING', message: `Gas cooler at max pressure target (${GC_MAX_TARGET_PSIG} psig) — optimization curve wants more. Rack running capacity-limited; check GC approach.` })
   if (flashPsig >= RV_LIFT_PSIG)
     alarms.push({ code: 'FT-RV', severity: 'CRITICAL', message: `Flash tank ${Math.round(flashPsig)} psig — relief valve lifting (set ${RV_LIFT_PSIG} psig). CO2 venting.` })
   else if (flashPsig >= RV_WARN_PSIG)
@@ -417,7 +430,7 @@ function analyzeCo2Field(r: Co2FieldReadings, mtSet: number, ltSet: number, flas
   const ltTemp   = num(r.ltSuctionTemp)
 
   const optimalHead = gcOutlet !== null && gcOutlet >= 80
-    ? (() => { const tC = (gcOutlet - 32) / 1.8; return Math.max((2.7 * tC + 6.1) * 14.5 - 14.7, 1080) })()
+    ? (() => { const tC = (gcOutlet - 32) / 1.8; return Math.min(Math.max((2.7 * tC - 6.1) * 14.5 - 14.7, 1080), GC_MAX_TARGET_PSIG) })()
     : null
   const headDev    = headPsig !== null && optimalHead !== null ? headPsig - optimalHead : null
   const gcApproach = gcOutlet !== null && oat !== null ? gcOutlet - oat : null
@@ -531,6 +544,7 @@ function analyzeCo2Field(r: Co2FieldReadings, mtSet: number, ltSet: number, flas
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Co2BoosterSimulatorPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [faults, setFaults] = useState<FaultState>(INITIAL_FAULTS)
   const [oat, setOat]       = useState(75)
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
@@ -973,6 +987,7 @@ export default function Co2BoosterSimulatorPage() {
                     doorsOpen={!conceal && activeFaults.mtDoorsOpen}
                     ltIced={!conceal && activeFaults.ltCoilIced}
                     mtFanOut={!conceal && activeFaults.mtEvapFanOut}
+                    layout={isMobile ? 'tall' : 'wide'}
                     selectedId={schemDetail?.id ?? null}
                     onSelect={setSchemDetail}
                   />
@@ -1220,7 +1235,7 @@ export default function Co2BoosterSimulatorPage() {
 
         <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center pb-4 leading-relaxed">
           R-744 transcritical booster — 3 × MT + 2 × LT Bitzer · MT {mtSet} °F SST / LT {ltSet} °F SST · flash tank {flashSet} °F sat ({Math.round(satPsig(flashSet))} psig) ·
-          critical point {CO2_CRITICAL_F} °F / ~1056 psig · gas cooler curve ≈ 2.7 × T(°C) + 6.1 bar
+          critical point {CO2_CRITICAL_F} °F / ~1056 psig · gas cooler curve ≈ 2.7 × T(°C) − 6.1 bar (max target {GC_MAX_TARGET_PSIG} psig)
         </div>
 
       </div>
