@@ -380,8 +380,8 @@ export default function SafetyCircuitTrainer() {
       <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
         Hopscotch method: black probe on <strong>N</strong>, walk the red probe L1 → T8. Every point reads 120 V until you
         cross the open device — the first point that reads 0 V puts the fault between it and your last 120 V point.
-        Across a single open device you'll read full line voltage; across a closed one, 0 V.
-        Heads-up: an energized coil also reads 120 V across it — that's normal when the comp is running.
+        Across a single open device you&apos;ll read full line voltage; across a closed one, 0 V.
+        Heads-up: an energized coil also reads 120 V across it — that&apos;s normal when the comp is running.
       </p>
     </div>
   )
