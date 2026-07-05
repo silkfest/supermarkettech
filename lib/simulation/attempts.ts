@@ -8,7 +8,7 @@ export interface SimAttempt {
   scenarioId: string
   scenarioName: string
   difficulty?: string | null
-  mode?: 'scenario' | 'mystery'
+  mode?: 'scenario' | 'mystery' | 'wiring'
   score?: number | null
   correct?: number | null
   total?: number | null

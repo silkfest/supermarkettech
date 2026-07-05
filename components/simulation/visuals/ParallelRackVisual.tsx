@@ -14,7 +14,7 @@ export interface ParallelRackVisualProps {
   fansSpinning: [boolean, boolean]
   fansFailed: [boolean, boolean]      // already concealed by caller in scenario mode
   dirtyCondenser: boolean
-  comps: { label: string; status: CompVisStatus; amps: number }[]      // 4 MT
+  comps: { label: string; status: CompVisStatus; amps: number; model?: string; injecting?: boolean }[]      // 4 MT Discus recips
   receiverLevel: number               // 0–1
   drierRestricted: boolean
   suctionPsig: number
@@ -172,9 +172,17 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
 
       {/* ── MT compressors ── */}
       {p.comps.map((c, i) => (
-        <Comp key={i} x={G.comps[i].x} y={G.comps[i].y} w={G.compW} h={50} label={c.label} status={c.status} amps={c.amps} />
+        <g key={i}>
+          <Comp x={G.comps[i].x} y={G.comps[i].y} w={G.compW} h={50} label={c.label} status={c.status} amps={c.amps} />
+          {c.injecting && (
+            <text x={G.comps[i].x + G.compW / 2} y={G.comps[i].y + 62} textAnchor="middle" fontSize={9.5} fontWeight={800} fill={C.warn}>
+              INJ ●
+              <animate attributeName="opacity" values="1;0.35;1" dur="1.4s" repeatCount="indefinite" />
+            </text>
+          )}
+        </g>
       ))}
-      <text x={G.mtCaption.x} y={G.mtCaption.y} textAnchor="middle" fontSize={11} fill={C.text} fontWeight={700}>MT Rack — 4 × Copeland Scroll</text>
+      <text x={G.mtCaption.x} y={G.mtCaption.y} textAnchor="middle" fontSize={11} fill={C.text} fontWeight={700}>MT Rack — 4 × Copeland Discus recips</text>
 
       {/* ── Cases ── */}
       <CaseBox x={G.mtCase.x} y={G.mtCase.y} w={G.mtCase.w} h={G.mtCase.h} label="MT Cases" sub="produce · dairy · meat · deli · WIC"
@@ -236,12 +244,14 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
           })} />
           {p.comps.map((c, i) => (
             <Hotspot key={c.label} x={G.comps[i].x} y={G.comps[i].y} w={G.compW} h={50} selected={p.selectedId === `comp${i}`} onSelect={pick({
-              id: `comp${i}`, title: `Compressor ${c.label}`, subtitle: 'Copeland Scroll · MT',
+              id: `comp${i}`, title: `Compressor ${c.label}`, subtitle: c.model ? `Copeland Discus ${c.model}` : 'Copeland Discus · MT',
               rows: [
                 { label: 'Status', value: statusText(c.status), color: c.status === 'trip' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' },
                 { label: 'Amps', value: c.status === 'run' ? `${c.amps.toFixed(1)} A` : '—' },
                 { label: 'Suction', value: `${p.suctionPsig.toFixed(1)} psig` },
                 { label: 'Discharge', value: `${p.dischargePsig.toFixed(0)} psig` },
+                { label: 'Safeties', value: 'HPCO · LPCO · OPC · MP' },
+                ...(c.injecting !== undefined && c.injecting ? [{ label: 'Demand Cooling', value: 'INJECTING', color: 'text-amber-600 dark:text-amber-400' }] : []),
               ],
             })} />
           ))}

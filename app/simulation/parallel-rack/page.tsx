@@ -14,6 +14,7 @@ import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
+import SafetyCircuitTrainer from '@/components/simulation/SafetyCircuitTrainer'
 import { useIsMobile } from '@/components/simulation/useIsMobile'
 import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
@@ -206,7 +207,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp2Failed',         label: 'Compressor 2 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp3Failed',         label: 'Compressor 3 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
   { key: 'comp4Failed',         label: 'Compressor 4 failed',           hint: 'Off on safety — remaining carry the load',                   group: 'Compressors' },
-  { key: 'comp1ValveWorn', label: 'Comp 1 — worn valves (bypassing)', hint: 'Internal bypass — comp still runs, amps look near-normal, but capacity is reduced ~35%; hard to find without individual analysis', group: 'Compressors' },
+  { key: 'comp1ValveWorn', label: 'C1 — worn valve plates (blow-by)', hint: 'Discus valve plates leaking — comp still runs, amps look near-normal, but capacity is down ~35% and its head runs hotter than its neighbors. Classic recip wear; confirm with a pump-down test.', group: 'Compressors' },
   { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load', mutuallyExcludes: ['txvOverfeeding'] },
   { key: 'txvOverfeeding',      label: 'MT TXV overfeeding (floodback)', hint: 'Bulb loose or valve hunting wide open — superheat near zero, liquid back to the rack. Cool discharge, oil dilution drops the Y825 differential.', group: 'MT Load', mutuallyExcludes: ['txvNotFeeding'] },
   { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
@@ -222,6 +223,21 @@ const FAULT_DEFS: FaultDef[] = [
 
 const FAULT_GROUPS = ['Machine Room', 'Condenser', 'Head Pressure Ctrl', 'Charge', 'Liquid line', 'Compressors', 'MT Load', 'Oil / Misc']
 
+// ── Compressor lineup — 4 × Copeland Discus semi-hermetic recips (460 V/3 ph) ──
+// C1/C2 carry Demand Cooling (liquid injection): above ~208 °F discharge the
+// module injects saturated refrigerant into the suction cavity to hold the head
+// temperature down. C3/C4 have no injection — their discharge temp klixon (DTC)
+// is the last line of defense on high-compression-ratio days. Every comp runs
+// its own safety string: HPCO (manual), LPCO (auto), oil pressure control
+// (Sentronic — <9 psid for 120 s, manual) and motor protector module.
+const COMP_SPECS = [
+  { id: 'C1', model: '3DS3-1500', hp: 15, rla: 23.4, demandCooling: true },
+  { id: 'C2', model: '3DS3-1500', hp: 15, rla: 23.4, demandCooling: true },
+  { id: 'C3', model: '3DB3-1000', hp: 10, rla: 16.1, demandCooling: false },
+  { id: 'C4', model: '3DB3-1000', hp: 10, rla: 16.1, demandCooling: false },
+] as const
+const INJECTION_START_F = 208   // Demand Cooling module begins injecting
+
 // ── Baselines & safety limits ─────────────────────────────────────────────────
 const BASELINE = {
   suctionSatTemp:     20,   // °F SST — MT setpoint
@@ -230,7 +246,6 @@ const BASELINE = {
   dischargeSuperheat: 75,   // °F above condensing sat temp
   oilDiff:            22,   // psi — Y825 valve normal 20–25 psi
   caseTemp:           36,   // °F average MT case temperature
-  baseAmps:           21,   // A per compressor (460 V / 3 Ph)
 }
 // Head pressure control: minimum condensing sat temp (models HP control valve/fan cycling)
 const SAFETY = {
@@ -276,6 +291,8 @@ interface SystemState {
   liquidTemp: number; subcooling: number; filterDrierDeltaT: number
   oilDiff: number; oilPressurePsig: number
   compRunning: boolean[]; compAmps: number[]
+  /** Demand Cooling liquid injection active on the C1/C2 kits */
+  injectionActive: boolean
   caseTemp: number; nonCondensables: boolean
   hpCtrlActive: boolean
   /** Flooding valve + DDR are actively holding head (low-ambient winter mode) */
@@ -487,7 +504,9 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   const dischargeTemp     = condensingSatTemp + dischargeSuperheat
   const filterDrierDeltaT     = f.filterDrierRestricted ? 9 : 0
   const oilPressurePsig       = suctionPsig + oilDiff
-  const compAmps              = compRunning.map(r => r ? Math.round(BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
+  const compAmps              = compRunning.map((r, i) => r ? Math.round(COMP_SPECS[i].rla * ampsMultiplier * 10) / 10 : 0)
+  // Demand Cooling — C1/C2 inject once the discharge line runs hot
+  const injectionActive       = dischargeTemp >= INJECTION_START_F
 
   // Approach ΔT — how far condensing sat temp is above OAT (clean rack baseline = 15 °F)
   const approachDelta         = condensingSatTemp - oat
@@ -516,9 +535,9 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   else if (suctionPsig <= SAFETY.lpcoWarnPsig)
     alarms.push({ code: 'LP-LOW',    severity: 'WARNING',  message: `Low suction pressure — ${suctionPsig.toFixed(1)} psig (warn ${SAFETY.lpcoWarnPsig} psig, cutout ${SAFETY.lpcoPsig} psig)` })
   if (dischargeTemp >= SAFETY.highDischargeF)
-    alarms.push({ code: 'HI-DT',     severity: 'CRITICAL', message: `High discharge temp — ${Math.round(dischargeTemp)} °F. Liquid injection active.` })
+    alarms.push({ code: 'HI-DT',     severity: 'CRITICAL', message: `High discharge temp — ${Math.round(dischargeTemp)} °F. Demand Cooling injecting on C1/C2; C3/C4 approaching DTC klixon trip.` })
   else if (dischargeTemp >= SAFETY.warnDischargeF)
-    alarms.push({ code: 'HI-DT-W',  severity: 'WARNING',  message: `Elevated discharge temp — ${Math.round(dischargeTemp)} °F (limit ${SAFETY.highDischargeF} °F)` })
+    alarms.push({ code: 'HI-DT-W',  severity: 'WARNING',  message: `Elevated discharge temp — ${Math.round(dischargeTemp)} °F (limit ${SAFETY.highDischargeF} °F). Demand Cooling active on C1/C2.` })
   if (oilDiff <= SAFETY.oilTripDiff)
     alarms.push({ code: 'OFC',       severity: 'CRITICAL', message: `Oil Failure Control — ${Math.round(oilDiff)} psi diff (Y825 normal: 20–25 psi). Compressor protected.` })
   else if (oilDiff <= SAFETY.oilWarnDiff)
@@ -554,7 +573,7 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     ambient: oat, suctionSatTemp, suctionPsig, suctionGasTemp, suctionSuperheat: superheat,
     condensingTemp: condensingSatTemp, dischargePsig, dischargeTemp, dischargeSuperheat,
     compressionRatio, liquidTemp, subcooling, filterDrierDeltaT,
-    oilDiff, oilPressurePsig, compRunning, compAmps, caseTemp,
+    oilDiff, oilPressurePsig, compRunning, compAmps, injectionActive, caseTemp,
     nonCondensables: f.nonCondensables, hpCtrlActive,
     ddrBypassing: hpCtrlActive || f.ddrStuckOpen,
     approachDelta, fansActive, fansCycling,
@@ -728,7 +747,7 @@ function buildDiagnoseText(mt: SystemState, oat: number, caseTemps: number[], re
   const allAlarms = mt.alarms
   return [
     '=== ColdIQ Rack Simulator — Diagnostic Snapshot ===',
-    `System: Hussmann MT Parallel Rack | ${refrigerant} | 4 × Copeland Scroll | flooding valve + DDR head pressure control`,
+    `System: Hussmann MT Parallel Rack | ${refrigerant} | 4 × Copeland Discus recips (Demand Cooling C1/C2) | flooding valve + DDR head pressure control`,
     '',
     `ENVIRONMENT:`,
     `  Outdoor Ambient Temp (OAT): ${oat} °F`,
@@ -1078,6 +1097,7 @@ export default function SimulationPage() {
   const [showFaults,   setShowFaults]   = useState(true)
   const [revealFaults, setRevealFaults] = useState(false)
   const [schematicOpen, setSchematicOpen] = useState(true)
+  const [wiringOpen, setWiringOpen] = useState(false)
   const [schemDetail, setSchemDetail] = useState<SchematicDetail | null>(null)
 
   // Rack configuration — matches what techs read from the rack controller / setup sheet
@@ -1582,7 +1602,7 @@ export default function SimulationPage() {
                         fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
                         fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
                         dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
-                        comps={mtBase.compRunning.map((r, i) => ({ label: `C${i + 1}`, status: compStatus(r), amps: mt.compAmps[i] }))}
+                        comps={mtBase.compRunning.map((r, i) => ({ label: COMP_SPECS[i].id, status: compStatus(r), amps: mt.compAmps[i], model: COMP_SPECS[i].model, injecting: r && COMP_SPECS[i].demandCooling && mtBase.injectionActive }))}
                         receiverLevel={receiverLevel}
                         drierRestricted={!conceal && activeFaults.filterDrierRestricted}
                         suctionPsig={mt.suctionPsig}
@@ -1903,27 +1923,64 @@ export default function SimulationPage() {
             </div>
 
             {/* ── MT Compressors ── */}
-            <Card title="MT Compressors — 4 × Copeland Scroll" icon={<Zap size={13}/>}>
+            <Card title="MT Compressors — 4 × Copeland Discus (semi-hermetic recip)" icon={<Zap size={13}/>}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1">
-                {mt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40'}`}>
-                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                      <div className={`w-2 h-2 rounded-full ${running ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
-                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">COMP {i + 1}</span>
+                {mt.compRunning.map((running, i) => {
+                  const spec = COMP_SPECS[i]
+                  const injecting = running && spec.demandCooling && mt.injectionActive
+                  return (
+                    <div key={i} className={`rounded-lg p-2.5 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40'}`}>
+                      <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                        <div className={`w-2 h-2 rounded-full ${running ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
+                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">{spec.id} · {spec.hp} HP</span>
+                      </div>
+                      <div className="text-[9px] text-slate-500 mb-1">{spec.model}</div>
+                      <div className={`text-sm font-mono font-bold ${running ? 'text-slate-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
+                        {running ? `${mt.compAmps[i].toFixed(1)} A` : 'OFF'}
+                      </div>
+                      <div className="text-[9px] text-slate-500 mt-0.5">{running ? `RLA ${spec.rla}` : 'Tripped'}</div>
+                      {/* per-comp safety string + Demand Cooling */}
+                      <div className="flex items-center justify-center gap-1 mt-1.5 flex-wrap">
+                        {['HP', 'LP', 'OIL', 'MP'].map(s => (
+                          <span key={s} className="text-[8px] font-semibold px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-600/50 text-slate-500 dark:text-slate-300 border border-slate-300 dark:border-slate-500/50">{s}</span>
+                        ))}
+                        {spec.demandCooling && (
+                          <span className={`text-[8px] font-bold px-1 py-0.5 rounded border ${injecting
+                            ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400 dark:border-amber-500/60 animate-pulse'
+                            : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-500/40'}`}>
+                            {injecting ? 'INJ ●' : 'INJ'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className={`text-sm font-mono font-bold ${running ? 'text-slate-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
-                      {running ? `${mt.compAmps[i].toFixed(1)} A` : 'OFF'}
-                    </div>
-                    <div className="text-[9px] text-slate-500 mt-0.5">{running ? 'Running' : 'Tripped'}</div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
-              <div className="mt-1 py-1 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-4 text-[10px] text-slate-500">
+              <div className="mt-1 py-1 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-4 text-[10px] text-slate-500 flex-wrap">
                 <span><span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compRunning.filter(Boolean).length}</span> of 4 running</span>
                 <span>Total: <span className="text-slate-500 dark:text-slate-400 font-medium">{mt.compAmps.reduce((s, a) => s + a, 0).toFixed(1)} A</span></span>
+                {mt.injectionActive && <span className="text-amber-600 dark:text-amber-400 font-medium">Demand Cooling injecting on C1/C2 (disch ≥ {INJECTION_START_F} °F)</span>}
                 {mt.compRunning.filter(Boolean).length < 4 && <span className="text-amber-600 dark:text-amber-400">↑ Remaining amps elevated</span>}
               </div>
+              <div className="py-1 text-[9px] text-slate-500 leading-relaxed">
+                Each comp: HPCO 425 psig (manual) · LPCO 15/35 psig (auto) · oil pressure control &lt;9 psid/120 s (manual) · motor protector module · C1/C2 add Demand Cooling liquid injection
+              </div>
             </Card>
+
+            {/* ── Safety Circuit Trainer ── */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button onClick={() => setWiringOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                <Zap size={13} className="text-amber-500 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Safety Circuit Trainer — C1 Control Circuit (120 V)</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 hidden sm:inline">hopscotch it with the meter</span>
+                <span className={`ml-auto text-slate-400 transition-transform ${wiringOpen ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+              {wiringOpen && (
+                <div className="px-4 pb-4">
+                  <SafetyCircuitTrainer />
+                </div>
+              )}
+            </div>
 
             {/* ── Head Pressure Control (flooding valve + DDR) ── */}
             <Card title="Head Pressure Control — Flooding Valve + DDR" icon={<Gauge size={13}/>}
