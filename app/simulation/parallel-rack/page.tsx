@@ -14,6 +14,7 @@ import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import ParallelRackVisual from '@/components/simulation/visuals/ParallelRackVisual'
+import { useIsMobile } from '@/components/simulation/useIsMobile'
 import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
@@ -108,18 +109,19 @@ const PT_TABLES: Record<Refrigerant, PTData> = {
   'R-407A': { bubble: R407A_BUBBLE, dew: R407A_DEW },
 }
 
-// Default rack set points per refrigerant (psig) — correct values for 20 °F MT SST,
-// −20 °F LT SST, and 85 °F condensing sat temp HP control floor
-const REFRIGERANT_DEFAULTS: Record<Refrigerant, { hpCtrlPsig: number; mtSuctionPsig: number; ltSuctionPsig: number }> = {
-  'R-404A': { hpCtrlPsig: 190, mtSuctionPsig: 55, ltSuctionPsig: 16 },
-  'R-448A': { hpCtrlPsig: 193, mtSuctionPsig: 44, ltSuctionPsig: 10 },
-  'R-407A': { hpCtrlPsig: 190, mtSuctionPsig: 42, ltSuctionPsig:  9 },
+// Default rack set points per refrigerant (psig) — correct values for 20 °F MT SST
+// and 85 °F condensing sat temp HP control floor. (LT is served by its own
+// dedicated low-temp rack — see the Protocol Rack A simulator.)
+const REFRIGERANT_DEFAULTS: Record<Refrigerant, { hpCtrlPsig: number; mtSuctionPsig: number }> = {
+  'R-404A': { hpCtrlPsig: 190, mtSuctionPsig: 55 },
+  'R-448A': { hpCtrlPsig: 193, mtSuctionPsig: 44 },
+  'R-407A': { hpCtrlPsig: 190, mtSuctionPsig: 42 },
 }
 
-const SLIDER_RANGES: Record<Refrigerant, { hp: [number, number]; mt: [number, number]; lt: [number, number, number] }> = {
-  'R-404A': { hp: [160, 315], mt: [30, 80], lt: [5, 22, 1] },
-  'R-448A': { hp: [155, 315], mt: [20, 65], lt: [1, 15, 1] },
-  'R-407A': { hp: [155, 310], mt: [18, 62], lt: [1, 14, 1] },
+const SLIDER_RANGES: Record<Refrigerant, { hp: [number, number]; mt: [number, number] }> = {
+  'R-404A': { hp: [160, 315], mt: [30, 80] },
+  'R-448A': { hp: [155, 315], mt: [20, 65] },
+  'R-407A': { hp: [155, 310], mt: [18, 62] },
 }
 
 // ── P-T interpolation helpers ──────────────────────────────────────────────────
@@ -165,8 +167,7 @@ type FaultKey =
   | 'txvNotFeeding' | 'defrostStuckOn' | 'caseDoorsOpen'
   | 'evapFanFailed' | 'coilIced' | 'txvOverfeeding' | 'caseDrierPlugged'
   | 'oilLow' | 'nonCondensables'
-  | 'ltComp1Failed' | 'ltComp2Failed'
-  | 'ltTxvNotFeeding' | 'ltDefrostStuckOn'
+  | 'floodingValveStuckOpen' | 'ddrStuckOpen'
   | 'liquidLineRestriction'
   | 'comp1ValveWorn'
 
@@ -181,8 +182,7 @@ const INITIAL_FAULTS: FaultState = {
   txvNotFeeding: false, defrostStuckOn: false, caseDoorsOpen: false,
   evapFanFailed: false, coilIced: false, txvOverfeeding: false, caseDrierPlugged: false,
   oilLow: false, nonCondensables: false,
-  ltComp1Failed: false, ltComp2Failed: false,
-  ltTxvNotFeeding: false, ltDefrostStuckOn: false,
+  floodingValveStuckOpen: false, ddrStuckOpen: false,
   liquidLineRestriction: false,
   comp1ValveWorn: false,
 }
@@ -214,15 +214,13 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'evapFanFailed',       label: 'Evap fan motors out (Dairy)',   hint: 'Air stops moving across the coil — Dairy case warms while suction sags and SH runs low. Coil will ice next; check fan amps and blades.', group: 'MT Load' },
   { key: 'coilIced',            label: 'Evaporator coil iced up (Produce)', hint: 'Solid frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warm case. Find why defrost didn\'t clear it.', group: 'MT Load' },
   { key: 'caseDrierPlugged',    label: 'Case liquid drier plugged (Cheese)', hint: 'Drier at the case is restricting — that circuit starves (warm case, high SH) but the RACK drier ΔT reads normal. Check ΔT across the case drier.', group: 'MT Load' },
-  { key: 'ltComp1Failed',       label: 'LT Booster #1 failed',          hint: 'One LT booster off — suction rises, cases warm',             group: 'LT Booster' },
-  { key: 'ltComp2Failed',       label: 'LT Booster #2 failed',          hint: 'Both LT boosters out — severe LT case warming',              group: 'LT Booster' },
-  { key: 'ltTxvNotFeeding',     label: 'LT TXV not feeding',            hint: 'LT cases starved — very low suction, high SH',               group: 'LT Booster' },
-  { key: 'ltDefrostStuckOn',    label: 'LT defrost stuck on',           hint: 'LT circuit won\'t terminate — frozen food warming fast',     group: 'LT Booster' },
+  { key: 'floodingValveStuckOpen', label: 'Flooding valve stuck open',  hint: 'Receiver pressure valve fails wide open — condenser can\'t flood in low ambient, so head tracks OAT down. Winter fault: flash gas, starved TXVs, warm cases while the gauge reads LOW head.', group: 'Head Pressure Ctrl' },
+  { key: 'ddrStuckOpen',        label: 'DDR stuck open (bypassing)',    hint: 'Discharge differential regulator bypasses hot gas to the receiver continuously — receiver pressed to near discharge, liquid runs hot, subcooling collapses at the TXVs even with a clean condenser and normal drier ΔT.', group: 'Head Pressure Ctrl' },
   { key: 'oilLow',              label: 'Low oil (Y825 fault)',           hint: 'Oil differential below 10 psi — OFC will trip compressor',   group: 'Oil / Misc' },
   { key: 'nonCondensables',     label: 'Non-condensables',               hint: 'Air in system — head elevated beyond PT relationship',       group: 'Oil / Misc' },
 ]
 
-const FAULT_GROUPS = ['Machine Room', 'Condenser', 'Charge', 'Liquid line', 'Compressors', 'MT Load', 'LT Booster', 'Oil / Misc']
+const FAULT_GROUPS = ['Machine Room', 'Condenser', 'Head Pressure Ctrl', 'Charge', 'Liquid line', 'Compressors', 'MT Load', 'Oil / Misc']
 
 // ── Baselines & safety limits ─────────────────────────────────────────────────
 const BASELINE = {
@@ -246,21 +244,6 @@ const SAFETY = {
   oilWarnDiff:      18,
 }
 
-const LT_BASELINE = {
-  suctionSatTemp: -20,  // °F SST — typical LT frozen food
-  superheat:       15,
-  caseTemp:        -5,  // °F target
-  baseAmps:        15,
-}
-
-const LT_SAFETY = {
-  lpcoPsig:     5.0,   // ≈ −38 °F SST on R-404A dew — deep restriction / severe fault
-  lpcoWarnPsig: 9.0,   // ≈ −29 °F SST on R-404A dew — trips on ltTxvNotFeeding (−32 °F → 8.5 psig)
-  highCaseTemp: 10,
-  warnCaseTemp:  5,
-  highSH:       30,
-}
-
 // ── Store load profile ────────────────────────────────────────────────────────
 interface CaseSection {
   name: string; equipment: string; count: number
@@ -271,16 +254,15 @@ interface CaseSection {
   circuit: 'MT' | 'LT'
 }
 
+// All MT — the store's frozen food runs on its own dedicated LT rack
+// (see the Protocol Rack A simulator), as real stores are piped.
 const STORE_LINEUP: CaseSection[] = [
-  // ── MT Circuit ────────────────────────────────────────────────────────────
   { name: 'Produce',          equipment: 'Multideck Cases',        count: 1,  setpoint: 38, sensitivity: 1.3, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
   { name: 'Dairy',            equipment: 'Reach-In Cases',         count: 1,  setpoint: 36, sensitivity: 1.0, warnTemp: 40, criticalTemp: 44, circuit: 'MT' },
+  { name: 'Meat',             equipment: 'Service / Multideck',    count: 1,  setpoint: 30, sensitivity: 1.1, warnTemp: 34, criticalTemp: 38, circuit: 'MT' },
+  { name: 'Deli',             equipment: 'Service Cases',          count: 1,  setpoint: 34, sensitivity: 0.9, warnTemp: 38, criticalTemp: 41, circuit: 'MT' },
   { name: 'Cheese',           equipment: 'Island / Multideck',     count: 1,  setpoint: 38, sensitivity: 0.9, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
   { name: 'Walk-in Coolers',  equipment: 'WIC',                    count: 3,  setpoint: 38, sensitivity: 0.4, warnTemp: 41, criticalTemp: 45, circuit: 'MT' },
-  // ── LT Circuit ────────────────────────────────────────────────────────────
-  { name: 'Frozen Food',      equipment: 'Hussmann RL-5 Doors',    count: 10, setpoint:  0, sensitivity: 1.1, warnTemp:  5, criticalTemp: 10, circuit: 'LT' },
-  { name: 'Walk-in Freezers', equipment: 'WIF',                    count: 3,  setpoint: -5, sensitivity: 0.5, warnTemp:  3, criticalTemp: 10, circuit: 'LT' },
-  { name: 'Bunker Cases',     equipment: 'DT Display Tables',      count: 3,  setpoint:  0, sensitivity: 1.4, warnTemp:  5, criticalTemp: 10, circuit: 'LT' },
 ]
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -296,6 +278,8 @@ interface SystemState {
   compRunning: boolean[]; compAmps: number[]
   caseTemp: number; nonCondensables: boolean
   hpCtrlActive: boolean
+  /** Flooding valve + DDR are actively holding head (low-ambient winter mode) */
+  ddrBypassing: boolean
   approachDelta: number
   fansActive: number; fansCycling: boolean
   liquidLinePsig: number
@@ -303,19 +287,12 @@ interface SystemState {
   alarms: Alarm[]
 }
 
-interface LTState {
-  suctionSatTemp: number; suctionPsig: number; suctionGasTemp: number; superheat: number
-  dischargeSatTemp: number; dischargePsig: number; dischargeTemp: number; compressionRatio: number
-  compRunning: boolean[]; compAmps: number[]
-  caseTemp: number; alarms: Alarm[]
-}
-
 // ── Field Readings diagnostic ─────────────────────────────────────────────────
 const FIELD_EMPTY = {
-  oat: '', mtSuctionPsig: '', mtSuctionTemp: '', ltSuctionPsig: '', ltSuctionTemp: '',
-  dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
+  oat: '', mtSuctionPsig: '', mtSuctionTemp: '',
+  dischargePsig: '', dischargeTemp: '', receiverPsig: '', liquidLineTemp: '',
   drierInTemp: '', drierOutTemp: '', oilDiffPsi: '',
-  mtCompsRunning: '', ltCompsRunning: '',
+  mtCompsRunning: '',
 }
 type FieldReadings = typeof FIELD_EMPTY
 
@@ -323,16 +300,14 @@ const FIELD_DEFS: FieldDef[] = [
   { key: 'oat',            label: 'Outdoor Ambient (OAT)',  unit: '°F',      placeholder: 'e.g. 75',  section: 'Environment' },
   { key: 'mtSuctionPsig',  label: 'MT Suction Pressure',    unit: 'psig',    placeholder: 'e.g. 55',  hint: 'gauge at rack header', section: 'MT Circuit' },
   { key: 'mtSuctionTemp',  label: 'MT Suction Line Temp',   unit: '°F',      placeholder: 'e.g. 42',  hint: 'pipe temp at rack' },
-  { key: 'ltSuctionPsig',  label: 'LT Suction Pressure',    unit: 'psig',    placeholder: 'e.g. 3',   hint: 'booster suction gauge', section: 'LT Booster Circuit' },
-  { key: 'ltSuctionTemp',  label: 'LT Suction Line Temp',   unit: '°F',      placeholder: 'e.g. -8',  hint: 'pipe temp at booster' },
   { key: 'dischargePsig',  label: 'Discharge Pressure',     unit: 'psig',    placeholder: 'e.g. 165', hint: 'rack discharge header', section: 'Discharge Side' },
   { key: 'dischargeTemp',  label: 'Discharge Line Temp',    unit: '°F',      placeholder: 'e.g. 185', hint: 'pipe temp at discharge' },
-  { key: 'liquidLineTemp', label: 'Liquid Line Temp',       unit: '°F',      placeholder: 'e.g. 78',  hint: 'after condenser / at receiver', section: 'Liquid Line' },
+  { key: 'receiverPsig',   label: 'Receiver Pressure',      unit: 'psig',    placeholder: 'e.g. 158', hint: 'gauge on receiver — normally ~5–10 psig below discharge', section: 'Liquid Line' },
+  { key: 'liquidLineTemp', label: 'Liquid Line Temp',       unit: '°F',      placeholder: 'e.g. 78',  hint: 'after condenser / at receiver' },
   { key: 'drierInTemp',    label: 'Drier Inlet Temp',       unit: '°F',      placeholder: 'e.g. 80',  section: 'Filter Drier (optional)' },
   { key: 'drierOutTemp',   label: 'Drier Outlet Temp',      unit: '°F',      placeholder: 'e.g. 77',  hint: 'ΔT > 3°F = restriction' },
   { key: 'oilDiffPsi',     label: 'Oil Diff Pressure',      unit: 'psi',     placeholder: 'e.g. 22',  hint: 'Y825 — target 20–25 psi above suc', section: 'Oil & Compressors' },
   { key: 'mtCompsRunning', label: 'MT Compressors',         unit: 'running', placeholder: 'e.g. 3',   hint: 'how many are running' },
-  { key: 'ltCompsRunning', label: 'LT Boosters',            unit: 'running', placeholder: 'e.g. 2' },
 ]
 
 /** Map the analyzer's derived record onto the shared panel's display rows. */
@@ -358,11 +333,10 @@ function toDerivedRows(d: Record<string, number | null>): DerivedRow[] {
     { label: 'MT compression ratio', value: d.mtCompRatio, dec: 2, unit: ': 1',
       note: d.mtCompRatio !== null && d.mtCompRatio > 10 ? 'HIGH' : undefined,
       color: d.mtCompRatio !== null && d.mtCompRatio > 10 ? warn : undefined },
-    { label: 'LT sat temp (suction)', value: d.ltSatTemp, unit: '°F sat' },
-    { label: 'LT superheat', value: d.ltSuperheat, unit: '°F',
-      note: d.ltSuperheat !== null && d.ltSuperheat > 25 ? 'HIGH' : d.ltSuperheat !== null && d.ltSuperheat < 4 ? 'LOW' : undefined,
-      color: d.ltSuperheat !== null && (d.ltSuperheat > 25 || d.ltSuperheat < 4) ? warn : ok },
-    { label: 'LT compression ratio', value: d.ltCompRatio, dec: 2, unit: ': 1' },
+    { label: 'Discharge − receiver ΔP', value: d.receiverDrop, unit: 'psig',
+      note: d.receiverDrop !== null && d.receiverDrop < 4 ? 'DDR?' : undefined,
+      color: d.receiverDrop !== null && d.receiverDrop < 4 ? warn : ok,
+      tooltip: 'Discharge pressure minus receiver pressure. Normally ~5–10 psig across the condenser and flooding valve. Under ~4 psig with low subcooling suggests the DDR is bypassing hot gas straight to the receiver.' },
     { label: 'Filter drier ΔT', value: d.drierDeltaT, unit: '°F',
       note: d.drierDeltaT !== null && d.drierDeltaT > 3 ? 'RESTRICTED' : undefined,
       color: d.drierDeltaT !== null && d.drierDeltaT > 3 ? warn : ok },
@@ -413,10 +387,31 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   if (fansFailed === 1) { baseApproach += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
   if (fansFailed === 2) { baseApproach += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
 
-  // Head pressure control floor — fans cycle off / HP valve modulates to maintain minimum
+  // Head pressure control floor — in low ambient the flooding (receiver pressure)
+  // valve backs liquid into the condenser while the DDR bypasses discharge gas to
+  // the receiver, holding condensing at the minimum. Fans cycle too.
   const rawCondensingTemp = oat + baseApproach
-  const hpCtrlActive      = rawCondensingTemp < hpCtrlSatTemp
+  let hpCtrlActive        = rawCondensingTemp < hpCtrlSatTemp
   let condensingSatTemp   = Math.max(rawCondensingTemp, hpCtrlSatTemp)
+
+  // Flooding valve stuck open — the valve can't hold liquid back, so the head
+  // tracks ambient down. Only bites in low ambient; in summer it's wide open anyway.
+  if (f.floodingValveStuckOpen && hpCtrlActive) {
+    condensingSatTemp = rawCondensingTemp
+    hpCtrlActive      = false            // control has lost authority
+    subcooling        = Math.min(subcooling, 1.2)   // liquid flashes hard — bubbling sight glass
+    superheat        += 10               // flash gas starves the TXVs
+    caseTemp         += 3
+  }
+  // DDR stuck open — hot gas bypasses to the receiver around the clock. Receiver
+  // pressed to near discharge, liquid runs hot → subcooling measured at the
+  // receiver outlet collapses even though the condenser itself is fine.
+  if (f.ddrStuckOpen) {
+    subcooling         -= 12
+    dischargeSuperheat += 4
+    ampsMultiplier     *= 1.04
+    caseTemp           += 1.5
+  }
 
   // ── Charge faults ─────────────────────────────────────────────────────────
   if (f.underchargeModerate && !f.underchargeSevere) {
@@ -502,8 +497,9 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   const fansCycling           = hpCtrlActive && fansFailed === 0
   const fansActive            = fansCycling ? Math.max(1, Math.round(fansRunning * Math.min(1, oat / (hpCtrlSatTemp - 10)))) : fansRunning
 
-  // Liquid line pressure — discharge minus nominal ~8 psig line loss to cases
-  const liquidLinePsig        = Math.max(dischargePsig - 8, 0)
+  // Liquid line / receiver pressure — discharge minus nominal ~8 psig line loss.
+  // DDR stuck open presses the receiver to within a couple psig of discharge.
+  const liquidLinePsig        = Math.max(dischargePsig - (f.ddrStuckOpen ? 3 : 8), 0)
 
   // Expected discharge at this OAT on a clean, healthy rack (condensing side → bubble)
   const expectedDischargePsig = toGauge(ptBubble(Math.max(oat + 15, hpCtrlSatTemp), pt))
@@ -542,6 +538,10 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     alarms.push({ code: 'LL-RESTR', severity: 'WARNING', message: `Liquid line restriction — high superheat ${Math.round(superheat)}°F but drier ΔT normal. Suspect isolation valve, solenoid, or check valve.` })
   if (f.comp1ValveWorn)
     alarms.push({ code: 'VALVE-W', severity: 'WARNING', message: `Comp 1 valve wear suspected — running but capacity ~35% reduced. Verify amps vs expected; check discharge temp individually.` })
+  if (f.floodingValveStuckOpen && rawCondensingTemp < hpCtrlSatTemp)
+    alarms.push({ code: 'FLOOD-VLV', severity: 'WARNING', message: `Head not holding set point — condensing ${Math.round(condensingSatTemp)}°F sat tracks ambient. Flooding (receiver pressure) valve suspected stuck open; check subcooling and sight glass.` })
+  if (f.ddrStuckOpen)
+    alarms.push({ code: 'DDR-OPEN', severity: 'WARNING', message: `Receiver pressed to ${Math.round(liquidLinePsig)} psig (discharge ${Math.round(dischargePsig)}) — DDR bypassing continuously. Liquid hot, subcooling ${subcooling.toFixed(1)}°F with clean condenser and normal drier ΔT.` })
   if (f.defrostStuckOn)
     alarms.push({ code: 'MT-DEF',   severity: 'WARNING',  message: 'MT defrost stuck on — case temperatures rising, suction elevated' })
   // Low ambient
@@ -556,61 +556,10 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     compressionRatio, liquidTemp, subcooling, filterDrierDeltaT,
     oilDiff, oilPressurePsig, compRunning, compAmps, caseTemp,
     nonCondensables: f.nonCondensables, hpCtrlActive,
+    ddrBypassing: hpCtrlActive || f.ddrStuckOpen,
     approachDelta, fansActive, fansCycling,
     liquidLinePsig, expectedDischargePsig, dischargeDeviation,
     alarms,
-  }
-}
-
-// ── LT Booster compute ────────────────────────────────────────────────────────
-function computeLT(f: FaultState, mtSuctionSatTemp: number, ltSatSetpoint: number, pt: PTTable = PT_TABLES['R-404A']): LTState {
-  let suctionSatTemp   = ltSatSetpoint
-  let superheat        = LT_BASELINE.superheat
-  let caseTemp         = LT_BASELINE.caseTemp
-  let ampsMultiplier   = 1.0
-  const compRunning    = [true, true]
-  const dischargeSatTemp = mtSuctionSatTemp  // boosters discharge into MT suction header
-
-  if (f.ltComp1Failed) { compRunning[0] = false; suctionSatTemp += 8; caseTemp += 8; ampsMultiplier *= 1.80 }
-  if (f.ltComp2Failed) { compRunning[1] = false; suctionSatTemp += 18; caseTemp += 18 }
-  if (f.ltTxvNotFeeding)   { suctionSatTemp -= 12; superheat += 25; caseTemp += 12 }
-  if (f.ltDefrostStuckOn)  { suctionSatTemp += 8;  caseTemp  += 18; if (superheat > 5) superheat -= 5 }
-
-  superheat      = Math.max(superheat, 0)
-  suctionSatTemp = Math.min(suctionSatTemp, dischargeSatTemp - 12)
-
-  const runningCount     = compRunning.filter(Boolean).length
-  const suctionPsia      = ptDew(suctionSatTemp, pt)    // LT suction: evaporating (dew)
-  const dischargePsia    = ptDew(dischargeSatTemp, pt)  // LT discharge = MT suction header (dew)
-  const suctionPsig      = Math.max(toGauge(suctionPsia), 0.1)
-  const dischargePsig    = toGauge(dischargePsia)
-  const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
-  const suctionGasTemp   = suctionSatTemp + superheat
-  const dischargeSuperheat = 40 + (compressionRatio - 2.5) * 10
-  const dischargeTemp    = dischargeSatTemp + dischargeSuperheat
-  const compAmps         = compRunning.map(r => r ? Math.round(LT_BASELINE.baseAmps * ampsMultiplier * 10) / 10 : 0)
-
-  const alarms: Alarm[] = []
-  if (suctionPsig <= LT_SAFETY.lpcoPsig)
-    alarms.push({ code: 'LT-LPCO',   severity: 'CRITICAL', message: `LT Low Pressure Cutout — ${suctionPsig.toFixed(1)} psig. Negative pressure risk.` })
-  else if (suctionPsig <= LT_SAFETY.lpcoWarnPsig)
-    alarms.push({ code: 'LT-LP-W',   severity: 'WARNING',  message: `LT Low suction warning — ${suctionPsig.toFixed(1)} psig.` })
-  if (caseTemp >= LT_SAFETY.highCaseTemp)
-    alarms.push({ code: 'LT-CASE',   severity: 'CRITICAL', message: `LT case temp ${Math.round(caseTemp)} °F — frozen food at risk.` })
-  else if (caseTemp >= LT_SAFETY.warnCaseTemp)
-    alarms.push({ code: 'LT-CASE-W', severity: 'WARNING',  message: `LT case temp warning — ${Math.round(caseTemp)} °F (target −5 to 0 °F).` })
-  if (superheat >= LT_SAFETY.highSH)
-    alarms.push({ code: 'LT-HI-SH',  severity: 'WARNING',  message: `LT high superheat — ${superheat.toFixed(1)} °F. Check TXV bulb and LT charge.` })
-  compRunning.forEach((r, i) => { if (!r) alarms.push({ code: `LT-B${i + 1}`, severity: 'CRITICAL', message: `LT Booster ${i + 1} not running` }) })
-  if (f.ltDefrostStuckOn)
-    alarms.push({ code: 'LT-DEF',    severity: 'WARNING',  message: 'LT defrost stuck on — frozen food cases warming rapidly' })
-  if (runningCount === 0)
-    alarms.push({ code: 'LT-NOCOMP', severity: 'CRITICAL', message: 'All LT boosters offline — no LT pumping. Case temps rising.' })
-
-  return {
-    suctionSatTemp, suctionPsig, suctionGasTemp, superheat,
-    dischargeSatTemp, dischargePsig, dischargeTemp, compressionRatio,
-    compRunning, compAmps, caseTemp, alarms,
   }
 }
 
@@ -673,14 +622,14 @@ const SCENARIOS: Scenario[] = [
     knowledge: [{ slug: 'filter-driers', label: 'Filter Driers' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
-    id: 'monday_lt',
-    name: 'Monday Morning Frozen Food Mess',
-    difficulty: 'Beginner',
-    oat: 72,
-    description: 'Opened the store Monday. All LT (frozen food) cases above 10 °F. MT medium-temp side seems fine. Defrost was scheduled to run at 4 AM.',
-    faults: { ltDefrostStuckOn: true },
-    answer: ['ltDefrostStuckOn'],
-    knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
+    id: 'winter_flash_gas',
+    name: 'Winter Flash Gas — Head Won\'t Hold',
+    difficulty: 'Intermediate',
+    oat: 10,
+    description: 'January call, OAT 10 °F. Cases are warming and the sight glass is bubbling hard, but the head gauge reads LOW — condensing is tracking the outdoor temp instead of holding the winter set point. Charge was verified last month and the drier ΔT is under 1 °F. Which head-pressure-control valve has lost authority?',
+    faults: { floodingValveStuckOpen: true },
+    answer: ['floodingValveStuckOpen'],
+    knowledge: [{ slug: 'rack-valves-components', label: 'Rack Valves & Components' }, { slug: 'pressure-regulators', label: 'Pressure Regulators' }],
   },
   {
     id: 'oil_fault',
@@ -693,14 +642,14 @@ const SCENARIOS: Scenario[] = [
     knowledge: [{ slug: 'parallel-rack-systems', label: 'Parallel Rack Systems' }, { slug: 'copeland', label: 'Copeland Compressors' }],
   },
   {
-    id: 'lt_no_pulldown',
-    name: 'LT Won\'t Pull Down After Repair',
+    id: 'ddr_bypassing',
+    name: 'Hot Receiver, Bubbling Sight Glass',
     difficulty: 'Advanced',
-    oat: 80,
-    description: 'LT circuit was worked on last week (defrost board swap). Since then it won\'t pull down. LT booster suction very low, superheats extremely high, LT cases at 15 °F and rising. MT running fine.',
-    faults: { ltTxvNotFeeding: true, ltComp1Failed: true },
-    answer: ['ltTxvNotFeeding', 'ltComp1Failed'],
-    knowledge: [{ slug: 'sporlan', label: 'Sporlan Valves & TXVs' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
+    oat: 88,
+    description: 'Warm afternoon, 88 °F. Subcooling reads near zero and the sight glass flashes, but the condenser coil is clean, all fans run, approach ΔT is normal, and the drier ΔT is under 1 °F. The receiver is hot to the touch and receiver pressure sits within a couple psig of discharge. Which valve is feeding hot gas where it shouldn\'t?',
+    faults: { ddrStuckOpen: true },
+    answer: ['ddrStuckOpen'],
+    knowledge: [{ slug: 'rack-valves-components', label: 'Rack Valves & Components' }, { slug: 'heat-reclaim', label: 'Heat Reclaim Systems' }],
   },
   {
     id: 'winter_low_amb',
@@ -775,48 +724,33 @@ const SCENARIOS: Scenario[] = [
 ]
 
 // ── Diagnose text ─────────────────────────────────────────────────────────────
-function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps: number[], refrigerant: string = 'R-404A', pt: PTData = PT_TABLES['R-404A']): string {
-  const allAlarms = [...mt.alarms, ...lt.alarms]
-  const mtCases   = STORE_LINEUP.filter(s => s.circuit === 'MT')
-  const ltCases   = STORE_LINEUP.filter(s => s.circuit === 'LT')
+function buildDiagnoseText(mt: SystemState, oat: number, caseTemps: number[], refrigerant: string = 'R-404A', pt: PTData = PT_TABLES['R-404A']): string {
+  const allAlarms = mt.alarms
   return [
     '=== ColdIQ Rack Simulator — Diagnostic Snapshot ===',
-    `System: Hussmann Parallel Rack | ${refrigerant} | MT + LT Booster`,
+    `System: Hussmann MT Parallel Rack | ${refrigerant} | 4 × Copeland Scroll | flooding valve + DDR head pressure control`,
     '',
     `ENVIRONMENT:`,
     `  Outdoor Ambient Temp (OAT): ${oat} °F`,
-    `  Head Pressure Control: ${mt.hpCtrlActive ? `ACTIVE — holding condensing at ${Math.round(mt.condensingTemp)}°F sat min` : 'Off (OAT above minimum)'}`,
+    `  Head Pressure Control: ${mt.hpCtrlActive ? `ACTIVE — flooding valve + DDR holding condensing at ${Math.round(mt.condensingTemp)}°F sat min` : 'Off (OAT above minimum — flooding valve wide open, DDR closed)'}`,
     '',
     `MT CIRCUIT (Setpoint: 20 °F SST / ${toGauge(ptDew(20, pt)).toFixed(1)} psig):`,
     `  Suction:           ${mt.suctionPsig.toFixed(1)} psig  /  ${mt.suctionSatTemp.toFixed(1)} °F SST`,
     `  Suction superheat: ${mt.suctionSuperheat.toFixed(1)} °F`,
     `  Discharge:         ${mt.dischargePsig.toFixed(1)} psig  /  ${mt.condensingTemp.toFixed(1)} °F sat`,
     `  Discharge temp:    ${Math.round(mt.dischargeTemp)} °F`,
+    `  Receiver / liquid: ${mt.liquidLinePsig.toFixed(0)} psig  /  liquid temp ${mt.liquidTemp.toFixed(1)} °F`,
     `  Subcooling:        ${mt.subcooling.toFixed(1)} °F  —  Sight glass: ${mt.subcooling < 2 ? 'BUBBLES' : mt.subcooling < 6 ? 'CLOUDY' : 'CLEAR'}`,
     `  Oil differential:  ${mt.oilDiff.toFixed(0)} psi (Y825 normal 20–25 psi)`,
     `  Compression ratio: ${mt.compressionRatio.toFixed(2)} : 1`,
     `  Compressors: ${mt.compRunning.filter(Boolean).length} / 4 running  —  ${mt.compAmps.filter(a => a > 0).map(a => a.toFixed(1)).join(' / ')} A`,
     ...(mt.filterDrierDeltaT > 0 ? [`  Filter drier ΔT: ${mt.filterDrierDeltaT} °F — restricted!`] : []),
     '',
-    `LT BOOSTER CIRCUIT (Setpoint: −20 °F SST / ${toGauge(ptDew(-20, pt)).toFixed(1)} psig):`,
-    `  LT suction:    ${lt.suctionPsig.toFixed(1)} psig  /  ${lt.suctionSatTemp.toFixed(1)} °F SST`,
-    `  LT superheat:  ${lt.superheat.toFixed(1)} °F`,
-    `  LT discharge:  ${lt.dischargePsig.toFixed(1)} psig  →  MT suction header`,
-    `  LT comp ratio: ${lt.compressionRatio.toFixed(2)} : 1`,
-    `  LT boosters: ${lt.compRunning.filter(Boolean).length} / 2 running  —  ${lt.compAmps.filter(a => a > 0).map(a => a.toFixed(1)).join(' / ')} A`,
-    '',
-    'STORE LINEUP — CASE TEMPERATURES:',
-    '  MT Circuit:',
-    ...mtCases.map((s, i) => {
+    'STORE LINEUP — MT CASE TEMPERATURES (LT runs on its own dedicated rack):',
+    ...STORE_LINEUP.map((s, i) => {
       const temp = caseTemps[i]
       const flag = temp >= s.criticalTemp ? ' ⚠ CRITICAL' : temp >= s.warnTemp ? ' ↑ HIGH' : ''
-      return `    ${s.name} (${s.equipment} × ${s.count}): ${temp.toFixed(1)} °F${flag}`
-    }),
-    '  LT Circuit (Frozen Food):',
-    ...ltCases.map((s, i) => {
-      const temp = caseTemps[mtCases.length + i]
-      const flag = temp >= s.criticalTemp ? ' ⚠ CRITICAL' : temp >= s.warnTemp ? ' ↑ HIGH' : ''
-      return `    ${s.name} (${s.equipment} × ${s.count}): ${temp.toFixed(1)} °F${flag}`
+      return `  ${s.name} (${s.equipment} × ${s.count}): ${temp.toFixed(1)} °F${flag}`
     }),
     '',
     `Active alarms: ${allAlarms.length}${allAlarms.length === 0 ? ' — System NORMAL' : ''}`,
@@ -829,7 +763,7 @@ function buildDiagnoseText(mt: SystemState, lt: LTState, oat: number, caseTemps:
 }
 
 // ── Field analysis engine ─────────────────────────────────────────────────────
-type RackCfg = { hpCtrlPsig: number; mtSuctionPsig: number; ltSuctionPsig: number }
+type RackCfg = { hpCtrlPsig: number; mtSuctionPsig: number }
 
 function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: RackCfg, pt: PTTable = PT_TABLES['R-404A']): { derived: Record<string, number | null>; findings: Finding[] } {
   const n = (s: string) => s.trim() === '' ? null : Number(s)
@@ -838,8 +772,7 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
   const dischargeTemp  = n(r.dischargeTemp)
   const mtSuctionPsig  = n(r.mtSuctionPsig)
   const mtSuctionTemp  = n(r.mtSuctionTemp)
-  const ltSuctionPsig  = n(r.ltSuctionPsig)
-  const ltSuctionTemp  = n(r.ltSuctionTemp)
+  const receiverPsig   = n(r.receiverPsig)
   const liquidLineTemp = n(r.liquidLineTemp)
   const drierInTemp    = n(r.drierInTemp)
   const drierOutTemp   = n(r.drierOutTemp)
@@ -847,21 +780,18 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
 
   const condensingSatTemp     = dischargePsig  !== null ? ptBubbleReverse(dischargePsig, pt)  : null
   const mtSatTemp             = mtSuctionPsig  !== null ? ptDewReverse(mtSuctionPsig, pt)     : null
-  const ltSatTemp             = ltSuctionPsig  !== null ? ptDewReverse(ltSuctionPsig, pt)     : null
   const mtSuperheat           = mtSatTemp      !== null && mtSuctionTemp  !== null ? mtSuctionTemp  - mtSatTemp      : null
-  const ltSuperheat           = ltSatTemp      !== null && ltSuctionTemp  !== null ? ltSuctionTemp  - ltSatTemp      : null
   const subcooling            = condensingSatTemp !== null && liquidLineTemp !== null ? condensingSatTemp - liquidLineTemp : null
   const dischargeSuperheat    = condensingSatTemp !== null && dischargeTemp !== null  ? dischargeTemp  - condensingSatTemp : null
   const approachDelta         = condensingSatTemp !== null && oat !== null ? condensingSatTemp - oat : null
   const drierDeltaT           = drierInTemp !== null && drierOutTemp !== null ? drierInTemp - drierOutTemp : null
   const mtCompRatio           = dischargePsig !== null && mtSuctionPsig !== null ? (dischargePsig + 14.696) / (mtSuctionPsig + 14.696) : null
-  const ltCompRatio           = mtSuctionPsig !== null && ltSuctionPsig !== null ? (mtSuctionPsig + 14.696) / (ltSuctionPsig + 14.696) : null
+  const receiverDrop          = dischargePsig !== null && receiverPsig !== null ? dischargePsig - receiverPsig : null
   const expectedCondSatTemp   = oat !== null ? Math.max(oat + 15, hpCtrlSatTemp) : null
   const expectedDischargePsig = expectedCondSatTemp !== null ? toGauge(ptBubble(expectedCondSatTemp, pt)) : null
   const dischargeDeviation    = dischargePsig !== null && expectedDischargePsig !== null ? dischargePsig - expectedDischargePsig : null
   const hpCtrlFloor           = condensingSatTemp !== null ? condensingSatTemp <= hpCtrlSatTemp + 1 : false
   const mtSuctionDev          = mtSuctionPsig !== null ? mtSuctionPsig - cfg.mtSuctionPsig : null
-  const ltSuctionDev          = ltSuctionPsig !== null ? ltSuctionPsig - cfg.ltSuctionPsig : null
 
   const findings: Finding[] = []
 
@@ -929,20 +859,16 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
         checks: ['Check OAT — if low and HP ctrl active, may be normal', 'If high OAT + high SC, suspect overcharge — recover excess'] })
   }
 
-  // LT superheat
-  if (ltSuperheat !== null) {
-    if (ltSuperheat > 35)
-      findings.push({ severity: 'critical', label: 'Very high LT booster superheat', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
-        causes: ['LT TXV bulb failed or lost contact', 'LT drier restricted', 'LT severe undercharge', 'Liquid solenoid not opening'],
-        checks: ['Verify LT TXV bulb clamped on suction line', 'Check ΔT across LT drier', 'Inspect liquid solenoid to frozen cases'] })
-    else if (ltSuperheat > 25)
-      findings.push({ severity: 'warning', label: 'High LT booster superheat', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
-        causes: ['LT TXV not feeding adequately', 'Partial LT drier restriction', 'LT moderate undercharge'],
-        checks: ['Check LT TXV bulb position and external equalizer', 'Check drier ΔT on LT liquid feed'] })
-    else if (ltSuperheat < 4 && ltSuperheat >= 0)
-      findings.push({ severity: 'warning', label: 'Low LT superheat — liquid carryover risk', measurement: `${ltSuperheat.toFixed(1)}°F (target 10–20°F)`,
-        causes: ['LT TXV overfeeding', 'LT defrost stuck on', 'Low LT load'],
-        checks: ['Verify LT defrost has terminated', 'Check LT TXV setting', 'Watch LT booster for slugging signs'] })
+  // Receiver pressure vs discharge — DDR bypassing check
+  if (receiverDrop !== null) {
+    if (receiverDrop < 4)
+      findings.push({ severity: 'warning', label: 'Receiver pressed to discharge — DDR bypassing?', measurement: `ΔP discharge→receiver = ${receiverDrop.toFixed(0)} psig (normal ~5–10)`,
+        causes: ['DDR (discharge differential regulator) stuck open', 'Heat reclaim valve leaking hot gas to receiver'],
+        checks: ['Feel the DDR outlet line — hot around the clock means bypassing', 'Cross-check subcooling: near zero with a clean condenser confirms hot gas in the receiver', 'Verify OAT — DDR should only bypass in low-ambient flooding mode'] })
+    else if (receiverDrop > 25)
+      findings.push({ severity: 'warning', label: 'Large drop from discharge to receiver', measurement: `ΔP = ${receiverDrop.toFixed(0)} psig (normal ~5–10)`,
+        causes: ['Flooding valve heavily throttled (normal in low ambient)', 'Restriction between condenser and receiver'],
+        checks: ['If OAT is low and HP control is active, this is expected', 'If warm out, inspect the condenser drop leg and flooding valve'] })
   }
 
   // Discharge superheat
@@ -991,13 +917,11 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
         ? ['Check MT case loads and defrost status', 'Verify suction set point on rack controller']
         : ['Check subcooling and sight glass for undercharge', 'Verify all TXVs feeding properly'] })
 
-  // LT suction vs setpoint
-  if (ltSuctionDev !== null && Math.abs(ltSuctionDev) > 2)
-    findings.push({ severity: 'warning',
-      label: ltSuctionDev > 0 ? 'LT suction above set point' : 'LT suction below set point',
-      measurement: `${n(r.ltSuctionPsig)?.toFixed(1)} psig vs ${cfg.ltSuctionPsig} psig configured set point`,
-      causes: ltSuctionDev > 0 ? ['LT defrost stuck on', 'High frozen food load', 'LT TXV overfeeding'] : ['LT undercharge', 'LT TXV not feeding', 'Low LT load'],
-      checks: ['Check LT defrost status', 'Verify LT TXV bulb and feeding', 'Inspect LT case temps'] })
+  // Low head in low ambient — flooding valve check
+  if (dischargeDeviation !== null && oat !== null && oat < 45 && condensingSatTemp !== null && condensingSatTemp < hpCtrlSatTemp - 4)
+    findings.push({ severity: 'warning', label: 'Head below winter set point', measurement: `${condensingSatTemp.toFixed(0)}°F sat vs ${hpCtrlSatTemp.toFixed(0)}°F HP control minimum at ${oat}°F OAT`,
+      causes: ['Flooding (receiver pressure) valve stuck open', 'HP control set point mis-set', 'Severe undercharge'],
+      checks: ['Check subcooling and sight glass — flash gas confirms head too low for the liquid line', 'Verify flooding valve setting and DDR operation', 'Confirm charge before condemning the valve'] })
 
   // High compression ratio
   if (mtCompRatio !== null && mtCompRatio > 10)
@@ -1012,7 +936,7 @@ function analyzeFieldReadings(r: FieldReadings, hpCtrlSatTemp: number, cfg: Rack
       causes: [], checks: ['Readings appear within normal range for this rack config — enter more measurements for a fuller picture'] })
 
   return {
-    derived: { condensingSatTemp, mtSatTemp, ltSatTemp, mtSuperheat, ltSuperheat, subcooling, dischargeSuperheat, approachDelta, drierDeltaT, mtCompRatio, ltCompRatio, expectedDischargePsig, dischargeDeviation },
+    derived: { condensingSatTemp, mtSatTemp, mtSuperheat, subcooling, dischargeSuperheat, approachDelta, drierDeltaT, mtCompRatio, receiverDrop, expectedDischargePsig, dischargeDeviation },
     findings,
   }
 }
@@ -1022,19 +946,18 @@ function buildFieldDiagnoseText(r: FieldReadings, derived: Record<string, number
   const fmtR = (v: string, unit: string) => v.trim() ? `${v} ${unit}` : '—'
   return [
     '=== ColdIQ Field Readings Diagnostic ===',
-    'System: Hussmann Parallel Rack | R-404A',
-    `Rack config: HP ctrl ${cfg.hpCtrlPsig} psig | MT suction ${cfg.mtSuctionPsig} psig | LT suction ${cfg.ltSuctionPsig} psig`,
+    'System: Hussmann MT Parallel Rack | R-404A',
+    `Rack config: HP ctrl ${cfg.hpCtrlPsig} psig | MT suction ${cfg.mtSuctionPsig} psig`,
     '',
     'FIELD MEASUREMENTS:',
     `  OAT:                 ${fmtR(r.oat, '°F')}`,
     `  MT Suction:          ${fmtR(r.mtSuctionPsig, 'psig')}  /  Line temp: ${fmtR(r.mtSuctionTemp, '°F')}`,
-    `  LT Suction:          ${fmtR(r.ltSuctionPsig, 'psig')}  /  Line temp: ${fmtR(r.ltSuctionTemp, '°F')}`,
     `  Discharge:           ${fmtR(r.dischargePsig, 'psig')}  /  Discharge temp: ${fmtR(r.dischargeTemp, '°F')}`,
+    `  Receiver:            ${fmtR(r.receiverPsig, 'psig')}`,
     `  Liquid line temp:    ${fmtR(r.liquidLineTemp, '°F')}`,
     ...(r.drierInTemp || r.drierOutTemp ? [`  Filter drier:        In ${fmtR(r.drierInTemp, '°F')} → Out ${fmtR(r.drierOutTemp, '°F')}`] : []),
     ...(r.oilDiffPsi      ? [`  Oil differential:   ${fmtR(r.oilDiffPsi, 'psi')}`] : []),
     ...(r.mtCompsRunning  ? [`  MT compressors:     ${r.mtCompsRunning} running`]  : []),
-    ...(r.ltCompsRunning  ? [`  LT boosters:        ${r.ltCompsRunning} running`]  : []),
     '',
     'CALCULATED VALUES:',
     `  Condensing sat temp: ${fmt(derived.condensingSatTemp, 1, '°F sat')}`,
@@ -1044,9 +967,7 @@ function buildFieldDiagnoseText(r: FieldReadings, derived: Record<string, number
     `  Discharge superheat: ${fmt(derived.dischargeSuperheat, 0, '°F')}`,
     `  Approach ΔT:         ${fmt(derived.approachDelta, 1, '°F')}`,
     `  MT comp ratio:       ${fmt(derived.mtCompRatio, 2, ' : 1')}`,
-    ...(derived.ltSatTemp      !== null ? [`  LT sat temp:         ${fmt(derived.ltSatTemp, 1, '°F sat')}`]      : []),
-    ...(derived.ltSuperheat    !== null ? [`  LT superheat:        ${fmt(derived.ltSuperheat, 1, '°F')}`]         : []),
-    ...(derived.ltCompRatio    !== null ? [`  LT comp ratio:       ${fmt(derived.ltCompRatio, 2, ' : 1')}`]       : []),
+    ...(derived.receiverDrop   !== null ? [`  Discharge−receiver:  ${fmt(derived.receiverDrop, 0, ' psig')}`]     : []),
     ...(derived.drierDeltaT    !== null ? [`  Filter drier ΔT:     ${fmt(derived.drierDeltaT, 1, '°F')}`]        : []),
     `  Expected discharge:  ${fmt(derived.expectedDischargePsig, 0, ' psig')} at this OAT`,
     `  Deviation:           ${derived.dischargeDeviation !== null ? (derived.dischargeDeviation >= 0 ? '+' : '') + derived.dischargeDeviation.toFixed(0) + ' psig vs expected' : '—'}`,
@@ -1149,6 +1070,7 @@ function FaultToggle({ active, onChange, label, hint, disabled }: ToggleProps) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SimulationPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   // Free-play state
   const [faults,       setFaults]       = useState<FaultState>(INITIAL_FAULTS)
@@ -1164,7 +1086,6 @@ export default function SimulationPage() {
     refrigerant:   'R-404A' as Refrigerant,
     hpCtrlPsig:    190,  // HP control min discharge psig — ~85 °F condensing sat (R-404A bubble)
     mtSuctionPsig:  55,  // MT suction set point (psig) — ~20 °F SST on R-404A dew
-    ltSuctionPsig:  16,  // LT booster suction set point (psig) — ~−20 °F SST on R-404A dew
   })
 
   // Field Readings diagnostic tab
@@ -1190,10 +1111,8 @@ export default function SimulationPage() {
   const pt             = PT_TABLES[rackConfig.refrigerant]
   const hpCtrlSatTemp  = ptBubbleReverse(rackConfig.hpCtrlPsig, pt)   // HP ctrl → condensing sat temp (bubble)
   const mtSatSetpoint  = ptDewReverse(rackConfig.mtSuctionPsig, pt)   // MT suction → evap sat temp (dew)
-  const ltSatSetpoint  = ptDewReverse(rackConfig.ltSuctionPsig, pt)   // LT suction → evap sat temp (dew)
 
   const mtBase = useMemo(() => computeMT(activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt), [activeFaults, activeOat, hpCtrlSatTemp, mtSatSetpoint, pt])
-  const ltBase = useMemo(() => computeLT(activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt), [activeFaults, mtBase.suctionSatTemp, ltSatSetpoint, pt])
 
   // ── Live sensor layer — readings breathe around the model's steady state ──
   const live = useLiveReadings([
@@ -1203,13 +1122,11 @@ export default function SimulationPage() {
     { key: 'sc',        target: mtBase.subcooling,        jitter: 0.15, wander: 0.7,  period: 60, bias: 0.3 },
     { key: 'dischTemp', target: mtBase.dischargeTemp,     jitter: 0.40, wander: 2.0,  period: 70, bias: 1.0 },
     { key: 'oilDiff',   target: mtBase.oilDiff,           jitter: 0.20, wander: 0.6,  period: 40 },
-    { key: 'ltSuction', target: ltBase.suctionPsig,       jitter: 0.18, wander: 0.5,  period: 38, bias: 0.2 },
-    { key: 'ltSH',      target: ltBase.superheat,         jitter: 0.25, wander: 1.2,  period: 30, bias: 0.4 },
+    { key: 'liquid',    target: mtBase.liquidLinePsig,    jitter: 0.35, wander: 1.6,  period: 50, bias: 0.6 },
     { key: 'mtCase',    target: mtBase.caseTemp,          jitter: 0.10, wander: 0.8,  period: 90, bias: 0.4 },  // case cycling
-    { key: 'ltCase',    target: ltBase.caseTemp,          jitter: 0.10, wander: 0.7,  period: 80, bias: 0.4 },
     { key: 'ampF',      target: 1,                        jitter: 0.004, wander: 0.012, period: 25 },
     // per-case sensor deltas — each case sensor has its own bias + cycling phase
-    ...STORE_LINEUP.map((s, i) => ({ key: `case${i}`, target: 0, jitter: 0.10, wander: s.circuit === 'MT' ? 0.9 : 0.7, period: 75 + i * 7, bias: 0.7 })),
+    ...STORE_LINEUP.map((s, i) => ({ key: `case${i}`, target: 0, jitter: 0.10, wander: 0.9, period: 75 + i * 7, bias: 0.7 })),
   ])
 
   // Display objects — JSX reads these; alarms/status logic stays on the clean model
@@ -1225,37 +1142,26 @@ export default function SimulationPage() {
     suctionGasTemp:   mtBase.suctionSatTemp + live.mtSH,
     liquidTemp:       mtBase.condensingTemp - live.sc,
     compressionRatio: (live.discharge + 14.696) / (live.mtSuction + 14.696),
-    liquidLinePsig:   Math.max(live.discharge - 8, 0),
+    liquidLinePsig:   live.liquid,
     dischargeDeviation: live.discharge - mtBase.expectedDischargePsig,
     caseTemp:         live.mtCase,
     compAmps:         mtBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
-  }
-  const lt: LTState = {
-    ...ltBase,
-    suctionPsig:      live.ltSuction,
-    superheat:        live.ltSH,
-    suctionGasTemp:   ltBase.suctionSatTemp + live.ltSH,
-    compressionRatio: (ltBase.dischargePsig + 14.696) / (live.ltSuction + 14.696),
-    caseTemp:         live.ltCase,
-    compAmps:         ltBase.compAmps.map(a => a > 0 ? Math.round(a * live.ampF * 10) / 10 : 0),
   }
 
   // Individual case temperatures — deviation from aggregate caseTemp × sensitivity,
   // plus each sensor's own live bias/cycling so no two cases read identically.
   // Case-level faults hit their named case hard while barely moving the aggregate.
   const caseTemps = useMemo(() => STORE_LINEUP.map((s, i) => {
-    const base = s.circuit === 'MT'
-      ? s.setpoint + (mtBase.caseTemp - BASELINE.caseTemp) * s.sensitivity
-      : s.setpoint + (ltBase.caseTemp - LT_BASELINE.caseTemp) * s.sensitivity
+    const base = s.setpoint + (mtBase.caseTemp - BASELINE.caseTemp) * s.sensitivity
     const localFault =
       (s.name === 'Dairy'   && activeFaults.evapFanFailed    ? 9  : 0) +
       (s.name === 'Produce' && activeFaults.coilIced         ? 8  : 0) +
       (s.name === 'Cheese'  && activeFaults.caseDrierPlugged ? 10 : 0)
     return base + localFault + (live[`case${i}`] ?? 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [mtBase.caseTemp, ltBase.caseTemp, activeFaults, live])
+  }), [mtBase.caseTemp, activeFaults, live])
 
-  const allAlarms    = [...mt.alarms, ...lt.alarms]
+  const allAlarms    = mt.alarms
   const hasCritical  = allAlarms.some(a => a.severity === 'CRITICAL')
   const hasWarning   = allAlarms.some(a => a.severity === 'WARNING')
   const systemStatus = hasCritical ? 'ALARM' : hasWarning ? 'WARNING' : 'NORMAL'
@@ -1310,7 +1216,7 @@ export default function SimulationPage() {
   )
 
   function diagnoseInColdIQ() {
-    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant, pt)) } catch { /* ignore */ }
+    try { localStorage.setItem('coldiq_prefill', buildDiagnoseText(mt, activeOat, caseTemps, rackConfig.refrigerant, pt)) } catch { /* ignore */ }
     router.push('/dashboard')
   }
 
@@ -1328,7 +1234,7 @@ export default function SimulationPage() {
       `Scenario: ${activeScenario.name} (${activeScenario.difficulty})`,
       activeScenario.description,
       '',
-      buildDiagnoseText(mt, lt, activeOat, caseTemps, rackConfig.refrigerant, pt),
+      buildDiagnoseText(mt, activeOat, caseTemps, rackConfig.refrigerant, pt),
       '',
       `MY DIAGNOSIS: ${picked.length ? picked.join(', ') : '(nothing selected)'}`,
       `CORRECT ANSWER: ${answer.join(', ')}`,
@@ -1366,7 +1272,7 @@ export default function SimulationPage() {
     { key: 'discharge',   label: 'Discharge',      unit: 'psig', value: mt.dischargePsig },
     { key: 'mtSH',        label: 'MT Superheat',   unit: '°F',   value: mt.suctionSuperheat },
     { key: 'subcooling',  label: 'Subcooling',     unit: '°F',   value: mt.subcooling },
-    { key: 'ltSuction',   label: 'LT Suction',     unit: 'psig', value: lt.suctionPsig },
+    { key: 'receiver',    label: 'Receiver',       unit: 'psig', value: mt.liquidLinePsig, decimals: 0 },
     { key: 'mtCase',      label: 'MT Case Temp',   unit: '°F',   value: mt.caseTemp },
   ]
   const trendHistory = useTrendHistory(trendSpecs)
@@ -1386,7 +1292,7 @@ export default function SimulationPage() {
 
       {/* ── Header ── */}
       <PageHeader
-        title="Parallel Rack — MT + LT"
+        title="Parallel Rack — Medium Temp"
         home={false}
         back="/simulation"
         variant="learning"
@@ -1545,25 +1451,6 @@ export default function SimulationPage() {
                   </div>
                 </div>
 
-                {/* LT Suction Set Point */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-slate-600 dark:text-slate-400">LT Suction Set Point</span>
-                    <span className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-300">{rackConfig.ltSuctionPsig} psig</span>
-                  </div>
-                  <input
-                    type="range" min={SLIDER_RANGES[rackConfig.refrigerant].lt[0]} max={SLIDER_RANGES[rackConfig.refrigerant].lt[1]} step={SLIDER_RANGES[rackConfig.refrigerant].lt[2]}
-                    value={rackConfig.ltSuctionPsig}
-                    onChange={e => setRackConfig(c => ({ ...c, ltSuctionPsig: Number(e.target.value) }))}
-                    className="w-full accent-blue-400"
-                  />
-                  <div className="flex justify-between text-[9px] text-slate-500 dark:text-slate-600 mt-0.5">
-                    <span>{SLIDER_RANGES[rackConfig.refrigerant].lt[0]}</span>
-                    <span className="text-slate-500">{ltSatSetpoint.toFixed(1)}°F SST</span>
-                    <span>{SLIDER_RANGES[rackConfig.refrigerant].lt[1]}</span>
-                  </div>
-                </div>
-
                 <button
                   onClick={() => setRackConfig(c => ({ ...c, ...REFRIGERANT_DEFAULTS[c.refrigerant] }))}
                   className="text-[9px] text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2"
@@ -1655,7 +1542,7 @@ export default function SimulationPage() {
                 onClear={() => setFieldReadings(FIELD_EMPTY)}
                 derived={toDerivedRows(fieldAnalysis.derived)}
                 findings={fieldAnalysis.findings}
-                footnote={`Rack config used: HP ctrl ${rackConfig.hpCtrlPsig} psig · MT suc ${rackConfig.mtSuctionPsig} psig · LT suc ${rackConfig.ltSuctionPsig} psig — adjust in Rack Settings. ${rackConfig.refrigerant} PT data.`}
+                footnote={`Rack config used: HP ctrl ${rackConfig.hpCtrlPsig} psig · MT suc ${rackConfig.mtSuctionPsig} psig — adjust in Rack Settings. ${rackConfig.refrigerant} PT data.`}
                 intro="Enter what you see on site — leave blank any values you haven't measured yet. Calculations update instantly."
                 actions={
                   <button onClick={diagnoseField}
@@ -1676,7 +1563,6 @@ export default function SimulationPage() {
               const conceal = scenarioMode
               const compStatus = (running: boolean) => (running ? 'run' as const : 'trip' as const)
               const mtCaseColor = mt.caseTemp >= 44 ? '#ef4444' : mt.caseTemp >= 40 ? '#f59e0b' : '#10b981'
-              const ltCaseColor = lt.caseTemp >= 10 ? '#ef4444' : lt.caseTemp >= 5 ? '#f59e0b' : '#10b981'
               const receiverLevel = conceal ? 0.45
                 : activeFaults.underchargeSevere ? 0.10
                 : activeFaults.underchargeModerate ? 0.25
@@ -1691,27 +1577,28 @@ export default function SimulationPage() {
                   </button>
                   {schematicOpen && (
                     <div className="px-2 pb-2">
-                      <SchematicViewer label="Parallel Rack — MT + LT">
+                      <SchematicViewer label="Parallel Rack — Medium Temp">
                       <ParallelRackVisual
                         fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
                         fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
                         dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
                         comps={mtBase.compRunning.map((r, i) => ({ label: `C${i + 1}`, status: compStatus(r), amps: mt.compAmps[i] }))}
-                        boosters={ltBase.compRunning.map((r, i) => ({ label: `LT${i + 1}`, status: compStatus(r), amps: lt.compAmps[i] }))}
                         receiverLevel={receiverLevel}
                         drierRestricted={!conceal && activeFaults.filterDrierRestricted}
                         suctionPsig={mt.suctionPsig}
                         dischargePsig={mt.dischargePsig}
-                        ltSuctionPsig={lt.suctionPsig}
+                        receiverPsig={mt.liquidLinePsig}
                         mtCaseTemp={mt.caseTemp} mtCaseColor={mtCaseColor}
-                        ltCaseTemp={lt.caseTemp} ltCaseColor={ltCaseColor}
                         defrostStuck={!conceal && activeFaults.defrostStuckOn}
-                        ltDefrostStuck={!conceal && activeFaults.ltDefrostStuckOn}
                         doorsOpen={!conceal && activeFaults.caseDoorsOpen}
                         mtIced={!conceal && activeFaults.coilIced}
                         mtFanOut={!conceal && activeFaults.evapFanFailed}
                         floodback={mt.suctionSuperheat < 5}
                         hpCtrlActive={mtBase.hpCtrlActive}
+                        ddrBypassing={mtBase.ddrBypassing}
+                        floodingStuckOpen={!conceal && activeFaults.floodingValveStuckOpen}
+                        ddrStuckOpen={!conceal && activeFaults.ddrStuckOpen}
+                        layout={isMobile ? 'tall' : 'wide'}
                         selectedId={schemDetail?.id ?? null}
                         onSelect={setSchemDetail}
                       />
@@ -1987,7 +1874,7 @@ export default function SimulationPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card title="Liquid Line" icon={<Activity size={13}/>}>
                 <ReadingRow label="Liquid line pressure" value={`${mt.liquidLinePsig.toFixed(1)} psig`}
-                  sub="discharge − 8 psig loss"
+                  sub="receiver / after flooding valve"
                   color="text-slate-600 dark:text-slate-300" />
                 <ReadingRow label="Liquid line temp" value={`${mt.liquidTemp.toFixed(1)} °F`} color="text-slate-600 dark:text-slate-300" />
                 <ReadingRow label="Subcooling" value={`${mt.subcooling.toFixed(1)} °F`}
@@ -2038,98 +1925,63 @@ export default function SimulationPage() {
               </div>
             </Card>
 
-            {/* ── LT Booster ── */}
-            <Card title="LT Booster Circuit — 2 × Scroll (−20 °F SST setpoint)" icon={<Zap size={13}/>}
+            {/* ── Head Pressure Control (flooding valve + DDR) ── */}
+            <Card title="Head Pressure Control — Flooding Valve + DDR" icon={<Gauge size={13}/>}
               accent="bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-700/50" className="border-blue-200 dark:border-blue-700/40">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 py-1">
                 <div>
-                  <ReadingRow label="LT suction pressure" value={`${lt.suctionPsig.toFixed(1)} psig`} sub={`${(lt.suctionPsig + 14.696).toFixed(1)} psia`}
-                    dot={dotColor(lt.suctionPsig, LT_SAFETY.lpcoWarnPsig, LT_SAFETY.lpcoPsig, true)}
-                    color={statusColor(lt.suctionPsig, LT_SAFETY.lpcoWarnPsig, LT_SAFETY.lpcoPsig, true)} />
-                  <ReadingRow label="LT suction sat temp" value={`${lt.suctionSatTemp.toFixed(1)} °F`} sub="from PT" color="text-slate-600 dark:text-slate-300" />
-                  <ReadingRow label="LT superheat" value={`${lt.superheat.toFixed(1)} °F`}
-                    dot={lt.superheat > 25 ? 'bg-amber-400' : lt.superheat < 5 ? 'bg-amber-400' : 'bg-emerald-500'}
-                    color={lt.superheat > 25 ? 'text-amber-600 dark:text-amber-400' : lt.superheat < 5 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
-                    note={lt.superheat > 25 ? 'HIGH — check TXV/charge' : undefined} />
-                  <ReadingRow label="LT compression ratio" value={`${lt.compressionRatio.toFixed(2)} : 1`} color="text-slate-600 dark:text-slate-300" />
+                  <ReadingRow label="Receiver pressure" value={`${mt.liquidLinePsig.toFixed(0)} psig`}
+                    sub={`Δ ${(mt.dischargePsig - mt.liquidLinePsig).toFixed(0)} vs discharge`}
+                    dot={mt.dischargePsig - mt.liquidLinePsig < 4 ? 'bg-amber-400' : 'bg-emerald-500'}
+                    color={mt.dischargePsig - mt.liquidLinePsig < 4 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}
+                    note={mt.dischargePsig - mt.liquidLinePsig < 4 ? 'Pressed to discharge — DDR bypassing?' : undefined}
+                    tooltip="Receiver normally runs ~5–10 psig below discharge (condenser + flooding valve drop). Within a few psig of discharge means the DDR is feeding hot gas straight to the receiver." />
+                  <ReadingRow label="Flooding valve" value={mtBase.hpCtrlActive ? 'THROTTLING' : 'Wide open'}
+                    color={mtBase.hpCtrlActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
+                    note={mtBase.hpCtrlActive ? 'Backing liquid into condenser (low ambient)' : 'Normal warm-weather state'}
+                    tooltip="Receiver pressure (flooding) valve on the condenser drop leg. In low ambient it throttles, flooding condenser tubes with liquid to cut capacity and hold head pressure up." />
                 </div>
                 <div>
-                  <ReadingRow label="LT discharge (→MT suction)" value={`${lt.dischargePsig.toFixed(1)} psig`} sub={`${lt.dischargeSatTemp.toFixed(0)} °F sat`} color="text-blue-600 dark:text-blue-300" />
-                  <ReadingRow label="LT discharge temp" value={`${Math.round(lt.dischargeTemp)} °F`} color="text-slate-600 dark:text-slate-300" />
-                  <ReadingRow label="LT case temp (avg)" value={`${lt.caseTemp.toFixed(1)} °F`}
-                    dot={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'bg-red-500' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'bg-amber-400' : 'bg-emerald-500'}
-                    color={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'text-red-600 dark:text-red-400' : lt.caseTemp >= LT_SAFETY.warnCaseTemp ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
-                    note={lt.caseTemp >= LT_SAFETY.highCaseTemp ? 'Frozen food at risk!' : undefined} />
+                  <ReadingRow label="DDR (discharge → receiver)" value={mtBase.ddrBypassing ? 'BYPASSING' : 'Closed'}
+                    color={mtBase.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
+                    note={mtBase.ddrBypassing ? 'Hot gas holding receiver pressure' : 'Normal warm-weather state'}
+                    tooltip="Discharge differential regulator. When the flooding valve throttles, the DDR opens on the rising differential and feeds discharge gas to the receiver so liquid keeps moving to the TXVs." />
+                  <ReadingRow label="HP control floor" value={`${rackConfig.hpCtrlPsig} psig / ${hpCtrlSatTemp.toFixed(0)} °F sat`} color="text-slate-600 dark:text-slate-300"
+                    note={mtBase.hpCtrlActive ? 'Active — holding minimum' : `Activates below ~${Math.round(hpCtrlSatTemp - 15)} °F OAT`} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 mt-1 border-t border-slate-200 dark:border-slate-700/50">
-                {lt.compRunning.map((running, i) => (
-                  <div key={i} className={`rounded-lg p-2 border text-center ${running ? 'bg-slate-200 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/40'}`}>
-                    <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${running ? 'bg-blue-500 animate-pulse' : 'bg-red-500'}`}/>
-                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">LT BOOST {i + 1}</span>
-                    </div>
-                    <div className={`text-sm font-mono font-bold ${running ? 'text-blue-700 dark:text-blue-200' : 'text-red-600 dark:text-red-400'}`}>
-                      {running ? `${lt.compAmps[i].toFixed(1)} A` : 'OFF'}
-                    </div>
-                    <div className="text-[9px] text-slate-500 mt-0.5">{running ? 'Running' : 'Tripped'}</div>
-                  </div>
-                ))}
               </div>
             </Card>
 
             {/* ── Store Load Profile ── */}
-            <Card title="Store Load Profile — Case Temperatures" icon={<Package size={13}/>}>
+            <Card title="Store Load Profile — MT Case Temperatures" icon={<Package size={13}/>}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 pt-1">
-                {/* MT cases */}
-                <div>
-                  <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest mb-2">MT Circuit — Medium Temp</p>
-                  {STORE_LINEUP.filter(s => s.circuit === 'MT').map(s => {
-                    const idx  = STORE_LINEUP.indexOf(s)
-                    const temp = caseTemps[idx]
-                    return (
-                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/30 last:border-0">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
-                          <div className="min-w-0">
-                            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{s.name}</span>
-                            <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
+                {[STORE_LINEUP.slice(0, 3), STORE_LINEUP.slice(3)].map((half, col) => (
+                  <div key={col}>
+                    {half.map(s => {
+                      const idx  = STORE_LINEUP.indexOf(s)
+                      const temp = caseTemps[idx]
+                      return (
+                        <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/30 last:border-0">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
+                            <div className="min-w-0">
+                              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{s.name}</span>
+                              <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-2 flex-shrink-0">
+                            <span className={`text-sm font-mono font-bold tabular-nums ${caseTempColor(temp, s)}`}>{temp.toFixed(1)}°F</span>
+                            <div className="text-[9px] text-slate-600">tgt {s.setpoint}°F</div>
                           </div>
                         </div>
-                        <div className="text-right ml-2 flex-shrink-0">
-                          <span className={`text-sm font-mono font-bold tabular-nums ${caseTempColor(temp, s)}`}>{temp.toFixed(1)}°F</span>
-                          <div className="text-[9px] text-slate-600">tgt {s.setpoint}°F</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <div className="text-[9px] text-slate-600 mt-1.5">⚠ Food safety: &gt;45 °F</div>
-                </div>
-
-                {/* LT cases */}
-                <div className="mt-4 sm:mt-0">
-                  <p className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">LT Circuit — Frozen Food</p>
-                  {STORE_LINEUP.filter(s => s.circuit === 'LT').map(s => {
-                    const idx  = STORE_LINEUP.indexOf(s)
-                    const temp = caseTemps[idx]
-                    return (
-                      <div key={s.name} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-700/30 last:border-0">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${caseDotColor(temp, s)}`}/>
-                          <div className="min-w-0">
-                            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{s.name}</span>
-                            <span className="text-[9px] text-slate-500 ml-1">× {s.count} {s.equipment}</span>
-                          </div>
-                        </div>
-                        <div className="text-right ml-2 flex-shrink-0">
-                          <span className={`text-sm font-mono font-bold tabular-nums ${caseTempColor(temp, s)}`}>{temp.toFixed(1)}°F</span>
-                          <div className="text-[9px] text-slate-600">tgt {s.setpoint}°F</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <div className="text-[9px] text-slate-600 mt-1.5">⚠ Food safety: &gt;10 °F (frozen)</div>
-                </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-[9px] text-slate-600 mt-1.5">
+                <span>⚠ Food safety: &gt;45 °F (meat/deli lower)</span>
+                <span>Frozen food runs on the dedicated LT rack →&nbsp;Protocol&nbsp;A</span>
               </div>
             </Card>
 
@@ -2144,14 +1996,11 @@ export default function SimulationPage() {
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Subcooling</span><span>10–20 °F</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Discharge temp</span><span>130–200 °F</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Oil diff</span><span>20–25 psi (Y825)</span></div>
-                  <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mt-2 mb-1">LT Booster — {rackConfig.ltSuctionPsig} psig / {ltSatSetpoint.toFixed(1)}°F SST</div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT suction setpoint</span><span>{rackConfig.ltSuctionPsig} psig ({ltSatSetpoint.toFixed(1)}°F)</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT ratio</span><span>2.0–3.5 : 1</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">LT superheat</span><span>10–20 °F</span></div>
-                  <div className="text-[9px] font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig</div>
+                  <div className="text-[9px] font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mt-2 mb-1">HP Control — {rackConfig.hpCtrlPsig} psig (flooding valve + DDR)</div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Min cond sat</span><span>{hpCtrlSatTemp.toFixed(1)}°F ({rackConfig.hpCtrlPsig} psig)</span></div>
                   <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Activates below OAT</span><span>~{Math.round(hpCtrlSatTemp - 15)}°F</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Typical range</span><span>155–175 psig</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">Discharge − receiver</span><span>~5–10 psig normal</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-500 dark:text-slate-400">DDR</span><span>closed unless flooding</span></div>
                 </div>
               </Card>
 
@@ -2197,7 +2046,8 @@ export default function SimulationPage() {
             </div>
 
             <div className="text-[10px] text-slate-600 text-center pb-2 leading-relaxed">
-              Based on Hussmann Parallel Rack Systems I/O Manual P/N 0427598_E · R-404A · MT 20 °F SST / LT −20 °F SST ·
+              Based on Hussmann Parallel Rack Systems I/O Manual P/N 0427598_E · R-404A · MT 20 °F SST ·
+              Oil separator + Y825 oil system · flooding valve + DDR head pressure control ·
               Setpoints are typical — actual values on equipment setup sheet inside electrical cabinet
             </div>
 

@@ -15,11 +15,11 @@ const RACKS = [
     icon: Layers,
     accent: 'blue',
     name: 'Hussmann Parallel Rack',
-    refrigerant: 'R-404A · MT + LT Booster',
+    refrigerant: 'R-404A · Medium Temp',
     description:
-      'Classic parallel rack — 4 Copeland scrolls on medium temp with a 2-compressor low-temp booster. ' +
-      'Full gauge set, sight glass, oil differential, and condenser readings.',
-    stats: ['27 fault toggles', '12 scored scenarios + Mystery Fault', 'Field-readings analyzer', 'Adjustable refrigerant & setpoints'],
+      'Classic MT parallel rack — 4 Copeland scrolls with oil separator, flooding valve + DDR head ' +
+      'pressure control, receiver, sight glass, oil differential, and condenser readings.',
+    stats: ['25 fault toggles', '12 scored scenarios + Mystery Fault', 'Field-readings analyzer', 'Adjustable refrigerant & setpoints'],
     source: 'Based on Hussmann Parallel Rack Systems I/O Manual',
   },
   {

@@ -13,6 +13,7 @@ import PageHeader from '@/components/PageHeader'
 import TrendsCard, { useTrendHistory } from '@/components/simulation/TrendsCard'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import ProtocolRackVisual from '@/components/simulation/visuals/ProtocolRackVisual'
+import { useIsMobile } from '@/components/simulation/useIsMobile'
 import SchematicViewer, { SchematicInfoCard, type SchematicDetail } from '@/components/simulation/visuals/SchematicViewer'
 import FieldReadingsPanel, { type Finding, type FieldDef, type DerivedRow } from '@/components/simulation/FieldReadings'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
@@ -815,6 +816,7 @@ const GROUP_COLOR: Record<string, string> = {
 // ── Main page component ────────────────────────────────────────────────────────
 export default function ProtocolRackASimulatorPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [faults, setFaults]       = useState<FaultState>(INITIAL_FAULTS)
   const [ambient, setAmbient]     = useState(70)
   const [timeOfDay, setTimeOfDay] = useState(14)   // 2pm default — daytime steady
@@ -1240,6 +1242,7 @@ export default function ProtocolRackASimulatorPage() {
                       }
                     })}
                     doorsOpen={!conceal && activeFaults.doorsOpen}
+                    layout={isMobile ? 'tall' : 'wide'}
                     selectedId={schemDetail?.id ?? null}
                     onSelect={setSchemDetail}
                   />

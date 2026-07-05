@@ -100,9 +100,9 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
+            {/* no setSelectionRange here — email inputs don't support it and it throws */}
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className={inputCls} placeholder="you@company.com"
-              onFocus={e => { const n = e.target.value.length; e.target.setSelectionRange(n, n) }} />
+              className={inputCls} placeholder="you@company.com" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">

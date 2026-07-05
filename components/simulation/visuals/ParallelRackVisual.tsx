@@ -1,131 +1,241 @@
 'use client'
-import { Defs, Pipe, Fan, Coil, Comp, Vessel, CaseBox, Tag, Hotspot, C, type CompVisStatus } from './primitives'
+import { Defs, Pipe, Fan, Coil, Comp, Vessel, Valve, CaseBox, Tag, Hotspot, C, type CompVisStatus } from './primitives'
 import type { SchematicDetail } from './SchematicViewer'
 
-// ── Hussmann parallel rack — MT + LT booster schematic ──────────────────────────
+// ── Hussmann MT parallel rack schematic ─────────────────────────────────────────
+// Pure medium-temp rack (LT runs on its own dedicated rack): 4 scrolls → oil
+// separator → condenser → flooding (receiver pressure) valve → receiver → drier →
+// cases. DDR bypasses discharge gas to the receiver in low-ambient flooding mode.
+// Two layouts share one render pass via a geometry table:
+//   wide — landscape, desktop / tablets
+//   tall — portrait, stacked top-to-bottom so it stays legible on phones
+
 export interface ParallelRackVisualProps {
   fansSpinning: [boolean, boolean]
   fansFailed: [boolean, boolean]      // already concealed by caller in scenario mode
   dirtyCondenser: boolean
   comps: { label: string; status: CompVisStatus; amps: number }[]      // 4 MT
-  boosters: { label: string; status: CompVisStatus; amps: number }[]   // 2 LT
   receiverLevel: number               // 0–1
   drierRestricted: boolean
   suctionPsig: number
   dischargePsig: number
-  ltSuctionPsig: number
+  receiverPsig: number
   mtCaseTemp: number; mtCaseColor: string
-  ltCaseTemp: number; ltCaseColor: string
   defrostStuck: boolean
-  ltDefrostStuck: boolean
   doorsOpen: boolean
   mtIced: boolean
   mtFanOut: boolean
   /** Gauge-derived (low SH) — safe to show even in scenario mode */
   floodback: boolean
   hpCtrlActive: boolean
+  /** DDR feeding discharge gas to the receiver (normal in low ambient, or stuck) */
+  ddrBypassing: boolean
+  /** Fault cues — concealed by caller in scenario mode */
+  floodingStuckOpen: boolean
+  ddrStuckOpen: boolean
+  layout?: 'wide' | 'tall'
   /** Tap-to-inspect */
   selectedId?: string | null
   onSelect?: (d: SchematicDetail | null) => void
 }
 
+interface Geo {
+  viewBox: string
+  pDischargeIn: string                       // comps → oil separator
+  pDischargeOut: string                      // oil separator → condenser
+  pDdr: string                               // discharge → receiver bypass
+  pCondToRecv: string                        // condenser → flooding valve → receiver
+  pLiquid: string[]                          // receiver → drier → cases
+  pSuction: string; pSuctionStubs: string[]
+  cond: { x: number; y: number; w: number; h: number }
+  fans: [{ x: number; y: number }, { x: number; y: number }]
+  hpTag: { x: number; y: number }
+  oilSep: { x: number; y: number; w: number; h: number }
+  floodValve: { x: number; y: number }
+  ddrValve: { x: number; y: number }
+  recv: { x: number; y: number; w: number; h: number }
+  drier: { x: number; y: number }
+  sight: { x: number; y: number }
+  comps: { x: number; y: number }[]
+  compW: number
+  mtCaption: { x: number; y: number }
+  mtCase: { x: number; y: number; w: number; h: number }
+  tagDischarge: { x: number; y: number }
+  tagSuction: { x: number; y: number }
+  tagReceiver: { x: number; y: number }
+  tagFlood: { x: number; y: number }
+}
+
+const WIDE: Geo = {
+  viewBox: '0 0 860 330',
+  pDischargeIn: 'M445,205 L445,120 L386,120',
+  pDischargeOut: 'M352,120 L310,120 L310,88',
+  pDdr: 'M330,120 L330,192 L114,192',
+  pCondToRecv: 'M55,90 L55,115 L92,115 L92,152',
+  pLiquid: ['M92,246 L92,278 L745,278 L745,118'],
+  pSuction: 'M700,112 L700,168 L340,168',
+  pSuctionStubs: [346, 406, 466, 526].map(x => `M${x},168 L${x},205`),
+  cond: { x: 40, y: 42, w: 270, h: 46 },
+  fans: [{ x: 110, y: 65 }, { x: 240, y: 65 }],
+  hpTag: { x: 175, y: 108 },
+  oilSep: { x: 352, y: 92, w: 34, h: 55 },
+  floodValve: { x: 74, y: 115 },
+  ddrValve: { x: 222, y: 192 },
+  recv: { x: 70, y: 152, w: 44, h: 94 },
+  drier: { x: 150, y: 270 },
+  sight: { x: 243, y: 278 },
+  comps: [0, 1, 2, 3].map(i => ({ x: 320 + i * 60, y: 208 })),
+  compW: 52,
+  mtCaption: { x: 436, y: 276 },
+  mtCase: { x: 640, y: 46, w: 185, h: 76 },
+  tagDischarge: { x: 495, y: 132 },
+  tagSuction: { x: 600, y: 158 },
+  tagReceiver: { x: 58, y: 306 },
+  tagFlood: { x: 600, y: 192 },
+}
+
+const TALL: Geo = {
+  viewBox: '0 0 430 548',
+  pDischargeIn: 'M352,482 L352,506 L160,506',
+  pDischargeOut: 'M90,506 L6,506 L6,64 L20,64',
+  pDdr: 'M6,175 L40,175',
+  pCondToRecv: 'M255,86 L255,118 L63,118 L63,132',
+  pLiquid: ['M63,222 L63,250 L210,250 L210,166 L230,166'],
+  pSuction: 'M415,160 L424,160 L424,400 L40,400',
+  pSuctionStubs: [64, 160, 256, 352].map(x => `M${x},400 L${x},430`),
+  cond: { x: 20, y: 42, w: 250, h: 44 },
+  fans: [{ x: 85, y: 64 }, { x: 205, y: 64 }],
+  hpTag: { x: 145, y: 102 },
+  oilSep: { x: 90, y: 492, w: 70, h: 28 },
+  floodValve: { x: 160, y: 118 },
+  ddrValve: { x: 23, y: 175 },
+  recv: { x: 40, y: 132, w: 46, h: 90 },
+  drier: { x: 92, y: 242 },
+  sight: { x: 186, y: 250 },
+  comps: [0, 1, 2, 3].map(i => ({ x: 20 + i * 96, y: 430 })),
+  compW: 88,
+  mtCaption: { x: 285, y: 540 },
+  mtCase: { x: 230, y: 128, w: 185, h: 76 },
+  tagDischarge: { x: 52, y: 312 },
+  tagSuction: { x: 230, y: 390 },
+  tagReceiver: { x: 150, y: 214 },
+  tagFlood: { x: 230, y: 364 },
+}
+
 export default function ParallelRackVisual(p: ParallelRackVisualProps) {
+  const G = p.layout === 'tall' ? TALL : WIDE
   const mtRunning = p.comps.some(c => c.status === 'run')
-  const ltRunning = p.boosters.some(c => c.status === 'run')
   const fansUp = p.fansFailed.filter(f => !f).length
+  const ddrFlow = p.ddrBypassing || p.ddrStuckOpen
   const pick = (detail: SchematicDetail) => () => p.onSelect?.(p.selectedId === detail.id ? null : detail)
   const statusText = (s: CompVisStatus) => (s === 'run' ? 'Running' : s === 'trip' ? 'TRIPPED' : 'Standby')
+  const receiverDrop = p.dischargePsig - p.receiverPsig
 
   return (
-    <svg viewBox="0 0 860 330" className="w-full h-auto select-none" role="img" aria-label="Parallel rack schematic">
+    <svg viewBox={G.viewBox} className="w-full h-auto select-none" role="img" aria-label="MT parallel rack schematic">
       <Defs />
 
       {/* ── Pipes (under equipment) ── */}
-      {/* discharge: comp header → condenser */}
-      <Pipe d="M445,205 L445,120 L310,120 L310,88" color={C.discharge} flowing={mtRunning} speed={1.2} />
-      {/* condensed liquid: condenser → receiver */}
-      <Pipe d="M55,90 L55,128 L92,128 L92,152" color={C.liquid} flowing={mtRunning} speed={0.8} />
-      {/* liquid main: receiver → drier → cases */}
-      <Pipe d="M92,246 L92,278 L745,278 L745,118" color={C.liquid} flowing={mtRunning} speed={0.8} />
-      {/* MT suction: cases → header → comps */}
-      <Pipe d="M700,112 L700,168 L340,168" color={C.suction} flowing={mtRunning} />
-      {[346, 406, 466, 526].map(x => (
-        <Pipe key={x} d={`M${x},168 L${x},205`} color={C.suction} w={3} flowing={mtRunning} />
-      ))}
-      {/* LT suction: LT case → boosters */}
-      <Pipe d="M700,250 L700,310 L648,310 L648,288" color={C.ltSuction} flowing={ltRunning} />
-      <Pipe d="M648,310 L590,310 L590,288" color={C.ltSuction} flowing={ltRunning} />
-      {/* LT discharge → MT suction header */}
-      <Pipe d="M612,238 L612,168" color={C.ltSuction} w={3} flowing={ltRunning} speed={1.2} />
+      <Pipe d={G.pDischargeIn} color={C.discharge} flowing={mtRunning} speed={1.2} />
+      <Pipe d={G.pDischargeOut} color={C.discharge} flowing={mtRunning} speed={1.2} />
+      {/* DDR bypass — dim/idle unless flooding mode (or stuck open) */}
+      <Pipe d={G.pDdr} color={C.discharge} w={3.2} flowing={ddrFlow && mtRunning} dim={!ddrFlow} speed={0.9} />
+      <Pipe d={G.pCondToRecv} color={C.liquid} flowing={mtRunning} speed={0.8} />
+      {G.pLiquid.map((d, i) => <Pipe key={i} d={d} color={C.liquid} flowing={mtRunning} speed={0.8} />)}
+      <Pipe d={G.pSuction} color={C.suction} flowing={mtRunning} />
+      {G.pSuctionStubs.map((d, i) => <Pipe key={i} d={d} color={C.suction} w={3.5} flowing={mtRunning} />)}
 
       {/* ── Condenser ── */}
-      <Coil x={40} y={42} w={270} h={46} fouled={p.dirtyCondenser} label="Air-Cooled Condenser" />
-      <Fan x={110} y={65} r={17} spinning={p.fansSpinning[0]} failed={p.fansFailed[0]} />
-      <Fan x={240} y={65} r={17} spinning={p.fansSpinning[1]} failed={p.fansFailed[1]} />
-      {p.hpCtrlActive && <Tag x={175} y={105} text="HP CTRL — fans cycling" color={C.warn} />}
+      <Coil x={G.cond.x} y={G.cond.y} w={G.cond.w} h={G.cond.h} fouled={p.dirtyCondenser} label="Air-Cooled Condenser" />
+      <Fan x={G.fans[0].x} y={G.fans[0].y} r={17} spinning={p.fansSpinning[0]} failed={p.fansFailed[0]} />
+      <Fan x={G.fans[1].x} y={G.fans[1].y} r={17} spinning={p.fansSpinning[1]} failed={p.fansFailed[1]} />
+      {p.hpCtrlActive && <Tag x={G.hpTag.x} y={G.hpTag.y} text="HP CTRL — flooding mode" color={C.warn} />}
+
+      {/* ── Oil separator on the discharge line ── */}
+      <Vessel x={G.oilSep.x} y={G.oilSep.y} w={G.oilSep.w} h={G.oilSep.h} level={0.35} label="Oil Sep" liquidColor="#a16207" />
+
+      {/* ── Flooding (receiver pressure) valve + DDR ── */}
+      <Valve x={G.floodValve.x} y={G.floodValve.y} label="Flooding" state={p.floodingStuckOpen ? 'open' : 'auto'} labelBelow />
+      <Valve x={G.ddrValve.x} y={G.ddrValve.y} label="DDR" state={p.ddrStuckOpen ? 'open' : 'auto'} labelBelow />
 
       {/* ── Receiver + drier ── */}
-      <Vessel x={70} y={152} w={44} h={94} level={p.receiverLevel} label="Receiver" />
+      <Vessel x={G.recv.x} y={G.recv.y} w={G.recv.w} h={G.recv.h} level={p.receiverLevel} label="Receiver" />
       <g>
-        <rect x={150} y={270} width={40} height={16} rx={4} fill="url(#simMetal)" stroke={p.drierRestricted ? C.warn : C.stroke} strokeWidth={p.drierRestricted ? 2 : 1.2} />
-        <text x={170} y={300} textAnchor="middle" fontSize={8.5} fill={p.drierRestricted ? C.warn : C.text} fontWeight={600}>
+        <rect x={G.drier.x} y={G.drier.y} width={40} height={16} rx={4} fill="url(#simMetal)" stroke={p.drierRestricted ? C.warn : C.stroke} strokeWidth={p.drierRestricted ? 2.2 : 1.3} />
+        <text x={G.drier.x + 20} y={G.drier.y + 32} textAnchor="middle" fontSize={10.5} fill={p.drierRestricted ? C.warn : C.text} fontWeight={700}>
           {p.drierRestricted ? 'drier ΔT!' : 'filter drier'}
         </text>
         {/* sight glass */}
-        <circle cx={225} cy={278} r={6} fill="#dbeafe" stroke={C.stroke} strokeWidth={1.1} opacity={0.9} />
-        <text x={225} y={300} textAnchor="middle" fontSize={8} fill={C.text}>sight glass</text>
+        <circle cx={G.sight.x} cy={G.sight.y} r={6.5} fill="#dbeafe" stroke={C.stroke} strokeWidth={1.2} opacity={0.9} />
+        <text x={G.sight.x} y={G.sight.y + 22} textAnchor="middle" fontSize={10} fill={C.text}>sight glass</text>
       </g>
 
       {/* ── MT compressors ── */}
       {p.comps.map((c, i) => (
-        <Comp key={i} x={320 + i * 60} y={208} w={52} label={c.label} status={c.status} amps={c.amps} />
+        <Comp key={i} x={G.comps[i].x} y={G.comps[i].y} w={G.compW} h={50} label={c.label} status={c.status} amps={c.amps} />
       ))}
-      <text x={436} y={272} textAnchor="middle" fontSize={9} fill={C.text} fontWeight={600}>MT Rack — 4 × Copeland Scroll</text>
-
-      {/* ── LT boosters ── */}
-      {p.boosters.map((c, i) => (
-        <Comp key={i} x={566 + i * 58} y={240} w={50} h={44} label={c.label} status={c.status} amps={c.amps} />
-      ))}
-      <text x={622} y={232} textAnchor="middle" fontSize={8.5} fill={C.ltSuction} fontWeight={600}>LT Boosters → MT suction</text>
+      <text x={G.mtCaption.x} y={G.mtCaption.y} textAnchor="middle" fontSize={11} fill={C.text} fontWeight={700}>MT Rack — 4 × Copeland Scroll</text>
 
       {/* ── Cases ── */}
-      <CaseBox x={640} y={46} w={185} h={66} label="MT Cases" sub="produce · dairy · WIC"
-        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={4} doorsOpen={p.doorsOpen} defrost={p.defrostStuck}
+      <CaseBox x={G.mtCase.x} y={G.mtCase.y} w={G.mtCase.w} h={G.mtCase.h} label="MT Cases" sub="produce · dairy · meat · deli · WIC"
+        temp={p.mtCaseTemp} tempColor={p.mtCaseColor} doors={5} doorsOpen={p.doorsOpen} defrost={p.defrostStuck}
         iced={p.mtIced} fanOut={p.mtFanOut} />
-      <CaseBox x={640} y={190} w={185} h={60} label="Frozen Food" sub="RL-5 doors · WIF · bunkers"
-        temp={p.ltCaseTemp} tempColor={p.ltCaseColor} doors={4} frozen defrost={p.ltDefrostStuck} />
 
       {/* ── Reading tags ── */}
-      <Tag x={380} y={112} text={`${p.dischargePsig.toFixed(0)} psig`} color={C.discharge} />
-      <Tag x={520} y={160} text={`${p.suctionPsig.toFixed(1)} psig`} color={C.suction} />
-      <Tag x={672} y={322} text={`${p.ltSuctionPsig.toFixed(1)} psig`} color={C.ltSuction} />
-      {p.floodback && <Tag x={436} y={148} text="⚠ low SH — liquid floodback risk" color={C.crit} />}
+      <Tag x={G.tagDischarge.x} y={G.tagDischarge.y} text={`${p.dischargePsig.toFixed(0)} psig`} color={C.discharge} />
+      <Tag x={G.tagSuction.x} y={G.tagSuction.y} text={`${p.suctionPsig.toFixed(1)} psig`} color={C.suction} />
+      <Tag x={G.tagReceiver.x} y={G.tagReceiver.y} text={`recv ${p.receiverPsig.toFixed(0)}`} color="#b45309" />
+      {p.floodback && <Tag x={G.tagFlood.x} y={G.tagFlood.y} text="⚠ low SH — floodback risk" color={C.crit} />}
 
       {/* ── Tap-to-inspect hotspots (top layer) ── */}
       {p.onSelect && (
         <g>
-          <Hotspot x={40} y={42} w={270} h={46} selected={p.selectedId === 'cond'} onSelect={pick({
+          <Hotspot x={G.cond.x} y={G.cond.y} w={G.cond.w} h={G.cond.h} selected={p.selectedId === 'cond'} onSelect={pick({
             id: 'cond', title: 'Air-Cooled Condenser', subtitle: '2-fan remote',
             rows: [
               { label: 'Discharge', value: `${p.dischargePsig.toFixed(0)} psig` },
               { label: 'Fans', value: `${fansUp}/2 running`, color: fansUp < 2 ? 'text-red-600 dark:text-red-400' : undefined },
-              { label: 'HP control', value: p.hpCtrlActive ? 'Active (floor)' : 'Off' },
+              { label: 'HP control', value: p.hpCtrlActive ? 'Active (flooding)' : 'Off' },
               ...(p.dirtyCondenser ? [{ label: 'Coil', value: 'FOULED', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
           })} />
-          <Hotspot x={70} y={152} w={44} h={94} selected={p.selectedId === 'recv'} onSelect={pick({
-            id: 'recv', title: 'Liquid Receiver',
+          <Hotspot x={G.oilSep.x} y={G.oilSep.y} w={G.oilSep.w} h={G.oilSep.h} selected={p.selectedId === 'oilsep'} onSelect={pick({
+            id: 'oilsep', title: 'Oil Separator', subtitle: 'discharge line → oil back to Y825 system',
             rows: [
-              { label: 'Level', value: `${Math.round(p.receiverLevel * 100)}%`, color: p.receiverLevel < 0.2 ? 'text-red-600 dark:text-red-400' : p.receiverLevel > 0.7 ? 'text-amber-600 dark:text-amber-400' : undefined },
-              { label: 'Liquid line', value: `${Math.max(p.dischargePsig - 8, 0).toFixed(0)} psig` },
+              { label: 'Duty', value: 'Strips oil from hot gas' },
+              { label: 'Return', value: 'Reservoir → Y825 → comps' },
             ],
           })} />
-          <Hotspot x={146} y={264} w={90} h={26} selected={p.selectedId === 'drier'} onSelect={pick({
+          <Hotspot x={G.floodValve.x - 16} y={G.floodValve.y - 20} w={32} h={40} selected={p.selectedId === 'flood'} onSelect={pick({
+            id: 'flood', title: 'Flooding / Receiver Pressure Valve', subtitle: 'condenser drop leg',
+            rows: [
+              { label: 'State', value: p.floodingStuckOpen ? 'STUCK OPEN' : p.hpCtrlActive ? 'Throttling (flooding condenser)' : 'Wide open (warm ambient)',
+                color: p.floodingStuckOpen ? 'text-red-600 dark:text-red-400' : p.hpCtrlActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Duty', value: 'Holds head in low ambient' },
+            ],
+          })} />
+          <Hotspot x={G.ddrValve.x - 16} y={G.ddrValve.y - 20} w={32} h={40} selected={p.selectedId === 'ddr'} onSelect={pick({
+            id: 'ddr', title: 'DDR — Discharge Differential Regulator', subtitle: 'discharge → receiver bypass',
+            rows: [
+              { label: 'State', value: p.ddrStuckOpen ? 'STUCK OPEN — bypassing' : p.ddrBypassing ? 'Bypassing (flooding mode)' : 'Closed',
+                color: p.ddrStuckOpen ? 'text-red-600 dark:text-red-400' : p.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Δ disch→recv', value: `${receiverDrop.toFixed(0)} psig`, color: receiverDrop < 4 ? 'text-amber-600 dark:text-amber-400' : undefined },
+              { label: 'Duty', value: 'Presses receiver when flooding' },
+            ],
+          })} />
+          <Hotspot x={G.recv.x} y={G.recv.y} w={G.recv.w} h={G.recv.h} selected={p.selectedId === 'recv'} onSelect={pick({
+            id: 'recv', title: 'Liquid Receiver',
+            rows: [
+              { label: 'Pressure', value: `${p.receiverPsig.toFixed(0)} psig` },
+              { label: 'Level', value: `${Math.round(p.receiverLevel * 100)}%`, color: p.receiverLevel < 0.2 ? 'text-red-600 dark:text-red-400' : p.receiverLevel > 0.7 ? 'text-amber-600 dark:text-amber-400' : undefined },
+            ],
+          })} />
+          <Hotspot x={G.drier.x - 4} y={G.drier.y - 6} w={90} h={26} selected={p.selectedId === 'drier'} onSelect={pick({
             id: 'drier', title: 'Filter Drier + Sight Glass',
             rows: [{ label: 'Drier ΔT', value: p.drierRestricted ? 'RESTRICTED' : 'Normal (<1 °F)', color: p.drierRestricted ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }],
           })} />
           {p.comps.map((c, i) => (
-            <Hotspot key={c.label} x={320 + i * 60} y={208} w={52} h={50} selected={p.selectedId === `comp${i}`} onSelect={pick({
+            <Hotspot key={c.label} x={G.comps[i].x} y={G.comps[i].y} w={G.compW} h={50} selected={p.selectedId === `comp${i}`} onSelect={pick({
               id: `comp${i}`, title: `Compressor ${c.label}`, subtitle: 'Copeland Scroll · MT',
               rows: [
                 { label: 'Status', value: statusText(c.status), color: c.status === 'trip' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' },
@@ -135,18 +245,8 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
               ],
             })} />
           ))}
-          {p.boosters.map((c, i) => (
-            <Hotspot key={c.label} x={566 + i * 58} y={240} w={50} h={44} selected={p.selectedId === `boost${i}`} onSelect={pick({
-              id: `boost${i}`, title: `LT Booster ${i + 1}`, subtitle: 'discharges into MT suction',
-              rows: [
-                { label: 'Status', value: statusText(c.status), color: c.status === 'trip' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' },
-                { label: 'Amps', value: c.status === 'run' ? `${c.amps.toFixed(1)} A` : '—' },
-                { label: 'LT suction', value: `${p.ltSuctionPsig.toFixed(1)} psig` },
-              ],
-            })} />
-          ))}
-          <Hotspot x={640} y={46} w={185} h={66} selected={p.selectedId === 'mtcases'} onSelect={pick({
-            id: 'mtcases', title: 'MT Cases', subtitle: 'produce · dairy · WIC',
+          <Hotspot x={G.mtCase.x} y={G.mtCase.y} w={G.mtCase.w} h={G.mtCase.h} selected={p.selectedId === 'mtcases'} onSelect={pick({
+            id: 'mtcases', title: 'MT Cases', subtitle: 'produce · dairy · meat · deli · WIC',
             rows: [
               { label: 'Avg temp', value: `${p.mtCaseTemp.toFixed(1)} °F`, color: p.mtCaseColor === '#10b981' ? 'text-emerald-600 dark:text-emerald-400' : p.mtCaseColor === '#f59e0b' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400' },
               { label: 'Suction', value: `${p.suctionPsig.toFixed(1)} psig` },
@@ -154,14 +254,6 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
               ...(p.doorsOpen ? [{ label: 'Doors', value: 'PROPPED OPEN', color: 'text-amber-600 dark:text-amber-400' }] : []),
               ...(p.mtIced ? [{ label: 'Coil', value: 'ICED', color: 'text-cyan-600 dark:text-cyan-400' }] : []),
               ...(p.mtFanOut ? [{ label: 'Evap fans', value: 'OUT', color: 'text-red-600 dark:text-red-400' }] : []),
-            ],
-          })} />
-          <Hotspot x={640} y={190} w={185} h={60} selected={p.selectedId === 'ltcases'} onSelect={pick({
-            id: 'ltcases', title: 'Frozen Food Cases', subtitle: 'RL-5 doors · WIF · bunkers',
-            rows: [
-              { label: 'Avg temp', value: `${p.ltCaseTemp.toFixed(1)} °F`, color: p.ltCaseColor === '#10b981' ? 'text-emerald-600 dark:text-emerald-400' : p.ltCaseColor === '#f59e0b' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400' },
-              { label: 'LT suction', value: `${p.ltSuctionPsig.toFixed(1)} psig` },
-              ...(p.ltDefrostStuck ? [{ label: 'Defrost', value: 'STUCK ON', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
           })} />
         </g>
