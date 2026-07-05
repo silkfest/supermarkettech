@@ -8,8 +8,8 @@ import type { SchematicDetail } from './SchematicViewer'
 // Two layouts (wide landscape / tall portrait for phones) share one render pass.
 
 export interface Co2BoosterVisualProps {
-  fansSpinning: [boolean, boolean]
-  fansFailed: [boolean, boolean]
+  fansSpinning: boolean[]             // 4 gas cooler fans
+  fansFailed: boolean[]
   gcFouled: boolean
   transcritical: boolean
   headPsig: number
@@ -42,7 +42,7 @@ interface Geo {
   pLiquid: string[]; pFgbv: string; pMtSuction: string; pMtStubs: string[]
   pLtSuction: string[]; pLtDischarge: string
   gc: { x: number; y: number; w: number; h: number }
-  fans: [{ x: number; y: number }, { x: number; y: number }]
+  fans: { x: number; y: number }[]
   transTag: { x: number; y: number } | null   // null = GC label already says it (tall)
   hpv: { x: number; y: number }
   tank: { x: number; y: number; w: number; h: number }
@@ -73,7 +73,7 @@ const WIDE: Geo = {
   pLtSuction: ['M790,250 L790,312 L420,312 L420,295', 'M370,312 L370,295'],
   pLtDischarge: 'M395,250 L395,228',
   gc: { x: 230, y: 42, w: 250, h: 46 },
-  fans: [{ x: 295, y: 65 }, { x: 415, y: 65 }],
+  fans: [262, 324, 386, 448].map(x => ({ x, y: 65 })),
   transTag: { x: 355, y: 16 },
   hpv: { x: 606, y: 120 },
   tank: { x: 622, y: 152, w: 48, h: 100 },
@@ -107,7 +107,7 @@ const TALL: Geo = {
   pLtSuction: ['M400,292 L400,460 L155,460 L155,480', 'M260,460 L260,480'],
   pLtDischarge: 'M110,504 L20,504 L20,350 L40,350',
   gc: { x: 20, y: 42, w: 260, h: 44 },
-  fans: [{ x: 90, y: 64 }, { x: 210, y: 64 }],
+  fans: [53, 118, 182, 247].map(x => ({ x, y: 64 })),
   transTag: null,
   hpv: { x: 160, y: 110 },
   tank: { x: 40, y: 140, w: 48, h: 100 },
@@ -162,8 +162,9 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
 
       {/* ── Gas cooler ── */}
       <Coil x={G.gc.x} y={G.gc.y} w={G.gc.w} h={G.gc.h} fouled={p.gcFouled} label={p.transcritical ? 'Gas Cooler — transcritical' : 'Gas Cooler / Condenser — subcritical'} />
-      <Fan x={G.fans[0].x} y={G.fans[0].y} r={17} spinning={p.fansSpinning[0]} failed={p.fansFailed[0]} />
-      <Fan x={G.fans[1].x} y={G.fans[1].y} r={17} spinning={p.fansSpinning[1]} failed={p.fansFailed[1]} />
+      {G.fans.map((f, i) => (
+        <Fan key={i} x={f.x} y={f.y} r={14} spinning={p.fansSpinning[i] ?? true} failed={p.fansFailed[i] ?? false} />
+      ))}
       {p.transcritical && G.transTag && (
         <Tag x={G.transTag.x} y={G.transTag.y} text="above 87.8°F critical — no condensing" color="#f97316" />
       )}
@@ -218,7 +219,7 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
             id: 'gc', title: 'Gas Cooler', subtitle: p.transcritical ? 'transcritical — no condensing' : 'subcritical — condensing',
             rows: [
               { label: 'Pressure', value: `${p.headPsig.toFixed(0)} psig` },
-              { label: 'Fans', value: `${fansUp}/2 running`, color: fansUp < 2 ? 'text-red-600 dark:text-red-400' : undefined },
+              { label: 'Fans', value: `${fansUp}/4 healthy`, color: fansUp < 4 ? 'text-red-600 dark:text-red-400' : undefined },
               ...(p.gcFouled ? [{ label: 'Coil', value: 'FOULED', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
           })} />

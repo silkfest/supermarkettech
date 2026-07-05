@@ -196,8 +196,8 @@ interface FaultDef {
 const FAULT_DEFS: FaultDef[] = [
   { key: 'poorVentilation',     label: 'Poor machine room vent',        hint: 'Hot machine room heats compressors — discharge temp rises',  group: 'Machine Room' },
   { key: 'dirtyCondenser',      label: 'Dirty condenser coil',          hint: 'Fouled fins raise approach ΔT by ~14 °F',                    group: 'Condenser' },
-  { key: 'fan1Failed',          label: 'Condenser fan #1 failed',       hint: 'Loses ~50 % airflow — head pressure rises',                  group: 'Condenser' },
-  { key: 'fan2Failed',          label: 'Condenser fan #2 failed',       hint: 'Both fans out: severe head pressure rise',                   group: 'Condenser' },
+  { key: 'fan1Failed',          label: 'Condenser fan #3 failed (1 of 6)', hint: 'One CFM down — approach only rises ~4 °F. Subtle in mild weather; shows as elevated head on hot days. Check fan amps and blades.', group: 'Condenser' },
+  { key: 'fan2Failed',          label: 'Fan bank B contactor failed (3 of 6)', hint: 'One contactor runs fans 4–6 — lose it and half the airflow goes with it. Approach jumps ~15 °F; head climbs hard on warm days.', group: 'Condenser' },
   { key: 'underchargeModerate', label: 'Undercharge (moderate ~15 %)',  hint: 'Low suction, high SH, subcooling drops',                     group: 'Charge', mutuallyExcludes: ['underchargeSevere', 'overcharge'] },
   { key: 'underchargeSevere',   label: 'Undercharge (severe ~30 %)',    hint: 'Very high SH, near-zero SC, flash gas in sight glass',       group: 'Charge', mutuallyExcludes: ['underchargeModerate', 'overcharge'] },
   { key: 'overcharge',          label: 'Overcharge (~15 %)',             hint: 'High head, very high SC, low SH, flood-back risk',           group: 'Charge', mutuallyExcludes: ['underchargeModerate', 'underchargeSevere'] },
@@ -400,9 +400,11 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
 
   // ── Condenser faults (each adds to approach delta) ───────────────────────
   if (f.dirtyCondenser) { baseApproach += 14; dischargeSuperheat += 8; ampsMultiplier *= 1.07 }
-  const fansFailed = (f.fan1Failed ? 1 : 0) + (f.fan2Failed ? 1 : 0)
-  if (fansFailed === 1) { baseApproach += 9;  dischargeSuperheat += 6;  ampsMultiplier *= 1.05 }
-  if (fansFailed === 2) { baseApproach += 26; dischargeSuperheat += 20; ampsMultiplier *= 1.13 }
+  // 6 CFMs on the remote condenser: fan #3 alone, or the bank-B contactor (fans 4–6)
+  const fansDown = (f.fan1Failed ? 1 : 0) + (f.fan2Failed ? 3 : 0)
+  if (fansDown === 1) { baseApproach += 4;  dischargeSuperheat += 3;  ampsMultiplier *= 1.02 }
+  if (fansDown === 3) { baseApproach += 15; dischargeSuperheat += 12; ampsMultiplier *= 1.09 }
+  if (fansDown === 4) { baseApproach += 24; dischargeSuperheat += 18; ampsMultiplier *= 1.14 }
 
   // Head pressure control floor — in low ambient the flooding (receiver pressure)
   // valve backs liquid into the condenser while the DDR bypasses discharge gas to
@@ -512,13 +514,15 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   const approachDelta         = condensingSatTemp - oat
 
   // Fan staging — when HP ctrl is active, fans cycle to hold head pressure
-  const fansRunning           = 4 - fansFailed
-  const fansCycling           = hpCtrlActive && fansFailed === 0
-  const fansActive            = fansCycling ? Math.max(1, Math.round(fansRunning * Math.min(1, oat / (hpCtrlSatTemp - 10)))) : fansRunning
+  const fansRunning           = 6 - fansDown
+  const fansCycling           = hpCtrlActive && fansDown === 0
+  const fansActive            = fansCycling ? Math.max(2, Math.round(fansRunning * Math.min(1, oat / (hpCtrlSatTemp - 10)))) : fansRunning
 
   // Liquid line / receiver pressure — discharge minus nominal ~8 psig line loss.
   // DDR stuck open presses the receiver to within a couple psig of discharge.
-  const liquidLinePsig        = Math.max(dischargePsig - (f.ddrStuckOpen ? 3 : 8), 0)
+  // An active KoolGas defrost draws gas off the receiver top: receiver dips and
+  // the discharge→receiver differential widens until the DDR makes it up.
+  const liquidLinePsig        = Math.max(dischargePsig - (f.ddrStuckOpen ? 3 : f.defrostStuckOn ? 12 : 8), 0)
 
   // Expected discharge at this OAT on a clean, healthy rack (condensing side → bubble)
   const expectedDischargePsig = toGauge(ptBubble(Math.max(oat + 15, hpCtrlSatTemp), pt))
@@ -575,7 +579,7 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     compressionRatio, liquidTemp, subcooling, filterDrierDeltaT,
     oilDiff, oilPressurePsig, compRunning, compAmps, injectionActive, caseTemp,
     nonCondensables: f.nonCondensables, hpCtrlActive,
-    ddrBypassing: hpCtrlActive || f.ddrStuckOpen,
+    ddrBypassing: hpCtrlActive || f.ddrStuckOpen || f.defrostStuckOn,
     approachDelta, fansActive, fansCycling,
     liquidLinePsig, expectedDischargePsig, dischargeDeviation,
     alarms,
@@ -1599,8 +1603,13 @@ export default function SimulationPage() {
                     <div className="px-2 pb-2">
                       <SchematicViewer label="Parallel Rack — Medium Temp">
                       <ParallelRackVisual
-                        fansSpinning={conceal ? [true, true] : [!activeFaults.fan1Failed, !activeFaults.fan2Failed]}
-                        fansFailed={conceal ? [false, false] : [activeFaults.fan1Failed, activeFaults.fan2Failed]}
+                        fansSpinning={(() => {
+                          if (conceal) return [true, true, true, true, true, true]
+                          const failed = [false, false, activeFaults.fan1Failed, activeFaults.fan2Failed, activeFaults.fan2Failed, activeFaults.fan2Failed]
+                          let spun = 0
+                          return failed.map(fd => !fd && (spun++ < mtBase.fansActive))
+                        })()}
+                        fansFailed={conceal ? [false, false, false, false, false, false] : [false, false, activeFaults.fan1Failed, activeFaults.fan2Failed, activeFaults.fan2Failed, activeFaults.fan2Failed]}
                         dirtyCondenser={!conceal && activeFaults.dirtyCondenser}
                         comps={mtBase.compRunning.map((r, i) => ({ label: COMP_SPECS[i].id, status: compStatus(r), amps: mt.compAmps[i], model: COMP_SPECS[i].model, injecting: r && COMP_SPECS[i].demandCooling && mtBase.injectionActive }))}
                         receiverLevel={receiverLevel}
@@ -1670,10 +1679,10 @@ export default function SimulationPage() {
                 </span>
                 <span>
                   Condenser fans:{' '}
-                  <span className={mt.fansCycling ? 'text-amber-400 font-medium' : mt.fansActive < 4 ? 'text-red-400 font-medium' : 'text-emerald-400 font-medium'}>
+                  <span className={mt.fansCycling ? 'text-amber-400 font-medium' : mt.fansActive < 6 ? 'text-red-400 font-medium' : 'text-emerald-400 font-medium'}>
                     {mt.fansCycling
-                      ? `Cycling — HP ctrl maintaining head (≈${mt.fansActive} of 4 active)`
-                      : `${mt.fansActive} of 4 running`}
+                      ? `Cycling — HP ctrl maintaining head (≈${mt.fansActive} of 6 active)`
+                      : `${mt.fansActive} of 6 running`}
                   </span>
                 </span>
                 <span>
@@ -2001,8 +2010,10 @@ export default function SimulationPage() {
                 <div>
                   <ReadingRow label="DDR (discharge → receiver)" value={mtBase.ddrBypassing ? 'BYPASSING' : 'Closed'}
                     color={mtBase.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
-                    note={mtBase.ddrBypassing ? 'Hot gas holding receiver pressure' : 'Normal warm-weather state'}
-                    tooltip="Discharge differential regulator. When the flooding valve throttles, the DDR opens on the rising differential and feeds discharge gas to the receiver so liquid keeps moving to the TXVs." />
+                    note={mtBase.ddrBypassing
+                      ? (mtBase.hpCtrlActive ? 'Hot gas holding receiver pressure' : activeFaults.defrostStuckOn ? 'Feeding receiver — KoolGas defrost gas draw' : 'Hot gas holding receiver pressure')
+                      : 'Normal warm-weather state'}
+                    tooltip="Discharge differential regulator. It opens on the discharge→receiver differential — when the flooding valve throttles in low ambient, AND whenever a KoolGas defrost draws gas off the receiver top. Either way it feeds discharge gas in to keep the receiver pressed." />
                   <ReadingRow label="HP control floor" value={`${rackConfig.hpCtrlPsig} psig / ${hpCtrlSatTemp.toFixed(0)} °F sat`} color="text-slate-600 dark:text-slate-300"
                     note={mtBase.hpCtrlActive ? 'Active — holding minimum' : `Activates below ~${Math.round(hpCtrlSatTemp - 15)} °F OAT`} />
                 </div>

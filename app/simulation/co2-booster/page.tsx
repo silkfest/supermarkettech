@@ -68,8 +68,8 @@ const INITIAL_FAULTS = {
 interface FaultDef { key: FaultKey; label: string; hint: string; group: string; mutuallyExcludes?: FaultKey[] }
 const FAULT_DEFS: FaultDef[] = [
   { key: 'gcFouled',       label: 'Gas cooler fouled',          hint: 'Dirty fins raise gas cooler approach ~12 °F — head climbs, worst on hot days', group: 'Gas Cooler' },
-  { key: 'gcFan1Failed',   label: 'Gas cooler fan #1 failed',   hint: 'Reduced airflow — approach rises ~8 °F',                                       group: 'Gas Cooler' },
-  { key: 'gcFan2Failed',   label: 'Gas cooler fan #2 failed',   hint: 'Both fans out is severe — approach rises ~22 °F',                              group: 'Gas Cooler' },
+  { key: 'gcFan1Failed',   label: 'Gas cooler fan #2 failed (1 of 4)', hint: 'One fan down — approach rises ~6 °F; in transcritical the control curve pushes head up with it', group: 'Gas Cooler' },
+  { key: 'gcFan2Failed',   label: 'GC fan bank failed (2 of 4)', hint: 'One contactor runs two fans — losing it raises approach ~12 °F; severe on hot days', group: 'Gas Cooler' },
   { key: 'hpvStuckClosed', label: 'High pressure valve stuck closed', hint: 'Gas cooler pressure climbs while flash tank starves — high SH everywhere', group: 'Valves', mutuallyExcludes: ['hpvStuckOpen'] },
   { key: 'hpvStuckOpen',   label: 'High pressure valve stuck open',   hint: 'High side dumps into flash tank — receiver pressure climbs, head falls',  group: 'Valves', mutuallyExcludes: ['hpvStuckClosed'] },
   { key: 'fgbvStuckClosed', label: 'Flash gas bypass valve stuck closed', hint: 'Flash gas can\'t vent — receiver pressure climbs toward relief valve', group: 'Valves', mutuallyExcludes: ['fgbvStuckOpen'] },
@@ -129,10 +129,11 @@ interface RackResult {
 // ── Compute engine ────────────────────────────────────────────────────────────
 function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: number = LT_SST, flashSet: number = FLASH_TANK_SET): RackResult {
   // Gas cooler approach — base + fouling/fan faults
+  // 4 fans on the gas cooler: one single-fan fault + a two-fan contactor bank
   let approach = BASE_APPROACH
   if (f.gcFouled) approach += 12
-  if (f.gcFan1Failed) approach += 8
-  if (f.gcFan2Failed) approach += f.gcFan1Failed ? 14 : 22
+  if (f.gcFan1Failed) approach += 6
+  if (f.gcFan2Failed) approach += 12
 
   const gcOutletTemp = oat + approach
   const transcritical = gcOutletTemp >= 80
@@ -966,8 +967,8 @@ export default function Co2BoosterSimulatorPage() {
                 <div className="px-2 pb-2">
                   <SchematicViewer label="CO2 Transcritical Booster">
                   <Co2BoosterVisual
-                    fansSpinning={conceal ? [true, true] : [!activeFaults.gcFan1Failed, !activeFaults.gcFan2Failed]}
-                    fansFailed={conceal ? [false, false] : [activeFaults.gcFan1Failed, activeFaults.gcFan2Failed]}
+                    fansSpinning={conceal ? [true, true, true, true] : [true, !activeFaults.gcFan1Failed, !activeFaults.gcFan2Failed, !activeFaults.gcFan2Failed]}
+                    fansFailed={conceal ? [false, false, false, false] : [false, activeFaults.gcFan1Failed, activeFaults.gcFan2Failed, activeFaults.gcFan2Failed]}
                     gcFouled={!conceal && activeFaults.gcFouled}
                     transcritical={result.transcritical}
                     headPsig={result.headPsig}
