@@ -17,9 +17,9 @@ const RACKS = [
     name: 'Hussmann Parallel Rack',
     refrigerant: 'R-404A · Medium Temp',
     description:
-      'Classic MT parallel rack — 4 Copeland scrolls with oil separator, flooding valve + DDR head ' +
-      'pressure control, receiver, sight glass, oil differential, and condenser readings.',
-    stats: ['25 fault toggles', '12 scored scenarios + Mystery Fault', 'Field-readings analyzer', 'Adjustable refrigerant & setpoints'],
+      'Classic MT parallel rack — 4 Copeland Discus recips (Demand Cooling on C1/C2), oil separator, ' +
+      'flooding valve + DDR head pressure control, and an interactive safety-circuit wiring trainer.',
+    stats: ['25 fault toggles', '12 scored scenarios + Mystery Fault', 'Safety-circuit wiring trainer', 'Field-readings analyzer'],
     source: 'Based on Hussmann Parallel Rack Systems I/O Manual',
   },
   {
