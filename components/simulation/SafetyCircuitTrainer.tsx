@@ -189,7 +189,7 @@ export default function SafetyCircuitTrainer() {
       setSolved(true)
       const score = Math.max(30, 100 - Math.max(0, probeCount - 4) * 10 - wrongGuesses * 20)
       saveSimAttempt({
-        rack: 'parallel-rack', scenarioId: 'safety-circuit',
+        rack: 'safety-circuit', scenarioId: 'safety-circuit',
         scenarioName: 'Safety Circuit — Find the Fault', difficulty: 'Intermediate',
         mode: 'wiring', score, correct: 1, total: 1, falsePositives: wrongGuesses,
       })

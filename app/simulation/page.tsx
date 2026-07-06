@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy } from 'lucide-react'
+import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy, Zap } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import PageHeader from '@/components/PageHeader'
 
@@ -48,6 +48,19 @@ const RACKS = [
     stats: ['17 fault toggles', '8 scored scenarios + Mystery Fault', 'Transcritical / subcritical modes', 'Flash tank & relief valve dynamics'],
     source: 'R-744 booster architecture · gas cooler optimization curve',
   },
+  {
+    href: '/simulation/safety-circuit',
+    rackKey: 'safety-circuit',
+    icon: Zap,
+    accent: 'amber',
+    name: 'Safety Circuit Trainer',
+    refrigerant: '120 V · Control Circuit',
+    description:
+      'Not a rack — a Copeland Discus safety string. Practice the hopscotch method with a two-probe meter, ' +
+      'or find a hidden fault: fuse, switch, HPCO, LPCO, oil pressure control, a broken wire, or a dead coil.',
+    stats: ['9 injectable faults', 'Two-probe voltmeter', 'Find-the-Fault mystery mode', 'Also built into the Parallel Rack sim'],
+    source: 'Classic single-compressor 120 V control circuit',
+  },
 ]
 
 const ACCENT = {
@@ -66,6 +79,11 @@ const ACCENT = {
     hover: 'hover:border-emerald-400 dark:hover:border-emerald-500',
     badge: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
   },
+  amber: {
+    iconBox: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400',
+    hover: 'hover:border-amber-400 dark:hover:border-amber-500',
+    badge: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300',
+  },
 } as const
 
 export default function SimulatorSelectPage() {
@@ -83,7 +101,7 @@ export default function SimulatorSelectPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
 
       {/* Header */}
-      <PageHeader title="Rack Simulator" home={false} back={false} variant="learning" />
+      <PageHeader title="Simulators" home={false} back={false} variant="learning" />
 
       <LearningTabBar />
 
@@ -92,11 +110,11 @@ export default function SimulatorSelectPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <FlaskConical size={16} className="text-blue-600 dark:text-blue-400" />
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white">Choose a rack</h1>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">Choose a simulator</h1>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Pick the system you want to practice on. Toggle faults, watch the readings respond, and
-            test yourself with guided scenarios — all in-browser, no live equipment.
+            Pick a rack — or the safety-circuit trainer — to practice on. Toggle faults, watch the readings
+            respond, and test yourself with guided scenarios — all in-browser, no live equipment.
           </p>
         </div>
 
