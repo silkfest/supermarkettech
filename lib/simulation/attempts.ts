@@ -1,7 +1,7 @@
 // Client-side helper for recording simulator scenario attempts.
 // Fire-and-forget: a failed save never interrupts the training flow.
 
-export type SimRack = 'parallel-rack' | 'protocol-rack-a' | 'co2-booster'
+export type SimRack = 'parallel-rack' | 'protocol-rack-a' | 'co2-booster' | 'safety-circuit'
 
 export interface SimAttempt {
   rack: SimRack

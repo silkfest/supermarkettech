@@ -4,11 +4,11 @@ import { getSupabaseServer } from '@/lib/supabase/client'
 import { requireUser } from '@/lib/api/auth'
 
 const attemptSchema = z.object({
-  rack: z.enum(['parallel-rack', 'protocol-rack-a', 'co2-booster']),
+  rack: z.enum(['parallel-rack', 'protocol-rack-a', 'co2-booster', 'safety-circuit']),
   scenarioId: z.string().min(1).max(64),
   scenarioName: z.string().min(1).max(120),
   difficulty: z.string().max(20).nullish(),
-  mode: z.enum(['scenario', 'mystery']).default('scenario'),
+  mode: z.enum(['scenario', 'mystery', 'wiring']).default('scenario'),
   score: z.number().int().min(0).max(100).nullish(),
   correct: z.number().int().min(0).nullish(),
   total: z.number().int().min(0).nullish(),
