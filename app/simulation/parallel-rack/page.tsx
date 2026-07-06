@@ -214,7 +214,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp1ValveWorn', label: 'C1 — worn valve plates (blow-by)', hint: 'Discus valve plates leaking — comp still runs, amps look near-normal, but capacity is down ~35% and its head runs hotter than its neighbors. Classic recip wear; confirm with a pump-down test.', group: 'Compressors' },
   { key: 'txvNotFeeding',       label: 'MT TXV not feeding',            hint: 'Cases starved — suction drops, high SH, rising case temps',  group: 'MT Load', mutuallyExcludes: ['txvOverfeeding'] },
   { key: 'txvOverfeeding',      label: 'MT TXV overfeeding (floodback)', hint: 'Bulb loose or valve hunting wide open — superheat near zero, liquid back to the rack. Cool discharge, oil dilution drops the Y825 differential.', group: 'MT Load', mutuallyExcludes: ['txvNotFeeding'] },
-  { key: 'defrostStuckOn',      label: 'MT defrost stuck on',           hint: 'Circuit won\'t terminate — suction rises, case warms',       group: 'MT Load' },
+  { key: 'defrostStuckOn',      label: 'HG defrost stuck on (solenoid)', hint: 'A circuit\'s hot gas solenoid won\'t close — discharge gas keeps feeding the coil backwards through the suction. Suction rises, case warms, defrost never terminates.', group: 'MT Load' },
   { key: 'caseDoorsOpen',       label: 'Case doors propped open (stocking)', hint: 'Warm humid store air floods the cases — load and suction rise, case temps drift up, coils frost faster', group: 'MT Load' },
   { key: 'evapFanFailed',       label: 'Evap fan motors out (Dairy)',   hint: 'Air stops moving across the coil — Dairy case warms while suction sags and SH runs low. Coil will ice next; check fan amps and blades.', group: 'MT Load' },
   { key: 'coilIced',            label: 'Evaporator coil iced up (Produce)', hint: 'Solid frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warm case. Find why defrost didn\'t clear it.', group: 'MT Load' },
@@ -301,6 +301,8 @@ interface SystemState {
   hpCtrlActive: boolean
   /** Split condenser engaged — Belimo closed, section B isolated (cold weather or stuck) */
   splitActive: boolean
+  /** Heat reclaim 3-way valve diverting discharge through the reclaim coil (heating season) */
+  reclaimActive: boolean
   /** Flooding valve + DDR are actively holding head (low-ambient winter mode) */
   ddrBypassing: boolean
   approachDelta: number
@@ -411,6 +413,11 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
   if (fansDown === 1) { baseApproach += 4;  dischargeSuperheat += 3;  ampsMultiplier *= 1.02 }
   if (fansDown === 3) { baseApproach += 15; dischargeSuperheat += 12; ampsMultiplier *= 1.09 }
   if (fansDown === 4) { baseApproach += 24; dischargeSuperheat += 18; ampsMultiplier *= 1.14 }
+
+  // Heat reclaim — in heating season the 3-way valve routes discharge gas through
+  // the store's reclaim coil before the condenser, rejecting some heat indoors.
+  const reclaimActive = oat < 58
+  if (reclaimActive) baseApproach -= 2
 
   // Split condenser — below ~50 °F OAT the controller closes the Belimo valve and
   // isolates condenser section B, halving the surface so head holds with far less
@@ -544,9 +551,7 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
 
   // Liquid line / receiver pressure — discharge minus nominal ~8 psig line loss.
   // DDR stuck open presses the receiver to within a couple psig of discharge.
-  // An active KoolGas defrost draws gas off the receiver top: receiver dips and
-  // the discharge→receiver differential widens until the DDR makes it up.
-  const liquidLinePsig        = Math.max(dischargePsig - (f.ddrStuckOpen ? 3 : f.defrostStuckOn ? 12 : 8), 0)
+  const liquidLinePsig        = Math.max(dischargePsig - (f.ddrStuckOpen ? 3 : 8), 0)
 
   // Expected discharge at this OAT on a clean, healthy rack (condensing side → bubble)
   const expectedDischargePsig = toGauge(ptBubble(Math.max(oat + 15, hpCtrlSatTemp), pt))
@@ -608,7 +613,8 @@ function computeMT(f: FaultState, oat: number, hpCtrlSatTemp: number, mtSatSetpo
     oilDiff, oilPressurePsig, compRunning, compAmps, injectionActive, caseTemp,
     nonCondensables: f.nonCondensables, hpCtrlActive,
     splitActive,
-    ddrBypassing: hpCtrlActive || f.ddrStuckOpen || f.defrostStuckOn,
+    reclaimActive,
+    ddrBypassing: hpCtrlActive || f.ddrStuckOpen,
     approachDelta, fansActive, fansCycling,
     liquidLinePsig, expectedDischargePsig, dischargeDeviation,
     alarms,
@@ -795,6 +801,7 @@ function buildDiagnoseText(mt: SystemState, oat: number, caseTemps: number[], re
     `ENVIRONMENT:`,
     `  Outdoor Ambient Temp (OAT): ${oat} °F`,
     `  Head Pressure Control: ${mt.hpCtrlActive ? `ACTIVE — flooding valve + DDR holding condensing at ${Math.round(mt.condensingTemp)}°F sat min` : 'Off (OAT above minimum — flooding valve wide open, DDR closed)'}`,
+    `  Heat Reclaim: ${mt.reclaimActive ? 'RECLAIMING — discharge through store reclaim coil' : 'Bypassed — straight to condenser'} | Split condenser: ${mt.splitActive ? 'SPLIT — section B isolated' : 'full surface'}`,
     '',
     `MT CIRCUIT (Setpoint: 20 °F SST / ${toGauge(ptDew(20, pt)).toFixed(1)} psig):`,
     `  Suction:           ${mt.suctionPsig.toFixed(1)} psig  /  ${mt.suctionSatTemp.toFixed(1)} °F SST`,
@@ -1666,6 +1673,7 @@ export default function SimulationPage() {
                         splitActive={conceal ? activeOat < 50 : mtBase.splitActive}
                         splitStuckClosed={!conceal && activeFaults.splitStuckClosed}
                         splitStuckOpen={!conceal && activeFaults.splitStuckOpen}
+                        reclaimActive={mtBase.reclaimActive}
                         hotGasDefrost={activeFaults.defrostStuckOn}
                         ddrBypassing={mtBase.ddrBypassing}
                         floodingStuckOpen={!conceal && activeFaults.floodingValveStuckOpen}
@@ -2057,10 +2065,12 @@ export default function SimulationPage() {
                 <div>
                   <ReadingRow label="DDR (discharge → receiver)" value={mtBase.ddrBypassing ? 'BYPASSING' : 'Closed'}
                     color={mtBase.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
-                    note={mtBase.ddrBypassing
-                      ? (mtBase.hpCtrlActive ? 'Hot gas holding receiver pressure' : activeFaults.defrostStuckOn ? 'Feeding receiver — KoolGas defrost gas draw' : 'Hot gas holding receiver pressure')
-                      : 'Normal warm-weather state'}
-                    tooltip="Discharge differential regulator. It opens on the discharge→receiver differential — when the flooding valve throttles in low ambient, AND whenever a KoolGas defrost draws gas off the receiver top. Either way it feeds discharge gas in to keep the receiver pressed." />
+                    note={mtBase.ddrBypassing ? 'Hot gas holding receiver pressure' : 'Normal warm-weather state'}
+                    tooltip="Discharge differential regulator. When the flooding valve throttles in low ambient, the DDR opens on the rising differential and feeds discharge gas to the receiver so liquid keeps moving to the TXVs." />
+                  <ReadingRow label="Heat reclaim (3-way)" value={mtBase.reclaimActive ? 'RECLAIMING' : 'Bypassed'}
+                    color={mtBase.reclaimActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
+                    note={mtBase.reclaimActive ? 'Discharge routed through the store reclaim coil' : 'Straight to the condenser'}
+                    tooltip="In heating season the 3-way heat reclaim valve diverts discharge gas through the store's reclaim coil before the condenser, recovering compressor heat for the sales floor." />
                   <ReadingRow label="HP control floor" value={`${rackConfig.hpCtrlPsig} psig / ${hpCtrlSatTemp.toFixed(0)} °F sat`} color="text-slate-600 dark:text-slate-300"
                     note={mtBase.hpCtrlActive ? 'Active — holding minimum' : `Activates below ~${Math.round(hpCtrlSatTemp - 15)} °F OAT`} />
                 </div>

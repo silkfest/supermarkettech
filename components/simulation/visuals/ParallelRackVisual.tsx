@@ -3,11 +3,12 @@ import { Defs, Pipe, Fan, Coil, Comp, Vessel, Valve, CaseBox, Tag, Hotspot, C, t
 import type { SchematicDetail } from './SchematicViewer'
 
 // ── Hussmann MT parallel rack schematic ─────────────────────────────────────────
-// Pure medium-temp rack: 4 Discus recips → oil separator → SPLIT condenser
-// (section B gated by a Belimo valve, isolated in cold weather) → flooding
-// (receiver pressure) valve → receiver → drier → cases. DDR bypasses discharge
-// gas to the receiver in flooding mode and during KoolGas defrost draw; the
-// KoolGas hot-gas main runs from the receiver top to the cases.
+// Pure medium-temp rack: 4 Discus recips → oil separator → heat reclaim
+// (3-way valve → store reclaim coil in heating season) → SPLIT condenser
+// (section B gated by a Belimo valve) → flooding (receiver pressure) valve →
+// receiver → drier → cases. Hot gas defrost taps the discharge right after the
+// oil separator into an HG header, feeding each circuit's suction through its
+// own HG solenoid. DDR bypasses discharge to the receiver in flooding mode.
 // Two layouts share one render pass via a geometry table:
 //   wide — landscape, desktop / tablets
 //   tall — portrait, stacked top-to-bottom so it stays legible on phones
@@ -37,7 +38,9 @@ export interface ParallelRackVisualProps {
   splitStuckOpen: boolean
   floodingStuckOpen: boolean
   ddrStuckOpen: boolean
-  /** KoolGas defrost active — hot gas main flows */
+  /** Heat reclaim 3-way diverting through the store reclaim coil */
+  reclaimActive: boolean
+  /** HG defrost active — header flows into a circuit suction via its solenoid */
   hotGasDefrost: boolean
   /** DDR feeding discharge gas to the receiver (flooding mode, defrost draw, or stuck) */
   ddrBypassing: boolean
@@ -56,7 +59,14 @@ interface Geo {
   pCondOutA: string                          // condenser A outlet (joins upstream of flooding valve)
   pCondOutB: string                          // condenser B outlet → flooding valve → receiver
   pDdr: string                               // discharge → receiver bypass
-  pHotGas: string                            // receiver top → cases (KoolGas defrost main)
+  pHgHeader: string                          // post-oil-sep tap → HG solenoid → circuit suction
+  hgSolenoid: { x: number; y: number }
+  pHrIn: string | null                       // 3-way valve → reclaim coil (wide only)
+  pHrOut: string | null                      // reclaim coil → back to discharge main
+  pHrBypass: string | null                   // straight-through when not reclaiming
+  hrc: { x: number; y: number; w: number; h: number }
+  hrValve: { x: number; y: number } | null
+  hrLabel: { x: number; y: number }
   pLiquid: string[]                          // receiver → drier → cases
   pSuction: string; pSuctionStubs: string[]
   condA: { x: number; y: number; w: number; h: number }
@@ -76,7 +86,7 @@ interface Geo {
   mtCaption: { x: number; y: number }
   mtCase: { x: number; y: number; w: number; h: number }
   hotGasLabel: { x: number; y: number } | null
-  caseLineLabels: { suction: [number, number]; liquid: [number, number]; hotGas: [number, number] } | null
+  caseLineLabels: { suction: [number, number]; liquid: [number, number] } | null
   tagDischarge: { x: number; y: number }
   tagSuction: { x: number; y: number }
   tagReceiver: { x: number; y: number }
@@ -86,13 +96,20 @@ interface Geo {
 const WIDE: Geo = {
   viewBox: '0 0 860 330',
   pDischargeIn: 'M445,205 L445,120 L386,120',
-  pDischargeOut: 'M352,120 L185,120 L185,64',
+  pDischargeOut: 'M215,120 L185,120 L185,64',
   pSplitA: 'M185,64 L160,64',
   pSplitB: 'M185,64 L210,64',
   pCondOutA: 'M55,90 L55,104',
   pCondOutB: 'M315,88 L315,104 L55,104 L55,115 L92,115 L92,152',
-  pDdr: 'M330,120 L330,192 L114,192',
-  pHotGas: 'M114,165 L128,165 L128,20 L790,20 L790,46',
+  pDdr: 'M340,120 L340,192 L114,192',
+  pHgHeader: 'M369,92 L369,32 L620,32 L620,150 L700,150',
+  hgSolenoid: { x: 520, y: 32 },
+  pHrIn: 'M325,120 L325,151 L300,151',
+  pHrOut: 'M230,151 L215,151 L215,120',
+  pHrBypass: 'M325,120 L215,120',
+  hrc: { x: 230, y: 138, w: 70, h: 26 },
+  hrValve: { x: 325, y: 120 },
+  hrLabel: { x: 265, y: 180 },
   pLiquid: ['M92,246 L92,278 L745,278 L745,118'],
   pSuction: 'M700,112 L700,168 L340,168',
   pSuctionStubs: [346, 406, 466, 526].map(x => `M${x},168 L${x},205`),
@@ -115,10 +132,10 @@ const WIDE: Geo = {
   compW: 52,
   mtCaption: { x: 436, y: 276 },
   mtCase: { x: 640, y: 46, w: 185, h: 76 },
-  hotGasLabel: { x: 460, y: 14 },
-  caseLineLabels: { suction: [694, 138], liquid: [751, 138], hotGas: [782, 40] },
+  hotGasLabel: { x: 520, y: 20 },
+  caseLineLabels: { suction: [694, 138], liquid: [751, 138] },
   tagDischarge: { x: 495, y: 132 },
-  tagSuction: { x: 600, y: 158 },
+  tagSuction: { x: 566, y: 190 },
   tagReceiver: { x: 58, y: 306 },
   tagFlood: { x: 600, y: 214 },
 }
@@ -132,7 +149,14 @@ const TALL: Geo = {
   pCondOutA: 'M30,86 L30,108 L200,108 L200,118',
   pCondOutB: 'M255,86 L255,118 L63,118 L63,132',
   pDdr: 'M6,175 L40,175',
-  pHotGas: 'M86,157 L230,157',
+  pHgHeader: 'M6,340 L424,340',
+  hgSolenoid: { x: 215, y: 340 },
+  pHrIn: null,
+  pHrOut: null,
+  pHrBypass: null,
+  hrc: { x: 2, y: 270, w: 30, h: 44 },
+  hrValve: null,
+  hrLabel: { x: 36, y: 296 },
   pLiquid: ['M63,222 L63,250 L210,250 L210,166 L230,166'],
   pSuction: 'M415,172 L424,172 L424,400 L40,400',
   pSuctionStubs: [64, 160, 256, 352].map(x => `M${x},400 L${x},430`),
@@ -155,9 +179,9 @@ const TALL: Geo = {
   compW: 88,
   mtCaption: { x: 285, y: 540 },
   mtCase: { x: 230, y: 128, w: 185, h: 76 },
-  hotGasLabel: null,
+  hotGasLabel: { x: 215, y: 324 },
   caseLineLabels: null,
-  tagDischarge: { x: 52, y: 312 },
+  tagDischarge: { x: 52, y: 366 },
   tagSuction: { x: 230, y: 390 },
   tagReceiver: { x: 150, y: 214 },
   tagFlood: { x: 230, y: 364 },
@@ -185,10 +209,14 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
       <Pipe d={G.pSplitB} color={C.discharge} w={3.5} flowing={mtRunning && !bIsolated} dim={bIsolated} speed={1.1} />
       <Pipe d={G.pCondOutA} color={C.liquid} w={3.5} flowing={mtRunning} speed={0.8} />
       <Pipe d={G.pCondOutB} color={C.liquid} flowing={mtRunning} speed={0.8} />
-      {/* DDR bypass — dim/idle unless flooding mode, defrost draw, or stuck open */}
+      {/* DDR bypass — dim/idle unless flooding mode or stuck open */}
       <Pipe d={G.pDdr} color={C.discharge} w={3.2} flowing={ddrFlow && mtRunning} dim={!ddrFlow} speed={0.9} />
-      {/* KoolGas hot-gas defrost main: receiver top → cases */}
-      <Pipe d={G.pHotGas} color={C.discharge} w={3.2} flowing={p.hotGasDefrost && mtRunning} dim={!p.hotGasDefrost} speed={1.1} />
+      {/* Heat reclaim: 3-way valve → store reclaim coil → back, or straight bypass */}
+      {G.pHrIn && <Pipe d={G.pHrIn} color={C.discharge} w={3.2} flowing={p.reclaimActive && mtRunning} dim={!p.reclaimActive} speed={1.0} />}
+      {G.pHrOut && <Pipe d={G.pHrOut} color={C.discharge} w={3.2} flowing={p.reclaimActive && mtRunning} dim={!p.reclaimActive} speed={1.0} />}
+      {G.pHrBypass && <Pipe d={G.pHrBypass} color={C.discharge} flowing={!p.reclaimActive && mtRunning} dim={p.reclaimActive} speed={1.2} />}
+      {/* HG defrost header: post-oil-sep discharge → HG solenoid → circuit suction */}
+      <Pipe d={G.pHgHeader} color={C.discharge} w={3.2} flowing={p.hotGasDefrost && mtRunning} dim={!p.hotGasDefrost} speed={1.1} />
       {G.pLiquid.map((d, i) => <Pipe key={i} d={d} color={C.liquid} flowing={mtRunning} speed={0.8} />)}
       <Pipe d={G.pSuction} color={C.suction} flowing={mtRunning} />
       {G.pSuctionStubs.map((d, i) => <Pipe key={i} d={d} color={C.suction} w={3.5} flowing={mtRunning} />)}
@@ -212,6 +240,22 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
 
       {/* ── Oil separator on the discharge line ── */}
       <Vessel x={G.oilSep.x} y={G.oilSep.y} w={G.oilSep.w} h={G.oilSep.h} level={0.35} label="Oil Sep" liquidColor="#a16207" />
+
+      {/* ── Heat reclaim coil (store air handler) ── */}
+      <g opacity={p.reclaimActive ? 1 : 0.55}>
+        <rect x={G.hrc.x} y={G.hrc.y} width={G.hrc.w} height={G.hrc.h} rx={5} fill="url(#simCoil)" stroke={p.reclaimActive ? '#f97316' : C.stroke} strokeWidth={1.5} />
+        {Array.from({ length: Math.floor(G.hrc.w / 9) }, (_, i) => (
+          <line key={i} x1={G.hrc.x + 5 + i * 9} y1={G.hrc.y + 3} x2={G.hrc.x + 5 + i * 9} y2={G.hrc.y + G.hrc.h - 3} stroke={C.metalDark} strokeWidth={0.7} opacity={0.5} />
+        ))}
+      </g>
+      <text x={G.hrLabel.x} y={G.hrLabel.y} textAnchor={G.hrValve ? 'middle' : 'start'} fontSize={10}
+        fontWeight={700} fill={p.reclaimActive ? '#f97316' : C.text}>
+        Heat Reclaim{p.reclaimActive ? ' — ON' : ''}
+      </text>
+      {G.hrValve && <Valve x={G.hrValve.x} y={G.hrValve.y} label="HR 3-way" state="auto" />}
+
+      {/* ── HG defrost solenoid on the header ── */}
+      <Valve x={G.hgSolenoid.x} y={G.hgSolenoid.y} state="auto" />
 
       {/* ── Flooding (receiver pressure) valve + DDR ── */}
       <Valve x={G.floodValve.x} y={G.floodValve.y} label="Flooding" state={p.floodingStuckOpen ? 'open' : 'auto'} labelBelow />
@@ -252,14 +296,13 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
       {G.hotGasLabel && (
         <text x={G.hotGasLabel.x} y={G.hotGasLabel.y} textAnchor="middle" fontSize={9.5} fontWeight={700}
           fill={p.hotGasDefrost ? C.discharge : C.text} opacity={p.hotGasDefrost ? 1 : 0.7}>
-          KoolGas defrost main {p.hotGasDefrost ? '— FLOWING' : ''}
+          HG defrost header · solenoids per circuit{p.hotGasDefrost ? ' — FLOWING' : ''}
         </text>
       )}
       {G.caseLineLabels && (
         <g fontSize={9} fontWeight={700}>
           <text x={G.caseLineLabels.suction[0]} y={G.caseLineLabels.suction[1]} textAnchor="end" fill={C.suction}>suction</text>
           <text x={G.caseLineLabels.liquid[0]} y={G.caseLineLabels.liquid[1]} textAnchor="start" fill={C.liquid}>liquid</text>
-          <text x={G.caseLineLabels.hotGas[0]} y={G.caseLineLabels.hotGas[1]} textAnchor="end" fill={C.discharge}>hot gas</text>
         </g>
       )}
 
@@ -312,15 +355,28 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
                 color: p.ddrStuckOpen ? 'text-red-600 dark:text-red-400' : p.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
               { label: 'Δ disch→recv', value: `${receiverDrop.toFixed(0)} psig`, color: receiverDrop < 4 ? 'text-amber-600 dark:text-amber-400' : undefined },
               { label: 'Duty', value: 'Presses receiver when flooding' },
-              ...(p.defrostStuck ? [{ label: 'KoolGas draw', value: 'Feeding receiver', color: 'text-amber-600 dark:text-amber-400' }] : []),
+            ],
+          })} />
+          <Hotspot x={G.hrc.x - 4} y={G.hrc.y - 4} w={G.hrc.w + 8} h={G.hrc.h + 8} selected={p.selectedId === 'hrc'} onSelect={pick({
+            id: 'hrc', title: 'Heat Reclaim Coil', subtitle: '3-way valve · store air handler',
+            rows: [
+              { label: 'State', value: p.reclaimActive ? 'RECLAIMING — heating the store' : 'Bypassed', color: p.reclaimActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Duty', value: 'Recovers compressor heat before the condenser' },
+            ],
+          })} />
+          <Hotspot x={G.hgSolenoid.x - 16} y={G.hgSolenoid.y - 18} w={32} h={36} selected={p.selectedId === 'hgsol'} onSelect={pick({
+            id: 'hgsol', title: 'HG Defrost Solenoids', subtitle: 'one per circuit — header → circuit suction',
+            rows: [
+              { label: 'State', value: p.hotGasDefrost ? 'OPEN — circuit in defrost' : 'All closed', color: p.hotGasDefrost ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Source', value: 'Discharge, after the oil separator' },
+              { label: 'Feeds', value: 'Backwards through the circuit suction' },
             ],
           })} />
           <Hotspot x={G.recv.x} y={G.recv.y} w={G.recv.w} h={G.recv.h} selected={p.selectedId === 'recv'} onSelect={pick({
-            id: 'recv', title: 'Liquid Receiver', subtitle: 'KoolGas defrost gas draws off the top',
+            id: 'recv', title: 'Liquid Receiver',
             rows: [
               { label: 'Pressure', value: `${p.receiverPsig.toFixed(0)} psig` },
               { label: 'Level', value: `${Math.round(p.receiverLevel * 100)}%`, color: p.receiverLevel < 0.2 ? 'text-red-600 dark:text-red-400' : p.receiverLevel > 0.7 ? 'text-amber-600 dark:text-amber-400' : undefined },
-              ...(p.hotGasDefrost ? [{ label: 'Defrost draw', value: 'ACTIVE — supplying hot gas', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
           })} />
           <Hotspot x={G.drier.x - 4} y={G.drier.y - 6} w={90} h={26} selected={p.selectedId === 'drier'} onSelect={pick({
