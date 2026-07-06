@@ -11,8 +11,8 @@ import type { SchematicDetail } from './SchematicViewer'
 //   tall — portrait, stacked top-to-bottom so it stays legible on phones
 
 export interface ParallelRackVisualProps {
-  fansSpinning: [boolean, boolean]
-  fansFailed: [boolean, boolean]      // already concealed by caller in scenario mode
+  fansSpinning: boolean[]             // 6 CFMs; parked fans (HP-ctrl staging) don't spin
+  fansFailed: boolean[]               // already concealed by caller in scenario mode
   dirtyCondenser: boolean
   comps: { label: string; status: CompVisStatus; amps: number; model?: string; injecting?: boolean }[]      // 4 MT Discus recips
   receiverLevel: number               // 0–1
@@ -48,7 +48,7 @@ interface Geo {
   pLiquid: string[]                          // receiver → drier → cases
   pSuction: string; pSuctionStubs: string[]
   cond: { x: number; y: number; w: number; h: number }
-  fans: [{ x: number; y: number }, { x: number; y: number }]
+  fans: { x: number; y: number }[]
   hpTag: { x: number; y: number }
   oilSep: { x: number; y: number; w: number; h: number }
   floodValve: { x: number; y: number }
@@ -76,7 +76,7 @@ const WIDE: Geo = {
   pSuction: 'M700,112 L700,168 L340,168',
   pSuctionStubs: [346, 406, 466, 526].map(x => `M${x},168 L${x},205`),
   cond: { x: 40, y: 42, w: 270, h: 46 },
-  fans: [{ x: 110, y: 65 }, { x: 240, y: 65 }],
+  fans: [62, 107, 152, 198, 243, 288].map(x => ({ x, y: 65 })),
   hpTag: { x: 175, y: 108 },
   oilSep: { x: 352, y: 92, w: 34, h: 55 },
   floodValve: { x: 74, y: 115 },
@@ -104,7 +104,7 @@ const TALL: Geo = {
   pSuction: 'M415,160 L424,160 L424,400 L40,400',
   pSuctionStubs: [64, 160, 256, 352].map(x => `M${x},400 L${x},430`),
   cond: { x: 20, y: 42, w: 250, h: 44 },
-  fans: [{ x: 85, y: 64 }, { x: 205, y: 64 }],
+  fans: [40, 82, 124, 166, 208, 250].map(x => ({ x, y: 64 })),
   hpTag: { x: 145, y: 102 },
   oilSep: { x: 90, y: 492, w: 70, h: 28 },
   floodValve: { x: 160, y: 118 },
@@ -147,8 +147,9 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
 
       {/* ── Condenser ── */}
       <Coil x={G.cond.x} y={G.cond.y} w={G.cond.w} h={G.cond.h} fouled={p.dirtyCondenser} label="Air-Cooled Condenser" />
-      <Fan x={G.fans[0].x} y={G.fans[0].y} r={17} spinning={p.fansSpinning[0]} failed={p.fansFailed[0]} />
-      <Fan x={G.fans[1].x} y={G.fans[1].y} r={17} spinning={p.fansSpinning[1]} failed={p.fansFailed[1]} />
+      {G.fans.map((f, i) => (
+        <Fan key={i} x={f.x} y={f.y} r={13} spinning={p.fansSpinning[i] ?? true} failed={p.fansFailed[i] ?? false} />
+      ))}
       {p.hpCtrlActive && <Tag x={G.hpTag.x} y={G.hpTag.y} text="HP CTRL — flooding mode" color={C.warn} />}
 
       {/* ── Oil separator on the discharge line ── */}
@@ -199,10 +200,10 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
       {p.onSelect && (
         <g>
           <Hotspot x={G.cond.x} y={G.cond.y} w={G.cond.w} h={G.cond.h} selected={p.selectedId === 'cond'} onSelect={pick({
-            id: 'cond', title: 'Air-Cooled Condenser', subtitle: '2-fan remote',
+            id: 'cond', title: 'Air-Cooled Condenser', subtitle: '6-fan remote',
             rows: [
               { label: 'Discharge', value: `${p.dischargePsig.toFixed(0)} psig` },
-              { label: 'Fans', value: `${fansUp}/2 running`, color: fansUp < 2 ? 'text-red-600 dark:text-red-400' : undefined },
+              { label: 'Fans', value: `${fansUp}/6 healthy`, color: fansUp < 6 ? 'text-red-600 dark:text-red-400' : undefined },
               { label: 'HP control', value: p.hpCtrlActive ? 'Active (flooding)' : 'Off' },
               ...(p.dirtyCondenser ? [{ label: 'Coil', value: 'FOULED', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
@@ -229,6 +230,7 @@ export default function ParallelRackVisual(p: ParallelRackVisualProps) {
                 color: p.ddrStuckOpen ? 'text-red-600 dark:text-red-400' : p.ddrBypassing ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
               { label: 'Δ disch→recv', value: `${receiverDrop.toFixed(0)} psig`, color: receiverDrop < 4 ? 'text-amber-600 dark:text-amber-400' : undefined },
               { label: 'Duty', value: 'Presses receiver when flooding' },
+              ...(p.defrostStuck ? [{ label: 'KoolGas draw', value: 'Feeding receiver', color: 'text-amber-600 dark:text-amber-400' }] : []),
             ],
           })} />
           <Hotspot x={G.recv.x} y={G.recv.y} w={G.recv.w} h={G.recv.h} selected={p.selectedId === 'recv'} onSelect={pick({
