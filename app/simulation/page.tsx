@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy, Zap } from 'lucide-react'
+import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy, Zap, Refrigerator } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import PageHeader from '@/components/PageHeader'
 
@@ -49,6 +49,19 @@ const RACKS = [
     source: 'R-744 booster architecture · gas cooler optimization curve',
   },
   {
+    href: '/simulation/dt-bunker',
+    rackKey: 'dt-bunker',
+    icon: Refrigerator,
+    accent: 'cyan',
+    name: 'DT Bunker Case',
+    refrigerant: 'R-448A · LT Case',
+    description:
+      'A single frozen island off the rack — TXV, DT switch, fan-delay klixon, two evap fans and electric ' +
+      'defrost heaters. Chase refrigeration faults AND electrical faults with an amp clamp and a meter.',
+    stats: ['14 faults — refrigeration + electrical', '10 scored scenarios + Mystery Fault', 'Refrigeration / defrost mode toggle', 'Case wiring trainer (fan + heater rungs)'],
+    source: 'Modeled on a Hussmann-style 8 ft single-deck bunker',
+  },
+  {
     href: '/simulation/safety-circuit',
     rackKey: 'safety-circuit',
     icon: Zap,
@@ -83,6 +96,11 @@ const ACCENT = {
     iconBox: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400',
     hover: 'hover:border-amber-400 dark:hover:border-amber-500',
     badge: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300',
+  },
+  cyan: {
+    iconBox: 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+    hover: 'hover:border-cyan-400 dark:hover:border-cyan-500',
+    badge: 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300',
   },
 } as const
 
