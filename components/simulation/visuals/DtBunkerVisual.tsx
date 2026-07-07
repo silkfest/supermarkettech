@@ -5,11 +5,13 @@ import type { SchematicDetail } from './SchematicViewer'
 // ── DT bunker (single-deck frozen island) — true-to-life cross-section ─────────
 // Walk-up anatomy: an open-top insulated tub. Product sits ON the deck below the
 // load line. Air returns through a grille at one top edge, drops down the hollow
-// side wall (duct), passes through the coil under the deck, and the downstream
-// plenum fans pull it through and push it up the far wall duct to discharge
-// across the opening as the air curtain (draw-through — coil first, fans after).
+// side wall (duct), and hits the coil/fan assembly under the deck: the fans are
+// mounted on a fan board directly on the coil's upstream face and blow straight
+// through it — one assembly, not separate components. The conditioned air rises
+// up the far wall duct and discharges across the opening as the air curtain.
 // DT + fan-delay klixon clamp to the coil; calrod defrost heaters run beneath
-// it; the TXV feeds the coil inlet from an underfloor liquid line.
+// it; TXV and suction header share the coil's far end plate, fed by underfloor
+// lines.
 
 export interface DtBunkerVisualProps {
   fansSpinning: [boolean, boolean]
@@ -55,6 +57,7 @@ interface Geo {
   pLiquid: string
   pSuction: string
   suctionDropX: number                                  // where the suction line turns down
+  suctionY: number                                      // suction header exit height on the end plate
   product: { x: number; y: number; w: number; h: number }
   loadLineY: number
   title: { x: number; y: number } | null
@@ -76,16 +79,17 @@ const WIDE: Geo = {
   curtainY: 94,
   deck: { y: 224, h: 8 },
   plenumBotY: 298,
-  fans: [{ x: 520, y: 268 }, { x: 580, y: 268 }],
+  fans: [{ x: 328, y: 268 }, { x: 366, y: 268 }],
   fanR: 16,
-  coil: { x: 268, y: 248, w: 196, h: 38 },
+  coil: { x: 382, y: 248, w: 200, h: 38 },
   heatersY: 293,
-  txv: { x: 256, y: 268 },
-  dt: { x: 294, y: 239 },
-  klix: { x: 474, y: 239 },
-  pLiquid: 'M120,344 L256,344 L256,276',
-  pSuction: 'M490,268 L490,344 L764,344',
-  suctionDropX: 490,
+  txv: { x: 598, y: 272 },
+  dt: { x: 410, y: 239 },
+  klix: { x: 556, y: 239 },
+  pLiquid: 'M120,344 L598,344 L598,272',
+  pSuction: 'M618,252 L618,344 L764,344',
+  suctionDropX: 618,
+  suctionY: 252,
   product: { x: 248, y: 156, w: 364, h: 68 },
   loadLineY: 150,
   title: { x: 430, y: 32 },
@@ -93,7 +97,7 @@ const WIDE: Geo = {
   tagReturn: { x: 218, y: 64 },
   tagSuction: { x: 772, y: 348, anchor: 'start' },
   tagProduct: { x: 430, y: 196 },
-  heaterLabel: { x: 366, y: 324 },
+  heaterLabel: { x: 482, y: 324 },
   warnY: 134,
 }
 
@@ -107,16 +111,17 @@ const TALL: Geo = {
   curtainY: 103,
   deck: { y: 282, h: 7 },
   plenumBotY: 370,
-  fans: [{ x: 300, y: 328 }, { x: 340, y: 328 }],
+  fans: [{ x: 92, y: 328 }, { x: 126, y: 328 }],
   fanR: 14,
-  coil: { x: 100, y: 310, w: 170, h: 36 },
+  coil: { x: 140, y: 310, w: 180, h: 36 },
   heatersY: 353,
-  txv: { x: 88, y: 328 },
-  pLiquid: 'M6,416 L88,416 L88,336',
-  pSuction: 'M282,328 L282,416 L424,416',
-  suctionDropX: 282,
-  dt: { x: 122, y: 301 },
-  klix: { x: 262, y: 301 },
+  txv: { x: 334, y: 332 },
+  pLiquid: 'M6,416 L334,416 L334,332',
+  pSuction: 'M352,314 L352,416 L424,416',
+  suctionDropX: 352,
+  suctionY: 314,
+  dt: { x: 162, y: 301 },
+  klix: { x: 296, y: 301 },
   product: { x: 78, y: 216, w: 274, h: 66 },
   loadLineY: 210,
   title: { x: 215, y: 30 },
@@ -124,7 +129,7 @@ const TALL: Geo = {
   tagReturn: { x: 100, y: 72 },
   tagSuction: { x: 388, y: 438, anchor: 'middle' },
   tagProduct: { x: 215, y: 252 },
-  heaterLabel: { x: 185, y: 366 },
+  heaterLabel: { x: 226, y: 366 },
   warnY: 142,
 }
 
@@ -258,11 +263,13 @@ export default function DtBunkerVisual(p: DtBunkerVisualProps) {
       <Tag x={G.tagProduct.x} y={G.tagProduct.y} text={`product ${p.productF.toFixed(0)}°F`} color={p.productColor} />
 
       {/* ── Plenum machinery: fans → TXV/coil → heaters ── */}
+      {/* fan board — fans mount on the coil's upstream face and blow through it */}
+      <rect x={G.coil.x - 5} y={G.coil.y - 3} width={5} height={G.coil.h + 6} fill={C.metalDark} opacity={0.85} rx={1} />
       {[0, 1].map(i => (
         <Fan key={i} x={G.fans[i].x} y={G.fans[i].y} r={G.fanR} spinning={p.fansSpinning[i]} failed={p.fansFailed[i]} />
       ))}
       <text x={(G.fans[0].x + G.fans[1].x) / 2} y={G.fans[0].y + G.fanR + 10} textAnchor="middle" fontSize={8} fontWeight={700} fill={C.stroke}>
-        plenum fans
+        coil fans
       </text>
 
       <Coil x={G.coil.x} y={G.coil.y} w={G.coil.w} h={G.coil.h} />
@@ -291,11 +298,11 @@ export default function DtBunkerVisual(p: DtBunkerVisualProps) {
         defrost heaters{p.heatersOn ? (p.heaterHalf ? ' — HALF POWER' : ' — ON') : ''}
       </text>
 
-      {/* ── Refrigerant: underfloor liquid line up to the TXV; suction back down ── */}
+      {/* ── Refrigerant: TXV + suction header share the coil end plate; lines run underfloor ── */}
       <path d={G.pLiquid} stroke={C.liquid} strokeWidth={3.5} fill="none" opacity={0.9} />
       <path d={G.pSuction} stroke={C.suction} strokeWidth={3.5} fill="none" opacity={0.9} />
-      <line x1={G.txv.x} y1={G.txv.y} x2={G.coil.x} y2={G.txv.y} stroke={C.liquid} strokeWidth={3} opacity={0.9} />
-      <line x1={G.coil.x + G.coil.w} y1={G.txv.y} x2={G.suctionDropX} y2={G.txv.y} stroke={C.suction} strokeWidth={3} opacity={0.9} />
+      <line x1={G.coil.x + G.coil.w} y1={G.txv.y} x2={G.txv.x} y2={G.txv.y} stroke={C.liquid} strokeWidth={3} opacity={0.9} />
+      <line x1={G.coil.x + G.coil.w} y1={G.suctionY} x2={G.suctionDropX} y2={G.suctionY} stroke={C.suction} strokeWidth={3} opacity={0.9} />
       <Valve x={G.txv.x} y={G.txv.y} label="TXV" labelBelow
         state={p.txvState === 'starved' ? 'closed' : p.txvState === 'flooding' ? 'open' : 'auto'} />
 
