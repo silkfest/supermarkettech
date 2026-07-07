@@ -4,11 +4,12 @@ import type { SchematicDetail } from './SchematicViewer'
 
 // ── DT bunker (single-deck frozen island) — true-to-life cross-section ─────────
 // Walk-up anatomy: an open-top insulated tub. Product sits ON the deck below the
-// load line. Air returns through a grille at one top edge, is pulled down the
-// hollow side wall (duct), pushed by the plenum fans through the coil under the
-// deck, up the far wall duct, and discharged across the opening as the air
-// curtain. DT + fan-delay klixon clamp to the coil; calrod defrost heaters run
-// beneath it; the TXV feeds the coil inlet from an underfloor liquid line.
+// load line. Air returns through a grille at one top edge, drops down the hollow
+// side wall (duct), passes through the coil under the deck, and the downstream
+// plenum fans pull it through and push it up the far wall duct to discharge
+// across the opening as the air curtain (draw-through — coil first, fans after).
+// DT + fan-delay klixon clamp to the coil; calrod defrost heaters run beneath
+// it; the TXV feeds the coil inlet from an underfloor liquid line.
 
 export interface DtBunkerVisualProps {
   fansSpinning: [boolean, boolean]
@@ -75,16 +76,16 @@ const WIDE: Geo = {
   curtainY: 94,
   deck: { y: 224, h: 8 },
   plenumBotY: 298,
-  fans: [{ x: 285, y: 268 }, { x: 345, y: 268 }],
+  fans: [{ x: 520, y: 268 }, { x: 580, y: 268 }],
   fanR: 16,
-  coil: { x: 392, y: 248, w: 196, h: 38 },
+  coil: { x: 268, y: 248, w: 196, h: 38 },
   heatersY: 293,
-  txv: { x: 380, y: 268 },
-  dt: { x: 418, y: 239 },
-  klix: { x: 598, y: 239 },
-  pLiquid: 'M120,344 L380,344 L380,276',
-  pSuction: 'M612,268 L612,344 L764,344',
-  suctionDropX: 612,
+  txv: { x: 256, y: 268 },
+  dt: { x: 294, y: 239 },
+  klix: { x: 474, y: 239 },
+  pLiquid: 'M120,344 L256,344 L256,276',
+  pSuction: 'M490,268 L490,344 L764,344',
+  suctionDropX: 490,
   product: { x: 248, y: 156, w: 364, h: 68 },
   loadLineY: 150,
   title: { x: 430, y: 32 },
@@ -92,7 +93,7 @@ const WIDE: Geo = {
   tagReturn: { x: 218, y: 64 },
   tagSuction: { x: 772, y: 348, anchor: 'start' },
   tagProduct: { x: 430, y: 196 },
-  heaterLabel: { x: 496, y: 324 },
+  heaterLabel: { x: 366, y: 324 },
   warnY: 134,
 }
 
@@ -106,16 +107,16 @@ const TALL: Geo = {
   curtainY: 103,
   deck: { y: 282, h: 7 },
   plenumBotY: 370,
-  fans: [{ x: 82, y: 328 }, { x: 124, y: 328 }],
+  fans: [{ x: 300, y: 328 }, { x: 340, y: 328 }],
   fanR: 14,
-  coil: { x: 166, y: 310, w: 182, h: 36 },
+  coil: { x: 100, y: 310, w: 170, h: 36 },
   heatersY: 353,
-  txv: { x: 155, y: 328 },
-  pLiquid: 'M6,416 L155,416 L155,336',
-  pSuction: 'M362,328 L362,416 L424,416',
-  suctionDropX: 362,
-  dt: { x: 188, y: 301 },
-  klix: { x: 356, y: 301 },
+  txv: { x: 88, y: 328 },
+  pLiquid: 'M6,416 L88,416 L88,336',
+  pSuction: 'M282,328 L282,416 L424,416',
+  suctionDropX: 282,
+  dt: { x: 122, y: 301 },
+  klix: { x: 262, y: 301 },
   product: { x: 78, y: 216, w: 274, h: 66 },
   loadLineY: 210,
   title: { x: 215, y: 30 },
@@ -123,7 +124,7 @@ const TALL: Geo = {
   tagReturn: { x: 100, y: 72 },
   tagSuction: { x: 388, y: 438, anchor: 'middle' },
   tagProduct: { x: 215, y: 252 },
-  heaterLabel: { x: 254, y: 366 },
+  heaterLabel: { x: 185, y: 366 },
   warnY: 142,
 }
 
