@@ -22,6 +22,8 @@ export interface Co2BoosterVisualProps {
   bypassPct: number        // manual HPV bypass hand valve, 0 = normally closed
   hrActive: boolean        // heat reclaim to DHW in service
   dhwTempF: number
+  icLevel: number          // intercooler liquid level 0–1 (normal ~0.45)
+  icTempF: number
   mtComps: { label: string; status: CompVisStatus; amps: number }[]
   ltComps: { label: string; status: CompVisStatus; amps: number }[]
   mtSuctionPsig: number
@@ -52,6 +54,10 @@ interface Geo {
   bypassValve: { x: number; y: number }
   bypassLabel: { x: number; y: number }
   hr: { x: number; y: number; w: number; h: number }   // heat reclaim coil on the discharge
+  ic: { x: number; y: number; w: number; h: number }   // intercooler vessel (LT discharge → MT suction)
+  icLabel: string                                       // 'Intercooler' wide / 'IC' tall
+  pIcVapor: string                                      // intercooler vapor → MT suction
+  pIcFeed: string                                       // receiver liquid → intercooler level valve
   tank: { x: number; y: number; w: number; h: number }
   rv: { stubX: number }                                    // relief valve stub on tank top
   rvTextAnchor: 'start' | 'end'
@@ -78,7 +84,7 @@ const WIDE: Geo = {
   pMtSuction: 'M712,112 L712,228 L210,228 L210,250',
   pMtStubs: ['M110,228 L110,250', 'M160,228 L160,250'],
   pLtSuction: ['M790,250 L790,312 L420,312 L420,295', 'M370,312 L370,295'],
-  pLtDischarge: 'M395,250 L395,228',
+  pLtDischarge: 'M395,250 L395,224',
   gc: { x: 230, y: 42, w: 250, h: 46 },
   fans: [262, 324, 386, 448].map(x => ({ x, y: 65 })),
   transTag: { x: 355, y: 16 },
@@ -87,6 +93,10 @@ const WIDE: Geo = {
   bypassValve: { x: 606, y: 94 },
   bypassLabel: { x: 606, y: 78 },
   hr: { x: 130, y: 156, w: 60, h: 36 },
+  ic: { x: 375, y: 168, w: 40, h: 56 },
+  icLabel: 'Intercooler',
+  pIcVapor: 'M385,168 L385,150 L340,150 L340,228',
+  pIcFeed: 'M622,246 L430,246 L430,214 L415,214',
   tank: { x: 622, y: 152, w: 48, h: 100 },
   rv: { stubX: 658 }, rvTextAnchor: 'start',
   fgbv: { x: 596, y: 170 },
@@ -98,7 +108,7 @@ const WIDE: Geo = {
   ltCase: { x: 690, y: 186, w: 150, h: 64 },
   tagHead: { x: 200, y: 108 },
   tagFlash: { x: 646, y: 290 },
-  tagMt: { x: 470, y: 218 },
+  tagMt: { x: 270, y: 218 },
   tagLt: { x: 600, y: 330 },
 }
 
@@ -116,7 +126,7 @@ const TALL: Geo = {
   pMtSuction: 'M415,172 L424,172 L424,350 L40,350',
   pMtStubs: ['M75,350 L75,380', 'M175,350 L175,380', 'M275,350 L275,380'],
   pLtSuction: ['M400,292 L400,460 L155,460 L155,480', 'M260,460 L260,480'],
-  pLtDischarge: 'M110,504 L20,504 L20,350 L40,350',
+  pLtDischarge: 'M110,504 L20,504 L20,465',
   gc: { x: 20, y: 42, w: 260, h: 44 },
   fans: [53, 118, 182, 247].map(x => ({ x, y: 64 })),
   transTag: null,
@@ -125,6 +135,10 @@ const TALL: Geo = {
   bypassValve: { x: 166, y: 142 },
   bypassLabel: { x: 166, y: 160 },
   hr: { x: 62, y: 428, w: 58, h: 32 },
+  ic: { x: 2, y: 395, w: 24, h: 70 },
+  icLabel: 'IC',
+  pIcVapor: 'M20,395 L20,350 L40,350',
+  pIcFeed: 'M46,240 L46,330 L14,330 L14,395',
   tank: { x: 40, y: 140, w: 48, h: 100 },
   rv: { stubX: 76 }, rvTextAnchor: 'start',
   fgbv: { x: 119, y: 185 },
@@ -187,6 +201,8 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
       {G.pMtStubs.map((d, i) => <Pipe key={i} d={d} color={C.suction} w={3.2} flowing={mtRunning} />)}
       {G.pLtSuction.map((d, i) => <Pipe key={i} d={d} color={C.ltSuction} w={i === 0 ? 4.5 : 3.2} flowing={ltRunning} />)}
       <Pipe d={G.pLtDischarge} color={C.ltSuction} w={3.5} flowing={ltRunning} speed={1.2} />
+      <Pipe d={G.pIcVapor} color={C.suction} w={3.2} flowing={ltRunning} speed={0.9} />
+      <Pipe d={G.pIcFeed} color={C.liquid} w={2.6} flowing={hpvFlow} speed={0.6} />
 
       {/* ── Gas cooler ── */}
       <Coil x={G.gc.x} y={G.gc.y} w={G.gc.w} h={G.gc.h} fouled={p.gcFouled} label={p.transcritical ? 'Gas Cooler — transcritical' : 'Gas Cooler / Condenser — subcritical'} />
@@ -207,8 +223,8 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
         </text>
       ) : (
         <g>
-          <rect x={G.bypassLabel.x - 34} y={G.bypassLabel.y - 9} width={68} height={12} rx={2} fill="#dc2626" />
-          <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="#ffffff">
+          <rect x={G.bypassLabel.x - 40} y={G.bypassLabel.y - 9} width={80} height={12} rx={2} fill="#dc2626" />
+          <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={7} fontWeight={800} fill="#ffffff">
             NORMALLY CLOSED
           </text>
         </g>
@@ -247,6 +263,9 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
 
       {/* ── FGBV ── */}
       <Valve x={G.fgbv.x} y={G.fgbv.y} label="FGBV" state={p.fgbv} labelBelow />
+
+      {/* ── Intercooler — desuperheats the LT discharge before the MT suction ── */}
+      <Vessel x={G.ic.x} y={G.ic.y} w={G.ic.w} h={G.ic.h} level={p.icLevel} label={G.icLabel} liquidColor="#38bdf8" />
 
       {/* ── Compressors ── */}
       {p.mtComps.map((c, i) => (
@@ -313,6 +332,15 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
           <Hotspot x={G.fgbv.x - 20} y={G.fgbv.y - 22} w={40} h={42} selected={p.selectedId === 'fgbv'} onSelect={pick({
             id: 'fgbv', title: 'Flash Gas Bypass Valve (FGBV)', subtitle: 'flash tank vapor → MT suction',
             rows: [{ label: 'State', ...valveRow(p.fgbv) }],
+          })} />
+          <Hotspot x={G.ic.x - 3} y={G.ic.y - 3} w={G.ic.w + 6} h={G.ic.h + 6} selected={p.selectedId === 'ic'} onSelect={pick({
+            id: 'ic', title: 'Intercooler', subtitle: 'LT discharge bubbles through liquid → MT suction',
+            rows: [
+              { label: 'Level', value: `${Math.round(p.icLevel * 100)} %`,
+                color: p.icLevel <= 0.10 || p.icLevel >= 0.85 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Vessel temp', value: `${p.icTempF.toFixed(0)} °F` },
+              { label: 'Duty', value: 'Desuperheats LT discharge · subcools LT liquid' },
+            ],
           })} />
           {p.mtComps.map((c, i) => (
             <Hotspot key={c.label} x={G.mtComps[i].x} y={G.mtComps[i].y} w={G.mtCompW} h={46} selected={p.selectedId === `mt${i}`} onSelect={pick({
