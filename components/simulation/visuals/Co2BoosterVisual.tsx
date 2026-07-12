@@ -19,6 +19,11 @@ export interface Co2BoosterVisualProps {
   rvWarn: boolean
   hpv: ValveVisState
   fgbv: ValveVisState
+  bypassPct: number        // manual HPV bypass hand valve, 0 = normally closed
+  hrActive: boolean        // heat reclaim to DHW in service
+  dhwTempF: number
+  icLevel: number          // intercooler liquid level 0–1 (normal ~0.45)
+  icTempF: number
   mtComps: { label: string; status: CompVisStatus; amps: number }[]
   ltComps: { label: string; status: CompVisStatus; amps: number }[]
   mtSuctionPsig: number
@@ -45,6 +50,14 @@ interface Geo {
   fans: { x: number; y: number }[]
   transTag: { x: number; y: number } | null   // null = GC label already says it (tall)
   hpv: { x: number; y: number }
+  pBypass: string                              // hand-valve line around the HPV
+  bypassValve: { x: number; y: number }
+  bypassLabel: { x: number; y: number }
+  hr: { x: number; y: number; w: number; h: number }   // heat reclaim coil on the discharge
+  ic: { x: number; y: number; w: number; h: number }   // intercooler vessel (LT discharge → MT suction)
+  icLabel: string                                       // 'Intercooler' wide / 'IC' tall
+  pIcVapor: string                                      // intercooler vapor → MT suction
+  pIcFeed: string                                       // receiver liquid → intercooler level valve
   tank: { x: number; y: number; w: number; h: number }
   rv: { stubX: number }                                    // relief valve stub on tank top
   rvTextAnchor: 'start' | 'end'
@@ -71,11 +84,19 @@ const WIDE: Geo = {
   pMtSuction: 'M712,112 L712,228 L210,228 L210,250',
   pMtStubs: ['M110,228 L110,250', 'M160,228 L160,250'],
   pLtSuction: ['M790,250 L790,312 L420,312 L420,295', 'M370,312 L370,295'],
-  pLtDischarge: 'M395,250 L395,228',
+  pLtDischarge: 'M395,250 L395,224',
   gc: { x: 230, y: 42, w: 250, h: 46 },
   fans: [262, 324, 386, 448].map(x => ({ x, y: 65 })),
   transTag: { x: 355, y: 16 },
   hpv: { x: 606, y: 120 },
+  pBypass: 'M575,120 L575,94 L637,94 L637,120',
+  bypassValve: { x: 606, y: 94 },
+  bypassLabel: { x: 606, y: 78 },
+  hr: { x: 130, y: 156, w: 60, h: 36 },
+  ic: { x: 375, y: 168, w: 40, h: 56 },
+  icLabel: 'Intercooler',
+  pIcVapor: 'M385,168 L385,150 L340,150 L340,228',
+  pIcFeed: 'M622,246 L430,246 L430,214 L415,214',
   tank: { x: 622, y: 152, w: 48, h: 100 },
   rv: { stubX: 658 }, rvTextAnchor: 'start',
   fgbv: { x: 596, y: 170 },
@@ -87,7 +108,7 @@ const WIDE: Geo = {
   ltCase: { x: 690, y: 186, w: 150, h: 64 },
   tagHead: { x: 200, y: 108 },
   tagFlash: { x: 646, y: 290 },
-  tagMt: { x: 470, y: 218 },
+  tagMt: { x: 270, y: 218 },
   tagLt: { x: 600, y: 330 },
 }
 
@@ -105,11 +126,19 @@ const TALL: Geo = {
   pMtSuction: 'M415,172 L424,172 L424,350 L40,350',
   pMtStubs: ['M75,350 L75,380', 'M175,350 L175,380', 'M275,350 L275,380'],
   pLtSuction: ['M400,292 L400,460 L155,460 L155,480', 'M260,460 L260,480'],
-  pLtDischarge: 'M110,504 L20,504 L20,350 L40,350',
+  pLtDischarge: 'M110,504 L20,504 L20,465',
   gc: { x: 20, y: 42, w: 260, h: 44 },
   fans: [53, 118, 182, 247].map(x => ({ x, y: 64 })),
   transTag: null,
   hpv: { x: 160, y: 110 },
+  pBypass: 'M205,110 L205,142 L120,142 L120,110',
+  bypassValve: { x: 166, y: 142 },
+  bypassLabel: { x: 166, y: 160 },
+  hr: { x: 62, y: 428, w: 58, h: 32 },
+  ic: { x: 2, y: 395, w: 24, h: 70 },
+  icLabel: 'IC',
+  pIcVapor: 'M20,395 L20,350 L40,350',
+  pIcFeed: 'M46,240 L46,330 L14,330 L14,395',
   tank: { x: 40, y: 140, w: 48, h: 100 },
   rv: { stubX: 76 }, rvTextAnchor: 'start',
   fgbv: { x: 119, y: 185 },
@@ -123,6 +152,19 @@ const TALL: Geo = {
   tagFlash: { x: 64, y: 274 },
   tagMt: { x: 240, y: 338 },
   tagLt: { x: 340, y: 444 },
+}
+
+/** Hand valve (bow-tie with a T-handle) — the manual HPV bypass. */
+function HandValve({ x, y, open }: { x: number; y: number; open: boolean }) {
+  const fill = open ? '#f59e0b' : C.crit
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <path d="M-9,-6.5 L0,0 L-9,6.5 Z" fill={fill} stroke={C.stroke} strokeWidth={0.9} />
+      <path d="M9,-6.5 L0,0 L9,6.5 Z" fill={fill} stroke={C.stroke} strokeWidth={0.9} />
+      <line x1={0} y1={0} x2={0} y2={-8} stroke={C.stroke} strokeWidth={1.6} />
+      <line x1={-5.5} y1={-8} x2={5.5} y2={-8} stroke={C.stroke} strokeWidth={2.4} strokeLinecap="round" />
+    </g>
+  )
 }
 
 export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
@@ -159,6 +201,8 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
       {G.pMtStubs.map((d, i) => <Pipe key={i} d={d} color={C.suction} w={3.2} flowing={mtRunning} />)}
       {G.pLtSuction.map((d, i) => <Pipe key={i} d={d} color={C.ltSuction} w={i === 0 ? 4.5 : 3.2} flowing={ltRunning} />)}
       <Pipe d={G.pLtDischarge} color={C.ltSuction} w={3.5} flowing={ltRunning} speed={1.2} />
+      <Pipe d={G.pIcVapor} color={C.suction} w={3.2} flowing={ltRunning} speed={0.9} />
+      <Pipe d={G.pIcFeed} color={C.liquid} w={2.6} flowing={hpvFlow} speed={0.6} />
 
       {/* ── Gas cooler ── */}
       <Coil x={G.gc.x} y={G.gc.y} w={G.gc.w} h={G.gc.h} fouled={p.gcFouled} label={p.transcritical ? 'Gas Cooler — transcritical' : 'Gas Cooler / Condenser — subcritical'} />
@@ -168,6 +212,36 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
       {p.transcritical && G.transTag && (
         <Tag x={G.transTag.x} y={G.transTag.y} text="above 87.8°F critical — no condensing" color="#f97316" />
       )}
+
+      {/* ── Manual HPV bypass (hand valve, normally closed) ── */}
+      <Pipe d={G.pBypass} color={p.bypassPct > 0 ? C.liquid : C.metal} w={3}
+        flowing={mtRunning && p.bypassPct > 0} speed={0.8} />
+      <HandValve x={G.bypassValve.x} y={G.bypassValve.y} open={p.bypassPct > 0} />
+      {p.bypassPct > 0 ? (
+        <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={9} fontWeight={800} fill="#d97706">
+          manual bypass {p.bypassPct}%
+        </text>
+      ) : (
+        <g>
+          <rect x={G.bypassLabel.x - 40} y={G.bypassLabel.y - 9} width={80} height={12} rx={2} fill="#dc2626" />
+          <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={7} fontWeight={800} fill="#ffffff">
+            NORMALLY CLOSED
+          </text>
+        </g>
+      )}
+
+      {/* ── Heat reclaim coil on the discharge (→ DHW tank) ── */}
+      <g>
+        <rect x={G.hr.x} y={G.hr.y} width={G.hr.w} height={G.hr.h} rx={5}
+          fill={p.hrActive ? '#f97316' : '#64748b'} fillOpacity={p.hrActive ? 0.16 : 0.10}
+          stroke={p.hrActive ? '#f97316' : C.stroke} strokeWidth={1.4} />
+        <text x={G.hr.x + G.hr.w / 2} y={G.hr.y + 13} textAnchor="middle" fontSize={8.5} fontWeight={800}
+          fill={p.hrActive ? '#ea580c' : C.text}>HR → DHW</text>
+        <text x={G.hr.x + G.hr.w / 2} y={G.hr.y + 25} textAnchor="middle" fontSize={8}
+          fill={p.hrActive ? '#ea580c' : C.stroke} fontWeight={700}>
+          {p.hrActive ? `${p.dhwTempF.toFixed(0)}°F tank` : 'off'}
+        </text>
+      </g>
 
       {/* ── HPV ── */}
       <Valve x={G.hpv.x} y={G.hpv.y} label="HPV" state={p.hpv} labelBelow />
@@ -189,6 +263,9 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
 
       {/* ── FGBV ── */}
       <Valve x={G.fgbv.x} y={G.fgbv.y} label="FGBV" state={p.fgbv} labelBelow />
+
+      {/* ── Intercooler — desuperheats the LT discharge before the MT suction ── */}
+      <Vessel x={G.ic.x} y={G.ic.y} w={G.ic.w} h={G.ic.h} level={p.icLevel} label={G.icLabel} liquidColor="#38bdf8" />
 
       {/* ── Compressors ── */}
       {p.mtComps.map((c, i) => (
@@ -227,6 +304,22 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
             id: 'hpv', title: 'High Pressure Valve (HPV)', subtitle: 'gas cooler → flash tank',
             rows: [{ label: 'State', ...valveRow(p.hpv) }],
           })} />
+          <Hotspot x={G.bypassValve.x - 18} y={G.bypassValve.y - 20} w={36} h={34} selected={p.selectedId === 'bypass'} onSelect={pick({
+            id: 'bypass', title: 'Manual HPV Bypass', subtitle: 'hand valve around the HPV — red tag',
+            rows: [
+              { label: 'Position', value: p.bypassPct > 0 ? `${p.bypassPct}% open` : 'CLOSED (normal)',
+                color: p.bypassPct > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Duty', value: 'Hold head by hand if the HPV dies' },
+            ],
+          })} />
+          <Hotspot x={G.hr.x} y={G.hr.y} w={G.hr.w} h={G.hr.h} selected={p.selectedId === 'hr'} onSelect={pick({
+            id: 'hr', title: 'Heat Reclaim Coil', subtitle: 'discharge gas → domestic hot water',
+            rows: [
+              { label: 'Reclaim', value: p.hrActive ? 'IN SERVICE' : 'Off',
+                color: p.hrActive ? 'text-orange-600 dark:text-orange-400' : undefined },
+              { label: 'DHW tank', value: `${p.dhwTempF.toFixed(0)} °F` },
+            ],
+          })} />
           <Hotspot x={G.tank.x} y={G.tank.y} w={G.tank.w} h={G.tank.h} selected={p.selectedId === 'flash'} onSelect={pick({
             id: 'flash', title: 'Flash Tank / Receiver',
             rows: [
@@ -239,6 +332,15 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
           <Hotspot x={G.fgbv.x - 20} y={G.fgbv.y - 22} w={40} h={42} selected={p.selectedId === 'fgbv'} onSelect={pick({
             id: 'fgbv', title: 'Flash Gas Bypass Valve (FGBV)', subtitle: 'flash tank vapor → MT suction',
             rows: [{ label: 'State', ...valveRow(p.fgbv) }],
+          })} />
+          <Hotspot x={G.ic.x - 3} y={G.ic.y - 3} w={G.ic.w + 6} h={G.ic.h + 6} selected={p.selectedId === 'ic'} onSelect={pick({
+            id: 'ic', title: 'Intercooler', subtitle: 'LT discharge bubbles through liquid → MT suction',
+            rows: [
+              { label: 'Level', value: `${Math.round(p.icLevel * 100)} %`,
+                color: p.icLevel <= 0.10 || p.icLevel >= 0.85 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Vessel temp', value: `${p.icTempF.toFixed(0)} °F` },
+              { label: 'Duty', value: 'Desuperheats LT discharge · subcools LT liquid' },
+            ],
           })} />
           {p.mtComps.map((c, i) => (
             <Hotspot key={c.label} x={G.mtComps[i].x} y={G.mtComps[i].y} w={G.mtCompW} h={46} selected={p.selectedId === `mt${i}`} onSelect={pick({

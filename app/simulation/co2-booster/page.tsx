@@ -7,6 +7,7 @@ import {
   RotateCcw, AlertTriangle, CheckCircle2, XCircle, Wind,
   Thermometer, Gauge, Target, Trophy, Dices, BookOpen, Snowflake,
   Eye, EyeOff, SlidersHorizontal, ClipboardList, GraduationCap,
+  Wrench, Flame,
 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import PageHeader from '@/components/PageHeader'
@@ -53,6 +54,7 @@ type FaultKey =
   | 'mtComp1Failed' | 'ltComp1Failed'
   | 'undercharge' | 'mtEevStarved' | 'ltDefrostStuck' | 'mtDoorsOpen'
   | 'mtEvapFanOut' | 'ltCoilIced' | 'mtCaseDrierPlugged' | 'ltEevOverfeed'
+  | 'icDry' | 'icFlooded'
 
 type FaultState = Record<FaultKey, boolean>
 const INITIAL_FAULTS = {
@@ -63,6 +65,7 @@ const INITIAL_FAULTS = {
   undercharge: false, mtEevStarved: false, ltDefrostStuck: false,
   mtDoorsOpen: false,
   mtEvapFanOut: false, ltCoilIced: false, mtCaseDrierPlugged: false, ltEevOverfeed: false,
+  icDry: false, icFlooded: false,
 } satisfies FaultState
 
 interface FaultDef { key: FaultKey; label: string; hint: string; group: string; mutuallyExcludes?: FaultKey[] }
@@ -84,8 +87,10 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'ltCoilIced',     label: 'LT coil iced solid (Frozen Food)', hint: 'Frost blocks airflow — classic low-load signature: LOW suction AND LOW superheat with a warming case. Find why defrost didn\'t clear it.', group: 'Case / Evap' },
   { key: 'mtCaseDrierPlugged', label: 'Case liquid drier plugged (Deli)', hint: 'The drier/strainer at the Deli case is restricting — that circuit starves (warm case, high SH) while the rack liquid supply reads normal.', group: 'Case / Evap', mutuallyExcludes: ['mtEevStarved'] },
   { key: 'ltEevOverfeed',  label: 'LT EEV overfeeding (floodback)', hint: 'Valve driving wide open — LT superheat near zero, liquid back to the boosters. Amps up, slugging risk. Check the EEV driver and suction probe.', group: 'Case / Evap' },
+  { key: 'icDry',     label: 'Intercooler level valve failed (vessel dry)', hint: 'No liquid to knock down the LT discharge — hot gas straight into MT suction. MT discharge temp climbs toward oil breakdown; LT liquid loses subcooling', group: 'Intercooler', mutuallyExcludes: ['icFlooded'] },
+  { key: 'icFlooded', label: 'Intercooler level valve stuck open (flooded)', hint: 'Level climbs past the carryover line — liquid into the MT suction. MT superheat near zero, wet compression, receiver draining', group: 'Intercooler', mutuallyExcludes: ['icDry'] },
 ]
-const FAULT_GROUPS = ['Gas Cooler', 'Valves', 'Compressors', 'Charge / Load', 'Case / Evap']
+const FAULT_GROUPS = ['Gas Cooler', 'Valves', 'Compressors', 'Intercooler', 'Charge / Load', 'Case / Evap']
 
 // ── Design constants ──────────────────────────────────────────────────────────
 const MT_SST = 23           // °F — medium temp saturated suction (≈ 425 psig)
@@ -123,11 +128,20 @@ interface RackResult {
   mtAmps: number[]; ltAmps: number[]
   mtCaseTemps: number[]; ltCaseTemps: number[]
   rvMarginPsig: number
+  co2Ppm: number
+  icLevelPct: number; icTempF: number; mtDischTempF: number
   alarms: Alarm[]
 }
 
+// Manual HPV bypass — a hand valve piped around the HPV, red-tagged NORMALLY
+// CLOSED. When the HPV fails closed you crack it and hold head by hand until
+// the replacement arrives. ~35 % open roughly matches HPV duty at design
+// conditions; a hand valve can't optimize, so under-crack starves the flash
+// tank and over-crack collapses head / overfeeds the receiver.
+const BYPASS_MATCH_PCT = 35
+
 // ── Compute engine ────────────────────────────────────────────────────────────
-function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: number = LT_SST, flashSet: number = FLASH_TANK_SET): RackResult {
+function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: number = LT_SST, flashSet: number = FLASH_TANK_SET, bypassPct: number = 0): RackResult {
   // Gas cooler approach — base + fouling/fan faults
   // 4 fans on the gas cooler: one single-fan fault + a two-fan contactor bank
   let approach = BASE_APPROACH
@@ -156,7 +170,18 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
     condensingTemp = Math.max(gcOutletTemp + 8, 50)   // head pressure control floor 50 °F
     headPsig = satPsig(condensingTemp)
   }
-  if (f.hpvStuckClosed) headPsig += 140
+  // Manual bypass flow around the HPV. With the HPV dead-closed the bypass is
+  // the ONLY feed to the flash tank: hpvUnder = how starved the tank still is,
+  // hpvOver = how far past matched duty the hand valve is cracked. With a
+  // healthy HPV any bypass opening is a second, uncontrolled feed.
+  const bypassRatio = bypassPct / BYPASS_MATCH_PCT
+  const hpvUnder = f.hpvStuckClosed ? Math.max(0, 1 - bypassRatio) : 0
+  let hpvOver = f.hpvStuckClosed ? Math.max(0, bypassRatio - 1) : bypassPct / 100
+  if (f.hpvStuckOpen) hpvOver += bypassPct / 100
+  hpvOver = Math.min(hpvOver, 1.6)
+
+  if (f.hpvStuckClosed) headPsig += 140 * hpvUnder
+  if (hpvOver > 0)      headPsig = Math.max(headPsig - 85 * hpvOver, transcritical ? 1010 : satPsig(Math.max(oat, 50)))
   if (f.hpvStuckOpen)   headPsig = Math.max(headPsig - 130, transcritical ? 1000 : satPsig(Math.max(oat, 50)))
 
   // Flash tank / receiver
@@ -165,7 +190,9 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.fgbvStuckClosed) flashPsig += 75
   if (f.fgbvStuckOpen)   flashPsig -= 45
   if (f.undercharge)     flashPsig -= 50
-  if (f.hpvStuckClosed)  flashPsig -= 65
+  if (f.hpvStuckClosed)  flashPsig -= 65 * hpvUnder
+  if (f.icFlooded)       flashPsig -= 20    // intercooler level valve draining the receiver
+  flashPsig += 80 * hpvOver
   const flashSatTemp = satTempF(flashPsig)
   const rvMarginPsig = RV_LIFT_PSIG - flashPsig
 
@@ -175,7 +202,7 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.mtComp1Failed)  { mtSuctionPsig += 28 }
   if (f.fgbvStuckOpen)  { mtSuctionPsig += 30; mtSH += 3 }
   if (f.undercharge)    { mtSuctionPsig -= 30; mtSH += 18 }
-  if (f.hpvStuckClosed) { mtSuctionPsig -= 35; mtSH += 24 }
+  if (f.hpvStuckClosed) { mtSuctionPsig -= 35 * hpvUnder; mtSH += 24 * hpvUnder }
   if (f.mtEevStarved)   { mtSuctionPsig -= 14; mtSH += 10 }
   if (f.mtDoorsOpen)    { mtSuctionPsig += 18; mtSH = Math.max(4, mtSH - 2) }
   if (f.mtEvapFanOut)   { mtSuctionPsig -= 10; mtSH = Math.max(3, mtSH - 3) }    // low airflow: load falls off
@@ -191,10 +218,30 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.ltComp1Failed)  { ltSuctionPsig += 32 }
   if (f.ltDefrostStuck) { ltSuctionPsig += 20 }
   if (f.undercharge)    { ltSuctionPsig -= 22; ltSH += 14 }
-  if (f.hpvStuckClosed) { ltSuctionPsig -= 24; ltSH += 18 }
+  if (f.hpvStuckClosed) { ltSuctionPsig -= 24 * hpvUnder; ltSH += 18 * hpvUnder }
   if (f.ltCoilIced)     { ltSuctionPsig -= 22; ltSH = Math.max(2, ltSH - 6) }   // low airflow: low suction AND low SH
   if (f.ltEevOverfeed)  { ltSuctionPsig += 12; ltSH = Math.min(ltSH, 2) }       // flooded coil — liquid to boosters
+  if (f.icDry)          { ltSH += 6 }        // lost subcooling — flash gas at the LT EEVs
   const ltSSTnow = satTempF(ltSuctionPsig)
+
+  // ── Intercooler — flooded vessel between the LT discharge and MT suction.
+  // LT discharge bubbles through the liquid and leaves desuperheated; the
+  // liquid also subcools the LT case feed. Level held by a valve off the
+  // receiver. Dry vessel → hot gas straight to the MT compressors; flooded →
+  // carryover into the MT suction.
+  let icLevelPct = 45
+  if (f.undercharge) icLevelPct = 24
+  if (f.icDry)       icLevelPct = 4
+  if (f.icFlooded)   icLevelPct = 92
+  let icTempF = satTempF(mtSuctionPsig) + 3
+  if (f.icDry) icTempF += 28
+  if (f.icFlooded) mtSH = Math.min(mtSH, 2)       // liquid carryover to the MT suction
+
+  // MT discharge temperature — the intercooler's report card
+  let mtDischTempF = (transcritical ? 205 : 172) + Math.max(0, headPsig - (transcritical ? 1080 : 800)) * 0.02
+  if (f.icDry) mtDischTempF += 48
+  mtDischTempF += Math.max(0, mtSH - 14) * 0.8    // starved suction returns hotter gas
+  if (mtSH <= 3) mtDischTempF -= 22               // wet compression runs cold
 
   // Compressors
   const mtCompRunning = [!f.mtComp1Failed, true, true]
@@ -203,6 +250,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.mtComp1Failed) mtAmpsMult *= 1.24
   if (f.fgbvStuckOpen) mtAmpsMult *= 1.18
   if (f.mtDoorsOpen)   mtAmpsMult *= 1.09
+  if (f.icDry)         mtAmpsMult *= 1.05      // hotter, less dense return gas
+  if (f.icFlooded)     mtAmpsMult *= 1.07      // wet compression
   if (headPsig > 1300) mtAmpsMult *= 1 + (headPsig - 1300) / 2500
   let ltAmpsMult = 1
   if (f.ltComp1Failed) ltAmpsMult *= 1.28
@@ -215,7 +264,7 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   let mtCaseOffset = 0
   if (f.mtComp1Failed)  mtCaseOffset += 5
   if (f.undercharge)    mtCaseOffset += 4
-  if (f.hpvStuckClosed) mtCaseOffset += 6
+  if (f.hpvStuckClosed) mtCaseOffset += 6 * hpvUnder
   if (f.fgbvStuckOpen)  mtCaseOffset += 3
   if (f.mtDoorsOpen)    mtCaseOffset += 4
   if (oat > 90)         mtCaseOffset += (oat - 90) * 0.07
@@ -230,13 +279,33 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
   if (f.ltComp1Failed)  ltCaseOffset += 8
   if (f.ltDefrostStuck) ltCaseOffset += 13
   if (f.undercharge)    ltCaseOffset += 3
-  if (f.hpvStuckClosed) ltCaseOffset += 5
+  if (f.hpvStuckClosed) ltCaseOffset += 5 * hpvUnder
   if (f.mtComp1Failed)  ltCaseOffset += 2
   const ltCaseTemps = LT_CASES.map(c =>
     c.setpoint + ltCaseOffset + (f.ltCoilIced ? (c.name === 'Frozen Food' ? 9 : 2) : 0))
 
+  // Machine-room CO2 monitor (ppm) — ambient ~480; a slow leak pushes it into
+  // the warning band; the relief valve lifting floods the room
+  let co2Ppm = 480
+  if (f.undercharge) co2Ppm = 1750
+  if (flashPsig >= RV_LIFT_PSIG) co2Ppm = 7200
+
   // Alarms
   const alarms: Alarm[] = []
+  if (bypassPct > 0)
+    alarms.push({ code: 'HPV-BYP', severity: 'WARNING', message: `Manual HPV bypass cracked ${bypassPct}% — uncontrolled feed around the HPV. Watch gas cooler pressure and flash tank, and re-trim as conditions change. Close it once the HPV is back in control.` })
+  if (co2Ppm >= 5000)
+    alarms.push({ code: 'CO2-PPM', severity: 'CRITICAL', message: `Machine room CO2 at ${co2Ppm} ppm — ventilate and evacuate; do not work in the room.` })
+  else if (co2Ppm >= 1500)
+    alarms.push({ code: 'CO2-PPM', severity: 'WARNING', message: `Machine room CO2 at ${co2Ppm} ppm (ambient ~480) — leak suspected. Cross-check receiver level and superheats.` })
+  if (mtDischTempF >= 260)
+    alarms.push({ code: 'MT-DT', severity: 'CRITICAL', message: `MT discharge ${Math.round(mtDischTempF)} °F — POE oil breakdown territory. Check the intercooler level NOW.` })
+  else if (mtDischTempF >= 235)
+    alarms.push({ code: 'MT-DT-W', severity: 'WARNING', message: `MT discharge ${Math.round(mtDischTempF)} °F and climbing — return gas running hot. Check intercooler level and MT superheat.` })
+  if (icLevelPct <= 10)
+    alarms.push({ code: 'IC-LO', severity: 'WARNING', message: `Intercooler level ${icLevelPct}% — LT discharge passing through dry. Check the level valve and receiver feed.` })
+  else if (icLevelPct >= 85)
+    alarms.push({ code: 'IC-HI', severity: 'WARNING', message: `Intercooler level ${icLevelPct}% — above the carryover line. Liquid reaching the MT suction.` })
   if (headPsig >= 1550)
     alarms.push({ code: 'GC-HI', severity: 'CRITICAL', message: `Gas cooler pressure ${Math.round(headPsig)} psig — high pressure trip imminent.` })
   else if (headPsig >= 1450)
@@ -278,7 +347,8 @@ function computeRack(f: FaultState, oat: number, mtSet: number = MT_SST, ltSet: 
     mtSuctionPsig, mtSST: mtSSTnow, mtSH,
     ltSuctionPsig, ltSST: ltSSTnow, ltSH,
     mtCompRunning, ltCompRunning, mtAmps, ltAmps,
-    mtCaseTemps, ltCaseTemps, rvMarginPsig, alarms,
+    mtCaseTemps, ltCaseTemps, rvMarginPsig, co2Ppm,
+    icLevelPct, icTempF, mtDischTempF, alarms,
   }
 }
 
@@ -331,6 +401,26 @@ const SCENARIOS: Scenario[] = [
     faults: { hpvStuckClosed: true },
     answer: ['hpvStuckClosed'],
     knowledge: [{ slug: 'pressure-regulators', label: 'Pressure Regulators' }, { slug: 'gas-coolers', label: 'Gas Coolers' }],
+  },
+  {
+    id: 'hpv_failed_bypass',
+    name: 'HPV Failed Closed — Ride the Bypass',
+    difficulty: 'Advanced',
+    oat: 82,
+    description: 'Real service call: gas cooler pressure is climbing toward trip, the flash tank is falling away, and superheat is high on every circuit. The replacement valve is hours away. First call the fault. Then crack the MANUAL HPV BYPASS below and find the opening that brings head back near the curve and the flash tank back near set — you\'re holding the rack on a hand valve until parts arrive. Too little and the cases keep starving; too much and you collapse the head and drive the receiver toward the relief valve.',
+    faults: { hpvStuckClosed: true },
+    answer: ['hpvStuckClosed'],
+    knowledge: [{ slug: 'carnot', label: 'Carnot CO2 Racks' }, { slug: 'pressure-regulators', label: 'Pressure Regulators' }],
+  },
+  {
+    id: 'ic_dry',
+    name: 'MT Discharge Temp Climbing',
+    difficulty: 'Intermediate',
+    oat: 78,
+    description: 'The controller is flagging MT discharge temperature — 250 °F and climbing — and MT amps are a few percent high. Head, flash tank and suctions all read close to normal, but the frozen circuits run slightly starved. The LT boosters discharge through a vessel before the MT compressors ever see that gas. What is that vessel supposed to be doing — and what has it stopped doing?',
+    faults: { icDry: true },
+    answer: ['icDry'],
+    knowledge: [{ slug: 'carnot', label: 'Carnot CO2 Racks' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },
   {
     id: 'frozen_warming',
@@ -559,6 +649,10 @@ export default function Co2BoosterSimulatorPage() {
   const [ltSet, setLtSet]       = useState(LT_SST)
   const [flashSet, setFlashSet] = useState(FLASH_TANK_SET)
 
+  // Manual HPV bypass hand valve (normally closed) + heat reclaim to DHW
+  const [bypassPct, setBypassPct] = useState(0)
+  const [hrOn, setHrOn] = useState(true)
+
   // Field Readings diagnostic
   const [fieldOpen, setFieldOpen] = useState(false)
   const [fieldReadings, setFieldReadings] = useState<Co2FieldReadings>(CO2_FIELD_EMPTY)
@@ -577,11 +671,12 @@ export default function Co2BoosterSimulatorPage() {
   )
   const activeOat    = inScenario ? (activeScenario.oat ?? 75) : oat
 
-  const base = useMemo(() => computeRack(activeFaults, activeOat, mtSet, ltSet, flashSet), [activeFaults, activeOat, mtSet, ltSet, flashSet])
+  // the bypass hand valve stays live inside scenarios — riding it IS the service action
+  const base = useMemo(() => computeRack(activeFaults, activeOat, mtSet, ltSet, flashSet, bypassPct), [activeFaults, activeOat, mtSet, ltSet, flashSet, bypassPct])
 
   // ── Live sensor layer — readings breathe around the model's steady state ──
   const live = useLiveReadings([
-    { key: 'head',      target: base.headPsig,      jitter: 2.2,  wander: 9,    period: 48, bias: 3 },
+    { key: 'head',      target: base.headPsig,      jitter: 2.2,  wander: bypassPct > 0 ? 24 : 9, period: 48, bias: 3 },
     { key: 'flash',     target: base.flashPsig,     jitter: 0.8,  wander: 3.5,  period: 60, bias: 1.5 },
     { key: 'mtSuction', target: base.mtSuctionPsig, jitter: 1.0,  wander: 4,    period: 34, bias: 1.2 },
     { key: 'ltSuction', target: base.ltSuctionPsig, jitter: 0.7,  wander: 2.5,  period: 38, bias: 0.8 },
@@ -589,6 +684,11 @@ export default function Co2BoosterSimulatorPage() {
     { key: 'ltSH',      target: base.ltSH,          jitter: 0.25, wander: 1.2,  period: 30, bias: 0.4 },
     { key: 'gcOut',     target: base.gcOutletTemp,  jitter: 0.20, wander: 0.8,  period: 70, bias: 0.5 },
     { key: 'ampF',      target: 1,                  jitter: 0.005, wander: 0.015, period: 24 },
+    // a hand valve can't optimize — head wanders more when the bypass is carrying the flow
+    { key: 'ppm',       target: base.co2Ppm,        jitter: 6,    wander: 30,   period: 90, bias: 12 },
+    { key: 'dhw',       target: hrOn ? 121 : 74,    jitter: 0.3,  wander: 1.6,  period: 60, bias: 1 },
+    { key: 'icLvl',     target: base.icLevelPct,    jitter: 0.4,  wander: 1.6,  period: 40, bias: 0.8 },
+    { key: 'mtDisch',   target: base.mtDischTempF,  jitter: 0.5,  wander: 2.4,  period: 44, bias: 1.2 },
     // per-case sensor deltas
     ...MT_CASES.map((c, i) => ({ key: `mtCase${i}`, target: 0, jitter: 0.10, wander: 0.9, period: 72 + i * 8, bias: 0.7 })),
     ...LT_CASES.map((c, i) => ({ key: `ltCase${i}`, target: 0, jitter: 0.10, wander: 0.7, period: 84 + i * 9, bias: 0.6 })),
@@ -597,6 +697,9 @@ export default function Co2BoosterSimulatorPage() {
   // Display object — JSX reads this; alarm logic stays on the clean model
   const result: RackResult = {
     ...base,
+    co2Ppm:        live.ppm,
+    icLevelPct:    live.icLvl,
+    mtDischTempF:  live.mtDisch,
     headPsig:      live.head,
     flashPsig:     live.flash,
     flashSatTemp:  satTempF(live.flash),
@@ -620,6 +723,7 @@ export default function Co2BoosterSimulatorPage() {
     { key: 'mtSuction', label: 'MT Suction',   unit: 'psig', value: result.mtSuctionPsig, decimals: 0 },
     { key: 'ltSuction', label: 'LT Suction',   unit: 'psig', value: result.ltSuctionPsig, decimals: 0 },
     { key: 'mtSH',      label: 'MT Superheat', unit: '°F',   value: result.mtSH },
+    { key: 'mtDisch',   label: 'MT Discharge', unit: '°F',   value: result.mtDischTempF, decimals: 0 },
     { key: 'ltCase',    label: 'Frozen Case',  unit: '°F',   value: result.ltCaseTemps[0] },
   ]
   const trendHistory = useTrendHistory(trendSpecs)
@@ -636,11 +740,13 @@ export default function Co2BoosterSimulatorPage() {
 
   function loadScenario(s: Scenario) {
     setActiveScenario(s); setUserGuess(INITIAL_FAULTS); setSubmitted(false); setPickerOpen(false)
+    setBypassPct(0)   // every call starts with the hand valve at its NORMALLY CLOSED tag
   }
-  function exitScenario() { setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false) }
+  function exitScenario() { setActiveScenario(null); setUserGuess(INITIAL_FAULTS); setSubmitted(false); setBypassPct(0) }
   function resetAll() {
     setFaults(INITIAL_FAULTS); setOat(75)
     setMtSet(MT_SST); setLtSet(LT_SST); setFlashSet(FLASH_TANK_SET)
+    setBypassPct(0); setHrOn(true)
     setInstructorReveal(false)
     exitScenario()
   }
@@ -700,6 +806,9 @@ export default function Co2BoosterSimulatorPage() {
       `  LT suction: ${Math.round(result.ltSuctionPsig)} psig / ${result.ltSST.toFixed(1)} °F SST · SH ${result.ltSH.toFixed(1)} °F`,
       `  Compressors: ${mtCompLine} | ${ltCompLine}`,
       `  Cases: ${caseLine}`,
+      `  Machine room: CO2 ${Math.round(result.co2Ppm)} ppm (ambient ~480)`,
+      `  Intercooler: level ${Math.round(result.icLevelPct)}% (normal ~45%) · ${result.icTempF.toFixed(0)} °F · MT discharge ${Math.round(result.mtDischTempF)} °F`,
+      `  Manual HPV bypass hand valve: ${bypassPct > 0 ? `cracked ${bypassPct}% (matched duty ≈ ${BYPASS_MATCH_PCT}%)` : 'NORMALLY CLOSED (0%)'}`,
       `  Alarms: ${base.alarms.length ? base.alarms.map(a => `[${a.code}] ${a.message}`).join(' | ') : 'none'}`,
       '',
       `MY DIAGNOSIS: ${picked.length ? picked.join(', ') : '(nothing selected)'}`,
@@ -978,6 +1087,11 @@ export default function Co2BoosterSimulatorPage() {
                     rvWarn={result.flashPsig >= RV_WARN_PSIG}
                     hpv={valveState(activeFaults.hpvStuckClosed, activeFaults.hpvStuckOpen)}
                     fgbv={valveState(activeFaults.fgbvStuckClosed, activeFaults.fgbvStuckOpen)}
+                    bypassPct={bypassPct}
+                    hrActive={hrOn}
+                    dhwTempF={live.dhw ?? 74}
+                    icLevel={Math.min(0.95, Math.max(0.04, result.icLevelPct / 100))}
+                    icTempF={result.icTempF}
                     mtComps={base.mtCompRunning.map((r, i) => ({ label: `MT${i + 1}`, status: vis(r), amps: result.mtAmps[i] }))}
                     ltComps={base.ltCompRunning.map((r, i) => ({ label: `LT${i + 1}`, status: vis(r), amps: result.ltAmps[i] }))}
                     mtSuctionPsig={result.mtSuctionPsig}
@@ -999,6 +1113,77 @@ export default function Co2BoosterSimulatorPage() {
             </div>
           )
         })()}
+
+        {/* Manual HPV bypass — the hand valve piped around the HPV */}
+        <div className={`rounded-xl border px-4 py-3 ${bypassPct > 0
+          ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40'
+          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <Wrench size={14} className={bypassPct > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'} />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Manual HPV Bypass</span>
+            {bypassPct === 0 ? (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white">NORMALLY CLOSED</span>
+            ) : (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white">CRACKED {bypassPct}%</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 w-14 flex-shrink-0">closed</span>
+            <input type="range" min={0} max={100} step={5} value={bypassPct}
+              onChange={e => setBypassPct(Number(e.target.value))}
+              className="flex-1 accent-amber-500" />
+            <span className="text-sm font-bold text-slate-800 dark:text-slate-100 w-12 text-right tabular-nums">{bypassPct}%</span>
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+            Hand valve piped around the HPV — red-tagged and closed in normal operation. If the HPV fails closed,
+            crack it and throttle by the gauges: hold gas cooler pressure near the curve and the flash tank near set
+            (matched duty is around {BYPASS_MATCH_PCT}% at design conditions). It can&apos;t optimize — expect the head
+            to wander and re-trim as ambient and load move.
+          </p>
+        </div>
+
+        {/* Machine room — CO2 monitor + heat reclaim to DHW */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center gap-x-5 gap-y-2 flex-wrap">
+          <div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Machine Room CO2</p>
+            <p className={`text-base font-bold tabular-nums ${result.co2Ppm >= 5000 ? 'text-red-600 dark:text-red-400' : result.co2Ppm >= 1500 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+              {Math.round(result.co2Ppm)} <span className="text-xs font-normal text-slate-400">ppm</span>
+            </p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500">ambient ~480 · alarm 1,500 · evacuate 5,000</p>
+          </div>
+          <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+          <div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Intercooler Level</p>
+            <p className={`text-base font-bold tabular-nums ${base.icLevelPct <= 10 || base.icLevelPct >= 85 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+              {Math.round(result.icLevelPct)} <span className="text-xs font-normal text-slate-400">%</span>
+            </p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500">normal ~45% · {result.icTempF.toFixed(0)} °F vessel</p>
+          </div>
+          <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+          <div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">MT Discharge</p>
+            <p className={`text-base font-bold tabular-nums ${base.mtDischTempF >= 260 ? 'text-red-600 dark:text-red-400' : base.mtDischTempF >= 235 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+              {Math.round(result.mtDischTempF)} <span className="text-xs font-normal text-slate-400">°F</span>
+            </p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500">warn 235 · POE risk 260</p>
+          </div>
+          <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Heat Reclaim → DHW</p>
+              <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
+                {(live.dhw ?? 74).toFixed(0)} <span className="text-xs font-normal text-slate-400">°F tank</span>
+              </p>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500">discharge heat → domestic hot water</p>
+            </div>
+            <button onClick={() => setHrOn(v => !v)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${hrOn
+                ? 'bg-orange-500 border-orange-500 text-white'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>
+              <Flame size={12} /> {hrOn ? 'ON' : 'off'}
+            </button>
+          </div>
+        </div>
 
         {/* Reading trends */}
         <TrendsCard specs={trendSpecs} history={trendHistory} />
