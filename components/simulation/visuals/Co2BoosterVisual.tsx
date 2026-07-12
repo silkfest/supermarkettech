@@ -19,6 +19,9 @@ export interface Co2BoosterVisualProps {
   rvWarn: boolean
   hpv: ValveVisState
   fgbv: ValveVisState
+  bypassPct: number        // manual HPV bypass hand valve, 0 = normally closed
+  hrActive: boolean        // heat reclaim to DHW in service
+  dhwTempF: number
   mtComps: { label: string; status: CompVisStatus; amps: number }[]
   ltComps: { label: string; status: CompVisStatus; amps: number }[]
   mtSuctionPsig: number
@@ -45,6 +48,10 @@ interface Geo {
   fans: { x: number; y: number }[]
   transTag: { x: number; y: number } | null   // null = GC label already says it (tall)
   hpv: { x: number; y: number }
+  pBypass: string                              // hand-valve line around the HPV
+  bypassValve: { x: number; y: number }
+  bypassLabel: { x: number; y: number }
+  hr: { x: number; y: number; w: number; h: number }   // heat reclaim coil on the discharge
   tank: { x: number; y: number; w: number; h: number }
   rv: { stubX: number }                                    // relief valve stub on tank top
   rvTextAnchor: 'start' | 'end'
@@ -76,6 +83,10 @@ const WIDE: Geo = {
   fans: [262, 324, 386, 448].map(x => ({ x, y: 65 })),
   transTag: { x: 355, y: 16 },
   hpv: { x: 606, y: 120 },
+  pBypass: 'M575,120 L575,94 L637,94 L637,120',
+  bypassValve: { x: 606, y: 94 },
+  bypassLabel: { x: 606, y: 78 },
+  hr: { x: 130, y: 156, w: 60, h: 36 },
   tank: { x: 622, y: 152, w: 48, h: 100 },
   rv: { stubX: 658 }, rvTextAnchor: 'start',
   fgbv: { x: 596, y: 170 },
@@ -110,6 +121,10 @@ const TALL: Geo = {
   fans: [53, 118, 182, 247].map(x => ({ x, y: 64 })),
   transTag: null,
   hpv: { x: 160, y: 110 },
+  pBypass: 'M205,110 L205,142 L120,142 L120,110',
+  bypassValve: { x: 166, y: 142 },
+  bypassLabel: { x: 166, y: 160 },
+  hr: { x: 62, y: 428, w: 58, h: 32 },
   tank: { x: 40, y: 140, w: 48, h: 100 },
   rv: { stubX: 76 }, rvTextAnchor: 'start',
   fgbv: { x: 119, y: 185 },
@@ -123,6 +138,19 @@ const TALL: Geo = {
   tagFlash: { x: 64, y: 274 },
   tagMt: { x: 240, y: 338 },
   tagLt: { x: 340, y: 444 },
+}
+
+/** Hand valve (bow-tie with a T-handle) — the manual HPV bypass. */
+function HandValve({ x, y, open }: { x: number; y: number; open: boolean }) {
+  const fill = open ? '#f59e0b' : C.crit
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <path d="M-9,-6.5 L0,0 L-9,6.5 Z" fill={fill} stroke={C.stroke} strokeWidth={0.9} />
+      <path d="M9,-6.5 L0,0 L9,6.5 Z" fill={fill} stroke={C.stroke} strokeWidth={0.9} />
+      <line x1={0} y1={0} x2={0} y2={-8} stroke={C.stroke} strokeWidth={1.6} />
+      <line x1={-5.5} y1={-8} x2={5.5} y2={-8} stroke={C.stroke} strokeWidth={2.4} strokeLinecap="round" />
+    </g>
+  )
 }
 
 export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
@@ -168,6 +196,36 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
       {p.transcritical && G.transTag && (
         <Tag x={G.transTag.x} y={G.transTag.y} text="above 87.8°F critical — no condensing" color="#f97316" />
       )}
+
+      {/* ── Manual HPV bypass (hand valve, normally closed) ── */}
+      <Pipe d={G.pBypass} color={p.bypassPct > 0 ? C.liquid : C.metal} w={3}
+        flowing={mtRunning && p.bypassPct > 0} speed={0.8} />
+      <HandValve x={G.bypassValve.x} y={G.bypassValve.y} open={p.bypassPct > 0} />
+      {p.bypassPct > 0 ? (
+        <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={9} fontWeight={800} fill="#d97706">
+          manual bypass {p.bypassPct}%
+        </text>
+      ) : (
+        <g>
+          <rect x={G.bypassLabel.x - 34} y={G.bypassLabel.y - 9} width={68} height={12} rx={2} fill="#dc2626" />
+          <text x={G.bypassLabel.x} y={G.bypassLabel.y} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="#ffffff">
+            NORMALLY CLOSED
+          </text>
+        </g>
+      )}
+
+      {/* ── Heat reclaim coil on the discharge (→ DHW tank) ── */}
+      <g>
+        <rect x={G.hr.x} y={G.hr.y} width={G.hr.w} height={G.hr.h} rx={5}
+          fill={p.hrActive ? '#f97316' : '#64748b'} fillOpacity={p.hrActive ? 0.16 : 0.10}
+          stroke={p.hrActive ? '#f97316' : C.stroke} strokeWidth={1.4} />
+        <text x={G.hr.x + G.hr.w / 2} y={G.hr.y + 13} textAnchor="middle" fontSize={8.5} fontWeight={800}
+          fill={p.hrActive ? '#ea580c' : C.text}>HR → DHW</text>
+        <text x={G.hr.x + G.hr.w / 2} y={G.hr.y + 25} textAnchor="middle" fontSize={8}
+          fill={p.hrActive ? '#ea580c' : C.stroke} fontWeight={700}>
+          {p.hrActive ? `${p.dhwTempF.toFixed(0)}°F tank` : 'off'}
+        </text>
+      </g>
 
       {/* ── HPV ── */}
       <Valve x={G.hpv.x} y={G.hpv.y} label="HPV" state={p.hpv} labelBelow />
@@ -226,6 +284,22 @@ export default function Co2BoosterVisual(p: Co2BoosterVisualProps) {
           <Hotspot x={G.hpv.x - 20} y={G.hpv.y - 22} w={40} h={42} selected={p.selectedId === 'hpv'} onSelect={pick({
             id: 'hpv', title: 'High Pressure Valve (HPV)', subtitle: 'gas cooler → flash tank',
             rows: [{ label: 'State', ...valveRow(p.hpv) }],
+          })} />
+          <Hotspot x={G.bypassValve.x - 18} y={G.bypassValve.y - 20} w={36} h={34} selected={p.selectedId === 'bypass'} onSelect={pick({
+            id: 'bypass', title: 'Manual HPV Bypass', subtitle: 'hand valve around the HPV — red tag',
+            rows: [
+              { label: 'Position', value: p.bypassPct > 0 ? `${p.bypassPct}% open` : 'CLOSED (normal)',
+                color: p.bypassPct > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Duty', value: 'Hold head by hand if the HPV dies' },
+            ],
+          })} />
+          <Hotspot x={G.hr.x} y={G.hr.y} w={G.hr.w} h={G.hr.h} selected={p.selectedId === 'hr'} onSelect={pick({
+            id: 'hr', title: 'Heat Reclaim Coil', subtitle: 'discharge gas → domestic hot water',
+            rows: [
+              { label: 'Reclaim', value: p.hrActive ? 'IN SERVICE' : 'Off',
+                color: p.hrActive ? 'text-orange-600 dark:text-orange-400' : undefined },
+              { label: 'DHW tank', value: `${p.dhwTempF.toFixed(0)} °F` },
+            ],
           })} />
           <Hotspot x={G.tank.x} y={G.tank.y} w={G.tank.w} h={G.tank.h} selected={p.selectedId === 'flash'} onSelect={pick({
             id: 'flash', title: 'Flash Tank / Receiver',
