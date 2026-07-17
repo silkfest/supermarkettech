@@ -14,8 +14,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY ?? '',
 })
 
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
-const SONNET_MODEL = 'claude-sonnet-4-6'
+// EXPERT mode (live service-call coaching) runs on Sonnet 5 by default — the
+// first-turn triage quality is the whole product on a tough call, and prompt
+// caching keeps the big static knowledge block cheap to re-read. The "Deep
+// diagnosis" toggle escalates to Opus for the hardest calls. MAINTENANCE mode
+// (log drafting, checklists) stays on Haiku.
+const HAIKU_MODEL = 'claude-haiku-4-5'
+const EXPERT_MODEL = 'claude-sonnet-5'
+const DEEP_MODEL = 'claude-opus-4-8'
 const MAX_TOOL_ROUNDS = 2
 
 const MAX_IMAGE_BASE64_CHARS = 7_000_000 // ~5MB decoded
@@ -136,8 +142,10 @@ export async function POST(req: NextRequest) {
     { type: 'text' as const, text: dynamicContent },
   ]
 
-  const model = escalate ? SONNET_MODEL : HAIKU_MODEL
-  const maxTokens = escalate ? 4096 : 2048
+  const model = mode === 'EXPERT' ? (escalate ? DEEP_MODEL : EXPERT_MODEL) : HAIKU_MODEL
+  // Sonnet 5 / Opus 4.8 run adaptive thinking, which spends from max_tokens —
+  // give expert replies headroom so a long think never truncates the answer
+  const maxTokens = mode === 'EXPERT' ? 8192 : 2048
   const manualSearchEnabled = !!process.env.JINA_API_KEY
 
   const encoder = new TextEncoder()

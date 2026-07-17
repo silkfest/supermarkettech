@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('documents')
-    .select('id, title, category, status, page_count, file_size, file_name, equipment_id, source_type, created_at, equipment:equipment_id(name)')
+    .select('id, title, category, status, page_count, file_size, file_name, equipment_id, source_type, source_url, error_message, created_at, equipment:equipment_id(name), doc_chunks(count)')
     .order('status')
     .order('category')
     .order('title')
@@ -51,6 +51,8 @@ export async function GET(req: NextRequest) {
   const withUrls = results.map(doc => {
     const rawEq = doc.equipment
     const eq = (Array.isArray(rawEq) ? rawEq[0] : rawEq) as { name: string } | null
+    const rawChunks = doc.doc_chunks as unknown
+    const chunkCount = Array.isArray(rawChunks) ? ((rawChunks[0] as { count?: number } | undefined)?.count ?? 0) : 0
     return {
       id:             doc.id,
       title:          doc.title,
@@ -59,10 +61,15 @@ export async function GET(req: NextRequest) {
       page_count:     doc.page_count,
       file_size:      doc.file_size,
       source_type:    doc.source_type,
+      source_url:     doc.source_url ?? null,
       created_at:     doc.created_at,
       equipment_id:   doc.equipment_id,
       equipment_name: eq?.name ?? null,
       signed_url:     doc.file_name ? (signedUrlMap[doc.file_name] ?? null) : null,
+      // Health: whether the chatbot's search_manuals tool can actually find this doc
+      chunk_count:    chunkCount,
+      searchable:     doc.status === 'READY' && chunkCount > 0,
+      index_error:    doc.error_message ?? null,
     }
   })
 
