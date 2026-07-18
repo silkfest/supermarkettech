@@ -1115,7 +1115,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
                     ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-400'
                     : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
                 ].join(' ')}
-                title="Use a more capable model for harder diagnoses (slower, higher cost per message)"
+                title="Escalate to the most capable model for the hardest calls (slower, higher cost per message)"
               >
                 <Zap size={11} />
                 Deep diagnosis

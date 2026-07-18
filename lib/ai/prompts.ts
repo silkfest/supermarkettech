@@ -7028,6 +7028,13 @@ don't call it more than 2 times in a single reply — pick your queries carefull
 component/model + topic, e.g. "Copeland Discus compressor oil failure diagnosis"). If results
 come back empty or irrelevant, say so and answer from general knowledge instead of retrying
 endlessly. Cite results using [Doc N] as described in RESPONSE FORMAT.
+
+MANUALS FIRST FOR EXACT NUMBERS: whenever your answer will state a specific setpoint, spec,
+fault-code meaning, controller menu path, wiring terminal, or part number for a NAMED make/model,
+search the manuals BEFORE answering and prefer the manual's numbers over recalled ones — a senior
+tech opens the book rather than trusting memory on numbers that matter. When you cite a manual,
+mention the page number when the excerpt label includes one so the technician can open straight
+to it. General refrigeration reasoning does not need a search.
 `
 
 // ── Knowledge Base citation legend ────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   BookOpen, Search, X, ExternalLink,
-  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw, Sparkles,
+  FileText, Globe, Loader2, AlertTriangle, Pencil, Trash2, Check, RefreshCw, Sparkles, DownloadCloud,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
@@ -22,10 +22,14 @@ interface LibraryDoc {
   page_count: number | null
   file_size: number | null
   source_type: string
+  source_url: string | null
   created_at: string
   equipment_id: string | null
   equipment_name: string | null
   signed_url: string | null
+  chunk_count: number
+  searchable: boolean
+  index_error: string | null
 }
 
 interface Equipment {
@@ -64,6 +68,9 @@ export default function LibraryPage() {
   const [reindexDone,  setReindexDone]  = useState(false)
   const [reindexError, setReindexError] = useState<string | null>(null)
   const [processingDoc, setProcessingDoc] = useState<Record<string, 'loading' | 'done' | 'error'>>({})
+  const [webIndexing,     setWebIndexing]     = useState(false)
+  const [webIndexStatus,  setWebIndexStatus]  = useState<string | null>(null)
+  const [indexingDoc,     setIndexingDoc]     = useState<Record<string, 'loading' | 'done' | 'error'>>({})
 
 
   useEffect(() => {
@@ -159,6 +166,58 @@ export default function LibraryPage() {
     setDeletingId(null)
   }
 
+  // Index one web-linked doc so the AI chat can search it
+  async function indexWebDoc(docId: string) {
+    setIndexingDoc(p => ({ ...p, [docId]: 'loading' }))
+    try {
+      const res = await fetch('/api/documents/index-web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: docId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error ?? 'Indexing failed')
+      const result = json?.processed?.[0]
+      if (result?.status !== 'indexed') throw new Error(result?.error ?? 'Indexing failed')
+      setIndexingDoc(p => ({ ...p, [docId]: 'done' }))
+      await loadDocs()
+    } catch {
+      setIndexingDoc(p => ({ ...p, [docId]: 'error' }))
+      await loadDocs()
+    }
+    setTimeout(() => setIndexingDoc(p => { const n = { ...p }; delete n[docId]; return n }), 4000)
+  }
+
+  // Loop through every pending web-linked doc in server-side batches
+  async function indexAllWebDocs() {
+    setWebIndexing(true)
+    setWebIndexStatus('Starting…')
+    let indexed = 0
+    let failed = 0
+    try {
+      for (let i = 0; i < 40; i++) {   // hard stop well above the pending count
+        const res = await fetch('/api/documents/index-web', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch: 5 }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error ?? 'Indexing failed')
+        const processed = (json?.processed ?? []) as Array<{ status: string }>
+        indexed += processed.filter(p => p.status === 'indexed').length
+        failed  += processed.filter(p => p.status === 'failed').length
+        const remaining = json?.remaining ?? 0
+        setWebIndexStatus(`${indexed} indexed${failed ? ` · ${failed} failed` : ''} · ${remaining} left`)
+        if (remaining === 0 || processed.length === 0) break
+      }
+      setWebIndexStatus(`Done — ${indexed} indexed${failed ? `, ${failed} failed (see badges below)` : ''}`)
+    } catch (e) {
+      setWebIndexStatus(e instanceof Error ? e.message : 'Indexing failed')
+    }
+    setWebIndexing(false)
+    await loadDocs()
+  }
+
   async function processDoc(docId: string) {
     setProcessingDoc(p => ({ ...p, [docId]: 'loading' }))
     try {
@@ -190,6 +249,25 @@ export default function LibraryPage() {
           </div>
           {isAdmin && (
             <div className="flex flex-col items-end gap-1">
+              {(() => {
+                const pendingWeb = docs.filter(d =>
+                  d.source_type === 'WEB' && !d.searchable && !d.index_error && d.source_url).length
+                if (pendingWeb === 0 && !webIndexing && !webIndexStatus) return null
+                return (
+                  <div className="flex flex-col items-end gap-1">
+                    <button
+                      onClick={indexAllWebDocs}
+                      disabled={webIndexing || pendingWeb === 0}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-50 transition-colors"
+                      title="Fetch every web-linked manual and index it so the AI chat can search and cite it"
+                    >
+                      {webIndexing ? <Loader2 size={12} className="animate-spin"/> : <DownloadCloud size={12}/>}
+                      {webIndexing ? 'Indexing web manuals…' : `Make ${pendingWeb} web manual${pendingWeb !== 1 ? 's' : ''} AI-searchable`}
+                    </button>
+                    {webIndexStatus && <p className="text-[10px] text-slate-500 dark:text-slate-400">{webIndexStatus}</p>}
+                  </div>
+                )
+              })()}
               <button
                 onClick={async () => {
                   setReindexing(true)
@@ -391,9 +469,36 @@ export default function LibraryPage() {
                   </span>
                 )}
 
-                {/* Admin actions: process + rename + delete */}
+                {/* AI-search health: READY but never indexed = invisible to chat */}
+                {doc.status === 'READY' && !doc.searchable && (
+                  <span
+                    className="flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30"
+                    title={doc.index_error ?? 'The AI chat cannot search this manual yet — it has not been indexed'}
+                  >
+                    {doc.index_error ? 'Index failed' : 'Not AI-searchable'}
+                  </span>
+                )}
+
+                {/* Admin actions: index-for-chat + process + rename + delete */}
                 {isAdmin && (
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {doc.source_type === 'WEB' && !doc.searchable && doc.source_url && (
+                      <button
+                        onClick={() => indexWebDoc(doc.id)}
+                        disabled={!!indexingDoc[doc.id] || webIndexing}
+                        className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50"
+                        title="Fetch this manual and index it so the AI chat can search it"
+                      >
+                        {indexingDoc[doc.id] === 'loading'
+                          ? <Loader2 size={14} className="animate-spin text-blue-500"/>
+                          : indexingDoc[doc.id] === 'done'
+                            ? <Check size={14} className="text-emerald-500"/>
+                            : indexingDoc[doc.id] === 'error'
+                              ? <AlertTriangle size={14} className="text-red-500"/>
+                              : <DownloadCloud size={14}/>
+                        }
+                      </button>
+                    )}
                     <button
                       onClick={() => processDoc(doc.id)}
                       disabled={!!processingDoc[doc.id]}
