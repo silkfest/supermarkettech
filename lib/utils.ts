@@ -34,3 +34,18 @@ export function timeAgo(date: string) {
   if (s < 86400) return `${Math.floor(s/3600)}h ago`
   return `${Math.floor(s/86400)}d ago`
 }
+
+// Friendly device label from a raw User-Agent string. auth.sessions carries the
+// UA from whatever created the session — including non-browser callers (test
+// scripts, server-to-server calls) that shouldn't be presented as a "device".
+export function parseDevice(ua: string | null | undefined): string {
+  if (!ua) return 'Unknown device'
+  if (/vercel edge functions|^node$|node-fetch|axios|curl|postman/i.test(ua)) return 'System / script'
+  if (/ipad/i.test(ua)) return 'iPad'
+  if (/iphone/i.test(ua)) return 'iPhone'
+  if (/android/i.test(ua)) return /mobile/i.test(ua) ? 'Android phone' : 'Android tablet'
+  if (/macintosh/i.test(ua)) return 'Mac'
+  if (/windows/i.test(ua)) return 'Windows PC'
+  if (/linux/i.test(ua)) return 'Linux'
+  return 'Unknown device'
+}
