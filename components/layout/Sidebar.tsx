@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, UserCircle, Layers, Moon, Sun, Building, MessageSquareWarning } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { clearAllChatDrafts } from '@/lib/chat/drafts'
 import { cn, statusDot } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 import type { Equipment, ChatMode, User } from '@/types'
@@ -49,6 +50,7 @@ function SidebarContent({
 
   async function handleLogout() {
     setLoggingOut(true)
+    clearAllChatDrafts()
     await getSupabaseBrowser().auth.signOut()
     window.location.href = '/login'
   }

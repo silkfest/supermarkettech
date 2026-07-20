@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { clearAllChatDrafts } from '@/lib/chat/drafts'
 import { useRouter } from 'next/navigation'
 
 const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
@@ -69,6 +70,7 @@ export default function PendingPage() {
   }
 
   async function handleLogout() {
+    clearAllChatDrafts()
     await getSupabaseBrowser().auth.signOut()
     window.location.href = '/login'
   }
