@@ -4,6 +4,8 @@ import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, Aler
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { draftKey } from '@/lib/chat/drafts'
 import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationSource, ComponentLink, KnowledgeSource } from '@/types'
 
 const MAX_IMAGES = 3
@@ -179,11 +181,9 @@ function pdfUrl(signedUrl: string, pageNumber?: number | null): string {
 
 // ── Local draft persistence ───────────────────────────────────────────────────
 // Keeps the in-progress conversation in localStorage so an accidental refresh
-// or navigation doesn't lose it. Keyed per-equipment so switching units
-// restores that unit's own draft.
-function draftKey(equipmentId?: string | null): string {
-  return `coldiq_chat_draft_${equipmentId ?? 'none'}`
-}
+// or navigation doesn't lose it. draftKey (lib/chat/drafts.ts) is keyed
+// per-user AND per-equipment — see that file for why the userId segment is
+// required. Callers here must not persist/restore before authUserId resolves.
 
 interface ChatDraft {
   messages: ChatMessage[]
@@ -398,6 +398,8 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [saveError,      setSaveError]      = useState('')
   const [copied,           setCopied]           = useState(false)
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
+  // null = not yet resolved (draft restore/save must wait — see below)
+  const [authUserId, setAuthUserId] = useState<string | null>(null)
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
@@ -427,6 +429,18 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     }
   }, [searchParams])
 
+  // Resolve the signed-in user once on mount. The draft-restore/save effects
+  // below must not read or write localStorage until this settles, or a
+  // just-signed-in account could momentarily read/write under the wrong key.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await getSupabaseBrowser().auth.getUser()
+      if (!cancelled) setAuthUserId(user?.id ?? null)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   // Pre-fill from localStorage — used by simulator "Diagnose" button
   useEffect(() => {
     try {
@@ -449,8 +463,10 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
 
   // Reset chat when the selected equipment changes — restoring that unit's
   // saved draft from localStorage if one exists, so switching units and back
-  // doesn't lose either conversation.
+  // doesn't lose either conversation. Waits for authUserId to resolve so this
+  // never reads a draft under the wrong (or unscoped) key.
   useEffect(() => {
+    if (authUserId === null) return
     // Cancel any in-flight request
     abortRef.current?.abort()
     setError(null)
@@ -467,7 +483,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setImageError(null)
 
     try {
-      const raw = localStorage.getItem(draftKey(equipment?.id))
+      const raw = localStorage.getItem(draftKey(authUserId, equipment?.id))
       if (raw) {
         const draft = JSON.parse(raw) as Partial<ChatDraft>
         if (draft.messages?.length) {
@@ -482,7 +498,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setMessages([])
     setSessionId(null)
     setChatSaved(false)
-  }, [equipment?.id])
+  }, [equipment?.id, authUserId])
 
   // Resume a saved conversation passed in from chat history (?session=...)
   useEffect(() => {
@@ -496,8 +512,10 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   // Persist the current conversation to localStorage as a draft (debounced).
   // Attached images are stripped — base64 photos would quickly blow the
   // localStorage quota, so resumed drafts show the message text without them.
+  // Gated on authUserId so nothing is ever written under an unscoped key.
   useEffect(() => {
-    const key = draftKey(equipment?.id)
+    if (authUserId === null) return
+    const key = draftKey(authUserId, equipment?.id)
     const finalised = messages.filter(m => !m.isStreaming).map(m => ({ ...m, images: undefined }))
     if (finalised.length === 0) {
       try { localStorage.removeItem(key) } catch { /* ignore */ }
@@ -510,7 +528,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       } catch { /* storage unavailable or quota exceeded — draft is best-effort */ }
     }, 400)
     return () => clearTimeout(t)
-  }, [messages, sessionId, chatSaved, equipment?.id])
+  }, [messages, sessionId, chatSaved, equipment?.id, authUserId])
 
   // Scroll to bottom whenever messages update
   useEffect(() => {
@@ -846,7 +864,9 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setSaveError('')
     setAttachedImages([])
     setImageError(null)
-    try { localStorage.removeItem(draftKey(equipment?.id)) } catch { /* ignore */ }
+    if (authUserId !== null) {
+      try { localStorage.removeItem(draftKey(authUserId, equipment?.id)) } catch { /* ignore */ }
+    }
     setTimeout(() => textareaRef.current?.focus(), 50)
   }
 
