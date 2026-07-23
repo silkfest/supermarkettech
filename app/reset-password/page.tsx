@@ -35,9 +35,14 @@ export default function ResetPasswordPage() {
     })()
 
     // If no recovery session ever materialises, the link is bad/expired.
-    const timer = setTimeout(() => {
-      if (!done) setError('This password reset link is invalid or has expired. Please request a new one from the sign-in page.')
-    }, 4000)
+    // Do one last session check before giving up — on a slow mobile
+    // connection the auth event can land after this timer would otherwise fire.
+    const timer = setTimeout(async () => {
+      if (done) return
+      const { data: { session } } = await sb.auth.getSession()
+      if (session) { markReady(); return }
+      setError('This password reset link is invalid or has expired. Please request a new one from the sign-in page.')
+    }, 8000)
 
     return () => { subscription.unsubscribe(); clearTimeout(timer) }
   }, [])
