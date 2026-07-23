@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [name,      setName]      = useState('')
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
+  const [confirm,   setConfirm]   = useState('')
   const [error,     setError]     = useState('')
   const [loading,   setLoading]   = useState(false)
   const [emailSent, setEmailSent] = useState(false)
@@ -16,6 +17,8 @@ export default function RegisterPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (password !== confirm) { setError('Passwords do not match'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     setError('')
     const sb = getSupabaseBrowser()
@@ -94,6 +97,19 @@ export default function RegisterPage() {
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
               className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="Min 8 characters" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm password</label>
+            <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8}
+              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 ${
+                confirm && password !== confirm
+                  ? 'border-red-400 dark:border-red-500/60'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}
+              placeholder="Re-enter password" />
+            {confirm && password !== confirm && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match</p>
+            )}
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</p>}
           <button type="submit" disabled={loading}
