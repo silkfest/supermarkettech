@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { getSupabaseBrowser } from '@/lib/supabase/client'
+import { getSupabaseBrowser, getSupabaseAuthLinks } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const inputCls = 'w-full px-3 py-2.5 text-sm text-slate-900 bg-white border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors'
@@ -35,12 +35,19 @@ export default function LoginPage() {
   async function onReset(e: React.FormEvent) {
     e.preventDefault()
     setResetLoading(true)
-    const sb = getSupabaseBrowser()
-    await sb.auth.resetPasswordForEmail(email, {
+    setError('')
+    // Use the implicit-flow client so the reset link carries its session in the
+    // URL hash rather than a PKCE `?code=` that needs a verifier stored in the
+    // requesting browser — otherwise the link breaks when opened from a mail app.
+    const sb = getSupabaseAuthLinks()
+    const { error: resetErr } = await sb.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     })
-    setResetSent(true)
     setResetLoading(false)
+    // Don't reveal whether the email exists; only surface real send failures
+    // (rate limit, network) so the user knows to retry rather than wait forever.
+    if (resetErr) { setError(resetErr.message); return }
+    setResetSent(true)
   }
 
   if (showReset) {
