@@ -194,7 +194,6 @@ export default function WelcomePage() {
           <div className="flex flex-wrap gap-3 mb-8">
             {[
               { icon: <Brain size={14} />, text: 'AI that knows your manuals' },
-              { icon: <CheckCircle2 size={14} />, text: 'Every job documented automatically' },
               { icon: <Zap size={14} />, text: 'Works on any device, on any site' },
               { icon: <Lock size={14} />, text: 'Company email required · encrypted' },
             ].map((h, i) => (

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   MessageSquare, Bell, ClipboardList, BookOpen, FileText, Cpu,
   History, Building2, Wrench, GraduationCap, Users, ShieldCheck,
-  BarChart3, ArrowRight, Thermometer, Zap, CheckCircle2,
+  BarChart3, ArrowRight, Thermometer, Zap,
   ChevronRight, HardHat, Briefcase, Star,
 } from 'lucide-react'
 
@@ -127,7 +127,6 @@ const MANAGER_FEATURES: Feature[] = [
 
 const HIGHLIGHTS = [
   { icon: <Zap size={16} />, text: 'Answers in seconds, not phone calls' },
-  { icon: <CheckCircle2 size={16} />, text: 'Every job documented automatically' },
   { icon: <Star size={16} />, text: 'Built specifically for supermarket refrigeration' },
 ]
 
