@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
+// Managers are "elevated" for *viewing* — they see the whole catalogue and can
+// assign courses to their team. Authoring the catalogue (create/edit/delete) is
+// admin-only: managers decide who takes what, admins decide what exists.
 const ELEVATED_ROLES = ['admin', 'manager']
+const AUTHOR_ROLES = ['admin']
 
 export async function GET(req: NextRequest) {
   const { data: { user } } = await getSupabaseRouteAuth(req).auth.getUser()
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseServer()
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   const role = (profile as { role: string } | null)?.role ?? ''
-  if (!ELEVATED_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!AUTHOR_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { data, error } = await supabase.from('courses').insert({
