@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import PageHeader from '@/components/PageHeader'
+import PushNotificationSettings from '@/components/settings/PushNotificationSettings'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('')
 
   const [userEmail, setUserEmail] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const supabase = getSupabaseBrowser()
@@ -34,10 +36,12 @@ export default function SettingsPage() {
       if (!user) { router.push('/login'); return }
       setUserEmail(user.email ?? '')
       // Fetch display name from users table
-      const { data } = await supabase.from('users').select('name').eq('id', user.id).single()
-      const name = (data as { name?: string } | null)?.name ?? ''
+      const { data } = await supabase.from('users').select('name,role').eq('id', user.id).single()
+      const profile = data as { name?: string; role?: string } | null
+      const name = profile?.name ?? ''
       setDisplayName(name)
       setOriginalName(name)
+      setIsAdmin(profile?.role === 'admin')
     })()
   }, [router])
 
@@ -137,6 +141,9 @@ export default function SettingsPage() {
             {savingName ? 'Saving…' : 'Save Name'}
           </button>
         </div>
+
+        {/* Access-request notifications — admins are the ones who action them */}
+        {isAdmin && <PushNotificationSettings />}
 
         {/* Change Password */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4">
