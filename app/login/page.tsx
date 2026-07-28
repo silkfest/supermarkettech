@@ -46,7 +46,17 @@ export default function LoginPage() {
     setResetLoading(false)
     // Don't reveal whether the email exists; only surface real send failures
     // (rate limit, network) so the user knows to retry rather than wait forever.
-    if (resetErr) { setError(resetErr.message); return }
+    if (resetErr) {
+      // Supabase's built-in mail service allows only a couple of sends per hour.
+      // Hitting it returns 429 and sends NO email — which is easy to mistake for
+      // a broken link, because the newest message in the inbox is then an older,
+      // already-superseded one. Say so explicitly.
+      const rateLimited = resetErr.status === 429 || /rate limit/i.test(resetErr.message)
+      setError(rateLimited
+        ? 'Too many reset emails have been requested recently, so this one was not sent. Please wait about an hour and try again — and be aware any older reset email in your inbox will no longer work.'
+        : resetErr.message)
+      return
+    }
     setResetSent(true)
   }
 
@@ -78,12 +88,13 @@ export default function LoginPage() {
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   className={inputCls} placeholder="you@company.com" />
               </div>
+              {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{error}</p>}
               <button type="submit" disabled={resetLoading}
                 className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                 {resetLoading ? 'Sending…' : 'Send reset link'}
               </button>
               <p className="text-xs text-center">
-                <button type="button" onClick={() => setShowReset(false)} className="text-slate-500 hover:underline">
+                <button type="button" onClick={() => { setShowReset(false); setError('') }} className="text-slate-500 hover:underline">
                   Back to sign in
                 </button>
               </p>
@@ -114,7 +125,7 @@ export default function LoginPage() {
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               <span>Password</span>
-              <button type="button" onClick={() => setShowReset(true)}
+              <button type="button" onClick={() => { setShowReset(true); setError('') }}
                 className="float-right text-blue-600 hover:underline font-normal">
                 Forgot password?
               </button>
