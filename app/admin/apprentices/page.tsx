@@ -49,6 +49,118 @@ function getLevel(xp: number) {
   return lv
 }
 
+interface AssignCourse {
+  id: string; title: string; points: number
+  assigned_to_target?: boolean
+  completion: { completed_at: string } | null
+}
+
+// Assign courses straight to one person, without leaving the Team page.
+// Reuses the existing endpoints: the courses list already reports, per course,
+// whether it's assigned to a given user (`assigned_to_target`), and the
+// assignments endpoint toggles a single user's assignment.
+function AssignCoursesModal({ tech, onClose }: { tech: TechRow; onClose: () => void }) {
+  const [courses, setCourses] = useState<AssignCourse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy,    setBusy]    = useState<string | null>(null)
+  const [error,   setError]   = useState('')
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(`/api/apprentice/courses?userId=${tech.id}`)
+      const data = await res.json().catch(() => [])
+      setCourses(Array.isArray(data) ? data : [])
+      setLoading(false)
+    }
+    load()
+  }, [tech.id])
+
+  async function toggle(course: AssignCourse) {
+    const on = !course.assigned_to_target
+    setBusy(course.id)
+    setError('')
+    const res = await fetch(`/api/apprentice/courses/${course.id}/assignments`, {
+      method: on ? 'POST' : 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: tech.id }),
+    })
+    if (res.ok) {
+      setCourses(prev => prev.map(c => c.id === course.id ? { ...c, assigned_to_target: on } : c))
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? 'Failed to update assignment')
+    }
+    setBusy(null)
+  }
+
+  const assignedCount = courses.filter(c => c.assigned_to_target).length
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Assign courses</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {tech.name || tech.email} · {assignedCount} assigned
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 flex-shrink-0"><X size={18}/></button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12 text-slate-500 text-sm gap-2">
+            <Loader2 size={16} className="animate-spin"/> Loading courses…
+          </div>
+        ) : (
+          <div className="p-4 space-y-1.5 max-h-[65vh] overflow-y-auto">
+            {error && (
+              <div className="px-3 py-2 mb-2 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 text-xs rounded-lg">{error}</div>
+            )}
+            {courses.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-8">No published courses yet.</p>
+            )}
+            {courses.map(course => {
+              const on = !!course.assigned_to_target
+              const done = !!course.completion
+              return (
+                <button key={course.id} onClick={() => toggle(course)} disabled={busy === course.id}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${on
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium truncate ${on ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {course.title}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      +{course.points} XP{done ? ' · completed' : ''}
+                    </p>
+                  </div>
+                  {busy === course.id ? <Loader2 size={15} className="animate-spin text-slate-400"/>
+                    : done ? <CheckCircle2 size={15} className="text-emerald-500"/>
+                    : on ? <CheckCircle2 size={15} className="text-blue-600 dark:text-blue-400"/>
+                    : <span className="text-[11px] text-slate-400">Assign</span>}
+                </button>
+              )
+            })}
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-2">
+              Courses assigned to everyone in a role are managed from the Training page.
+            </p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+          <a href={`/apprentice/training?userId=${tech.id}`} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+            View full training →
+          </a>
+          <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">Done</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminApprenticesPage() {
   const router = useRouter()
   const [technicians, setTechnicians] = useState<TechRow[]>([])
@@ -58,6 +170,8 @@ export default function AdminApprenticesPage() {
   const [saveError,   setSaveError]   = useState<string | null>(null)
   const [approvals,   setApprovals]   = useState<PendingApproval[]>([])
   const [reviewing,   setReviewing]   = useState<string | null>(null)
+  const [canAssign,   setCanAssign]   = useState(false)
+  const [assignFor,   setAssignFor]   = useState<TechRow | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -68,14 +182,20 @@ export default function AdminApprenticesPage() {
       const role = (me as { role: string } | null)?.role
       if (!role || !['admin', 'manager', 'journeyman'].includes(role)) { router.push('/dashboard'); return }
 
-      const [overviewRes, jRes, approvalsRes] = await Promise.all([
+      setCanAssign(['admin', 'manager'].includes(role))
+
+      const [overviewRes, mentorRes, approvalsRes] = await Promise.all([
         fetch('/api/apprentice/overview'),
-        sb.from('users').select('id,name').in('role', ['journeyman', 'admin', 'manager']).order('name'),
+        // Mentor candidates must come from the server: RLS on public.users only
+        // lets a user read their own row, so querying this from the browser
+        // returned an empty dropdown.
+        fetch('/api/apprentice/people?roles=journeyman,admin,manager&includeSelf=1')
+          .then(r => r.ok ? r.json() : []),
         fetch('/api/apprentice/approvals'),
       ])
       const data = await overviewRes.json()
       if (Array.isArray(data)) setTechnicians(data)
-      setJourneymen((jRes.data ?? []) as Journeyman[])
+      setJourneymen((mentorRes ?? []) as Journeyman[])
       const appData = await approvalsRes.json().catch(() => [])
       if (Array.isArray(appData)) setApprovals(appData)
       setLoading(false)
@@ -217,10 +337,12 @@ export default function AdminApprenticesPage() {
 
           {/* Action buttons */}
           <div className="flex-shrink-0 flex flex-col gap-1">
+            {/* Assign courses right here — no navigating to the Training page.
+                Journeymen can view this page but may not assign. */}
             <button
-              onClick={() => router.push(`/apprentice/training?userId=${a.id}`)}
+              onClick={() => canAssign ? setAssignFor(a) : router.push(`/apprentice/training?userId=${a.id}`)}
               className="p-2 rounded-lg text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-              title="View / assign courses"
+              title={canAssign ? 'Assign courses' : 'View training'}
             >
               <GraduationCap size={16} />
             </button>
@@ -267,6 +389,10 @@ export default function AdminApprenticesPage() {
     <PageShell>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageHeader title="Team" home={false} back="/dashboard" />
+
+      {assignFor && (
+        <AssignCoursesModal tech={assignFor} onClose={() => setAssignFor(null)} />
+      )}
 
       {saveError && (
         <div className="mx-4 md:mx-6 mt-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center justify-between">

@@ -242,6 +242,7 @@ function CourseModal({ initial, onSave, onClose }: CourseModalProps) {
 const ASSIGNABLE_ROLE_OPTIONS: { role: string; label: string; icon: string }[] = [
   { role: 'apprentice', label: 'All Apprentices', icon: '🎓' },
   { role: 'journeyman', label: 'All Journeymen',  icon: '🔧' },
+  { role: 'manager',    label: 'All Managers',    icon: '📋' },
 ]
 
 interface AssignmentModalProps {
@@ -259,14 +260,16 @@ function AssignmentModal({ course, onClose }: AssignmentModalProps) {
 
   useEffect(() => {
     async function load() {
-      const sb = getSupabaseBrowser()
-      const [assignRes, usersRes] = await Promise.all([
+      // The people list must come from the server: RLS on public.users only lets
+      // a user read their own row, so querying it from the browser returned an
+      // empty list and made the search box look broken.
+      const [assignRes, people] = await Promise.all([
         fetch(`/api/apprentice/courses/${course.id}/assignments`).then(r => r.ok ? r.json() : { users: [], roles: [] }),
-        sb.from('users').select('id,name,email,role').in('role', ['apprentice', 'journeyman']).order('name'),
+        fetch('/api/apprentice/people').then(r => r.ok ? r.json() : []),
       ])
       setRoles(new Set(assignRes.roles ?? []))
       setUserIds(new Set(assignRes.users ?? []))
-      setPeople((usersRes.data ?? []) as AssignableUser[])
+      setPeople((people ?? []) as AssignableUser[])
       setLoading(false)
     }
     load()
@@ -418,7 +421,11 @@ function TrainingInner() {
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   const isAdmin    = ['admin', 'manager', 'journeyman'].includes(currentUser?.role ?? '')
-  const canManageCourses = ['admin', 'manager'].includes(currentUser?.role ?? '')
+  // Managers run training for their team (assign courses, view anyone's progress)
+  // but only admins author the catalogue itself. Both API and UI enforce this.
+  const canAssignCourses = ['admin', 'manager'].includes(currentUser?.role ?? '')
+  const canEditCourses   = currentUser?.role === 'admin'
+  const canManageCourses = canAssignCourses
   const isReadOnly = isAdmin && viewingUser !== null && viewingUser.id !== currentUser?.id
   const displayUser = viewingUser ?? currentUser
   // When a manager/admin is viewing a specific learner, each course shows a quick
@@ -1138,8 +1145,8 @@ function TrainingInner() {
         {/* ── Courses tab ────────────────────────────────────────────────────── */}
         {activeTab === 'courses' && (
           <div className="space-y-4">
-            {/* Add course button (admins/managers) */}
-            {canManageCourses && !isReadOnly && (
+            {/* Add course button (admins only — managers assign, they don't author) */}
+            {canEditCourses && !isReadOnly && (
               <button
                 onClick={() => { setEditingCourse(null); setShowCourseModal(true) }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl text-slate-400 hover:text-blue-500 text-sm font-medium transition-colors"
@@ -1158,7 +1165,7 @@ function TrainingInner() {
               <EmptyState
                 icon={BookOpen}
                 title="No courses yet."
-                description={canManageCourses && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
+                description={canEditCourses && !isReadOnly ? 'Click "Add Course" above to create the first one.' : undefined}
               />
             )}
 
@@ -1273,7 +1280,7 @@ function TrainingInner() {
                               <Users size={13}/>
                             </button>
                           )}
-                          {canManageCourses && !isReadOnly && (
+                          {canEditCourses && !isReadOnly && (
                             <>
                               <button
                                 onClick={() => { setEditingCourse(course); setShowCourseModal(true) }}

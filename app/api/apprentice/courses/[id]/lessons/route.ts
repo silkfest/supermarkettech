@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
+// Managers may view any course's lessons (they oversee training), but adding
+// lesson content is admin-only.
 const ELEVATED_ROLES = ['admin', 'manager']
+const AUTHOR_ROLES = ['admin']
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const supabase = getSupabaseServer()
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   const role = (profile as { role: string } | null)?.role ?? ''
-  if (!ELEVATED_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!AUTHOR_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const lessonType = body.lesson_type

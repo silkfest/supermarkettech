@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
 
-const ELEVATED_ROLES = ['admin', 'manager']
+// Authoring course content is admin-only. Managers assign courses to their
+// team (see courses/[id]/assignments) but don't edit the catalogue itself.
+const AUTHOR_ROLES = ['admin']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params
@@ -11,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ les
   const supabase = getSupabaseServer()
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   const role = (profile as { role: string } | null)?.role ?? ''
-  if (!ELEVATED_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!AUTHOR_ROLES.includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const questionType: string = ['single', 'multiple', 'true_false', 'fill_blank', 'hotspot'].includes(body.question_type)
