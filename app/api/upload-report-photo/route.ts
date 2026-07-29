@@ -13,7 +13,13 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
   const ext = file.name.split('.').pop() ?? 'jpg'
-  const path = `${user.id}/${Date.now()}.${ext}`
+  // The name must include a random component, not just the timestamp. Selecting
+  // several photos uploads them concurrently, and parallel uploads of similar
+  // size over one connection tend to finish in the same millisecond — which gave
+  // every file in the batch an identical path. With upsert:false the second one
+  // failed as a duplicate and was silently dropped, so picking two photos
+  // reliably attached one.
+  const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
 
   const { error } = await supabase.storage
     .from('report-photos')
