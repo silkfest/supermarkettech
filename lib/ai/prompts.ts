@@ -481,8 +481,6 @@ export const SPORLAN_KNOWLEDGE = `
 
 ### Thermostatic Expansion Valves (TXVs)
 
-[diagram:txv-cutaway-3d]
-
 **Body families:**
 - **O / OB series** — General-purpose TXV; most common in field; available in tons from 1/2 to 10 tons; external equalizer port (always pipe to suction line downstream of sensing bulb)
 - **EG / EGVE series** — Bi-flow TXV; used in heat pump and reverse-cycle applications; can meter in both directions
