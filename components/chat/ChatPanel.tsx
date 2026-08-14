@@ -6,11 +6,39 @@ import remarkGfm from 'remark-gfm'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { draftKey } from '@/lib/chat/drafts'
+import { downscaleImage } from '@/lib/images/downscale'
 import type { Equipment, ChatMode, ChatDomain, ChatMessage, ChatImage, CitationSource, ComponentLink, KnowledgeSource } from '@/types'
 
 const MAX_IMAGES = 3
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
+
+// Images travel to /api/chat as base64 inside the JSON body, and base64 inflates
+// bytes by ~33%. The serverless request body limit is ~4.5MB, so three
+// full-size phone photos (3-5MB each) came to roughly 20MB encoded and the
+// request was rejected with a 413 before it ever reached the route.
+//
+// Downscaling first keeps a whole message well inside the limit. 1568px is the
+// most resolution the vision models actually use at the lower tier — anything
+// larger is re-scaled server-side anyway — and it's ample for reading a gauge
+// face or a nameplate.
+const IMAGE_MAX_DIMENSION = 1568
+/** Ceiling for the encoded images in one message, under the ~4.5MB body limit
+ *  with room left for the prompt and conversation history. */
+const MAX_ENCODED_IMAGE_BYTES = 3 * 1024 * 1024
+
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+
+/** Read a file as bare base64 (no `data:...;base64,` prefix). */
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
 
 // ── Web Speech API (voice dictation) ──────────────────────────────────────────
 // Minimal typings — lib.dom doesn't ship SpeechRecognition, and Safari/Chrome
@@ -386,6 +414,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [attachedImages, setAttachedImages] = useState<ChatImage[]>([])
   const [imageError, setImageError] = useState<string | null>(null)
+  const [preparingImages, setPreparingImages] = useState(false)
   const [listening, setListening] = useState(false)
   const [voiceSupported, setVoiceSupported] = useState(false)
 
@@ -572,7 +601,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     } catch { /* background save — failures are non-fatal */ }
   }, [equipment, mode])
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (!files.length) return
@@ -584,24 +613,39 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       return
     }
 
-    for (const file of files.slice(0, room)) {
-      if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
-        setImageError('Unsupported image type. Use JPEG, PNG, GIF, or WebP.')
-        continue
+    setPreparingImages(true)
+    try {
+      for (const file of files.slice(0, room)) {
+        if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+          setImageError('Unsupported image type. Use JPEG, PNG, GIF, or WebP.')
+          continue
+        }
+
+        // Shrink before encoding — a full-size photo becomes ~33% larger again
+        // as base64 and blows the request body limit on its own.
+        const prepared = await downscaleImage(file, IMAGE_MAX_DIMENSION)
+        const base64 = await readAsBase64(prepared)
+
+        // Guard on the encoded total across the whole message, since that's
+        // what the body limit actually measures.
+        let rejected = false
+        setAttachedImages(prev => {
+          if (prev.length >= MAX_IMAGES) return prev
+          const encodedSoFar = prev.reduce((sum, img) => sum + img.data.length, 0)
+          if (encodedSoFar + base64.length > MAX_ENCODED_IMAGE_BYTES) {
+            rejected = true
+            return prev
+          }
+          return [...prev, { mediaType: prepared.type as ChatImage['mediaType'], data: base64 }]
+        })
+        if (rejected) {
+          setImageError('That photo is too large to send with the others — remove one and try again.')
+        }
       }
-      if (file.size > MAX_IMAGE_BYTES) {
-        setImageError('Image too large — max 5MB per photo.')
-        continue
-      }
-      const reader = new FileReader()
-      reader.onload = () => {
-        const result = reader.result as string
-        const base64 = result.slice(result.indexOf(',') + 1)
-        setAttachedImages(prev => prev.length >= MAX_IMAGES
-          ? prev
-          : [...prev, { mediaType: file.type as ChatImage['mediaType'], data: base64 }])
-      }
-      reader.readAsDataURL(file)
+    } catch {
+      setImageError('Could not read that image. Try a different photo.')
+    } finally {
+      setPreparingImages(false)
     }
   }
 
@@ -699,6 +743,15 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       if (res.status === 401) {
         setMessages(prev => prev.filter(m => m.id !== assistantId))
         setError('Your session has expired. Please refresh the page and sign in again.')
+        setStreaming(false)
+        return
+      }
+
+      // Body too large — rejected by the platform before reaching the route, so
+      // there's no JSON error to read. Say what actually went wrong.
+      if (res.status === 413) {
+        setMessages(prev => prev.filter(m => m.id !== assistantId))
+        setError('That message is too large to send. Try attaching fewer photos.')
         setStreaming(false)
         return
       }
@@ -1181,12 +1234,12 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
           <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-900/50 transition-all">
             <button
               onClick={() => imageInputRef.current?.click()}
-              disabled={streaming || attachedImages.length >= MAX_IMAGES}
+              disabled={streaming || preparingImages || attachedImages.length >= MAX_IMAGES}
               aria-label="Attach photo"
               title="Attach a photo (nameplate, fault screen, component, etc.)"
               className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
             >
-              <ImagePlus size={16} />
+              {preparingImages ? <Loader2 size={16} className="animate-spin"/> : <ImagePlus size={16} />}
             </button>
             {voiceSupported && (
               <button
