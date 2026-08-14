@@ -27,6 +27,36 @@ const MAX_ENCODED_IMAGE_BYTES = 3 * 1024 * 1024
 
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
+/** Budget for photos carried forward from earlier turns, on top of whatever the
+ *  current message attaches. Newest photos win; older turns fall back to
+ *  text-only rather than pushing the request over the body limit. */
+const MAX_HISTORY_IMAGE_BYTES = 2 * 1024 * 1024
+
+type HistoryTurn = { role: 'user' | 'assistant'; content: string; images?: ChatImage[] }
+
+/** Build the history payload, keeping attached photos on past turns so
+ *  follow-up questions can still refer to them. Walks newest-first and drops
+ *  images once the budget is spent — the message text is always kept. */
+function buildHistory(msgs: ChatMessage[]): HistoryTurn[] {
+  let budget = MAX_HISTORY_IMAGE_BYTES
+  const keepImagesFor = new Set<string>()
+
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]
+    if (!m.images?.length) continue
+    const cost = m.images.reduce((sum, img) => sum + img.data.length, 0)
+    if (cost > budget) continue
+    budget -= cost
+    keepImagesFor.add(m.id)
+  }
+
+  return msgs.map(m => (
+    keepImagesFor.has(m.id) && m.images?.length
+      ? { role: m.role as 'user' | 'assistant', content: m.content, images: m.images }
+      : { role: m.role as 'user' | 'assistant', content: m.content }
+  ))
+}
+
 /** Read a file as bare base64 (no `data:...;base64,` prefix). */
 function readAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -689,7 +719,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
 
   const handleSubmit = useCallback(async (opts?: {
     overrideText?: string
-    overrideHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+    overrideHistory?: HistoryTurn[]
   }) => {
     const images = attachedImages
     const rawText = (opts?.overrideText ?? input).trim()
@@ -704,10 +734,9 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     setError(null)
 
     // Build history from finalised messages only (max 40 per schema)
-    const history = opts?.overrideHistory ?? messages
-      .filter(m => !m.isStreaming)
-      .slice(-40)
-      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+    const history = opts?.overrideHistory ?? buildHistory(
+      messages.filter(m => !m.isStreaming).slice(-40)
+    )
 
     // Optimistically add user + placeholder assistant messages
     const userId      = crypto.randomUUID()
@@ -839,7 +868,13 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
                 pendingSources = undefined
                 pendingComponentLinks = undefined
                 pendingKnowledgeSources = undefined
-                persistConversation([...history, { role: 'user', content: text }, { role: 'assistant', content: assistantContentRef.current }])
+                // Saved conversations stay text-only — persisting base64 photos
+                // would bloat the stored session for no benefit on replay.
+                persistConversation([
+                  ...history.map(m => ({ role: m.role, content: m.content })),
+                  { role: 'user', content: text },
+                  { role: 'assistant', content: assistantContentRef.current },
+                ])
                 break
               }
 
