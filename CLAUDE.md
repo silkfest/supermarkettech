@@ -228,19 +228,35 @@ Interactive SVG diagrams are registered in `DIAGRAM_REGISTRY` in `MarkdownConten
 Refrigerant pressure↔temperature pairings are easy to get subtly wrong from memory (a June 2026
 correction fixed a topic that paired 200 psig with ~70°F SCT for R-404A — the real value is
 ~89°F). **Whenever new content states a saturation pressure/temperature pair, check it against
-the verified data points below** (sourced from Hudson Tech / National Refrigerants PT charts).
-If a pairing you need isn't covered, interpolate between the nearest two points below rather
-than relying on recalled values — or note it as approximate.
+the verified data points below.** If a pairing you need isn't covered, interpolate between the
+nearest two points below rather than relying on recalled values — or note it as approximate.
 
-**R-404A** (psig, saturation):
+**How these were derived.** The tables below are computed from an equation of state (CoolProp
+8.0.0 — R-404A as its pseudo-pure fluid, R-448A/R-449A built from their component blends) rather
+than transcribed from a chart. To regenerate or extend them:
+`pip install CoolProp`, then `PropsSI('P','T',T_kelvin,'Q',0,'R404A')` for bubble point (`'Q',1`
+for dew), converting Pa → psig with `Pa * 0.000145037737730 - 14.696`.
+
+**A superseded version of the R-404A table below had its low-temperature rows wrong** — −20°F was
+listed as 4.3 psig, which is actually the −40°F *dew* value, and 0°F/20°F were low by 6–9 psi.
+The rows from 32°F up were correct. Two cheap sanity checks catch that class of error: R-404A
+boils at ≈ −49.8°F at 0 psig, so the curve cannot be nearly flat just above it; and R-404A and
+R-448A track within a few psi of each other at the same temperature across the whole range, so a
+large divergence between the two tables means one of them is wrong.
+
+**R-404A** (psig, bubble point; dew runs ≈1–2 psi lower):
 | °F | psig | °F | psig |
 |---|---|---|---|
-| -20 | 4.3 | 32 | ~73 |
-| 0 | 26.1 | 70 | ~149 |
-| 20 | 45.9 | 80 | ~175 |
-| | | 90 | ~204 |
+| -40 | 4.9 | 32 | 73.8 |
+| -20 | 16.8 | 40 | 86.9 |
+| -10 | 24.6 | 70 | 149.3 |
+| 0 | 33.7 | 80 | 175.4 |
+| 10 | 44.3 | 90 | 204.5 |
+| 20 | 56.6 | 100 | 236.8 |
 
-**R-448A / R-449A** (psig, liquid/bubble — vapor runs noticeably lower at the same temp due to glide):
+**R-448A / R-449A** (psig, liquid/bubble — vapor runs noticeably lower at the same temp due to
+glide). Checked against the same equation of state and correct throughout — every row lands
+within ~1 psi, tracking R-449A most closely; the two refrigerants sit within ~2 psi of each other:
 | °F | psig (liquid) | psig (vapor) |
 |---|---|---|
 | -20 | 17.0 | 9.8 |

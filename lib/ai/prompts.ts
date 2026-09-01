@@ -45,19 +45,24 @@ Every refrigeration and air conditioning system — from a household fridge to a
 3. Find that pressure in the chart and read across to the saturation temperature
 4. For **zeotropic blends** (R-404A, R-448A): use the **dew point** column on the suction (vapor) side, **bubble point** on the liquid side
 
-**R-404A — saturation pressure/temperature (psig):**
+**R-404A — saturation pressure/temperature (psig, bubble point):**
 
 | Temp (°F) | Pressure (psig) |
 |---|---|
-| -20 | 4.3 |
-| 0 | 26.1 |
-| 20 | 45.9 |
-| 32 | ~73 |
-| 70 | ~149 |
-| 80 | ~175 |
-| 90 | ~204 |
+| -40 | 4.9 |
+| -20 | 16.8 |
+| -10 | 24.6 |
+| 0 | 33.7 |
+| 10 | 44.3 |
+| 20 | 56.6 |
+| 32 | 73.8 |
+| 40 | 86.9 |
+| 70 | 149.3 |
+| 80 | 175.4 |
+| 90 | 204.5 |
+| 100 | 236.8 |
 
-R-404A is near-azeotropic (glide ≈ 0.5°F), so one column covers both liquid and vapor in practice. Example: suction gauge reads ~46 psig → PT chart shows SST ≈ 20°F.
+R-404A is near-azeotropic (glide ≈ 1°F), so one column covers both liquid and vapor in practice. Example: suction gauge reads ~57 psig → PT chart shows SST ≈ 20°F. A low-temp freezer running −20°F SST sits near 17 psig; a medium-temp circuit at +20°F SST sits near 57 psig.
 
 **R-448A / R-449A — saturation pressure/temperature (psig), liquid (bubble point) vs vapor (dew point):**
 
@@ -78,7 +83,7 @@ R-448A/R-449A have roughly **11°F of glide** between the bubble point and dew p
 - Too low (<5°F): flooded evaporator — TXV overfeeding, failed bulb, overcharge, liquid slugging risk
 
 > [!EXAMPLE] Superheat — R-404A
-> Suction gauge reads 60 psig → interpolating the table above (between 45.9 psig/20°F and ~73 psig/32°F) gives SST ≈ 26°F. Suction line thermocouple reads 39°F. Superheat = 39 − 26 = **13°F** ✓
+> Suction gauge reads 60 psig → interpolating the table above (between 56.6 psig/20°F and 73.8 psig/32°F) gives SST ≈ 22°F. Suction line thermocouple reads 35°F. Superheat = 35 − 22 = **13°F** ✓
 
 **Subcooling** = SCT (saturation condensing temperature, read from the bubble point column at measured head pressure) − liquid line temperature
 - Too low (<5°F): undercharge, condenser fan failure, high load
@@ -100,7 +105,7 @@ Both are often used together: the TXV feeds the evaporator correctly, the EPR en
 
 ### Refrigerants & Oils
 
-- **R-404A** — Zeotropic blend (R-125/R-143a/R-134a); dominant in older supermarket freezer systems; GWP 3,922; being phased down under AIM Act. Glide ≈ 0.5°F — near-azeotropic, negligible in practice.
+- **R-404A** — Zeotropic blend (R-125/R-143a/R-134a); dominant in older supermarket freezer systems; GWP 3,922; being phased down under AIM Act. Glide ≈ 1°F — near-azeotropic, negligible in practice.
 - **R-448A / R-449A** — Lower-GWP HFO blends; drop-in replacements for R-404A; glide ≈ 11°F — always **liquid-charge** and use dew point for suction-side calculations.
 - **R-410A** — Azeotropic blend (R-32/R-125 50/50); standard in commercial HVAC; GWP 2,088.
 - **R-744 / CO₂** — Carbon dioxide; natural refrigerant, near-zero GWP; critical point 87.8°F / 1,070 psi; used in transcritical booster systems (its own course covers this in depth).
