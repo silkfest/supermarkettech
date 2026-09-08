@@ -9381,6 +9381,312 @@ True walk-in coolers/freezers use a remote unit cooler in the box connected to a
 - Drain: floor drain inside box (freezer) or drain pan (cooler) — ensure proper pitch to drain
 `
 
+// ── Traulsen G-Series Reach-Ins ───────────────────────────────────────────────
+export const TRAULSEN_KNOWLEDGE = `
+## Traulsen G-Series Reach-Ins & Pass-Thrus
+
+### What You Are Working On
+
+Traulsen (Fort Worth, Texas — part of **ITW Food Equipment Group**, the same parent as Hobart and Baxter) builds heavy-duty commercial reach-in refrigerators, freezers, and hot food cabinets. In a supermarket you will find G-Series cabinets in the deli, the bakery, the meat room, seafood prep, and the front-end grab-and-go backstock — anywhere product needs holding but there is no rack circuit to tie into.
+
+Everything about a G-Series is **self-contained**: compressor, condenser, and controls all live in the top-mounted machine compartment behind the front louver. There is no rack controller, no store supervisory system, and nothing on the network. If the cabinet is warm, everything you need to fix it is in or on that one box.
+
+The cabinet is built to a much higher standard than a typical foodservice reach-in — anodized aluminum interior, 2 inches of foamed-in-place insulation, cam-lift hinges guaranteed for life, and a self-closing door that stays open past 120 degrees. Expect to be servicing the refrigeration and the control, not replacing cabinets.
+
+### Reading the Serial Tag
+
+The serial tag is a permanent label in the **upper right interior compartment** of every G-Series refrigerator and freezer. Techs waste a lot of time looking for it behind the louver or on the back — open the right-hand door and look up.
+
+What the tag gives you:
+
+- **Serial** — permanent unit ID; required with the model for any parts order
+- **Model** — the model number (see the family table below)
+- **Volts / Hz / PH** — supply voltage, cycle, phase
+- **Total Current** — maximum amp draw
+- **Minimum Circuit** — minimum circuit ampacity, and separately the maximum overcurrent protection
+- **Lights** — lamp wattage
+- **Heaters** — heater amperage, present on hot food units only
+- **Refrigerant** — type and charge weight, given for SYS1 and SYS2 on dual-system cabinets
+- **Design Pressure** — the high and low side design pressures for that system
+
+> [!EXAMPLE] Nameplate decode — G22010
+> Model **G22010**, serial **T08283A18**, SYS1 refrigerant **R-404A, 23.00 oz (652.04 g)**, design pressure **high 500 psi / low 250 psi**, **115 V, 60 Hz, 11.2 A**, SYS2 block blank.
+> That decodes as a single-system two-section reach-in **freezer**, roughly 46 cu ft, on a standard 115 V dedicated circuit. The blank SYS2 block confirms one refrigeration system, not two. A 23 oz charge is small — this is a cabinet you weigh a charge into, never one you top up by gauge feel.
+
+> [!WARNING] Design pressure is not an operating pressure
+> The tag's **Lo Press 250 psi** is the low side **design** pressure — what the pipework and components are rated to hold. It is not a suction target and it is not a low-pressure cutout setting.
+> Reading 250 psi as a running low side is a classic apprentice error. A G-Series freezer runs a suction in the teens to low twenties psig, not 250.
+
+Traulsen does not publish a public serial-number decode, so do not try to read a build date out of the serial. Phone Traulsen service at 800-825-8220 with **both** the model and serial and they will tell you the build configuration and send the correct wiring diagram.
+
+### Model Numbers — Section Count and Cabinet Type
+
+The G-Series parts breakdown groups models this way. Use it to identify what you are standing in front of:
+
+| Model family | Cabinet |
+|---|---|
+| G100 / G110 | 1-section refrigerator |
+| G120xx | 1-section freezer |
+| G200 / G210 | 2-section refrigerator |
+| G220xx | 2-section freezer |
+| G300 / G320 | 3-section refrigerator |
+| G310xx / G313xx | 3-section freezer |
+
+The second digit is the section count and holds across the whole range. The third digit is **not** a reliable refrigerator-versus-freezer flag — G220 is a freezer but G320 is a refrigerator. Read the family table, or read the tag.
+
+> [!TIP] Two-section freezer versus two-section refrigerator
+> The parts that differ between them are the ones you will be ordering: the **expansion valve** and the **coil and cabinet sensors** are specific to section count and cabinet type. Ordering "the G-Series TXV" without saying refrigerator or freezer gets you the wrong valve.
+
+### Refrigerant — Read the Tag Before You Touch Anything
+
+G-Series cabinets ship with different refrigerants depending on model and build date. Traulsen has moved much of the line to **R-290 (propane)** for its low GWP, while other cabinets — including two-section freezers like the G22010 — carry **R-404A**.
+
+You cannot tell which from the outside. Read the tag before you cut, braze, or even leak-check.
+
+> [!SAFETY] R-290 is a flammable A3 refrigerant
+> Cabinets containing propane carry the **ISO 7010-W021 flammable refrigerant** label. Before any work on the sealed system:
+> - Work in an open or adequately ventilated area, and keep it ventilated for the whole job
+> - Remove every ignition source — arc, flame, heat — before cleaning the condenser or opening the system
+> - Never use a halide torch or any naked-flame detector to hunt a leak
+> - An electronic detector must be suitable for the refrigerant, calibrated in a refrigerant-free area, set to a percentage of the LFL with 25 percent as the maximum, and must not itself be an ignition source
+> - Bubble solution and fluorescent agents are acceptable, but avoid any detergent containing chlorine — chlorine attacks the copper
+> - If a leak needs brazing, recover the whole charge or isolate it well away from the leak first
+> - Keep the vacuum pump outlet away from ignition sources
+
+**Opening an R-290 system** follows a fixed sequence: recover the refrigerant to local and national regulations, purge with oxygen-free nitrogen, evacuate, purge with OFN again, and only then cut or braze. Break the vacuum with OFN, fill to working pressure, vent, and pull down again — repeat until no refrigerant remains. **Never purge with compressed air or oxygen.**
+
+### How the Cabinet Runs
+
+**Refrigerators** circulate above-freezing cabinet air across the coil continuously and hold high relative humidity so product does not dehydrate. Frost still forms during the compressor ON cycle, so an **electric defrost runs every 8 hours for a maximum of 25 minutes**.
+
+**Freezers** circulate below-freezing air and need a real defrost program: time-initiated, temperature-or-time terminated, factory-set to **six equally spaced defrosts per 24 hours**.
+
+Evaporator fan behaviour is worth knowing before you condemn a fan:
+
+- Fans stop with **every door opening** (this is the Cabinet Fan Door Action parameter)
+- During the compressor **OFF** cycle the fans cycle **15 seconds on, 45 seconds off**
+- During the compressor **ON** cycle the fans run **continuously**
+- After a defrost the fans are held off on a fan delay — whichever comes first, a short time delay or a temperature delay
+
+> [!NOTE] A fan that starts and stops on a 15-on / 45-off rhythm is working correctly
+> That is the designed off-cycle pattern, not a failing motor or a loose connection. The fan delay after defrost is deliberate too: it stops warm air and coil condensation being blown into the food zone.
+
+### Defrost — Termination and Modes
+
+At the start of a defrost, the compressor and evaporator fans both stop, the display reads **dEF**, and the electric heater on the coil energises.
+
+**Termination:** the coil sensor calls the coil clear at **45°F**, at which point the heaters shut off and the compressor restarts. If that sensor fails, the control falls back to a time termination — **25 minutes on refrigerators, 30 minutes on freezers**. That fail-safe is a factory setting and should not be changed without talking to Traulsen first.
+
+The Next Gen control offers four defrost modes:
+
+| Mode | Behaviour |
+|---|---|
+| Optimize | Defrosts based on ambient conditions — temperature and relative humidity |
+| Time | Defrosts every X hours on a fixed interval |
+| Schedule | Defrosts at up to six specific clock times |
+| Count | Defrosts every X compressor cycles |
+
+**Schedule mode** is the one bakery and deli managers ask for, because it keeps defrosts out of the morning rush. Three things have to be right or it silently misbehaves:
+
+- The **24-hour clock must be set**, or the control assumes it is 12 a.m. every time power is restored
+- The **Defrost Mode must actually be set to Schedule** — programming times while the mode is Time does nothing
+- **Daylight savings does not adjust itself** — it is a manual parameter, so a schedule drifts an hour twice a year until someone changes it
+
+Defrost times are entered as hours, minutes, seconds. **00:00:00 disables a slot**; midnight is entered as **24:00:00**. Times can go in any order, and you can use as few as one or as many as six.
+
+> [!WARNING] A cabinet that iced up after a power outage
+> If the clock was never set, or was lost, the control thinks power-up was midnight and runs the whole schedule against the wrong time of day. On a Schedule-mode cabinet, check the clock before you chase heaters, sensors, or the coil.
+
+### Setpoints
+
+| Cabinet | Typical setpoint | Differential |
+|---|---|---|
+| Freezer | -3°F to 0°F (-19°C to -18°C) | 2°F |
+| Refrigerator | 35°F to 38°F (2°C to 4°C) | 2°F |
+
+The setpoint is the **low point** of the cabinet temperature range. The differential is how far the air is allowed to rise above setpoint before refrigeration cycles back on — 2 degrees on both cabinet types from the factory. Both are factory preset and both have a minimum and maximum the control will accept.
+
+Hot food cabinets are a different animal: factory set to **145°F** and delivered in the ON position.
+
+### Normal Operating Pressures
+
+Traulsen does not publish running pressures, so work from saturation temperature the way you would on any self-contained box. A reach-in coil runs roughly a **10–20°F TD** below the cabinet air.
+
+| Cabinet | Box temp | Coil SST | R-404A | R-290 |
+|---|---|---|---|---|
+| Freezer | -3 to 0°F | -25 to -15°F | 13–21 psig | 8–14 psig |
+| Refrigerator | 35 to 38°F | 20 to 30°F | 57–71 psig | 41–52 psig |
+
+High side, air-cooled, condensing roughly 20–30°F over the room:
+
+| Room ambient | SCT | R-404A | R-290 |
+|---|---|---|---|
+| 75°F | 95–105°F | 220–255 psig | 162–187 psig |
+| 90°F | 110–120°F | 273–312 psig | 200–228 psig |
+
+> [!TIP] Use the coil sensor as your gauge port
+> The Sensors submenu shows Evaporator Temp directly. On a cabinet with no service valves — and many G-Series have none — comparing the control's Cabinet Temp against its Evaporator Temp tells you the TD without you ever attaching a hose or losing an ounce of a 23 oz charge.
+
+### The Next Gen Microprocessor Control
+
+Cabinets built **after 05-2023** carry the Next Gen control: G control board **950-60509-00**, control cable **333-60523-00**, control display **950-60510-00**. The display mounts horizontally or vertically. Earlier G-Series cabinets used a different Traulsen microprocessor with a different keypad and menu — do not apply the procedures below to a pre-2023 cabinet without checking.
+
+**The keypad has five keys:** Unlock/Modify, Enter/Display, Plus/Next, Minus/Previous, and Esc/Back.
+
+**Unlocking:** press the **Unlock key twice within a second** — think "tap-tap". The Keypad Unlock LED lights to show the keypad is live. Nothing else works until you do this.
+
+**Passwords:** enter them one digit at a time with Plus or Minus, pressing Enter after each digit.
+
+| Level | Password | Gets you |
+|---|---|---|
+| Customer | 111 | Sensors, setpoint, start a defrost |
+| Technician | 555 | Full settings list including defrost mode, schedule, differential, door heaters |
+
+**Submenus**, reached by pressing Enter then scrolling with Plus:
+
+- **SEn** — Sensors, the live readings
+- **SEt** — Settings, every adjustable parameter
+- **AL** — Alarms
+- **SdF** — start a defrost immediately
+
+**Timeouts that will catch you out:** you have **3 minutes between button presses** before the keypad relocks, and the menu system times out entirely after **10 minutes** of inactivity and drops back to cabinet temperature. If you are working through parameters with a phone in one hand, expect to re-enter the password.
+
+To edit any parameter: navigate to it, press **Enter** to display its value, press **Modify** so the value flashes, change it with Plus or Minus, then press **Enter** to accept. **Esc aborts** an edit before you press Enter.
+
+### Reading Live Sensors — The Fastest Diagnostic on the Cabinet
+
+This is the single most useful thing on a G-Series and most techs never open it. Customer password (111), Sensors submenu, then Plus to step through:
+
+| Reading | What it tells you |
+|---|---|
+| Cabinet Temp (TC) | Control air temperature — compare against a calibrated thermometer to prove sensor drift |
+| Evaporator Temp | Coil temperature — gives you TD without gauges, and tells you if a defrost actually cleared the coil |
+| Liquid Line Temp | Liquid temperature into the metering device |
+| Dew Point | What the control uses for Optimize defrost and door heater decisions |
+| Compressor Command | Is the control **asking** for the compressor? |
+| Evaporator Fan Command | Is the control asking for evap fans? |
+| Condenser Fan Command | Is the control asking for the condenser fan? |
+| Defrost Heater Command | Is the control asking for defrost? |
+| Door Heater Command | Is the control asking for door heaters? |
+| Door Switch Status | Does the control think the door is open? |
+| Aux Device Command | State of the auxiliary output |
+| Light Command | Is the control asking for lights? |
+
+> [!TIP] Command versus output splits the job in half in about a minute
+> The Command readings are what the control is **asking for**. If Compressor Command is ON and the compressor is not turning, the fault is downstream — relay, wiring, overload, or the compressor itself. If Compressor Command is OFF and the box is warm, the fault is upstream — setpoint, cabinet sensor, or the control.
+> The same logic works for defrost heaters, both fans, door heaters, and lights. Check Door Switch Status first on any "fans will not run" call.
+
+### Wiring at the Control Board
+
+The harness at the G control board is colour-coded. Loads:
+
+| Colour | Circuit |
+|---|---|
+| Black | Line |
+| White | Neutral |
+| Green | Ground |
+| Black | Switch |
+| Blue / White | Compressor |
+| Gray / White | Evaporator fans |
+| Purple / White | Defrost |
+| Orange / White | Door heaters |
+| Yellow / White | Lights |
+| Black / Yellow | Door switch |
+
+Sensors:
+
+| Colour | Sensor |
+|---|---|
+| Green | Cabinet |
+| Blue | Coil |
+| Yellow | Liquid line |
+
+The **full wiring diagram is on the exterior back of the cabinet**. If it is missing or unreadable, Traulsen service will send one — you need the model and serial.
+
+### Condenser Cleaning — The PM That Actually Matters
+
+Traulsen's own manual is blunt about this: regularly cleaning the condenser is the most important thing anyone can do for the life of the cabinet. In a deli or bakery the machine compartment pulls in flour, dust, and grease, and a blanketed condenser drives head pressure up, capacity down, and compressor life into the ground.
+
+The G-Series condenser is **front-facing behind a lift-up louver assembly**:
+
+- Remove the two screws at the bottom on both sides of the louver assembly
+- Pivot the panel upward for full access to the condenser
+- Vacuum or brush the finned coil, the compressor, and the surrounding parts
+- Use compressed air if dirt is genuinely clogging the fins
+- Do not bend the fins — bent fins cost you performance and compressor life
+- Lower the louver and replace the screws
+
+**Disconnect electrical power before cleaning any part of the unit.** On an R-290 cabinet, remove ignition sources first, and if you damage the coil into a leak, ventilate the area and call it in.
+
+**Clearance:** the machine compartment needs either **12 inches of clearance overhead** or unrestricted airflow at the back of the cabinet. You also need 12 inches above to do maintenance at all. A G-Series shoved under a shelf or against a soffit will run hot no matter how clean the coil is.
+
+### Doors, Hinges, and Gaskets
+
+**Hinges** are cam-lift, self-closing up to 90 degrees, with a stay-open feature past 120 degrees. To pull a door: remove the plug at the bottom of the top hinge, back out the screw behind it with a flat blade, and lift the door off. The door-side hinge comes off under the hinge cover with 3 Phillips screws; the cabinet-side hinge is another 3.
+
+> [!WARNING] The light switch lives inside the top hinge
+> On all solid-door units a concealed **microswitch in the top hinge** runs the interior lighting, and the door switch actuator button controls the **evaporator fans as well as the lights**. Damage that wiring pulling a hinge and you will hand back a cabinet whose fans behave as if the door is permanently open.
+> Glass-door models add an exterior illuminated red switch for manual light control — in ON the lights stay on regardless of the hinge switch.
+
+**Gaskets** are the same part on solid and glass doors. Full height is **SVC-60256-00**, half height **SVC-60257-00**.
+
+To fit one: pull the old gasket out by a corner. Bring **both the gasket and the cabinet to room temperature** before fitting the new one — a cold gasket will not seat and will pull back out. Seat the **four corners first** with a rubber mallet, then work toward the centre from both ends. A new gasket looks too big out of the bag; fitted corners-first it goes in.
+
+**Cabinet depth for doorways:** removing the doors and hinges gets a G-Series through a doorway under 35 inches. Taking the lock keeper off as well (two flat-head screws) brings overall depth down to 32 inches.
+
+### Field Fault Diagnosis
+
+| Symptom | Check first | Then |
+|---|---|---|
+| Cabinet dead, no display | Cord unplugged, breaker, and the **ON/OFF toggle on top of the unit beside the evaporator housing** | Supply voltage at the plug; the toggle is the one everybody forgets |
+| Compressor never starts | Cord, breaker, ON/OFF switch, setpoint | Sensors submenu: is Compressor Command ON? If yes, look at relay, overload, start components |
+| Compressor hums but will not start | Start components and overload | Locked rotor; Traulsen lists relay and start capacitor as call-factory parts |
+| Runs continuously, box still warm | Doors sealing? Condenser clean? | Coil iced — force a defrost from SdF; check Evaporator Temp before and after |
+| Box warm, compressor cycling normally | Gaskets, hinge alignment, recent warm product load | Cabinet Temp against a calibrated thermometer to catch sensor drift |
+| Box too cold | Recent frozen product load; give it time to recover | Setpoint and differential; cabinet sensor reading low |
+| Coil iced repeatedly | Defrost Mode and, if Schedule, the 24-hour clock | Coil sensor (blue leads) — with it failed, defrost only ever times out at 25 or 30 minutes |
+| Defrost never terminates on temperature | Coil sensor resistance and connections | Heaters proving via Defrost Heater Command; a heater open means the coil never reaches 45°F |
+| Evaporator fans not running | Door Switch Status in the Sensors submenu | Hinge microswitch and its wiring; remember 15-on / 45-off is normal off-cycle behaviour |
+| Frost or sweat on door frames | Door Heater Command and Door Heater Mode | Heater circuit on orange/white; Dew Point reading if the control is modulating them |
+| Condensation on exterior | Door alignment and gaskets | Normal in high humidity — not automatically a fault |
+| Defrost schedule an hour out | Daylight Savings Flag | It does not change itself, twice a year, every year |
+
+### Common Field Mistakes
+
+- **Reading the tag's 250 psi low-side design pressure as an operating target.** It is a pressure rating, not a setpoint.
+- **Assuming the refrigerant.** The same G-Series badge covers R-404A and R-290 cabinets. Check the tag before leak-checking, and never take a naked flame near a propane cabinet.
+- **Topping up a 23 oz charge by feel.** On a charge that small, guessing is a recharge. Recover, evacuate, and weigh it in.
+- **Condemning an evaporator fan that is cycling 15 seconds on and 45 seconds off.** That is the designed off-cycle pattern.
+- **Programming defrost times without setting Defrost Mode to Schedule.** The times store and nothing uses them.
+- **Programming a schedule without setting the clock.** The control assumes midnight at power-up and defrosts at the wrong times all day.
+- **Damaging the top hinge wiring.** That microswitch runs the lights and the evaporator fans.
+- **Fitting a cold gasket.** Both cabinet and gasket must be at room temperature, corners in first.
+- **Skipping the ON/OFF toggle on top of the cabinet** on a no-power call. It ships ON, so nobody expects it to be off — and somebody always finds it.
+- **Cleaning stainless with a chlorine cleanser,** or mopping the floor with one and splashing the cabinet. Chlorine corrodes stainless. Warm water and mild soap, wiped with the grain; baking soda and water at 1 tablespoon per pint for stubborn odours.
+- **Bending condenser fins with an air nozzle held too close.** Bent fins cost capacity and compressor life.
+- **Moving a cabinet on its legs, or laying it on its side.** Traulsen units are not designed to roll on legs — use a pallet jack or forklift.
+
+### Parts Worth Knowing
+
+| Part | Number |
+|---|---|
+| Control board (Next Gen, post 05-2023) | 950-60509-00 |
+| Control display | 950-60510-00 |
+| Control cable | 333-60523-00 |
+| Door gasket, full height | SVC-60256-00 |
+| Door gasket, half height | SVC-60257-00 |
+| Shelf pin | 358-24759-02 |
+| Lock keeper | 358-60707-00 |
+| Lock cylinder | 358-13186-42 |
+| LED light bulb | 358-60691-00 |
+| Evaporator motor and blade assembly | 338-60061-00 |
+| Legs, 6 inch, set of 4 | LK1 |
+
+Cabinet and coil **sensors and the expansion valve are model-specific** — cabinet sensor 334-60083-0x, coil sensor 334-60084-0x, TXV 325-60080-xx, with the final digits set by section count and by whether the cabinet is a refrigerator or a freezer. Give Traulsen the model and serial rather than ordering off the base number. Relays and start capacitors are call-factory items.
+
+Casters ship as standard on G-Series — four 6-inch plate casters and sixteen bolts, boxed and strapped to the lower shelf inside the cabinet. Legs are the optional alternative. Block the cabinet a minimum of 7 inches off the floor before fitting either; caster bolts take a 1/2 inch socket, the shipping pallet bolts a 3/4 inch socket.
+`
+
 // ── Bakery Proofer-Retarders ──────────────────────────────────────────────────
 export const PROOFER_RETARDER_KNOWLEDGE = `
 ## Bakery Proofer-Retarders — Wabash & Hobart PW/RPW Service Guide
