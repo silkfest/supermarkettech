@@ -6356,10 +6356,11 @@ export const COMPOUND_COMPRESSOR_KNOWLEDGE = `
 ## Compound (Two-Stage) Compressors
 
 A compound compressor is one compressor that squeezes the refrigerant **twice** on its way from
-the evaporator to the condenser. You will meet them on low-temperature work — blast freezers,
-ice cream and frozen food rooms, hardening rooms — anywhere the box has to hold well below 0°F.
-In our stores they are the **Carlyle 06CC and 06CY** (Carlyle's "Compound Cooling" family, several
-to a rack on the older Hill Phoenix low-temp racks) and the **Bitzer S6F**.
+the evaporator to the condenser. In our stores they run the **low-temperature racks** — ice cream
+doors, frozen food cases, walk-in freezers — the circuits holding a box around **−10°F**, as
+opposed to the medium-temp racks doing dairy, deli and produce.
+They are the **Carlyle 06CC and 06CY** (Carlyle's "Compound Cooling" family, several to a rack on
+the older Hill Phoenix low-temp racks) and the **Bitzer S6F**.
 
 From the outside it looks like an ordinary semi-hermetic: one motor, one crankcase, one set of
 service valves. The difference is inside, and on the nameplate.
@@ -6372,36 +6373,46 @@ compressor has to multiply the pressure, measured in absolute pressure.
 CR = discharge pressure (psia) ÷ suction pressure (psia), where psia = psig + 14.7
 
 Head pressure barely moves as the box gets colder — the condenser still sees the same outdoor
-air. Suction pressure, though, keeps dropping. So the ratio climbs fast:
+air. Suction pressure, though, keeps dropping. So the ratio climbs as you go from medium temp to
+low temp, and climbs again on a hot day when the head goes up:
 
-| Box temperature (SST) | Condensing (SCT) | Suction | Head | Compression ratio |
-|---|---|---|---|---|
-| +20°F (medium temp) | 90°F | 56.6 psig | 204.5 psig | 3.1 : 1 |
-| 0°F | 90°F | 33.7 psig | 204.5 psig | 4.5 : 1 |
-| −20°F | 90°F | 16.8 psig | 204.5 psig | 7.0 : 1 |
-| −40°F (low temp) | 90°F | 4.9 psig | 204.5 psig | **11.2 : 1** |
+| Circuit | SST | SCT | Suction | Head | Compression ratio |
+|---|---|---|---|---|---|
+| Medium temp (dairy, produce) | +20°F | 90°F | 56.6 psig | 204.5 psig | 3.1 : 1 |
+| Medium temp | 0°F | 90°F | 33.7 psig | 204.5 psig | 4.5 : 1 |
+| **Low temp, mild day** | −20°F | 85°F | 16.8 psig | 189.5 psig | 6.5 : 1 |
+| **Low temp, typical** | −20°F | 90°F | 16.8 psig | 204.5 psig | 7.0 : 1 |
+| **Low temp, hot day** | −20°F | 105°F | 16.8 psig | 254.2 psig | 8.5 : 1 |
+| **Low temp, hot + dirty condenser** | −20°F | 110°F | 16.8 psig | 272.6 psig | 9.1 : 1 |
 
-(R-404A. The refrigerant changes the numbers a little; it does not change the shape of the problem.)
+(R-404A. A −10°F box with a 10°F evaporator TD puts the coil around −20°F SST — that's the row to
+look at for our freezer circuits.)
 
-A single-stage compressor asked to do 11:1 runs into three walls at once:
+Three things go wrong as that ratio climbs:
 
 - **It stops moving much gas.** Every cylinder has a small clearance volume at the top of the
-  stroke. At high ratios that trapped gas re-expands on the way down and fills much of the
-  cylinder before the suction valve can open. The compressor turns, draws current, and pumps
-  very little. This is called falling **volumetric efficiency**.
-- **It gets dangerously hot.** All the work of compression turns into heat in the gas. Squeeze
-  it eleven times in one step and discharge temperature climbs past what the oil can survive.
+  stroke. As the ratio rises, that trapped gas re-expands on the way down and fills more of the
+  cylinder before the suction valve can open. The compressor turns and draws current but pumps
+  less. This is falling **volumetric efficiency**, and it's why a low-temp circuit needs far more
+  compressor than a medium-temp one for the same box load.
+- **It gets hot.** All the work of compression turns into heat in the gas. The higher the ratio,
+  the hotter the discharge — and on a hot day, with the head already up, that's exactly when it
+  climbs furthest.
 - **The oil pays for it.** Hot oil thins out, carbonises, varnishes the valve plate, and stops
   protecting the bearings. Most burnt-out low-temp compressors were cooked, not worn out.
 
-Splitting the job in two fixes all three. Each stage does roughly the square root of the total
-ratio — so 11.2 : 1 overall becomes about **3.3 : 1 per stage**, which is comfortable
-medium-temp territory for each half.
+Splitting the job in two eases all three. Each stage does roughly the square root of the total
+ratio — so 7 : 1 overall becomes about **2.6 : 1 per stage**, medium-temp territory for each half,
+and even the 9 : 1 hot-day case comes down to about 3 : 1 per stage.
 
 > [!NOTE]
-> The working rule of thumb: **above about 10 : 1, single-stage stops being practical.** Between
-> roughly 8 : 1 and 10 : 1 it's a design judgement. Below that, a single-stage machine is the
-> simpler and cheaper answer.
+> **Our racks are not at the ragged edge — that's the point.** The classic rule is that single
+> stage stops being practical somewhere around 10 : 1, and supermarket low temp sits below that
+> at roughly 6.5 : 1 to 9 : 1. A single-stage machine *can* do this duty. The compound one does it
+> **cooler, with more capacity from the same displacement, and with more margin on a hot August
+> afternoon** — which is where the ratio climbs and where compressors die. These machines are also
+> rated for duty far colder than we ever ask of them, so don't be surprised when manufacturer data
+> runs down to −40°F and beyond; that's the industrial end of their range, not ours.
 
 ### How a Compound Compressor Works
 
@@ -6456,12 +6467,11 @@ because it has two different swept volumes.
 > rack — at 575 V/3-phase. Minimum circuit ampacity 79.7 A with 100 A maximum overcurrent
 > protection; test pressures 150 psig low side, 400 psig high side.
 > Two things on this rack are **not** what the plate says, and both are ordinary:
-> - The plate reads **R-507**. The rack is actually charged with **R-404A** — a conversion the
-> plate was never updated for. Gauge it against an R-404A chart.
-> - One position carries a **remanufactured 06CY665J-103** where the plate says 06CC665. CC and CY
-> are both the compound family, and a reman is a normal replacement.
-> Neither is a fault. Both are the reason you confirm what's actually in front of you: read the
-> compressor's own nameplate, and confirm the refrigerant from the system rather than the rack plate.
+> - The plate reads **R-507**; the rack is actually charged with **R-404A**. Gauge it as R-404A.
+> - A **remanufactured 06CY665J-103** sits where the plate says 06CC665 — same compound family.
+> Neither is a fault, and these compressors have been changed several times over the rack's life.
+> That's the point: read the compressor's own nameplate, and confirm the refrigerant from the
+> system. On a rack this age the plate records how it left the factory, not what's on it today.
 
 Physical tells, once you know what you're looking for:
 
@@ -6493,33 +6503,35 @@ into two moderate ones.
 > **The geometric mean is a design reference, not a reading to diagnose against.** A real machine
 > has a fixed displacement split, so its interstage lands where mass balances — which only
 > coincides with the geometric mean when conditions match what the split was chosen for. Modelling
-> the Bitzer's actual 4309/2152 CFH split at −40°F/90°F puts a healthy balance point in the low
-> 30s psig, against a geometric mean of about 51. **Do not condemn a low stage because the gauge
-> reads under the calculated number** — on many healthy machines it will.
+> the Bitzer's actual 4309/2152 CFH split at a −20°F coil and 90°F condensing puts a healthy
+> balance point around **53 psig**, against a geometric mean of **68**. **Do not condemn a low
+> stage because the gauge reads under the calculated number** — on many healthy machines it will.
 
 **R-404A:**
 
 | SST | SCT | Suction | Head | Geometric mean (design ref) | Its saturated temp | Ratio per stage |
 |---|---|---|---|---|---|---|
-| −40°F | 90°F | 4.9 psig | 204.5 psig | **51 psig** | ≈ +16°F | 3.3 : 1 |
-| −35°F | 90°F | 7.5 psig | 204.5 psig | **55 psig** | ≈ +19°F | 3.1 : 1 |
-| −30°F | 95°F | 10.3 psig | 220.2 psig | **62 psig** | ≈ +24°F | 3.1 : 1 |
+| −15°F | 90°F | 20.5 psig | 204.5 psig | **73 psig** | ≈ +32°F | 2.5 : 1 |
+| −20°F | 85°F | 16.8 psig | 189.5 psig | **66 psig** | ≈ +26°F | 2.6 : 1 |
 | −20°F | 90°F | 16.8 psig | 204.5 psig | **68 psig** | ≈ +28°F | 2.6 : 1 |
-| −40°F | 105°F | 4.9 psig | 254.2 psig | **58 psig** | ≈ +21°F | 3.7 : 1 |
+| −20°F | 105°F | 16.8 psig | 254.2 psig | **77 psig** | ≈ +34°F | 2.9 : 1 |
+| −25°F | 90°F | 13.4 psig | 204.5 psig | **64 psig** | ≈ +25°F | 2.8 : 1 |
+| −25°F | 105°F | 13.4 psig | 254.2 psig | **72 psig** | ≈ +31°F | 3.1 : 1 |
 
 **R-507:**
 
 | SST | SCT | Suction | Head | Geometric mean (design ref) | Its saturated temp | Ratio per stage |
 |---|---|---|---|---|---|---|
-| −40°F | 90°F | 5.4 psig | 209.3 psig | **52 psig** | ≈ +16°F | 3.3 : 1 |
-| −35°F | 90°F | 8.1 psig | 209.3 psig | **57 psig** | ≈ +19°F | 3.1 : 1 |
-| −30°F | 95°F | 11.0 psig | 225.4 psig | **64 psig** | ≈ +24°F | 3.1 : 1 |
+| −15°F | 90°F | 21.4 psig | 209.3 psig | **75 psig** | ≈ +32°F | 2.5 : 1 |
+| −20°F | 85°F | 17.6 psig | 194.1 psig | **67 psig** | ≈ +26°F | 2.5 : 1 |
 | −20°F | 90°F | 17.6 psig | 209.3 psig | **70 psig** | ≈ +28°F | 2.6 : 1 |
-| −40°F | 105°F | 5.4 psig | 260.1 psig | **60 psig** | ≈ +21°F | 3.7 : 1 |
+| −20°F | 105°F | 17.6 psig | 260.1 psig | **80 psig** | ≈ +34°F | 2.9 : 1 |
+| −25°F | 90°F | 14.1 psig | 209.3 psig | **66 psig** | ≈ +25°F | 2.8 : 1 |
+| −25°F | 105°F | 14.1 psig | 260.1 psig | **74 psig** | ≈ +31°F | 3.1 : 1 |
 
 > [!NOTE]
 > R-507 and R-404A are close relatives and behave almost identically here. R-507 sits about
-> **half a psi higher at −40°F and about 5 psi higher at 90°F** — enough to matter when you're
+> **a psi higher at a −20°F coil and about 5 psi higher at 90°F condensing** — enough to matter when you're
 > comparing a gauge to a chart, not enough to change how the machine behaves. Notice that the
 > compression ratios and the saturated interstage *temperatures* come out the same for both; it's
 > only the pressures that shift.
@@ -6532,11 +6544,12 @@ into two moderate ones.
 > subcooling number you calculate. Check the charge tag, the service records, or ask, before you
 > pick a column.
 
-> [!EXAMPLE] Working it out yourself — R-404A, −40°F box, 90°F condensing
-> Suction 4.9 psig → 4.9 + 14.7 = **19.6 psia**. Head 204.5 psig → **219.2 psia**.
-> Single-stage ratio would be 219.2 ÷ 19.6 = **11.2 : 1** — too high, hence the compound machine.
-> Interstage target = √(19.6 × 219.2) = √4296 = **65.6 psia**, which is 65.6 − 14.7 = **50.9 psig**.
-> Check the split: 65.6 ÷ 19.6 = 3.3 and 219.2 ÷ 65.6 = 3.3. Evenly shared. ✓
+> [!EXAMPLE] Working it out yourself — R-404A freezer circuit, −20°F coil, 90°F condensing
+> Suction 16.8 psig → 16.8 + 14.7 = **31.5 psia**. Head 204.5 psig → **219.2 psia**.
+> In one stage that would be 219.2 ÷ 31.5 = **7.0 : 1** — workable, but hot and inefficient.
+> Geometric mean = √(31.5 × 219.2) = √6905 = **83.1 psia**, which is 83.1 − 14.7 = **68.4 psig**.
+> Check the split: 83.1 ÷ 31.5 = 2.6 and 219.2 ÷ 83.1 = 2.6. Evenly shared, and **2.6 : 1 per
+> stage is ordinary medium-temp duty** — that's what the second stage buys you.
 
 Notice what the table shows: as the box gets colder *or* the head goes up, the interstage
 pressure the machine wants shifts. There is no single "correct" interstage number to memorise —
