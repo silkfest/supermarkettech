@@ -6474,20 +6474,32 @@ Physical tells, once you know what you're looking for:
 
 ### Interstage Pressure — What It Should Be
 
-The interstage pressure is not something you dial in. It **settles where the two stages balance**,
-set by their displacement ratio and the conditions the system is running at. But you can work out
-where it *ought* to sit, and compare.
+The interstage pressure is not something you dial in. It **settles where the two stages balance** —
+at whatever pressure the mass the low stage delivers equals the mass the high stage can pump away.
+That balance point is set by the displacement split of the machine and the conditions it's running
+at.
 
-The design target is the **geometric mean** — the square root of suction absolute times discharge
-absolute:
+There is a related number worth knowing, the **geometric mean** — the square root of suction
+absolute times discharge absolute:
 
 Interstage (psia) = √( suction psia × discharge psia )
 
-That value splits the work evenly between the two stages, which is where the machine is happiest.
+That is the pressure at which the two stages share the work evenly and total compression work is
+lowest. It's the **design** figure — what a manufacturer aims at when choosing how to split the
+cylinders — and it's why the compound arrangement helps at all, because it turns one huge ratio
+into two moderate ones.
+
+> [!WARNING]
+> **The geometric mean is a design reference, not a reading to diagnose against.** A real machine
+> has a fixed displacement split, so its interstage lands where mass balances — which only
+> coincides with the geometric mean when conditions match what the split was chosen for. Modelling
+> the Bitzer's actual 4309/2152 CFH split at −40°F/90°F puts a healthy balance point in the low
+> 30s psig, against a geometric mean of about 51. **Do not condemn a low stage because the gauge
+> reads under the calculated number** — on many healthy machines it will.
 
 **R-404A:**
 
-| SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
+| SST | SCT | Suction | Head | Geometric mean (design ref) | Its saturated temp | Ratio per stage |
 |---|---|---|---|---|---|---|
 | −40°F | 90°F | 4.9 psig | 204.5 psig | **51 psig** | ≈ +16°F | 3.3 : 1 |
 | −35°F | 90°F | 7.5 psig | 204.5 psig | **55 psig** | ≈ +19°F | 3.1 : 1 |
@@ -6497,7 +6509,7 @@ That value splits the work evenly between the two stages, which is where the mac
 
 **R-507:**
 
-| SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
+| SST | SCT | Suction | Head | Geometric mean (design ref) | Its saturated temp | Ratio per stage |
 |---|---|---|---|---|---|---|
 | −40°F | 90°F | 5.4 psig | 209.3 psig | **52 psig** | ≈ +16°F | 3.3 : 1 |
 | −35°F | 90°F | 8.1 psig | 209.3 psig | **57 psig** | ≈ +19°F | 3.1 : 1 |
@@ -6531,11 +6543,25 @@ pressure the machine wants shifts. There is no single "correct" interstage numbe
 it moves with the operating conditions, which is exactly why you calculate it from the two
 pressures you can actually measure.
 
+#### Using interstage pressure to tell which stage is in trouble
+
+This is where interstage pressure earns its keep, and the reliable version of it is a **comparison
+against the same machine's own history** at similar suction and head — not against a calculated
+number. Once you know where a healthy machine normally sits, a drift from that is the signal:
+
+| Interstage has moved | What it means | Why |
+|---|---|---|
+| **Up** from where it normally sits | **High stage isn't keeping up** — worn valves or rings on the high-stage cylinders, or a restriction downstream of them | The low stage keeps delivering, the high stage can't clear it, so gas stacks up in between until the back-pressure throttles the low stage enough to match |
+| **Down** from where it normally sits | **Low stage isn't keeping up** — worn valves or rings on the low-stage cylinders, or it's being starved | Less mass arrives, the high stage clears it easily, so the pressure between them falls until the thinner gas limits what the high stage can move |
+
+Either way, the stage in trouble is the one now running the **higher ratio**, and it will be the
+hotter of the two.
+
 > [!TIP]
-> Interstage pressure well **above** the calculated target usually means the high stage isn't
-> keeping up — worn rings or valves on the high-stage cylinders, or a restriction downstream.
-> Well **below** it points the other way, at the low stage. Either way the stage that's
-> struggling is the one running the higher ratio, and it will be the hotter one.
+> This is the strongest argument for logging interstage pressure on every visit, even when nothing
+> is wrong. The number on its own tells you little; the same number six months apart, at the same
+> box and head conditions, tells you which end of the machine is wearing out — while there's still
+> time to plan the repair.
 
 ### Interstage Desuperheating — and Why It Matters
 
@@ -6626,7 +6652,7 @@ single number.
 | What to measure | Where | What you're looking for |
 |---|---|---|
 | Suction pressure and temperature | Suction service valve | SST and return gas superheat into the low stage |
-| Interstage pressure | Interstage service port | Compare against the √ calculation for the current conditions |
+| Interstage pressure | Interstage service port | Compare against this machine's own past readings at similar suction and head |
 | Discharge pressure and temperature | Discharge service valve / sensor well | SCT, and discharge temperature against the manufacturer's limit |
 | Liquid line temperature and pressure | After the receiver | Subcooling — injection needs solid liquid to work |
 | Injection line temperature | Downstream of the metering valve | Cold when feeding, ambient when not |
@@ -6644,8 +6670,8 @@ single number.
 |---|---|---|
 | Discharge temperature high, climbing, no injection response | Injection not feeding — solenoid, valve, strainer, or no liquid | Injection line cold? Solenoid energised? Liquid subcooling present? |
 | Discharge high, injection *is* feeding | Head pressure too high, or high return gas superheat | Condenser cleanliness and fans; evaporator TXV superheat; box load |
-| Interstage pressure above calculated target | High stage not keeping up | High-stage valve plate and rings; restriction to condenser |
-| Interstage pressure below calculated target | Low stage not keeping up | Low-stage valves; starved evaporator holding suction down |
+| Interstage pressure risen from this machine's norm | High stage not keeping up | High-stage valve plate and rings; restriction to condenser |
+| Interstage pressure fallen from this machine's norm | Low stage not keeping up | Low-stage valves; starved evaporator holding suction down |
 | Discharge unusually cool, wet-sounding compressor | Injection overfeeding | Metering valve setting; sensor location and contact; stuck-open solenoid |
 | Oil dark, varnish on valve plate | History of overheating | Discharge temperature trend; injection function; oil analysis |
 | Low capacity, box won't pull down, amps low | Poor volumetric efficiency — worn valves, or running too high a ratio | Valve plates; head pressure control; verify the ratio is what design intended |
