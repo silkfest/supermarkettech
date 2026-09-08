@@ -6359,7 +6359,7 @@ A compound compressor is one compressor that squeezes the refrigerant **twice** 
 the evaporator to the condenser. You will meet them on low-temperature work — blast freezers,
 ice cream and frozen food rooms, hardening rooms — anywhere the box has to hold well below 0°F.
 In our stores they are the **Carlyle 06CC and 06CY** (Carlyle's "Compound Cooling" family, several
-to a rack on the older Hill Phoenix low-temp racks, running R-507) and the **Bitzer S6F**.
+to a rack on the older Hill Phoenix low-temp racks) and the **Bitzer S6F**.
 
 From the outside it looks like an ordinary semi-hermetic: one motor, one crankcase, one set of
 service valves. The difference is inside, and on the nameplate.
@@ -6452,13 +6452,16 @@ because it has two different swept volumes.
 > supermarkets and is not a voltage to be casual around.
 
 > [!EXAMPLE] A real rack — Fortino's Rack C (Hill Phoenix PS320PLRAD, 1998)
-> The rack rating plate lists its compressors as **2 × 06CC665 and 1 × 06CC550** — three compound
-> machines on one rack — running **R-507**, at 575 V/3-phase. Minimum circuit ampacity 79.7 A with
-> 100 A maximum overcurrent protection; test pressures 150 psig low side, 400 psig high side.
-> One position now carries a **remanufactured 06CY665J-103** in place of an original 06CC665.
-> That swap is normal and not a mismatch: CC and CY are both the compound family, and a reman is a
-> common way these get replaced. Always read the compressor's own nameplate rather than assuming
-> every position still matches the rack plate.
+> The rack rating plate lists **2 × 06CC665 and 1 × 06CC550** — three compound machines on one
+> rack — at 575 V/3-phase. Minimum circuit ampacity 79.7 A with 100 A maximum overcurrent
+> protection; test pressures 150 psig low side, 400 psig high side.
+> Two things on this rack are **not** what the plate says, and both are ordinary:
+> - The plate reads **R-507**. The rack is actually charged with **R-404A** — a conversion the
+> plate was never updated for. Gauge it against an R-404A chart.
+> - One position carries a **remanufactured 06CY665J-103** where the plate says 06CC665. CC and CY
+> are both the compound family, and a reman is a normal replacement.
+> Neither is a fault. Both are the reason you confirm what's actually in front of you: read the
+> compressor's own nameplate, and confirm the refrigerant from the system rather than the rack plate.
 
 Physical tells, once you know what you're looking for:
 
@@ -6492,7 +6495,7 @@ That value splits the work evenly between the two stages, which is where the mac
 | −20°F | 90°F | 16.8 psig | 204.5 psig | **68 psig** | ≈ +28°F | 2.6 : 1 |
 | −40°F | 105°F | 4.9 psig | 254.2 psig | **58 psig** | ≈ +21°F | 3.7 : 1 |
 
-**R-507 (what our Carlyle 06CC racks run):**
+**R-507:**
 
 | SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
 |---|---|---|---|---|---|---|
@@ -6507,7 +6510,15 @@ That value splits the work evenly between the two stages, which is where the mac
 > **half a psi higher at −40°F and about 5 psi higher at 90°F** — enough to matter when you're
 > comparing a gauge to a chart, not enough to change how the machine behaves. Notice that the
 > compression ratios and the saturated interstage *temperatures* come out the same for both; it's
-> only the pressures that shift. Use the chart for the refrigerant actually in the system.
+> only the pressures that shift.
+
+> [!WARNING]
+> **Confirm the refrigerant from the system, not the rack plate.** Older low-temp racks were
+> commonly converted between R-507 and R-404A without anyone updating the nameplate — Fortino's
+> Rack C still reads R-507 on its plate and is charged with R-404A. The two are close enough that
+> a wrong chart won't look obviously wrong; it will just quietly shift every superheat and
+> subcooling number you calculate. Check the charge tag, the service records, or ask, before you
+> pick a column.
 
 > [!EXAMPLE] Working it out yourself — R-404A, −40°F box, 90°F condensing
 > Suction 4.9 psig → 4.9 + 14.7 = **19.6 psia**. Head 204.5 psig → **219.2 psia**.
