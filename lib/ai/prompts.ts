@@ -6352,6 +6352,280 @@ Older RAUCC units use Trane's ReliaTel control module (same platform as Preceden
 | Tandem oil migration | Oil equalisation line blocked/pitched wrong | Verify equalisation line is level, remove any traps |
 `
 
+export const COMPOUND_COMPRESSOR_KNOWLEDGE = `
+## Compound (Two-Stage) Compressors
+
+A compound compressor is one compressor that squeezes the refrigerant **twice** on its way from
+the evaporator to the condenser. You will meet them on low-temperature work — blast freezers,
+ice cream and frozen food rooms, hardening rooms — anywhere the box has to hold well below 0°F.
+The two you'll see most often in our stores are the **Carlyle 06CY** and the **Bitzer S6F**.
+
+From the outside it looks like an ordinary semi-hermetic: one motor, one crankcase, one set of
+service valves. The difference is inside, and on the nameplate.
+
+### Why Two Stages Exist
+
+Everything here comes back to one number: **compression ratio (CR)** — how many times the
+compressor has to multiply the pressure, measured in absolute pressure.
+
+CR = discharge pressure (psia) ÷ suction pressure (psia), where psia = psig + 14.7
+
+Head pressure barely moves as the box gets colder — the condenser still sees the same outdoor
+air. Suction pressure, though, keeps dropping. So the ratio climbs fast:
+
+| Box temperature (SST) | Condensing (SCT) | Suction | Head | Compression ratio |
+|---|---|---|---|---|
+| +20°F (medium temp) | 90°F | 56.6 psig | 204.5 psig | 3.1 : 1 |
+| 0°F | 90°F | 33.7 psig | 204.5 psig | 4.5 : 1 |
+| −20°F | 90°F | 16.8 psig | 204.5 psig | 7.0 : 1 |
+| −40°F (low temp) | 90°F | 4.9 psig | 204.5 psig | **11.2 : 1** |
+
+(R-404A. The refrigerant changes the numbers a little; it does not change the shape of the problem.)
+
+A single-stage compressor asked to do 11:1 runs into three walls at once:
+
+- **It stops moving much gas.** Every cylinder has a small clearance volume at the top of the
+  stroke. At high ratios that trapped gas re-expands on the way down and fills much of the
+  cylinder before the suction valve can open. The compressor turns, draws current, and pumps
+  very little. This is called falling **volumetric efficiency**.
+- **It gets dangerously hot.** All the work of compression turns into heat in the gas. Squeeze
+  it eleven times in one step and discharge temperature climbs past what the oil can survive.
+- **The oil pays for it.** Hot oil thins out, carbonises, varnishes the valve plate, and stops
+  protecting the bearings. Most burnt-out low-temp compressors were cooked, not worn out.
+
+Splitting the job in two fixes all three. Each stage does roughly the square root of the total
+ratio — so 11.2 : 1 overall becomes about **3.3 : 1 per stage**, which is comfortable
+medium-temp territory for each half.
+
+> [!NOTE]
+> The working rule of thumb: **above about 10 : 1, single-stage stops being practical.** Between
+> roughly 8 : 1 and 10 : 1 it's a design judgement. Below that, a single-stage machine is the
+> simpler and cheaper answer.
+
+### How a Compound Compressor Works
+
+One motor, one crankshaft, one crankcase, one oil charge. The **cylinders are divided into two
+groups** — a larger low-stage group and a smaller high-stage group.
+
+The gas path, in order:
+
+1. Cold suction gas comes back from the evaporator and enters the **low stage** (also called the
+   first stage or LP stage).
+2. The low stage compresses it part way. It leaves hot, at an in-between pressure called the
+   **interstage** or **intermediate** pressure.
+3. That hot gas is **cooled** before it goes any further — this is the desuperheating step, and
+   it is the part most likely to be misunderstood in the field (see below).
+4. The cooled gas enters the **high stage** (second stage, HP stage), which compresses it the
+   rest of the way.
+5. It leaves the discharge valve at full head pressure and goes to the condenser as normal.
+
+#### Why the high stage is smaller
+
+After the first squeeze the gas is denser, so the same mass takes up less room. The high stage
+therefore needs less swept volume. A **2 : 1 split is typical** — two-thirds of the cylinders on
+the low stage, one-third on the high stage. On a six-cylinder machine that's four low and two
+high.
+
+> [!TIP]
+> Think of it as one compressor with a divided personality, not two compressors bolted together.
+> There is one oil supply, one motor and one set of safeties. You cannot run, isolate, or unload
+> one stage independently — if the high stage is in trouble, the whole compressor is in trouble.
+
+### Identifying One in the Field
+
+The nameplate is the giveaway. A compound compressor has to state **two displacements** —
+because it has two different swept volumes.
+
+> [!EXAMPLE] Nameplate decode — Bitzer S6F-30.2Y-5PU
+> The displacement row reads **CFH LP/HP 4309 / 2152**. Two figures, and the first is exactly
+> twice the second — that is a two-stage machine with a 2 : 1 split, four cylinders on the low
+> stage and two on the high. "S" is Bitzer's two-stage series prefix and "6" is the cylinder
+> count. Speed 1750 RPM, so those are 60 Hz figures.
+
+> [!EXAMPLE] Nameplate decode — Carlyle 06CY665J-103
+> In Carlyle's 06C family the **"CY" (and "CC") designate the compound, two-stage models** —
+> Carlyle describe them as two compressors in one, with the high and low stages built into the
+> same body. Plain 06D and 06E models are single-stage. Watch the voltage block too: this one is
+> **575 V, 3-phase, 60 Hz**, which is common in Canadian supermarkets and is not a voltage to be
+> casual around.
+
+Physical tells, once you know what you're looking for:
+
+- An **interstage line** — external piping carrying gas from one bank of heads back into the
+  other, usually with a service port on it.
+- A **liquid injection line** teeing into that interstage line or into the compressor body, fed
+  from the liquid line through a small metering valve and often a solenoid.
+- A **discharge temperature sensor** in a well in the discharge line or head, wired back to the
+  injection valve or the controller.
+
+### Interstage Pressure — What It Should Be
+
+The interstage pressure is not something you dial in. It **settles where the two stages balance**,
+set by their displacement ratio and the conditions the system is running at. But you can work out
+where it *ought* to sit, and compare.
+
+The design target is the **geometric mean** — the square root of suction absolute times discharge
+absolute:
+
+Interstage (psia) = √( suction psia × discharge psia )
+
+That value splits the work evenly between the two stages, which is where the machine is happiest.
+
+| SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
+|---|---|---|---|---|---|---|
+| −40°F | 90°F | 4.9 psig | 204.5 psig | **51 psig** | ≈ +16°F | 3.3 : 1 |
+| −35°F | 90°F | 7.5 psig | 204.5 psig | **55 psig** | ≈ +19°F | 3.1 : 1 |
+| −30°F | 95°F | 10.3 psig | 220.2 psig | **62 psig** | ≈ +24°F | 3.1 : 1 |
+| −20°F | 90°F | 16.8 psig | 204.5 psig | **68 psig** | ≈ +28°F | 2.6 : 1 |
+| −40°F | 105°F | 4.9 psig | 254.2 psig | **58 psig** | ≈ +21°F | 3.7 : 1 |
+
+> [!EXAMPLE] Working it out yourself — R-404A, −40°F box, 90°F condensing
+> Suction 4.9 psig → 4.9 + 14.7 = **19.6 psia**. Head 204.5 psig → **219.2 psia**.
+> Single-stage ratio would be 219.2 ÷ 19.6 = **11.2 : 1** — too high, hence the compound machine.
+> Interstage target = √(19.6 × 219.2) = √4296 = **65.6 psia**, which is 65.6 − 14.7 = **50.9 psig**.
+> Check the split: 65.6 ÷ 19.6 = 3.3 and 219.2 ÷ 65.6 = 3.3. Evenly shared. ✓
+
+Notice what the table shows: as the box gets colder *or* the head goes up, the interstage
+pressure the machine wants shifts. There is no single "correct" interstage number to memorise —
+it moves with the operating conditions, which is exactly why you calculate it from the two
+pressures you can actually measure.
+
+> [!TIP]
+> Interstage pressure well **above** the calculated target usually means the high stage isn't
+> keeping up — worn rings or valves on the high-stage cylinders, or a restriction downstream.
+> Well **below** it points the other way, at the low stage. Either way the stage that's
+> struggling is the one running the higher ratio, and it will be the hotter one.
+
+### Interstage Desuperheating — and Why It Matters
+
+The gas leaving the low stage is already hot. If it went straight into the high stage at that
+temperature, the second squeeze would start from a hot beginning and the final discharge would be
+far too high. So the interstage gas has to be **cooled between the stages**. Two methods:
+
+- **Liquid injection.** A metered spray of liquid refrigerant into the interstage. It flashes,
+  absorbs heat, and drops the gas temperature before the high stage takes it. This is the common
+  arrangement on the compressors we see.
+- **A subcooler or intercooler.** A heat exchanger (sometimes a small vessel) that cools the
+  interstage gas against liquid from the receiver. Often fitted alongside injection rather than
+  instead of it, and it subcools the liquid feed at the same time, which lifts capacity.
+
+The point of either is the same, and it is worth saying plainly to an apprentice: **desuperheating
+is not a luxury or an efficiency trim — it is what keeps the compressor alive.** A compound
+compressor running with its interstage cooling failed will cook itself, and it may do so quietly
+over weeks rather than tripping out on the day.
+
+### Liquid Injection — When It Should Be Operating
+
+This is the question that comes up most on a service call, so be precise about it.
+
+Injection is **not** meant to run constantly. It is a temperature-controlled device: it feeds when
+the compressor is running hot and backs off when it isn't. Almost always the controlling
+measurement is **discharge gas temperature**, sensed in the discharge line or head.
+
+**You should expect to see it feeding when:**
+
+- The box is in a deep pulldown after defrost, a door left open, or a warm product load — high
+  suction load and a hot compressor.
+- Suction pressure is low (a cold box, or a starved/iced evaporator dragging SST down) while head
+  pressure stays up. That's the high-ratio, high-discharge-temperature corner.
+- Head pressure is high — hot ambient, dirty condenser, fan out.
+- Return gas superheat is high, which puts hotter gas into the low stage to begin with.
+
+**You should expect it idle or barely feeding when:**
+
+- The box is at setpoint, the load is light, and the head is where it should be.
+- Ambient is low and the system is running near its minimum condensing pressure.
+
+> [!EXAMPLE] Typical setpoints — illustrative only
+> Bitzer's liquid injection kit is a fair example of the shape of the control: the valve begins
+> injecting around **250°F** discharge temperature, a high-temperature alarm annunciates around
+> **285°F**, and the valve closes again once things cool to about **235°F**. Your compressor's
+> figures will differ by model and refrigerant, and the sensor location matters — always take the
+> numbers from the manual for the machine in front of you rather than from another model.
+
+#### How to tell whether it is actually working
+
+Confirming injection is doing its job is mostly a matter of watching the discharge temperature
+respond:
+
+- **Take a baseline.** Discharge line temperature a few inches from the service valve, with the
+  compressor at steady load.
+- **Drive it hot** (or catch it hot naturally, during a pulldown) and watch. A working injection
+  circuit shows discharge temperature **rising, then levelling off or falling back** as the valve
+  opens. Discharge that climbs steadily with nothing checking it is the signature of injection
+  that isn't feeding.
+- **Feel the injection line.** When feeding, the small line downstream of the metering valve goes
+  noticeably cold — often cold enough to sweat or frost lightly. Room-temperature line on a hot
+  compressor means it isn't feeding.
+- **Check the obvious upstream causes first.** A closed liquid line service valve, a de-energised
+  solenoid, a plugged strainer at the valve inlet, or simply not enough liquid subcooling to
+  deliver solid liquid to the valve.
+
+> [!WARNING]
+> Too much injection is its own fault, not a safe default. Overfeeding drops discharge temperature
+> below where it should be, washes oil off the cylinder walls, and can dilute the crankcase with
+> liquid refrigerant. Discharge temperature that sits unusually low, a compressor that sounds wet
+> or knocks, or crankcase level and oil condition going off are the signs. The target is a
+> discharge temperature inside the manufacturer's window — not the lowest number you can achieve.
+
+### Service Checks on a Compound Compressor
+
+Take a full set of readings before you touch anything — the pattern tells you more than any
+single number.
+
+| What to measure | Where | What you're looking for |
+|---|---|---|
+| Suction pressure and temperature | Suction service valve | SST and return gas superheat into the low stage |
+| Interstage pressure | Interstage service port | Compare against the √ calculation for the current conditions |
+| Discharge pressure and temperature | Discharge service valve / sensor well | SCT, and discharge temperature against the manufacturer's limit |
+| Liquid line temperature and pressure | After the receiver | Subcooling — injection needs solid liquid to work |
+| Injection line temperature | Downstream of the metering valve | Cold when feeding, ambient when not |
+| Oil level and condition | Sight glass | Level in range; oil clear, not dark or smelling burnt |
+| Amps on all three legs | Contactor / disconnect | Balanced, and within nameplate RLA |
+
+> [!TIP]
+> Log these on every visit to a compound machine, not just when there's a complaint. The failure
+> mode that kills these compressors is slow overheating, and the way you catch it is a discharge
+> temperature that is fifteen degrees higher than it was six months ago at the same conditions.
+
+### Common Faults and What They Look Like
+
+| Symptom | Likely cause | First checks |
+|---|---|---|
+| Discharge temperature high, climbing, no injection response | Injection not feeding — solenoid, valve, strainer, or no liquid | Injection line cold? Solenoid energised? Liquid subcooling present? |
+| Discharge high, injection *is* feeding | Head pressure too high, or high return gas superheat | Condenser cleanliness and fans; evaporator TXV superheat; box load |
+| Interstage pressure above calculated target | High stage not keeping up | High-stage valve plate and rings; restriction to condenser |
+| Interstage pressure below calculated target | Low stage not keeping up | Low-stage valves; starved evaporator holding suction down |
+| Discharge unusually cool, wet-sounding compressor | Injection overfeeding | Metering valve setting; sensor location and contact; stuck-open solenoid |
+| Oil dark, varnish on valve plate | History of overheating | Discharge temperature trend; injection function; oil analysis |
+| Low capacity, box won't pull down, amps low | Poor volumetric efficiency — worn valves, or running too high a ratio | Valve plates; head pressure control; verify the ratio is what design intended |
+
+### Safety and Handling
+
+> [!SAFETY]
+> The discharge line and head on a low-temperature compound compressor run hot enough to give a
+> serious burn — well over 200°F in normal operation, hotter in a fault. Let it cool, or use the
+> back of a gloved hand and a thermometer rather than a bare hand. Many of these machines are also
+> fed at **575 V** in Canadian stores: lock out, tag out, and prove dead before any electrical work.
+
+> [!WARNING]
+> Never bypass or defeat the discharge temperature protection, the high-pressure cutout, or the
+> oil failure control on a compound machine. On a low-temperature compressor these are not
+> nuisance devices — they are the only things standing between a control fault and a burnout, and
+> the compressor cannot survive long without them.
+
+### Oil and Maintenance Notes
+
+- These machines run **POE oil** on HFC and HFO refrigerants (R-404A, R-448A/R-449A). POE absorbs
+  moisture from the air quickly — keep containers sealed and don't leave a system open.
+- Confirm the crankcase heater works before every cold start. Liquid migrating into the crankcase
+  during a long off cycle, then flashing on start, is a classic bearing killer.
+- Oil condition is the running record of how hot the machine has been. Dark oil with a burnt smell
+  on a compound compressor is a symptom to investigate, not just an oil change.
+- After any burnout, be thorough on cleanup. Two stages means more internal volume and more places
+  for acid and debris to hide.
+`
+
 export const TEMPRITE_KNOWLEDGE = `
 # Temprite Oil Management Products — Supermarket Rack Reference
 

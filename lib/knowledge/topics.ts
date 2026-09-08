@@ -25,6 +25,7 @@ import {
   TYLER_HILL_PHOENIX_KNOWLEDGE,
   HEATCRAFT_BOHN_KNOWLEDGE,
   BITZER_KNOWLEDGE,
+  COMPOUND_COMPRESSOR_KNOWLEDGE,
   LENNOX_RTU_KNOWLEDGE,
   CARRIER_RTU_KNOWLEDGE,
   YORK_RTU_KNOWLEDGE,
@@ -299,6 +300,22 @@ export const TOPICS: KnowledgeTopic[] = [
     content: BITZER_KNOWLEDGE,
     manualKeywords: ['bitzer'],
     tags: ['Compressors', 'CO₂', 'Ecoline', 'INT69'],
+    category: 'compressors',
+  },
+  {
+    slug: 'compound-compressors',
+    title: 'Compound (Two-Stage) Compressors',
+    shortTitle: 'Compound Compressors',
+    description: 'How two-stage compressors work and why low-temperature systems need them: compression ratio, the interstage, calculating the interstage pressure target, interstage desuperheating, and when liquid injection should — and should not — be feeding. Covers the Carlyle 06CY and Bitzer S6F.',
+    iconName: 'Layers',
+    colorClass: 'lime',
+    content: COMPOUND_COMPRESSOR_KNOWLEDGE,
+    // Deliberately not 'bitzer' — that keyword belongs to the Bitzer topic and
+    // would drag its CO₂ and Ecoline manuals onto a two-stage page. These match
+    // nothing today; they're here to catch a Carlyle or two-stage manual when
+    // one is added to the library.
+    manualKeywords: ['carlyle', '06cy', '06cc', 'two-stage', 'two stage', 'compound', 's6f'],
+    tags: ['Compressors', 'Low Temp', 'Liquid Injection', 'Carlyle', 'Bitzer'],
     category: 'compressors',
   },
   {
