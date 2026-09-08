@@ -6358,7 +6358,8 @@ export const COMPOUND_COMPRESSOR_KNOWLEDGE = `
 A compound compressor is one compressor that squeezes the refrigerant **twice** on its way from
 the evaporator to the condenser. You will meet them on low-temperature work — blast freezers,
 ice cream and frozen food rooms, hardening rooms — anywhere the box has to hold well below 0°F.
-The two you'll see most often in our stores are the **Carlyle 06CY** and the **Bitzer S6F**.
+In our stores they are the **Carlyle 06CC and 06CY** (Carlyle's "Compound Cooling" family, several
+to a rack on the older Hill Phoenix low-temp racks, running R-507) and the **Bitzer S6F**.
 
 From the outside it looks like an ordinary semi-hermetic: one motor, one crankcase, one set of
 service valves. The difference is inside, and on the nameplate.
@@ -6442,12 +6443,22 @@ because it has two different swept volumes.
 > stage and two on the high. "S" is Bitzer's two-stage series prefix and "6" is the cylinder
 > count. Speed 1750 RPM, so those are 60 Hz figures.
 
-> [!EXAMPLE] Nameplate decode — Carlyle 06CY665J-103
-> In Carlyle's 06C family the **"CY" (and "CC") designate the compound, two-stage models** —
-> Carlyle describe them as two compressors in one, with the high and low stages built into the
-> same body. Plain 06D and 06E models are single-stage. Watch the voltage block too: this one is
-> **575 V, 3-phase, 60 Hz**, which is common in Canadian supermarkets and is not a voltage to be
-> casual around.
+> [!EXAMPLE] Nameplate decode — Carlyle 06CC and 06CY
+> In Carlyle's 06C family, **"CC" stands for Compound Cooling** — two compression stages built
+> into a single body — and **"CY" is the same compound family**. Plain **06D and 06E are
+> single-stage**, so the two letters after "06" are the quickest way to tell what you're standing
+> in front of. Carlyle list the 06CC as approved for R-22, R-404A, R-407A and **R-507**.
+> Watch the voltage block too: ours are **575 V, 3-phase, 60 Hz**, which is common in Canadian
+> supermarkets and is not a voltage to be casual around.
+
+> [!EXAMPLE] A real rack — Fortino's Rack C (Hill Phoenix PS320PLRAD, 1998)
+> The rack rating plate lists its compressors as **2 × 06CC665 and 1 × 06CC550** — three compound
+> machines on one rack — running **R-507**, at 575 V/3-phase. Minimum circuit ampacity 79.7 A with
+> 100 A maximum overcurrent protection; test pressures 150 psig low side, 400 psig high side.
+> One position now carries a **remanufactured 06CY665J-103** in place of an original 06CC665.
+> That swap is normal and not a mismatch: CC and CY are both the compound family, and a reman is a
+> common way these get replaced. Always read the compressor's own nameplate rather than assuming
+> every position still matches the rack plate.
 
 Physical tells, once you know what you're looking for:
 
@@ -6471,6 +6482,8 @@ Interstage (psia) = √( suction psia × discharge psia )
 
 That value splits the work evenly between the two stages, which is where the machine is happiest.
 
+**R-404A:**
+
 | SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
 |---|---|---|---|---|---|---|
 | −40°F | 90°F | 4.9 psig | 204.5 psig | **51 psig** | ≈ +16°F | 3.3 : 1 |
@@ -6478,6 +6491,23 @@ That value splits the work evenly between the two stages, which is where the mac
 | −30°F | 95°F | 10.3 psig | 220.2 psig | **62 psig** | ≈ +24°F | 3.1 : 1 |
 | −20°F | 90°F | 16.8 psig | 204.5 psig | **68 psig** | ≈ +28°F | 2.6 : 1 |
 | −40°F | 105°F | 4.9 psig | 254.2 psig | **58 psig** | ≈ +21°F | 3.7 : 1 |
+
+**R-507 (what our Carlyle 06CC racks run):**
+
+| SST | SCT | Suction | Head | Interstage should be ≈ | Saturated interstage temp | Ratio per stage |
+|---|---|---|---|---|---|---|
+| −40°F | 90°F | 5.4 psig | 209.3 psig | **52 psig** | ≈ +16°F | 3.3 : 1 |
+| −35°F | 90°F | 8.1 psig | 209.3 psig | **57 psig** | ≈ +19°F | 3.1 : 1 |
+| −30°F | 95°F | 11.0 psig | 225.4 psig | **64 psig** | ≈ +24°F | 3.1 : 1 |
+| −20°F | 90°F | 17.6 psig | 209.3 psig | **70 psig** | ≈ +28°F | 2.6 : 1 |
+| −40°F | 105°F | 5.4 psig | 260.1 psig | **60 psig** | ≈ +21°F | 3.7 : 1 |
+
+> [!NOTE]
+> R-507 and R-404A are close relatives and behave almost identically here. R-507 sits about
+> **half a psi higher at −40°F and about 5 psi higher at 90°F** — enough to matter when you're
+> comparing a gauge to a chart, not enough to change how the machine behaves. Notice that the
+> compression ratios and the saturated interstage *temperatures* come out the same for both; it's
+> only the pressures that shift. Use the chart for the refrigerant actually in the system.
 
 > [!EXAMPLE] Working it out yourself — R-404A, −40°F box, 90°F condensing
 > Suction 4.9 psig → 4.9 + 14.7 = **19.6 psia**. Head 204.5 psig → **219.2 psia**.
@@ -6505,9 +6535,18 @@ far too high. So the interstage gas has to be **cooled between the stages**. Two
 - **Liquid injection.** A metered spray of liquid refrigerant into the interstage. It flashes,
   absorbs heat, and drops the gas temperature before the high stage takes it. This is the common
   arrangement on the compressors we see.
-- **A subcooler or intercooler.** A heat exchanger (sometimes a small vessel) that cools the
-  interstage gas against liquid from the receiver. Often fitted alongside injection rather than
-  instead of it, and it subcools the liquid feed at the same time, which lifts capacity.
+- **A subcooler or intercooler.** A heat exchanger that cools the interstage gas against liquid
+  from the receiver, and subcools the liquid feed at the same time — which lifts capacity as well
+  as protecting the compressor. Carlyle build their compound machines around this approach, using
+  a **plate-to-plate heat exchanger as the system subcooler**. Often fitted alongside injection
+  rather than instead of it. (The Brazed Plate Heat Exchangers topic covers how those are piped
+  and what fouling looks like.)
+
+> [!TIP]
+> On a rack with a plate subcooler, that heat exchanger is part of the compressor's protection —
+> not just an efficiency add-on. A fouled or air-bound subcooler shows up as rising discharge
+> temperature and falling capacity, and it's an easy thing to walk past when you're focused on the
+> compressor itself.
 
 The point of either is the same, and it is worth saying plainly to an apprentice: **desuperheating
 is not a luxury or an efficiency trim — it is what keeps the compressor alive.** A compound
