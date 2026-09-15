@@ -145,12 +145,12 @@ export default function SimulatorSelectPage() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <h2 className="text-sm font-bold text-white">Cold Call — Store Shift</h2>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-cyan-400/40 bg-cyan-500/15 text-cyan-200">New · Prototype</span>
+              <h2 className="text-sm font-bold text-white">Cold Call — Career Mode</h2>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-cyan-400/40 bg-cyan-500/15 text-cyan-200">New · 3 levels</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Clock in, walk the store, and chase real refrigeration, electrical, plumbing and HVAC calls as they
-              come in over an 8-hour shift. Diagnose from live readings, pick the fix, log it, move on.
+              Learn the basics in trade school, prove it at a corner gas station, then run a full supermarket shift —
+              refrigeration, electrical, plumbing and HVAC calls, live readings, real fixes. Progress saves to your account.
             </p>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-cyan-200 flex-shrink-0">
