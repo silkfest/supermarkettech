@@ -104,7 +104,7 @@ export default function ColdCallPage() {
     const before = lessonsPassed(save.progress)
     const next = recordLesson(save.progress, l.id, score, passed)
     persist({ ...save, progress: next })
-    if (before < LESSONS.length && lessonsPassed(next) === LESSONS.length) setGraduated(true)
+    if (before < LESSONS.length && lessonsPassed(next) === LESSONS.length) { setLesson(null); setGraduated(true) }
   }
 
   const level = LEVEL_BY_ID[state.levelId]

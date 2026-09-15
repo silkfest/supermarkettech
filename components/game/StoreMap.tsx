@@ -607,10 +607,14 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
     case 'station': {
-      const stationLabel = (
-        <text x={vertical ? x + w / 2 : x + w / 2} y={vertical ? y + h / 2 + 3 : y + h - 9} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
-          className="fill-slate-700 dark:fill-slate-100" stroke="#ffffff" strokeWidth="2.5" paintOrder="stroke" strokeOpacity="0.75"
-          transform={vertical ? `rotate(-90 ${x + w / 2} ${y + h / 2})` : undefined}>{node.short ?? node.id}</text>
+      // Wall stations carry the pin at their centre, so their name sits beside them on the aisle side.
+      const aisleRight = node.stand.x > x + w / 2
+      const stationLabel = vertical ? (
+        <text x={aisleRight ? x + w + 6 : x - 6} y={y + h - 8} textAnchor={aisleRight ? 'start' : 'end'} fontSize="7.5" fontWeight="700" letterSpacing="0.8"
+          className="fill-slate-600 dark:fill-slate-300">{node.short ?? node.id}</text>
+      ) : (
+        <text x={x + w / 2} y={y + h - 9} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
+          className="fill-slate-700 dark:fill-slate-100" stroke="#ffffff" strokeWidth="2.5" paintOrder="stroke" strokeOpacity="0.75">{node.short ?? node.id}</text>
       )
       if (node.id === 'WB') {
         return (
