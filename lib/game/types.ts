@@ -3,8 +3,26 @@ export type SystemKey = 'refrigeration' | 'electrical' | 'plumbing' | 'hvac'
 export type EquipmentKind =
   | 'reach-in-freezer' | 'bunker' | 'dairy-case' | 'deli-case' | 'meat-case' | 'produce-case'
   | 'walk-in-freezer' | 'walk-in-cooler' | 'rack' | 'rtu' | 'floor-drain' | 'entrance'
+  | 'reach-in-cooler' | 'chest-freezer' | 'ice-machine' | 'condensing-unit' | 'split-ac'
+  | 'station'
 
 export interface Point { x: number; y: number }
+
+export interface Obstacle {
+  x: number; y: number; w: number; h: number
+  kind: 'wall' | 'shelf' | 'checkout' | 'produce' | 'desk' | 'counter' | 'bench' | 'pump'
+  label?: string
+}
+
+export interface GameMap {
+  w: number
+  h: number
+  floor: 'tile' | 'concrete' | 'shop'
+  obstacles: Obstacle[]
+  zones: { label: string; x: number; y: number }[]
+  equipment: EquipmentNode[]
+  spawn: Point
+}
 
 export interface EquipmentNode {
   id: string

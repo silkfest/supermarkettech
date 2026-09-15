@@ -1,21 +1,17 @@
 import { FAULTS, FAULT_BY_ID } from './faults'
-import { EQUIPMENT } from './store'
+import { LEVEL_BY_ID, type LevelDef } from './levels'
+import type { LevelId } from './progress'
 import type { ActiveCall, CallResult, Character, FaultDef, SystemKey } from './types'
 
 export const SHIFT_START_HOUR = 6
-export const SHIFT_LEN_MIN = 8 * 60
 /** One game minute per this many real ms — an 8 h shift plays in ~12 real minutes. */
 export const REAL_MS_PER_GAME_MIN = 1500
-
-const ROLE_RULES = {
-  apprentice: { spawnAt: [0, 75, 150, 225, 300, 375], maxOpen: 2 },
-  journeyman: { spawnAt: [0, 40, 80, 130, 180, 230, 280, 330, 380], maxOpen: 3 },
-} as const
 
 export interface Toast { id: number; text: string; tone: 'info' | 'warn' | 'crit' | 'good' }
 
 export interface ShiftState {
-  status: 'setup' | 'running' | 'over'
+  status: 'idle' | 'running' | 'over'
+  levelId: LevelId
   character: Character
   elapsedMin: number
   spawnIdx: number
@@ -29,7 +25,7 @@ export interface ShiftState {
 }
 
 export type ShiftAction =
-  | { type: 'START'; character: Character }
+  | { type: 'START'; character: Character; levelId: LevelId }
   | { type: 'TICK'; dtMin: number }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
   | { type: 'SPEND_MINUTES'; callId: string; minutes: number }
@@ -39,7 +35,8 @@ export type ShiftAction =
   | { type: 'RESET' }
 
 export const INITIAL_STATE: ShiftState = {
-  status: 'setup',
+  status: 'idle',
+  levelId: 'supermarket',
   character: { name: '', color: '#2563eb', role: 'apprentice' },
   elapsedMin: 0, spawnIdx: 0, calls: [], results: [],
   shrink: 0, complaints: 0, usedFaultIds: [], toasts: [], seq: 1,
@@ -47,12 +44,12 @@ export const INITIAL_STATE: ShiftState = {
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
-function chooseFault(state: ShiftState): { fault: FaultDef; equipmentId: string } | null {
+function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equipmentId: string } | null {
   const occupied = new Set(state.calls.map(c => c.equipmentId))
   const usedSystems = new Set<SystemKey>([...state.calls, ...state.results].map(c => FAULT_BY_ID[c.faultId].system))
   const candidates = FAULTS
-    .filter(f => !state.usedFaultIds.includes(f.id))
-    .map(f => ({ f, nodes: EQUIPMENT.filter(e => f.kinds.includes(e.kind) && !occupied.has(e.id)) }))
+    .filter(f => level.faultPool.includes(f.id) && !state.usedFaultIds.includes(f.id))
+    .map(f => ({ f, nodes: level.map.equipment.filter(e => f.kinds.includes(e.kind) && !occupied.has(e.id)) }))
     .filter(c => c.nodes.length > 0)
   if (candidates.length === 0) return null
   // Prefer a system the player has not seen yet this shift so every shift mixes all four.
@@ -68,17 +65,16 @@ function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftS
 export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState {
   switch (action.type) {
     case 'START':
-      return { ...INITIAL_STATE, status: 'running', character: action.character }
+      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId }
 
     case 'RESET':
-      return { ...INITIAL_STATE, character: state.character }
+      return { ...INITIAL_STATE, character: state.character, levelId: state.levelId }
 
     case 'TICK': {
       if (state.status !== 'running') return state
+      const level = LEVEL_BY_ID[state.levelId]
       let s: ShiftState = { ...state, elapsedMin: state.elapsedMin + action.dtMin }
-      const rules = ROLE_RULES[s.character.role]
 
-      // Meters accrue on every open call
       let shrink = s.shrink
       let complaints = s.complaints
       const calls = s.calls.map(c => {
@@ -86,17 +82,16 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
         shrink += f.shrinkPerMin * action.dtMin
         if (!c.complained && s.elapsedMin - c.spawnedAtMin >= f.complaintAfterMin) {
           complaints += 1
-          s = withToast(s, `Customer complaint logged — ${EQUIPMENT.find(e => e.id === c.equipmentId)?.label}`, 'warn')
+          s = withToast(s, `Customer complaint logged — ${level.map.equipment.find(e => e.id === c.equipmentId)?.label}`, 'warn')
           return { ...c, complained: true }
         }
         return c
       })
       s = { ...s, calls, shrink, complaints }
 
-      // Spawn on schedule, respecting the role's open-call cap
-      const nextAt = rules.spawnAt[s.spawnIdx]
-      if (nextAt !== undefined && s.elapsedMin >= nextAt && s.calls.length < rules.maxOpen) {
-        const choice = chooseFault(s)
+      const nextAt = level.spawnAt[s.character.role][s.spawnIdx]
+      if (nextAt !== undefined && s.elapsedMin >= nextAt && s.calls.length < level.maxOpen[s.character.role]) {
+        const choice = chooseFault(s, level)
         s = { ...s, spawnIdx: s.spawnIdx + 1 }
         if (choice) {
           const call: ActiveCall = {
@@ -104,12 +99,12 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
             spawnedAtMin: s.elapsedMin, complained: false, stage: 'ticket',
             checksDone: [], lotoDone: false, causeAttempts: 0, fixAttempts: 0, minutesSpent: 0,
           }
-          const node = EQUIPMENT.find(e => e.id === choice.equipmentId)
+          const node = level.map.equipment.find(e => e.id === choice.equipmentId)
           s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${choice.fault.title}`, 'crit')
         }
       }
 
-      if (s.elapsedMin >= SHIFT_LEN_MIN) return { ...s, status: 'over', elapsedMin: SHIFT_LEN_MIN }
+      if (s.elapsedMin >= level.shiftLenMin) return { ...s, status: 'over', elapsedMin: level.shiftLenMin }
       return s
     }
 

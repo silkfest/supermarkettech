@@ -1,19 +1,23 @@
 'use client'
-import { Trophy, RotateCcw, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Trophy, RotateCcw, CheckCircle2, AlertTriangle, Map as MapIcon, Lock, ArrowRight } from 'lucide-react'
 import { shiftGrade } from '@/lib/game/engine'
 import { FAULT_BY_ID, SYSTEM_META } from '@/lib/game/faults'
-import { EQUIPMENT } from '@/lib/game/store'
 import { SYSTEM_COLOR } from './StoreMap'
-import type { ActiveCall, CallResult, Character, SystemKey } from '@/lib/game/types'
+import type { ActiveCall, CallResult, Character, GameMap, SystemKey } from '@/lib/game/types'
 
 interface Props {
+  levelName: string
+  map: GameMap
   character: Character
   results: CallResult[]
   unfinished: ActiveCall[]
   shrink: number
   complaints: number
   isBest: boolean
+  /** Set when this shift unlocked the next level. */
+  unlocked: string | null
   onAgain: () => void
+  onHub: () => void
 }
 
 const GRADE_TONE: Record<string, string> = {
@@ -21,18 +25,20 @@ const GRADE_TONE: Record<string, string> = {
   C: 'text-amber-600 dark:text-amber-400', D: 'text-red-600 dark:text-red-400', F: 'text-red-600 dark:text-red-400',
 }
 
-export default function ShiftReport({ character, results, unfinished, shrink, complaints, isBest, onAgain }: Props) {
+export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, onAgain, onHub }: Props) {
   const g = shiftGrade(results, results.length + unfinished.length, complaints, shrink)
   const systems = (Object.keys(SYSTEM_META) as SystemKey[]).map(s => {
     const rs = results.filter(r => r.system === s)
     return { s, n: rs.length, avg: rs.length ? Math.round(rs.reduce((a, r) => a + r.points, 0) / rs.length) : null }
   })
+  const nodeLabel = (id: string) => map.equipment.find(e => e.id === id)?.label ?? id
 
   return (
     <div className="max-w-2xl mx-auto w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-4">
         <div className={`text-5xl font-black ${GRADE_TONE[g.grade]}`}>{g.grade}</div>
         <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{levelName}</p>
           <h1 className="text-base font-bold text-slate-900 dark:text-white">Shift over, {character.name}.</h1>
           <p className="text-[12px] text-slate-500 dark:text-slate-400">
             {g.total} pts of {g.possible} possible · {results.length} call{results.length !== 1 ? 's' : ''} closed
@@ -41,6 +47,12 @@ export default function ShiftReport({ character, results, unfinished, shrink, co
           {isBest && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5"><Trophy size={11} /> New personal best</p>}
         </div>
       </div>
+
+      {unlocked && (
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-[12px] text-emerald-800 dark:text-emerald-200">
+          <Lock size={13} className="flex-shrink-0" /> <span><b>{unlocked}</b> unlocked. Head back to the hub when you&apos;re ready.</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Tile label="Earned" value={`${g.earned}`} />
@@ -63,28 +75,23 @@ export default function ShiftReport({ character, results, unfinished, shrink, co
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Call log</p>
         <ul className="space-y-1.5">
-          {results.map(r => {
-            const f = FAULT_BY_ID[r.faultId]
-            const node = EQUIPMENT.find(e => e.id === r.equipmentId)!
-            return (
-              <li key={r.callId} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
-                <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{node.label} — {f.title}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.note || 'No note'}</p>
-                </div>
-                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-slate-300 flex-shrink-0">{r.points}</span>
-              </li>
-            )
-          })}
+          {results.map(r => (
+            <li key={r.callId} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+              <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{nodeLabel(r.equipmentId)} — {FAULT_BY_ID[r.faultId].title}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.note || 'No note'}</p>
+              </div>
+              <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-slate-300 flex-shrink-0">{r.points}</span>
+            </li>
+          ))}
           {unfinished.map(c => {
             const f = FAULT_BY_ID[c.faultId]
-            const node = EQUIPMENT.find(e => e.id === c.equipmentId)!
             return (
               <li key={c.id} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30">
                 <AlertTriangle size={13} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{node.label} — {f.title}</p>
+                  <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{nodeLabel(c.equipmentId)} — {f.title}</p>
                   <p className="text-[10px] text-red-600 dark:text-red-300">Left open at end of shift. Answer: {f.causes.find(o => o.correct)?.label}</p>
                 </div>
                 <span className="text-[12px] font-bold tabular-nums text-red-600 dark:text-red-400 flex-shrink-0">0</span>
@@ -94,9 +101,14 @@ export default function ShiftReport({ character, results, unfinished, shrink, co
         </ul>
       </div>
 
-      <button onClick={onAgain} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
-        <RotateCcw size={14} /> Run another shift
-      </button>
+      <div className="flex gap-2">
+        <button onClick={onAgain} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700">
+          <RotateCcw size={14} /> Run it again
+        </button>
+        <button onClick={onHub} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+          <MapIcon size={14} /> Back to the hub {unlocked && <ArrowRight size={14} />}
+        </button>
+      </div>
     </div>
   )
 }

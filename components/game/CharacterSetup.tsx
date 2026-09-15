@@ -18,11 +18,12 @@ const ROLES: { key: Character['role']; label: string; blurb: string }[] = [
 
 interface Props {
   initial: Character
-  best: { score: number; grade: string } | null
+  submitLabel?: string
   onStart: (c: Character) => void
+  onCancel?: () => void
 }
 
-export default function CharacterSetup({ initial, best, onStart }: Props) {
+export default function CharacterSetup({ initial, submitLabel = 'Clock in', onStart, onCancel }: Props) {
   const [name, setName] = useState(initial.name)
   const [color, setColor] = useState(initial.color)
   const [role, setRole] = useState<Character['role']>(initial.role)
@@ -34,8 +35,8 @@ export default function CharacterSetup({ initial, best, onStart }: Props) {
           <HardHat size={22} />
         </div>
         <div>
-          <h1 className="text-base font-bold text-slate-900 dark:text-white">Clock in</h1>
-          <p className="text-[12px] text-slate-500 dark:text-slate-400">One store, one 8-hour shift, four systems that break.</p>
+          <h1 className="text-base font-bold text-slate-900 dark:text-white">Your tech</h1>
+          <p className="text-[12px] text-slate-500 dark:text-slate-400">Trade school first, then a gas station, then the whole supermarket.</p>
         </div>
       </div>
 
@@ -71,14 +72,17 @@ export default function CharacterSetup({ initial, best, onStart }: Props) {
         </div>
       </div>
 
-      {best && (
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">Your best shift: <span className="font-semibold text-slate-800 dark:text-slate-200">{best.score} pts · grade {best.grade}</span></p>
-      )}
-
-      <button onClick={() => onStart({ name: name.trim() || 'Tech', color, role })}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
-        <Play size={15} /> Start the shift
-      </button>
+      <div className="flex gap-2">
+        {onCancel && (
+          <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700">
+            Cancel
+          </button>
+        )}
+        <button onClick={() => onStart({ name: name.trim() || 'Tech', color, role })}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+          <Play size={15} /> {submitLabel}
+        </button>
+      </div>
     </div>
   )
 }
