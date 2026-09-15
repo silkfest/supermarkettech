@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, HardHat, Sparkles, Zap, GraduationCap } from 'lucide-react'
+import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, Wrench, Sparkles, Zap, GraduationCap } from 'lucide-react'
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
@@ -256,7 +256,7 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
           <Image src={portraitFor(c.color)!} alt="" width={56} height={56} className="w-14 h-14 rounded-xl object-cover border-2 flex-shrink-0" style={{ borderColor: c.color }} />
         ) : (
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: c.color }}>
-            <HardHat size={22} />
+            <Wrench size={22} />
           </div>
         )}
         <div className="min-w-0 flex-1">

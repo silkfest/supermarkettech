@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Image from 'next/image'
-import { HardHat, Play } from 'lucide-react'
+import { Wrench, Play } from 'lucide-react'
 import { portraitFor } from '@/lib/game/art'
 import type { Character } from '@/lib/game/types'
 
@@ -37,7 +37,7 @@ export default function CharacterSetup({ initial, submitLabel = 'Clock in', onSt
           <Image src={portraitFor(color)!} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover border-2 flex-shrink-0" style={{ borderColor: color }} />
         ) : (
           <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white" style={{ background: color }}>
-            <HardHat size={22} />
+            <Wrench size={22} />
           </div>
         )}
         <div>
