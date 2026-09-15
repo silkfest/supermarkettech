@@ -31,7 +31,8 @@ function writeLocal(save: SavedGame) {
 export async function loadGame(): Promise<SavedGame> {
   const local = readLocal()
   try {
-    const res = await fetch('/api/game/progress')
+    // A slow or dead API must never keep the hub on "Loading…" — fall back to the local save.
+    const res = await fetch('/api/game/progress', { signal: AbortSignal.timeout(5000) })
     if (res.ok) {
       const data = await res.json() as { character: Character | Record<string, never>; progress: GameProgress } | null
       if (data && data.progress && data.progress.version === 1) {

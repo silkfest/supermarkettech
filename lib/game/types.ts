@@ -27,6 +27,8 @@ export interface GameMap {
 export interface EquipmentNode {
   id: string
   label: string
+  /** Short name drawn on the map (stations). Falls back to `id`. */
+  short?: string
   kind: EquipmentKind
   /** Footprint on the map (also a movement obstacle unless `walkable`). */
   rect: { x: number; y: number; w: number; h: number }

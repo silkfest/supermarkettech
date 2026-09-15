@@ -606,7 +606,15 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
           {label}
         </g>
       )
-    case 'station':
+    case 'station': {
+      // Wall stations carry the pin at their centre and the tech stands beside them, so the name goes underneath.
+      const stationLabel = vertical ? (
+        <text x={x + w / 2} y={y + h + 11} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
+          className="fill-slate-600 dark:fill-slate-300">{node.short ?? node.id}</text>
+      ) : (
+        <text x={x + w / 2} y={y + h - 9} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
+          className="fill-slate-700 dark:fill-slate-100" stroke="#ffffff" strokeWidth="2.5" paintOrder="stroke" strokeOpacity="0.75">{node.short ?? node.id}</text>
+      )
       if (node.id === 'WB') {
         return (
           <g className="pointer-events-none">
@@ -614,6 +622,73 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
             <path d={`M${x + 20} ${y + 8} q12 -6 24 0 t24 0 t24 0`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
             <path d={`M${x + 120} ${y + 14} h60`} stroke="#dc2626" strokeWidth="1.5" />
             <circle cx={x + 210} cy={y + 12} r="6" fill="none" stroke="#16a34a" strokeWidth="1.5" />
+            <text x={x + w - 8} y={y + h - 7} textAnchor="end" fontSize="7.5" fontWeight="700" letterSpacing="0.8" className="fill-slate-500">{node.short}</text>
+          </g>
+        )
+      }
+      if (node.id === 'CRIB') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-400 dark:fill-slate-900" />
+            {Array.from({ length: 5 }).map((_, r) => [0, 1].map(c => (
+              <rect key={`${r}-${c}`} x={x + 6 + c * 20} y={y + 6 + r * 19} width="14" height="13" rx="2" fill={SHELF_PRODUCT[(r * 2 + c + 3) % SHELF_PRODUCT.length]} opacity="0.8" />
+            )))}
+            {stationLabel}
+          </g>
+        )
+      }
+      if (node.id === 'SAFE120' || node.id === 'SAFE208') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} rx={2} top="fill-slate-300 dark:fill-slate-600" front="fill-slate-500 dark:fill-slate-900" />
+            <rect x={x + 6} y={y + 8} width={w - 12} height={h - 24} rx="1.5" className="fill-slate-100 dark:fill-slate-800 stroke-slate-500" strokeWidth="1" />
+            {[0, 1, 2, 3].map(k => <rect key={k} x={x + 10} y={y + 13 + k * 10} width={w - 20} height="5" rx="1" className={k % 2 ? 'fill-red-400' : 'fill-slate-500 dark:fill-slate-400'} />)}
+            <circle cx={x + w / 2} cy={y + h - 18} r="2.2" fill={node.id === 'SAFE208' ? '#f97316' : '#22c55e'} />
+            {stationLabel}
+          </g>
+        )
+      }
+      if (node.id === 'SERV') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+            {[0, 1, 2].map(k => <circle key={k} cx={x + 22 + k * 22} cy={y + 15} r="8" fill={['#f59e0b', '#22c55e', '#e2e8f0'][k]} stroke="#475569" strokeWidth="1" />)}
+            <rect x={x + 92} y={y + 7} width="36" height="16" rx="2" className="fill-slate-600 dark:fill-slate-400" />
+            <circle cx={x + 110} cy={y + 15} r="4" fill="#0ea5e9" />
+            {stationLabel}
+          </g>
+        )
+      }
+      if (node.id === 'COMP') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} top="fill-teal-100 dark:fill-teal-900/60" front="fill-teal-500 dark:fill-teal-950" />
+            {[0, 1].map(k => (
+              <g key={k}>
+                <circle cx={x + w / 2} cy={y + 22 + k * 32} r="9" className="fill-slate-500 dark:fill-slate-400" />
+                <circle cx={x + w / 2} cy={y + 22 + k * 32} r="5" className="fill-slate-700 dark:fill-slate-800" />
+              </g>
+            ))}
+            {stationLabel}
+          </g>
+        )
+      }
+      if (node.id === 'COND') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} top="fill-teal-100 dark:fill-teal-900/60" front="fill-teal-500 dark:fill-teal-950" />
+            {[0, 1].map(k => <Fan key={k} cx={x + w / 2} cy={y + 22 + k * 32} r={9} className="stroke-slate-600 dark:stroke-slate-300" dur="1.2s" />)}
+            {stationLabel}
+          </g>
+        )
+      }
+      if (node.id === 'EVAP') {
+        return (
+          <g className="pointer-events-none">
+            <Extruded x={x} y={y} w={w} h={h} top="fill-teal-100 dark:fill-teal-900/60" front="fill-teal-500 dark:fill-teal-950" />
+            {[0, 1, 2, 3].map(k => <line key={k} x1={x + 12} x2={x + w - 12} y1={y + 8 + k * 5} y2={y + 8 + k * 5} className="stroke-cyan-600 dark:stroke-cyan-300" strokeWidth="1.5" />)}
+            <rect x={x + w - 34} y={y + 5} width="20" height="16" rx="2" fill="#f59e0b" opacity="0.8" />
+            {stationLabel}
           </g>
         )
       }
@@ -621,10 +696,12 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         <g className="pointer-events-none">
           <Extruded x={x} y={y} w={w} h={h} top="fill-teal-100 dark:fill-teal-900/60" front="fill-teal-500 dark:fill-teal-950" />
           {vertical
-            ? [0, 1, 2].map(k => <rect key={k} x={x + 8} y={y + 12 + k * 30} width={w - 16} height="18" rx="2" className="fill-slate-400 dark:fill-slate-500" opacity="0.7" />)
-            : [0, 1, 2, 3].map(k => <rect key={k} x={x + 12 + k * 32} y={y + 8} width="22" height={h - 20} rx="2" className="fill-slate-400 dark:fill-slate-500" opacity="0.7" />)}
+            ? [0, 1, 2].map(k => <rect key={k} x={x + 8} y={y + 12 + k * 22} width={w - 16} height="14" rx="2" className="fill-slate-400 dark:fill-slate-500" opacity="0.7" />)
+            : [0, 1, 2, 3].map(k => <rect key={k} x={x + 12 + k * 32} y={y + 6} width="22" height={h - 24} rx="2" className="fill-slate-400 dark:fill-slate-500" opacity="0.7" />)}
+          {stationLabel}
         </g>
       )
+    }
     case 'entrance':
       return (
         <g className="pointer-events-none">
@@ -692,20 +769,36 @@ function FaultCue({ system, at }: { system: SystemKey; at: Point }) {
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
+/** Top-down tech: hard hat, hi-vis shirt, swinging arms and boots, tool pouch. "Forward" is −y; rotated to face travel. */
 function Avatar({ pos, bob, legPhase, facing, color }: { pos: Point; bob: number; legPhase: number; facing: number; color: string }) {
+  const arm = legPhase * 0.7
   return (
     <g transform={`translate(${pos.x} ${pos.y})`} className="pointer-events-none">
-      <ellipse cy="3" rx="10" ry="5" fill="#000" opacity="0.2" />
+      <ellipse cy="5" rx="13" ry="6" fill="#000" opacity="0.22" />
       <g transform={`rotate(${facing}) translate(0 ${bob})`}>
-        <ellipse cx="-4" cy={6 + legPhase} rx="3" ry="2.2" fill="#1e293b" />
-        <ellipse cx="4" cy={6 - legPhase} rx="3" ry="2.2" fill="#1e293b" />
-        <rect x="-9" y="-6" width="18" height="14" rx="6" fill={color} stroke="#fff" strokeWidth="1.2" />
-        <rect x="-9" y="-1" width="18" height="3" fill="#fde047" opacity="0.9" />
-        <rect x="8" y="-2" width="5" height="8" rx="1.5" fill="#78350f" stroke="#fff" strokeWidth="0.8" />
-        <circle cy="-3" r="5" fill="#f1c27d" />
-        <ellipse cy="-4" rx="7.5" ry="6" fill="#facc15" />
-        <ellipse cy="-4" rx="7.5" ry="6" fill="url(#glass)" />
-        <ellipse cy="1" rx="8" ry="2.2" fill="#eab308" />
+        {/* boots */}
+        <ellipse cx="-5" cy={8 + legPhase} rx="3.6" ry="2.8" fill="#1f2937" stroke="#0f172a" strokeWidth="0.6" />
+        <ellipse cx="5" cy={8 - legPhase} rx="3.6" ry="2.8" fill="#1f2937" stroke="#0f172a" strokeWidth="0.6" />
+        {/* arms + hands */}
+        <rect x="-15" y={-5 - arm} width="5.5" height="12" rx="2.75" fill={color} stroke="#ffffff" strokeWidth="0.9" />
+        <rect x="9.5" y={-5 + arm} width="5.5" height="12" rx="2.75" fill={color} stroke="#ffffff" strokeWidth="0.9" />
+        <circle cx="-12.25" cy={8 - arm} r="2.8" fill="#f1c27d" stroke="#ffffff" strokeWidth="0.7" />
+        <circle cx="12.25" cy={8 + arm} r="2.8" fill="#f1c27d" stroke="#ffffff" strokeWidth="0.7" />
+        {/* torso */}
+        <rect x="-10.5" y="-9" width="21" height="19" rx="7.5" fill={color} stroke="#ffffff" strokeWidth="1.3" />
+        <rect x="-10.5" y="-1" width="21" height="2.6" fill="#fde047" />
+        <rect x="-10.5" y="4" width="21" height="2.6" fill="#fde047" opacity="0.85" />
+        <path d="M-4 -9 L0 -5 L4 -9" fill="#ffffff" opacity="0.7" />
+        {/* tool pouch on the belt */}
+        <rect x="5" y="6.5" width="7.5" height="6" rx="1.5" fill="#78350f" stroke="#ffffff" strokeWidth="0.6" />
+        <rect x="6.5" y="5" width="1.6" height="4" fill="#cbd5e1" />
+        <rect x="9" y="4.5" width="1.6" height="4.5" fill="#ef4444" />
+        {/* head + hard hat */}
+        <circle cy="-4" r="6.2" fill="#f1c27d" />
+        <ellipse cy="-5" rx="9.5" ry="8" fill="#facc15" stroke="#ca8a04" strokeWidth="0.9" />
+        <ellipse cy="-5" rx="9.5" ry="8" fill="url(#glass)" />
+        <rect x="-1.4" y="-13" width="2.8" height="10" rx="1.4" fill="#fbbf24" />
+        <ellipse cy="2.5" rx="10.5" ry="2.8" fill="#eab308" stroke="#ca8a04" strokeWidth="0.6" />
       </g>
     </g>
   )
