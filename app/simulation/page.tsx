@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy, Zap, Refrigerator } from 'lucide-react'
+import { FlaskConical, ChevronRight, Layers, Snowflake, Leaf, Trophy, Zap, Refrigerator, HardHat, Gamepad2 } from 'lucide-react'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import PageHeader from '@/components/PageHeader'
 
@@ -135,6 +135,28 @@ export default function SimulatorSelectPage() {
             respond, and test yourself with guided scenarios — all in-browser, no live equipment.
           </p>
         </div>
+
+        <button
+          onClick={() => router.push('/game')}
+          className="w-full text-left bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-800 dark:to-slate-700 border border-slate-700 rounded-xl p-5 transition-all hover:shadow-lg hover:border-cyan-400 flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 flex items-center justify-center flex-shrink-0">
+            <Gamepad2 size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <h2 className="text-sm font-bold text-white">Cold Call — Store Shift</h2>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-cyan-400/40 bg-cyan-500/15 text-cyan-200">New · Prototype</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Clock in, walk the store, and chase real refrigeration, electrical, plumbing and HVAC calls as they
+              come in over an 8-hour shift. Diagnose from live readings, pick the fix, log it, move on.
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-cyan-200 flex-shrink-0">
+            <HardHat size={13} /> Clock in <ChevronRight size={14} />
+          </div>
+        </button>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {RACKS.map(rack => {
