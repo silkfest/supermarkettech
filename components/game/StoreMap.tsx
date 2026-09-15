@@ -607,10 +607,9 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
     case 'station': {
-      // Wall stations carry the pin at their centre, so their name sits beside them on the aisle side.
-      const aisleRight = node.stand.x > x + w / 2
+      // Wall stations carry the pin at their centre and the tech stands beside them, so the name goes underneath.
       const stationLabel = vertical ? (
-        <text x={aisleRight ? x + w + 6 : x - 6} y={y + h - 8} textAnchor={aisleRight ? 'start' : 'end'} fontSize="7.5" fontWeight="700" letterSpacing="0.8"
+        <text x={x + w / 2} y={y + h + 11} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
           className="fill-slate-600 dark:fill-slate-300">{node.short ?? node.id}</text>
       ) : (
         <text x={x + w / 2} y={y + h - 9} textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="0.8"
