@@ -6,7 +6,7 @@ import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, 
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
-import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
+import StoreMap, { SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
 import CallPanel from '@/components/game/CallPanel'
 import LessonPanel from '@/components/game/LessonPanel'
 import HandsOnPanel from '@/components/game/HandsOnPanel'
@@ -19,6 +19,8 @@ import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type SavedGame } from '@/lib/game/progress'
 import { portraitFor } from '@/lib/game/art'
+import { readShift, writeShift, clearShift } from '@/lib/game/session'
+import type { ShiftState } from '@/lib/game/engine'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
 const TICK_MS = 250
@@ -36,16 +38,29 @@ export default function ColdCallPage() {
   const [nearId, setNearId] = useState<string | null>(null)
   const [shiftOutcome, setShiftOutcome] = useState<{ isBest: boolean; unlocked: string | null } | null>(null)
   const [graduated, setGraduated] = useState(false)
+  const [resumeShift, setResumeShift] = useState<ShiftState | null>(null)
+  const [practice, setPractice] = useState(false)
+  const [checkpointOk, setCheckpointOk] = useState(true)
   const recordedRef = useRef(false)
 
-  useEffect(() => { loadGame().then(setSave) }, [])
+  useEffect(() => { loadGame().then(s => { setSave(s); if (s.character) setResumeShift(readShift(s.character)) }) }, [])
+
+  useEffect(() => {
+    if (state.status === 'running') setCheckpointOk(writeShift(state))
+  }, [state])
+
+  useEffect(() => {
+    const hide = () => { if (document.hidden) dispatch({ type: 'PAUSE', paused: true }) }
+    document.addEventListener('visibilitychange', hide)
+    return () => document.removeEventListener('visibilitychange', hide)
+  }, [])
 
   // Game clock
   useEffect(() => {
-    if (view !== 'shift' || state.status !== 'running') return
+    if (view !== 'shift' || state.status !== 'running' || state.paused || state.practice) return
     const id = setInterval(() => dispatch({ type: 'TICK', dtMin: TICK_MS / REAL_MS_PER_GAME_MIN }), TICK_MS)
     return () => clearInterval(id)
-  }, [view, state.status])
+  }, [view, state.status, state.paused, state.practice])
 
   useEffect(() => {
     if (!state.toasts.length) return
@@ -58,6 +73,8 @@ export default function ColdCallPage() {
   useEffect(() => {
     if (state.status !== 'over' || recordedRef.current || !save) return
     recordedRef.current = true
+    clearShift(); setResumeShift(null)
+    if (state.abandoned || state.practice) { setShiftOutcome(null); return }
     const g = shiftGrade(state.results, state.results.length + state.calls.length, state.complaints, state.shrink)
     const before = save.progress
     const after = recordShift(before, state.levelId, g.total, g.grade)
@@ -68,7 +85,7 @@ export default function ColdCallPage() {
     setSave(ns)
     saveGame(ns)
     setShiftOutcome({ isBest, unlocked })
-  }, [state.status, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, save])
+  }, [state.status, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, state.abandoned, state.practice, save])
 
   function persist(ns: SavedGame) { setSave(ns); saveGame(ns) }
 
@@ -78,7 +95,9 @@ export default function ColdCallPage() {
     if (level.kind === 'classroom') { setView('classroom'); return }
     recordedRef.current = false
     setShiftOutcome(null)
-    dispatch({ type: 'START', character: save.character, levelId: level.id })
+    if (resumeShift && !window.confirm('Start a new shift and replace the saved shift on this browser?')) return
+    setResumeShift(null)
+    dispatch({ type: 'START', character: save.character, levelId: level.id, practice })
     setView('shift')
   }
 
@@ -127,7 +146,10 @@ export default function ColdCallPage() {
   const handsOn = view === 'classroom' && lesson?.kind === 'handson' ? lesson : null
 
   function leavePlay() {
-    if (view === 'shift' && state.status === 'running') { dispatch({ type: 'END_SHIFT' }); return }
+    if (view === 'shift' && state.status === 'running') {
+      if (window.confirm('End this shift? Partial shifts do not earn career XP or unlock levels. Use Pause to save and return later.')) dispatch({ type: 'END_SHIFT' })
+      return
+    }
     setLesson(null); setPanel(null); setView('hub')
   }
 
@@ -163,16 +185,19 @@ export default function ColdCallPage() {
           sticky={false}
           className="safe-top flex-shrink-0 border-b border-slate-200 dark:border-slate-700 py-2.5"
           actions={
+            <div className="flex gap-2">
+            {view === 'shift' && <button onClick={() => dispatch({ type: 'PAUSE', paused: true })} className="text-xs px-3 py-1.5 rounded-lg border border-slate-400">Pause</button>}
             <button onClick={leavePlay}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
               <Flag size={13} /> {view === 'shift' ? 'End shift' : 'Back to hub'}
             </button>
+            </div>
           }
         />
         <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-2 lg:gap-3 p-2 lg:p-3">
           <div className="flex-1 min-h-0">
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
-              paused={sidePanelOpen} onArrive={handleArrive} onNearChange={handleNear} />
+              paused={sidePanelOpen || (view === 'shift' && !!state.paused)} onArrive={handleArrive} onNearChange={handleNear} />
           </div>
           {/* Desktop: side column. Phone: the panel becomes a full-screen overlay; the HUD is hidden in favour of the compact one below. */}
           <div className={sidePanel
@@ -185,6 +210,17 @@ export default function ColdCallPage() {
           </div>
         </div>
 
+        {view === 'shift' && state.practice && <div className="text-center text-xs pb-2">Practice: clock advances with actions only. No career XP or unlocks.
+          <button className="ml-2 underline" onClick={() => dispatch({ type: 'TICK', dtMin: 15 })}>Advance 15 game minutes</button>
+        </div>}
+        {view === 'shift' && state.paused && <div role="dialog" aria-modal="true" aria-label="Shift paused" className="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4">
+          <div className="max-w-sm rounded-xl bg-white dark:bg-slate-800 p-6 space-y-4 text-slate-900 dark:text-white">
+            <h2 className="font-bold">Shift paused</h2>
+            <p className="text-sm">{checkpointOk ? 'Your calls and notes are saved on this browser. Resume here after reopening the game.' : 'Browser storage is unavailable. Keep this tab open to retain the shift.'}</p>
+            <button autoFocus onClick={() => dispatch({ type: 'PAUSE', paused: false })} className="bg-blue-600 text-white rounded-lg px-4 py-2">Resume</button>
+            <button onClick={() => { setResumeShift({ ...state, paused: true }); setView('hub') }} className="ml-3 underline">Back to hub</button>
+          </div>
+        </div>}
         {/* Hands-on stations need width: a centred modal on every screen size */}
         {handsOn && (
           <div className="fixed inset-0 z-40 bg-slate-900/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -221,6 +257,7 @@ export default function ColdCallPage() {
 
         {view === 'shift' && state.status === 'over' && (
           <ShiftReport
+            unranked={state.abandoned ? 'Partial shift — no career XP or unlocks.' : state.practice ? 'Practice shift — no career XP or unlocks.' : undefined}
             levelName={level.name} map={level.map} character={state.character}
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
@@ -235,7 +272,11 @@ export default function ColdCallPage() {
           ) : !save.character ? (
             <CharacterSetup initial={INITIAL_STATE.character} onStart={saveCharacter} />
           ) : (
-            <Hub save={save} onEdit={() => setView('setup')} onStart={startLevel} />
+            <>
+              {resumeShift && <div className="mb-4 rounded-xl border border-blue-400 p-4"><p className="text-sm mb-2">Saved shift: {LEVEL_BY_ID[resumeShift.levelId].name} · {Math.floor(resumeShift.elapsedMin)} game minutes elapsed</p><button className="bg-blue-600 text-white rounded-lg px-4 py-2" onClick={() => { recordedRef.current = false; setPanel(null); setShiftOutcome(null); dispatch({ type: 'RESTORE', state: resumeShift }); setResumeShift(null); setView('shift') }}>Resume saved shift</button></div>}
+              <label className="flex gap-2 mb-4 text-sm"><input type="checkbox" checked={practice} onChange={e => setPractice(e.target.checked)} /> Practice shifts — no real-time countdown or career rewards</label>
+              <Hub save={save} onEdit={() => setView('setup')} onStart={startLevel} />
+            </>
           )
         )}
       </div>
@@ -284,7 +325,7 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
                 className={`text-left bg-white dark:bg-slate-800 border rounded-2xl overflow-hidden transition-all flex flex-col ${
                   unlock.ok ? 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500' : 'border-slate-200 dark:border-slate-700 opacity-70 cursor-not-allowed'}`}>
                 <div className="relative h-32 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                  <MapThumb map={l.map} className="w-full h-full" />
+                  <Image src={`/game/level-${l.id === 'classroom' ? 'trade-school' : l.id}.png`} alt={`${l.name} illustration`} fill sizes="(min-width: 768px) 320px, 100vw" className="object-cover" />
                   <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                     Level {l.order}
                   </span>

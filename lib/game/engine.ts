@@ -1,4 +1,5 @@
 import { FAULTS, FAULT_BY_ID } from './faults'
+import { fieldworkFor } from './fieldwork'
 import { LEVEL_BY_ID, type LevelDef } from './levels'
 import type { LevelId } from './progress'
 import type { ActiveCall, CallResult, Character, FaultDef, SystemKey } from './types'
@@ -22,10 +23,15 @@ export interface ShiftState {
   usedFaultIds: string[]
   toasts: Toast[]
   seq: number
+  paused?: boolean
+  practice?: boolean
+  abandoned?: boolean
 }
 
 export type ShiftAction =
-  | { type: 'START'; character: Character; levelId: LevelId }
+  | { type: 'START'; character: Character; levelId: LevelId; practice?: boolean }
+  | { type: 'RESTORE'; state: ShiftState }
+  | { type: 'PAUSE'; paused: boolean }
   | { type: 'TICK'; dtMin: number }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
   | { type: 'SPEND_MINUTES'; callId: string; minutes: number }
@@ -65,21 +71,28 @@ function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftS
 export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState {
   switch (action.type) {
     case 'START':
-      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId }
+      return shiftReducer({ ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, practice: action.practice }, { type: 'TICK', dtMin: 0 })
+
+    case 'RESTORE':
+      return { ...action.state, paused: false }
+
+    case 'PAUSE':
+      return { ...state, paused: action.paused }
 
     case 'RESET':
       return { ...INITIAL_STATE, character: state.character, levelId: state.levelId }
 
     case 'TICK': {
-      if (state.status !== 'running') return state
+      if (state.status !== 'running' || state.paused) return state
       const level = LEVEL_BY_ID[state.levelId]
-      let s: ShiftState = { ...state, elapsedMin: state.elapsedMin + action.dtMin }
+      const dt = Math.min(Math.max(0, action.dtMin), level.shiftLenMin - state.elapsedMin)
+      let s: ShiftState = { ...state, elapsedMin: state.elapsedMin + dt }
 
       let shrink = s.shrink
       let complaints = s.complaints
       const calls = s.calls.map(c => {
         const f = FAULT_BY_ID[c.faultId]
-        shrink += f.shrinkPerMin * action.dtMin
+        shrink += f.shrinkPerMin * dt
         if (!c.complained && s.elapsedMin - c.spawnedAtMin >= f.complaintAfterMin) {
           complaints += 1
           s = withToast(s, `Customer complaint logged — ${level.map.equipment.find(e => e.id === c.equipmentId)?.label}`, 'warn')
@@ -112,6 +125,7 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
       return { ...state, calls: state.calls.map(c => c.id === action.callId ? { ...c, ...action.patch } : c) }
 
     case 'SPEND_MINUTES': {
+      if (state.status !== 'running' || state.paused) return state
       const s = shiftReducer(state, { type: 'TICK', dtMin: action.minutes })
       return { ...s, calls: s.calls.map(c => c.id === action.callId ? { ...c, minutesSpent: c.minutesSpent + action.minutes } : c) }
     }
@@ -130,17 +144,19 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
       return { ...state, toasts: state.toasts.filter(t => t.id !== action.id) }
 
     case 'END_SHIFT':
-      return { ...state, status: 'over' }
+      return { ...state, status: 'over', abandoned: state.elapsedMin < LEVEL_BY_ID[state.levelId].shiftLenMin }
   }
 }
 
 // ── Scoring ──────────────────────────────────────────────────────────────────
 export function scoreCall(call: ActiveCall, fault: FaultDef, note: string): CallResult {
-  const diagnosisPts = call.causeAttempts <= 1 ? 50 : call.causeAttempts === 2 ? 25 : 0
+  const keyChecks = [...fault.checks.filter(c => c.key).map(c => c.id),
+    ...(fieldworkFor(fault.id)?.measurements.flatMap(m => m.keys.map(k => `measure:${k}`)) ?? [])]
+  const evidence = keyChecks.length ? keyChecks.filter(id => call.checksDone.includes(id)).length / keyChecks.length : 1
+  const diagnosisPts = Math.round((call.causeAttempts <= 1 ? 50 : call.causeAttempts === 2 ? 25 : 0) * evidence)
   const fixPts = call.fixAttempts <= 1 ? 30 : call.fixAttempts === 2 ? 15 : 0
-  const keyChecks = fault.checks.filter(c => c.key).map(c => c.id)
   const nonLotoChecks = call.checksDone.filter(id => id !== 'loto')
-  const efficiencyPts = nonLotoChecks.length <= keyChecks.length + 1 ? 20 : nonLotoChecks.length <= keyChecks.length + 2 ? 10 : 0
+  const efficiencyPts = evidence < 1 ? 0 : nonLotoChecks.length <= keyChecks.length + 1 ? 20 : nonLotoChecks.length <= keyChecks.length + 2 ? 10 : 0
   const safetyPenalty = fault.loto && !call.lotoDone ? 15 : 0
   const points = Math.max(0, diagnosisPts + fixPts + efficiencyPts - safetyPenalty)
   return {

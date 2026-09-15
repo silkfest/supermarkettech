@@ -6,6 +6,7 @@ import { SYSTEM_COLOR } from './StoreMap'
 import type { ActiveCall, CallResult, Character, GameMap, SystemKey } from '@/lib/game/types'
 
 interface Props {
+  unranked?: string
   levelName: string
   map: GameMap
   character: Character
@@ -25,7 +26,7 @@ const GRADE_TONE: Record<string, string> = {
   C: 'text-amber-600 dark:text-amber-400', D: 'text-red-600 dark:text-red-400', F: 'text-red-600 dark:text-red-400',
 }
 
-export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, onAgain, onHub }: Props) {
+export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, onAgain, onHub, unranked }: Props) {
   const g = shiftGrade(results, results.length + unfinished.length, complaints, shrink)
   const systems = (Object.keys(SYSTEM_META) as SystemKey[]).map(s => {
     const rs = results.filter(r => r.system === s)
@@ -35,6 +36,7 @@ export default function ShiftReport({ levelName, map, character, results, unfini
 
   return (
     <div className="max-w-2xl mx-auto w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-5">
+      {unranked && <p className="text-sm text-amber-700 dark:text-amber-400">{unranked}</p>}
       <div className="flex items-center gap-4">
         <div className={`text-5xl font-black ${GRADE_TONE[g.grade]}`}>{g.grade}</div>
         <div className="min-w-0">
