@@ -50,6 +50,8 @@ export interface Reading {
   status: 'ok' | 'warn' | 'crit'
   /** What a healthy reading would be, shown as reference. */
   expect?: string
+  /** Value once the correct repair has settled in, shown at the verify step. Defaults to `value`. */
+  after?: number
 }
 
 export interface Check {
@@ -96,7 +98,7 @@ export interface Character {
   role: 'apprentice' | 'journeyman'
 }
 
-export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'log' | 'done'
+export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'verify' | 'log' | 'done'
 
 export interface ActiveCall {
   id: string
