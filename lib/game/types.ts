@@ -70,6 +70,8 @@ export interface Option {
   label: string
   correct?: boolean
   why: string
+  /** Parts off the truck, in dollars. A wrong fix bills the company for these. */
+  cost?: number
 }
 
 export interface FaultDef {
@@ -112,6 +114,8 @@ export interface ActiveCall {
   causeAttempts: number
   fixAttempts: number
   minutesSpent: number
+  /** Dollars of parts thrown at the wrong diagnosis. */
+  partsWasted: number
 }
 
 export interface CallResult {
@@ -128,6 +132,7 @@ export interface CallResult {
   fixAttempts: number
   checksUsed: number
   keyChecksTotal: number
+  partsWasted: number
   note: string
   minutesSpent: number
 }

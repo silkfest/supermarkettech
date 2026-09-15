@@ -54,11 +54,19 @@ export default function ShiftReport({ levelName, map, character, results, unfini
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
         <Tile label="Earned" value={`${g.earned}`} />
         <Tile label="Shrink" value={`$${Math.round(shrink)}`} tone={shrink > 500 ? 'text-red-600 dark:text-red-400' : undefined} sub={`−${Math.round(shrink / 100)} pts`} />
+        <Tile label="Parts wasted" value={`$${g.partsWasted}`} tone={g.partsWasted > 0 ? 'text-red-600 dark:text-red-400' : undefined} sub={`−${Math.round(g.partsWasted / 50)} pts`} />
         <Tile label="Complaints" value={`${complaints}`} tone={complaints > 0 ? 'text-red-600 dark:text-red-400' : undefined} sub={`−${complaints * 10} pts`} />
       </div>
+
+      {g.partsWasted > 0 && (
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+          Parts wasted is what the wrong fixes cost — parts you pulled off the truck that did not solve anything.
+          Nobody bills that back.
+        </p>
+      )}
 
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">By system</p>

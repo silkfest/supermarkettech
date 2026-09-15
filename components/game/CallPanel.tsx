@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock } from 'lucide-react'
+import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock, DollarSign } from 'lucide-react'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import { SYSTEM_META } from '@/lib/game/faults'
 import { scoreCall } from '@/lib/game/engine'
@@ -25,6 +25,25 @@ const STAGES = [
   { key: 'verify', label: 'Verify', icon: Gauge },
   { key: 'log', label: 'Log', icon: ClipboardList },
 ] as const
+
+/** Stable per-call shuffle: the right answer must not always sit in the same slot. */
+function hash(str: string): number {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) }
+  return h >>> 0
+}
+function shuffled<T>(arr: T[], seed: number): T[] {
+  const a = [...arr]
+  let x = seed || 1
+  for (let i = a.length - 1; i > 0; i--) {
+    x ^= x << 13; x >>>= 0
+    x ^= x >>> 17
+    x ^= x << 5; x >>>= 0
+    const j = x % (i + 1)
+    const t = a[i]; a[i] = a[j]; a[j] = t
+  }
+  return a
+}
 
 const STATUS_TEXT = {
   ok: 'text-emerald-600 dark:text-emerald-400',
@@ -52,6 +71,9 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   const live = useLiveReadings(specs, 900)
   const correctCause = fault.causes.find(c => c.correct)!
   const correctFix = fault.fixes.find(f => f.correct)!
+  const seed = hash(`${call?.id ?? 'x'}:${fault.id}`)
+  const causeOptions = useMemo(() => shuffled(fault.causes, seed), [fault, seed])
+  const fixOptions = useMemo(() => shuffled(fault.fixes, seed ^ 0x9e3779b9), [fault, seed])
 
   function runCheck(id: string) {
     if (!call || call.checksDone.includes(id)) return
@@ -84,9 +106,12 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
       setNote(`Found: ${correctCause.label}. Repaired: ${opt.label}. Next: `)
     } else {
       setWrongFixes(w => [...w, opt.id])
-      onUpdate({ fixAttempts: attempts })
+      onUpdate({ fixAttempts: attempts, partsWasted: call.partsWasted + (opt.cost ?? 0) })
       onSpend(20)
-      setFeedback({ tone: 'bad', text: opt.why })
+      setFeedback({
+        tone: 'bad',
+        text: opt.cost ? `${opt.why} That is $${opt.cost} of parts on the truck you will not get back.` : opt.why,
+      })
     }
   }
 
@@ -219,7 +244,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
             {stage === 'diagnose' && (
               <section>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Call it — what&apos;s the root cause?</p>
-                <OptionList options={fault.causes} wrong={wrongCauses} onPick={pickCause} />
+                <OptionList options={causeOptions} wrong={wrongCauses} onPick={pickCause} />
               </section>
             )}
 
@@ -238,8 +263,8 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                 {fault.loto && call.lotoDone && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Lock size={11} /> Locked out and verified dead.</p>
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Repair — pick the fix</p>
-                <OptionList options={fault.fixes} wrong={wrongFixes} onPick={pickFix} />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Repair — pick the fix <span className="normal-case tracking-normal font-normal">— wrong parts are billed to the company, not the customer</span></p>
+                <OptionList options={fixOptions} wrong={wrongFixes} onPick={pickFix} />
               </section>
             )}
 
@@ -302,6 +327,9 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
               <ScoreRow label="Efficiency" pts={result.efficiencyPts} max={20} detail={`${result.checksUsed} checks · ${result.keyChecksTotal} needed`} />
               {result.safetyPenalty > 0 && (
                 <li className="flex items-center gap-2 text-red-600 dark:text-red-400"><AlertTriangle size={12} /> Safety: worked live without lockout <span className="ml-auto font-bold tabular-nums">−{result.safetyPenalty}</span></li>
+              )}
+              {result.partsWasted > 0 && (
+                <li className="flex items-center gap-2 text-red-600 dark:text-red-400"><DollarSign size={12} /> Parts thrown at it that did not fix it <span className="ml-auto font-bold tabular-nums">${result.partsWasted}</span></li>
               )}
             </ul>
             {(fault.knowledge?.length ?? 0) > 0 && (

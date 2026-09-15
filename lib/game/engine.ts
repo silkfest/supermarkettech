@@ -97,7 +97,7 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
           const call: ActiveCall = {
             id: `call-${s.seq}`, faultId: choice.fault.id, equipmentId: choice.equipmentId,
             spawnedAtMin: s.elapsedMin, complained: false, stage: 'ticket',
-            checksDone: [], lotoDone: false, causeAttempts: 0, fixAttempts: 0, minutesSpent: 0,
+            checksDone: [], lotoDone: false, causeAttempts: 0, fixAttempts: 0, minutesSpent: 0, partsWasted: 0,
           }
           const node = level.map.equipment.find(e => e.id === choice.equipmentId)
           s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${choice.fault.title}`, 'crit')
@@ -148,6 +148,7 @@ export function scoreCall(call: ActiveCall, fault: FaultDef, note: string): Call
     points, diagnosisPts, fixPts, efficiencyPts, safetyPenalty,
     causeAttempts: call.causeAttempts, fixAttempts: call.fixAttempts,
     checksUsed: nonLotoChecks.length, keyChecksTotal: keyChecks.length,
+    partsWasted: call.partsWasted,
     note, minutesSpent: call.minutesSpent,
   }
 }
@@ -155,11 +156,13 @@ export function scoreCall(call: ActiveCall, fault: FaultDef, note: string): Call
 export function shiftGrade(results: CallResult[], callsSpawned: number, complaints: number, shrink: number) {
   const earned = results.reduce((a, r) => a + r.points, 0)
   const possible = Math.max(1, callsSpawned) * 100
-  const penalties = complaints * 10 + Math.round(shrink / 100)
+  // Parts thrown at a wrong diagnosis come out of the same pocket as spoiled product.
+  const partsWasted = results.reduce((a, r) => a + r.partsWasted, 0)
+  const penalties = complaints * 10 + Math.round(shrink / 100) + Math.round(partsWasted / 50)
   const total = Math.max(0, earned - penalties)
   const pct = Math.round((total / possible) * 100)
   const grade = pct >= 85 ? 'A' : pct >= 70 ? 'B' : pct >= 50 ? 'C' : pct >= 30 ? 'D' : 'F'
-  return { earned, possible, penalties, total, pct, grade }
+  return { earned, possible, penalties, partsWasted, total, pct, grade }
 }
 
 export function clockLabel(elapsedMin: number): string {
