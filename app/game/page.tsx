@@ -2,7 +2,8 @@
 export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, HardHat, Sparkles, Zap, GraduationCap } from 'lucide-react'
+import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, Wrench, Sparkles, Zap, GraduationCap } from 'lucide-react'
+import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
@@ -17,6 +18,7 @@ import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type SavedGame } from '@/lib/game/progress'
+import { portraitFor } from '@/lib/game/art'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
 const TICK_MS = 250
@@ -250,9 +252,13 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: c.color }}>
-          <HardHat size={22} />
-        </div>
+        {portraitFor(c.color) ? (
+          <Image src={portraitFor(c.color)!} alt="" width={56} height={56} className="w-14 h-14 rounded-xl object-cover border-2 flex-shrink-0" style={{ borderColor: c.color }} />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: c.color }}>
+            <Wrench size={22} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 capitalize">{c.role} · {p.xp} XP · {passed}/{LESSONS.length} stations · {Object.values(p.levels).reduce((a, l) => a + (l?.shifts ?? 0), 0)} shifts</p>

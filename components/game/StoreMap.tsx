@@ -769,7 +769,7 @@ function FaultCue({ system, at }: { system: SystemKey; at: Point }) {
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
-/** Top-down tech: hard hat, hi-vis shirt, swinging arms and boots, tool pouch. "Forward" is −y; rotated to face travel. */
+/** Top-down tech: ball cap, work shirt, swinging arms and boots, tool pouch. "Forward" is −y; rotated to face travel. */
 function Avatar({ pos, bob, legPhase, facing, color }: { pos: Point; bob: number; legPhase: number; facing: number; color: string }) {
   const arm = legPhase * 0.7
   return (
@@ -793,12 +793,13 @@ function Avatar({ pos, bob, legPhase, facing, color }: { pos: Point; bob: number
         <rect x="5" y="6.5" width="7.5" height="6" rx="1.5" fill="#78350f" stroke="#ffffff" strokeWidth="0.6" />
         <rect x="6.5" y="5" width="1.6" height="4" fill="#cbd5e1" />
         <rect x="9" y="4.5" width="1.6" height="4.5" fill="#ef4444" />
-        {/* head + hard hat */}
-        <circle cy="-4" r="6.2" fill="#f1c27d" />
-        <ellipse cy="-5" rx="9.5" ry="8" fill="#facc15" stroke="#ca8a04" strokeWidth="0.9" />
-        <ellipse cy="-5" rx="9.5" ry="8" fill="url(#glass)" />
-        <rect x="-1.4" y="-13" width="2.8" height="10" rx="1.4" fill="#fbbf24" />
-        <ellipse cy="2.5" rx="10.5" ry="2.8" fill="#eab308" stroke="#ca8a04" strokeWidth="0.6" />
+        {/* head + ball cap (service techs don't wear hard hats) */}
+        <circle cy="-4" r="6.4" fill="#f1c27d" stroke="#d9a76a" strokeWidth="0.5" />
+        <path d="M-6.4 -4 A6.4 6.4 0 0 1 6.4 -4 L6.4 -2.5 A6.4 6.4 0 0 0 -6.4 -2.5 Z" fill={color} stroke="#ffffff" strokeWidth="0.5" />
+        <ellipse cy="-4.6" rx="6.4" ry="5.6" fill={color} stroke="#ffffff" strokeWidth="0.7" />
+        <ellipse cy="-4.6" rx="6.4" ry="5.6" fill="url(#glass)" />
+        <ellipse cy="-8.6" rx="5.2" ry="3.4" fill={color} stroke="#ffffff" strokeWidth="0.6" opacity="0.95" />
+        <circle cy="-4.6" r="1.1" fill="#ffffff" opacity="0.7" />
       </g>
     </g>
   )
