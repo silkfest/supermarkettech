@@ -5,6 +5,7 @@ import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, A
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import { SYSTEM_META } from '@/lib/game/faults'
 import { scoreCall } from '@/lib/game/engine'
+import { fieldworkFor } from '@/lib/game/fieldwork'
 import { SYSTEM_COLOR } from './StoreMap'
 import type { ActiveCall, CallResult, EquipmentNode, FaultDef, Option } from '@/lib/game/types'
 
@@ -22,6 +23,7 @@ const STAGES = [
   { key: 'ticket', label: 'Ticket', icon: ClipboardList },
   { key: 'diagnose', label: 'Diagnose', icon: Search },
   { key: 'fix', label: 'Fix', icon: Wrench },
+  { key: 'verify', label: 'Verify', icon: CheckCircle2 },
   { key: 'log', label: 'Log', icon: ClipboardList },
 ] as const
 
@@ -36,7 +38,11 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   const [wrongCauses, setWrongCauses] = useState<string[]>([])
   const [wrongFixes, setWrongFixes] = useState<string[]>([])
   const [feedback, setFeedback] = useState<{ tone: 'good' | 'bad'; text: string } | null>(null)
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(call?.note ?? '')
+  const [tool, setTool] = useState('Pressure gauge')
+  const [location, setLocation] = useState('High-side service port')
+  const fieldwork = fieldworkFor(fault.id)
+  const visibleReadings = fault.readings.filter(r => !fieldwork || call?.checksDone.includes(`measure:${r.key}`))
   const [result, setResult] = useState<CallResult | null>(null)
 
   const specs = useMemo(() => fault.readings.map(r => ({ key: r.key, target: r.value, jitter: r.jitter ?? 0, wander: r.wander ?? 0, bias: 0 })), [fault])
@@ -70,12 +76,14 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
 
   function pickFix(opt: Option) {
     if (!call) return
+    if (fault.loto && !call.lotoDone) { setFeedback({ tone: 'bad', text: 'Isolate this circuit and verify it is de-energized before replacing the electrical component.' }); return }
     const attempts = call.fixAttempts + 1
     if (opt.correct) {
-      onUpdate({ fixAttempts: attempts, stage: 'log' })
+      const draft = `Found: ${correctCause.label}. Repaired: ${opt.label}. Next: `
+      onUpdate({ fixAttempts: attempts, stage: fieldwork ? 'verify' : 'log', note: draft })
       onSpend(30)
       setFeedback(null)
-      setNote(`Found: ${correctCause.label}. Repaired: ${opt.label}. Next: `)
+      setNote(draft)
     } else {
       setWrongFixes(w => [...w, opt.id])
       onUpdate({ fixAttempts: attempts })
@@ -86,6 +94,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
 
   function closeCall() {
     if (!call) return
+    if (fieldwork && !call.verified) return
     const r = scoreCall(call, fault, note.trim())
     setResult(r)
     onComplete(r)
@@ -111,13 +120,14 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
 
       {/* Stage strip */}
       {stage !== 'done' && (
-        <div className="grid grid-cols-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex border-b border-slate-200 dark:border-slate-700">
           {STAGES.map((s, i) => {
+            if (s.key === 'verify' && !fieldwork) return null
             const Icon = s.icon
             const active = i === stageIdx
             const done = i < stageIdx
             return (
-              <div key={s.key} className={`flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold border-b-2 -mb-px ${
+              <div key={s.key} className={`flex flex-1 items-center justify-center gap-1 py-1.5 text-[10px] font-semibold border-b-2 -mb-px ${
                 active ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                 : done ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-slate-400 dark:text-slate-500'}`}>
@@ -144,7 +154,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
             {fault.loto && (
               <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[12px] text-amber-700 dark:text-amber-300">
                 <Lock size={13} className="flex-shrink-0 mt-0.5" />
-                This one is electrical. Lock it out before you put hands on it.
+                Operating measurements are part of diagnosis. Isolate and verify de-energized before electrical component replacement.
               </div>
             )}
             <button onClick={() => onUpdate({ stage: 'diagnose' })}
@@ -155,16 +165,27 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
         )}
 
         {/* ── Diagnose ── */}
-        {(stage === 'diagnose' || stage === 'fix' || stage === 'log') && call && (
+        {(stage === 'diagnose' || stage === 'fix' || stage === 'verify' || stage === 'log') && call && (
           <>
             <section>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1"><Gauge size={10} /> Live readings</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1"><Gauge size={10} /> {fieldwork ? 'Recorded diagnostic readings (before repair)' : 'Live readings'}</p>
+              {fieldwork && stage === 'diagnose' && <div className="mb-3 space-y-2">
+                <p className="text-xs">Choose an instrument and measurement point to gather evidence. Scenario: R-404A rack, high-pressure complaint.</p>
+                <label className="block text-xs">Instrument<select className="block w-full rounded border p-2 bg-white dark:bg-slate-900" value={tool} onChange={e => setTool(e.target.value)}>{['Pressure gauge', 'Temperature probe', 'Gauge and clamp probe'].map(t => <option key={t}>{t}</option>)}</select></label>
+                <label className="block text-xs">Measurement point<select className="block w-full rounded border p-2 bg-white dark:bg-slate-900" value={location} onChange={e => setLocation(e.target.value)}>{fieldwork.measurements.map(m => <option key={m.location}>{m.location}</option>)}</select></label>
+                <button className="rounded bg-blue-600 px-3 py-2 text-xs text-white" onClick={() => {
+                  const m = fieldwork.measurements.find(m => m.tool === tool && m.location === location)
+                  if (!m) { setFeedback({ tone: 'bad', text: 'That instrument does not provide the measurement needed at this point. Choose a matching instrument and point.' }); return }
+                  if (m.keys.every(k => call.checksDone.includes(`measure:${k}`))) { setFeedback({ tone: 'good', text: 'This measurement is already recorded.' }); return }
+                  onUpdate({ checksDone: [...call.checksDone, ...m.keys.map(k => `measure:${k}`)] }); onSpend(m.minutes); setFeedback(null)
+                }}>Take measurement</button>
+              </div>}
               <div className="grid grid-cols-2 gap-2">
-                {fault.readings.map(r => (
+                {visibleReadings.map(r => (
                   <div key={r.key} className="px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{r.label}</p>
                     <p className={`text-base font-bold tabular-nums leading-tight ${STATUS_TEXT[r.status]}`}>
-                      {live[r.key].toFixed(r.decimals ?? 0)}<span className="text-[10px] font-medium ml-0.5 text-slate-400">{r.unit}</span>
+                      {(fieldwork ? r.value : live[r.key]).toFixed(r.decimals ?? 0)}<span className="text-[10px] font-medium ml-0.5 text-slate-400">{r.unit}</span>
                     </p>
                     {r.expect && <p className="text-[9px] text-slate-400 leading-tight mt-0.5">expect {r.expect}</p>}
                   </div>
@@ -201,7 +222,11 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
             {stage === 'diagnose' && (
               <section>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Call it — what&apos;s the root cause?</p>
-                <OptionList options={fault.causes} wrong={wrongCauses} onPick={pickCause} />
+                <p className="text-xs mb-2 text-slate-500">Evidence earns diagnosis points. Guessing without relevant checks earns no efficiency bonus.</p>
+                <OptionList options={fault.causes} wrong={wrongCauses} onPick={opt => {
+                  if (fieldwork && !call.checksDone.includes('measure:disch')) { setFeedback({ tone: 'bad', text: 'Measure high-side pressure before committing to a diagnosis.' }); return }
+                  pickCause(opt)
+                }} />
               </section>
             )}
 
@@ -225,6 +250,14 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
               </section>
             )}
 
+            {stage === 'verify' && fieldwork && <section className="space-y-3">
+              <h3 className="font-semibold">Prove the repair</h3>
+              <p className="text-xs">The repair is complete. Confirm operation before closing the call.</p>
+              {fieldwork.verification.map((v, i) => <div key={v.label} className="border rounded-lg p-3 text-xs">
+                {(call.verificationStep ?? 0) > i ? <p className="text-emerald-700 dark:text-emerald-400">{v.finding}</p> : <button disabled={(call.verificationStep ?? 0) !== i} className="disabled:opacity-40 text-left" onClick={() => { onUpdate({ verificationStep: i + 1 }); onSpend(v.minutes) }}>{v.label} · {v.minutes}m</button>}
+              </div>)}
+              {(call.verificationStep ?? 0) === fieldwork.verification.length && <button className="bg-emerald-600 text-white rounded px-3 py-2 text-xs" onClick={() => { const draft = `${note} Verified stable operation and cleared alarm. Follow up on condenser cleaning.`; setNote(draft); onUpdate({ stage: 'log', verified: true, note: draft }) }}>Operation confirmed — write report</button>}
+            </section>}
             {stage === 'log' && (
               <section className="space-y-2">
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-[12px]">
@@ -232,7 +265,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                   <div><span className="font-semibold text-emerald-700 dark:text-emerald-300">Fixed: {correctFix.label}</span><p className="text-slate-600 dark:text-slate-400 mt-0.5">{correctFix.why}</p></div>
                 </div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Service note</p>
-                <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
+                <textarea value={note} onChange={e => { setNote(e.target.value); onUpdate({ note: e.target.value }) }} rows={4}
                   className="w-full text-[12px] px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-400" />
                 <p className="text-[10px] text-slate-400">Same shape as a real service report: fault found, work performed, next action.</p>
                 <button onClick={closeCall} disabled={note.trim().length < 10}

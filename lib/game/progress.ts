@@ -62,12 +62,14 @@ export function saveGame(save: SavedGame): void {
 export function recordShift(p: GameProgress, level: LevelId, score: number, grade: string): GameProgress {
   const prev = p.levels[level] ?? { shifts: 0, bestScore: 0, bestGrade: null }
   const better = score > prev.bestScore
+  const ranks = ['F', 'D', 'C', 'B', 'A']
+  const bestGrade = ranks.indexOf(grade) > ranks.indexOf(prev.bestGrade ?? '') ? grade : prev.bestGrade
   return {
     ...p,
     xp: p.xp + score,
     levels: {
       ...p.levels,
-      [level]: { shifts: prev.shifts + 1, bestScore: better ? score : prev.bestScore, bestGrade: better || !prev.bestGrade ? grade : prev.bestGrade },
+      [level]: { shifts: prev.shifts + 1, bestScore: better ? score : prev.bestScore, bestGrade },
     },
   }
 }

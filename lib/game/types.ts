@@ -96,7 +96,7 @@ export interface Character {
   role: 'apprentice' | 'journeyman'
 }
 
-export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'log' | 'done'
+export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'verify' | 'log' | 'done'
 
 export interface ActiveCall {
   id: string
@@ -110,6 +110,9 @@ export interface ActiveCall {
   causeAttempts: number
   fixAttempts: number
   minutesSpent: number
+  note?: string
+  verified?: boolean
+  verificationStep?: number
 }
 
 export interface CallResult {
