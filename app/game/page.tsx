@@ -2,12 +2,13 @@
 export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, HardHat, Sparkles } from 'lucide-react'
+import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, HardHat, Sparkles, Zap, GraduationCap } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
 import CallPanel from '@/components/game/CallPanel'
 import LessonPanel from '@/components/game/LessonPanel'
+import HandsOnPanel from '@/components/game/HandsOnPanel'
 import ShiftHUD from '@/components/game/ShiftHUD'
 import CharacterSetup from '@/components/game/CharacterSetup'
 import ShiftReport from '@/components/game/ShiftReport'
@@ -32,6 +33,7 @@ export default function ColdCallPage() {
   const [walkTo, setWalkTo] = useState<{ hotspotId: string; nonce: number } | null>(null)
   const [nearId, setNearId] = useState<string | null>(null)
   const [shiftOutcome, setShiftOutcome] = useState<{ isBest: boolean; unlocked: string | null } | null>(null)
+  const [graduated, setGraduated] = useState(false)
   const recordedRef = useRef(false)
 
   useEffect(() => { loadGame().then(setSave) }, [])
@@ -99,7 +101,10 @@ export default function ColdCallPage() {
 
   function finishLesson(l: Lesson, score: number, passed: boolean) {
     if (!save) return
-    persist({ ...save, progress: recordLesson(save.progress, l.id, score, passed) })
+    const before = lessonsPassed(save.progress)
+    const next = recordLesson(save.progress, l.id, score, passed)
+    persist({ ...save, progress: next })
+    if (before < LESSONS.length && lessonsPassed(next) === LESSONS.length) setGraduated(true)
   }
 
   const level = LEVEL_BY_ID[state.levelId]
@@ -117,6 +122,7 @@ export default function ColdCallPage() {
 
   const playing = (view === 'classroom') || (view === 'shift' && state.status === 'running')
   const sidePanelOpen = view === 'classroom' ? lesson !== null : panel !== null
+  const handsOn = view === 'classroom' && lesson?.kind === 'handson' ? lesson : null
 
   function leavePlay() {
     if (view === 'shift' && state.status === 'running') { dispatch({ type: 'END_SHIFT' }); return }
@@ -128,7 +134,7 @@ export default function ColdCallPage() {
     const map = view === 'classroom' ? LEVEL_BY_ID.classroom.map : level.map
     const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : level.name
     const sidePanel = view === 'classroom'
-      ? (lesson && (
+      ? (lesson && lesson.kind === 'read' && (
           <LessonPanel key={lesson.id} lesson={lesson} alreadyPassed={!!progress.lessons[lesson.id]?.passed}
             onFinish={(score, passed) => finishLesson(lesson, score, passed)} onClose={() => setLesson(null)} />
         ))
@@ -176,6 +182,25 @@ export default function ColdCallPage() {
             {hud(true)}
           </div>
         </div>
+
+        {/* Hands-on stations need width: a centred modal on every screen size */}
+        {handsOn && (
+          <div className="fixed inset-0 z-40 bg-slate-900/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="w-full sm:max-w-3xl h-[94%] sm:h-[90%]">
+              <HandsOnPanel key={handsOn.id} lesson={handsOn} alreadyPassed={!!progress.lessons[handsOn.id]?.passed}
+                onFinish={(score, passed) => finishLesson(handsOn, score, passed)} onClose={() => setLesson(null)} />
+            </div>
+          </div>
+        )}
+
+        {graduated && (
+          <Graduation
+            name={save!.character!.name}
+            xp={progress.xp}
+            onStay={() => setGraduated(false)}
+            onGo={() => { setGraduated(false); startLevel(LEVEL_BY_ID['gas-station']) }}
+          />
+        )}
         <Toasts toasts={state.toasts} onDismiss={id => dispatch({ type: 'DISMISS_TOAST', id })} />
       </div>
     )
@@ -297,12 +322,15 @@ function StationList({ progress, nearId, compact, onWalkTo, onOpen }: {
   const items = LESSONS.map(l => {
     const passed = !!progress.lessons[l.id]?.passed
     const near = nearId === l.stationId
+    const hands = l.kind === 'handson'
     return (
       <div key={l.id} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ${compact ? 'flex-shrink-0 min-w-[220px]' : ''}`}>
-        {passed ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" /> : <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: LESSON_COLOR }} />}
+        {passed ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          : hands ? <Zap size={13} className="text-amber-500 flex-shrink-0" />
+          : <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: LESSON_COLOR }} />}
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200 truncate">{l.title}</p>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{l.minutes} min · {passed ? 'passed' : `${l.quiz.length} questions`}</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{l.minutes} min · {passed ? 'passed' : hands ? `solve ${l.handson?.solvesToPass ?? 2} faults` : `${l.quiz.length} questions`}</p>
         </div>
         {near ? (
           <button onClick={() => onOpen(l.stationId)} className="text-[10px] font-semibold px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white flex-shrink-0">Open</button>
@@ -326,6 +354,47 @@ function StationList({ progress, nearId, compact, onWalkTo, onOpen }: {
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Stations · {n}/{LESSONS.length} passed</p>
       <p className="text-[12px] text-slate-500 dark:text-slate-400">Walk to a station and open it. Read, then pass the check. No clock in here.</p>
       <div className="space-y-1.5">{items}</div>
+    </div>
+  )
+}
+
+function Graduation({ name, xp, onStay, onGo }: { name: string; xp: number; onStay: () => void; onGo: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 overflow-hidden page-fade-in">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500" />
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          {['#10b981', '#06b6d4', '#f59e0b', '#8b5cf6', '#ef4444', '#3b82f6'].map((c, i) => (
+            <span key={i} className="absolute w-2 h-3 rounded-sm" style={{
+              background: c, left: `${8 + i * 15}%`, top: '-6%',
+              animation: `grad-fall ${2.2 + (i % 3) * 0.5}s ease-in ${i * 0.15}s infinite`,
+            }} />
+          ))}
+        </div>
+        <style>{`@keyframes grad-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1 } 100% { transform: translateY(420px) rotate(540deg); opacity: 0 } }`}</style>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <GraduationCap size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Trade School complete</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Congratulations, {name}.</h2>
+          </div>
+        </div>
+        <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">
+          All {LESSONS.length} stations signed off — cycle, instruments, PT charts, compressors, condensers, evaporators, service
+          procedures, meters, both safety-circuit panels, defrost and safety. {xp} XP banked. The Corner Gas Station is unlocked
+          and dispatch has your first call.
+        </p>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onStay} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700">
+            Stay in the shop
+          </button>
+          <button onClick={onGo} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">
+            Clock in at the gas station <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
