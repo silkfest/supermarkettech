@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import { HardHat, Play } from 'lucide-react'
+import { portraitFor } from '@/lib/game/art'
 import type { Character } from '@/lib/game/types'
 
 const COLORS = [
@@ -31,9 +33,13 @@ export default function CharacterSetup({ initial, submitLabel = 'Clock in', onSt
   return (
     <div className="max-w-md mx-auto w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white" style={{ background: color }}>
-          <HardHat size={22} />
-        </div>
+        {portraitFor(color) ? (
+          <Image src={portraitFor(color)!} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover border-2 flex-shrink-0" style={{ borderColor: color }} />
+        ) : (
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white" style={{ background: color }}>
+            <HardHat size={22} />
+          </div>
+        )}
         <div>
           <h1 className="text-base font-bold text-slate-900 dark:text-white">Your tech</h1>
           <p className="text-[12px] text-slate-500 dark:text-slate-400">Trade school first, then a gas station, then the whole supermarket.</p>

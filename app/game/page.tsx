@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, HardHat, Sparkles, Zap, GraduationCap } from 'lucide-react'
+import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
-import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
+import StoreMap, { SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
 import CallPanel from '@/components/game/CallPanel'
 import LessonPanel from '@/components/game/LessonPanel'
 import HandsOnPanel from '@/components/game/HandsOnPanel'
@@ -17,6 +18,7 @@ import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type SavedGame } from '@/lib/game/progress'
+import { LEVEL_ART, portraitFor } from '@/lib/game/art'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
 const TICK_MS = 250
@@ -250,9 +252,13 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: c.color }}>
-          <HardHat size={22} />
-        </div>
+        {portraitFor(c.color) ? (
+          <Image src={portraitFor(c.color)!} alt="" width={56} height={56} className="w-14 h-14 rounded-xl object-cover border-2 flex-shrink-0" style={{ borderColor: c.color }} />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: c.color }}>
+            <HardHat size={22} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 capitalize">{c.role} · {p.xp} XP · {passed}/{LESSONS.length} stations · {Object.values(p.levels).reduce((a, l) => a + (l?.shifts ?? 0), 0)} shifts</p>
@@ -277,8 +283,8 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
               <button key={l.id} onClick={() => unlock.ok && onStart(l)} disabled={!unlock.ok}
                 className={`text-left bg-white dark:bg-slate-800 border rounded-2xl overflow-hidden transition-all flex flex-col ${
                   unlock.ok ? 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500' : 'border-slate-200 dark:border-slate-700 opacity-70 cursor-not-allowed'}`}>
-                <div className="relative h-32 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                  <MapThumb map={l.map} className="w-full h-full" />
+                <div className="relative h-36 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                  <Image src={LEVEL_ART[l.id]} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
                   <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                     Level {l.order}
                   </span>
