@@ -80,3 +80,13 @@ export function recordLesson(p: GameProgress, lessonId: string, score: number, p
     lessons: { ...p.lessons, [lessonId]: { passed: passed || !!prev?.passed, bestScore: Math.max(score, prev?.bestScore ?? 0) } },
   }
 }
+
+/** One technician's training progress, as the team-wide admin view sees it. */
+export interface TeamTrainingRow {
+  userId: string
+  stationsPassed: number
+  graduated: boolean
+  xp: number
+  levels: Partial<Record<LevelId, LevelStat>>
+  updatedAt: string | null
+}
