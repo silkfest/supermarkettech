@@ -6,7 +6,7 @@ import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, 
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
-import StoreMap, { SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
+import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
 import CallPanel from '@/components/game/CallPanel'
 import LessonPanel from '@/components/game/LessonPanel'
 import HandsOnPanel from '@/components/game/HandsOnPanel'
@@ -18,7 +18,7 @@ import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type SavedGame } from '@/lib/game/progress'
-import { LEVEL_ART, portraitFor } from '@/lib/game/art'
+import { portraitFor } from '@/lib/game/art'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
 const TICK_MS = 250
@@ -283,8 +283,8 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
               <button key={l.id} onClick={() => unlock.ok && onStart(l)} disabled={!unlock.ok}
                 className={`text-left bg-white dark:bg-slate-800 border rounded-2xl overflow-hidden transition-all flex flex-col ${
                   unlock.ok ? 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500' : 'border-slate-200 dark:border-slate-700 opacity-70 cursor-not-allowed'}`}>
-                <div className="relative h-36 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                  <Image src={LEVEL_ART[l.id]} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
+                <div className="relative h-32 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                  <MapThumb map={l.map} className="w-full h-full" />
                   <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                     Level {l.order}
                   </span>
