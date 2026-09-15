@@ -166,19 +166,15 @@ export default function ColdCallPage() {
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
               paused={sidePanelOpen} onArrive={handleArrive} onNearChange={handleNear} />
           </div>
-          {/* Desktop side column */}
-          <div className="hidden lg:block min-h-0 overflow-y-auto">
-            {sidePanel || hud(false)}
+          {/* Desktop: side column. Phone: the panel becomes a full-screen overlay; the HUD is hidden in favour of the compact one below. */}
+          <div className={sidePanel
+            ? 'fixed inset-0 z-40 bg-slate-900/50 flex flex-col justify-end lg:static lg:z-auto lg:bg-transparent lg:block lg:min-h-0 lg:overflow-y-auto'
+            : 'hidden lg:block lg:min-h-0 lg:overflow-y-auto'}>
+            {sidePanel ? <div className="h-[92%] p-2 lg:h-full lg:p-0">{sidePanel}</div> : hud(false)}
           </div>
-          {/* Phone: compact HUD under the map; panels as overlay */}
           <div className="lg:hidden flex-shrink-0 px-1 pb-1">
             {hud(true)}
           </div>
-          {sidePanel && (
-            <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/50 flex flex-col justify-end">
-              <div className="h-[92%] p-2">{sidePanel}</div>
-            </div>
-          )}
         </div>
         <Toasts toasts={state.toasts} onDismiss={id => dispatch({ type: 'DISMISS_TOAST', id })} />
       </div>

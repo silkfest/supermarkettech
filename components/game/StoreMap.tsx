@@ -188,8 +188,9 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
   let viewBox = `0 0 ${map.w} ${map.h}`
   if (follow) {
     const aspect = box.w / Math.max(1, box.h)
-    const vw = Math.min(map.w, 440)
-    const vh = Math.min(map.h, vw / aspect)
+    let vw = Math.min(map.w, 440)
+    let vh = vw / aspect
+    if (vh > map.h) { vh = map.h; vw = Math.min(map.w, vh * aspect) }
     const cx = Math.min(map.w - vw / 2, Math.max(vw / 2, pos.x))
     const cy = Math.min(map.h - vh / 2, Math.max(vh / 2, pos.y))
     viewBox = `${cx - vw / 2} ${cy - vh / 2} ${vw} ${vh}`
