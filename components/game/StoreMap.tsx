@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Snowflake, Zap, Droplets, Wind, BookOpen, Check } from 'lucide-react'
 import { NavGrid } from '@/lib/game/grid'
+import { PixelClassroomScenery, PixelTechnician } from './PixelClassroom'
 import { useIsMobile } from '@/components/simulation/useIsMobile'
 import type { Character, EquipmentNode, GameMap, Obstacle, Point, SystemKey } from '@/lib/game/types'
 
@@ -212,6 +213,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
         aria-label="Floor plan"
       >
         <MapDefs />
+        {map.floor === 'shop' ? <PixelClassroomScenery map={map} /> : <>
         <rect x="0" y="0" width={map.w} height={map.h} fill={`url(#floor-${map.floor})`} />
 
         {map.zones.map(z => (
@@ -221,6 +223,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
 
         {map.obstacles.map((o, i) => <ObstacleGlyph key={i} o={o} seed={i} />)}
         {map.equipment.map(e => <EquipmentGlyph key={e.id} node={e} />)}
+        </>}
 
         {tapMark && (
           <circle cx={tapMark.x} cy={tapMark.y} r="6" fill="none" stroke={character.color} strokeWidth="1.5" opacity="0.7" className="pointer-events-none">
@@ -235,7 +238,9 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
           return <FaultCue key={`cue-${h.id}`} system={h.cue} at={{ x: (n.pin.x + n.stand.x) / 2, y: (n.pin.y + n.stand.y) / 2 }} />
         })}
 
-        <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />
+        {map.floor === 'shop'
+          ? <PixelTechnician pos={pos} facing={facing} walking={walking} color={character.color} />
+          : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />}
 
         {hotspots.map(h => {
           const n = nodeForHotspot(h)
@@ -252,7 +257,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
               <g>
                 {!h.done && <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="1.4s" repeatCount="indefinite" />}
                 <ellipse cy="2" rx="6" ry="2.5" fill="#000" opacity="0.2" />
-                <path d="M0 0 C-7 -8 -12 -13 -12 -20 A12 12 0 1 1 12 -20 C12 -13 7 -8 0 0 Z" fill={color} stroke="#fff" strokeWidth="1.5" />
+                <path d={map.floor === 'shop' ? 'M-11 -33H11V-11H4V-5H-4V-11H-11Z' : 'M0 0 C-7 -8 -12 -13 -12 -20 A12 12 0 1 1 12 -20 C12 -13 7 -8 0 0 Z'} fill={color} stroke="#fff" strokeWidth={map.floor === 'shop' ? 2 : 1.5} />
                 <Icon x={-6} y={-26} width={12} height={12} stroke="#fff" strokeWidth={2.5} />
                 {h.flagged && <circle cx="10" cy="-30" r="4" fill="#ef4444" stroke="#fff" strokeWidth="1.5" />}
               </g>
@@ -273,9 +278,11 @@ export function MapThumb({ map, className }: { map: GameMap; className?: string 
   return (
     <svg viewBox={`0 0 ${map.w} ${map.h}`} preserveAspectRatio="xMidYMid slice" className={className} aria-hidden="true">
       <MapDefs />
+      {map.floor === 'shop' ? <PixelClassroomScenery map={map} /> : <>
       <rect x="0" y="0" width={map.w} height={map.h} fill={`url(#floor-${map.floor})`} />
       {map.obstacles.map((o, i) => <ObstacleGlyph key={i} o={o} seed={i} />)}
       {map.equipment.map(e => <EquipmentGlyph key={e.id} node={e} />)}
+      </>}
     </svg>
   )
 }
