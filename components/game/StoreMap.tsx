@@ -788,6 +788,66 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
     }
+    // ── Distributed HFC modules ───────────────────────────────────────────
+    case 'protocol-module':
+    case 'protocol-lt': {
+      const evi = node.kind === 'protocol-lt'
+      // A Protocol module: a few scrolls, an integral receiver and its own
+      // controls on one small skid. Lighter than a machine-room rack.
+      const row = y + h * 0.58
+      const n = 3
+      const r = Math.min(9, w * 0.055)
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-indigo-100 dark:fill-indigo-950/70" front="fill-indigo-400 dark:fill-indigo-950" />
+          <rect x={x + 7} y={y + 8} width={w - 14} height="3.5" rx="1.75" className="fill-red-400 dark:fill-red-500" opacity="0.85" />
+          <rect x={x + 7} y={y + 14} width={w - 14} height="3.5" rx="1.75" className="fill-blue-400 dark:fill-blue-500" opacity="0.85" />
+          {Array.from({ length: n }).map((_, i) => (
+            <g key={i}>
+              <circle cx={x + w * (0.16 + i * 0.15)} cy={row} r={r} className="fill-slate-500 dark:fill-slate-500" />
+              <circle cx={x + w * (0.16 + i * 0.15)} cy={row} r={r * 0.62} className="fill-slate-700 dark:fill-slate-800" />
+              <circle cx={x + w * (0.16 + i * 0.15)} cy={row} r={r * 0.2} fill="#818cf8">
+                <animate attributeName="opacity" values="1;0.3;1" dur={`${1.2 + i * 0.28}s`} repeatCount="indefinite" />
+              </circle>
+            </g>
+          ))}
+          <rect x={x + w * 0.62} y={row - r} width={w * 0.14} height={r * 2} rx={r} className="fill-slate-300 dark:fill-slate-500 stroke-slate-500" strokeWidth="1" />
+          {/* The injection line teeing into each scroll — the LT module's tell. */}
+          {evi && (
+            <g>
+              <path d={`M ${x + w * 0.60} ${row + r + 5} H ${x + w * 0.12}`} className="stroke-cyan-500 dark:stroke-cyan-400" strokeWidth="1.6" fill="none" />
+              {[0, 1, 2].map(i => (
+                <line key={i} x1={x + w * (0.16 + i * 0.15)} x2={x + w * (0.16 + i * 0.15)} y1={row + r} y2={row + r + 5}
+                  className="stroke-cyan-500 dark:stroke-cyan-400" strokeWidth="1.6" />
+              ))}
+            </g>
+          )}
+          <rect x={x + w - 26} y={row - 12} width="18" height="24" rx="2" className="fill-slate-100 dark:fill-slate-900 stroke-slate-500" strokeWidth="1" />
+          <circle cx={x + w - 17} cy={row - 6} r="1.6" fill="#22c55e" />
+          {[0, 1].map(k => <line key={k} x1={x + w - 22} x2={x + w - 12} y1={row + 1 + k * 4} y2={row + 1 + k * 4} className="stroke-slate-400" strokeWidth="1" />)}
+          {label}
+        </g>
+      )
+    }
+    case 'condenser': {
+      // Remote air-cooled condenser — same shape as the gas cooler, cool
+      // instead of hot, so the two never get confused on the map.
+      const fans = Math.min(5, Math.max(2, Math.round(w / 65)))
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-sky-100 dark:fill-sky-950/60" front="fill-slate-500 dark:fill-slate-900" />
+          {Array.from({ length: 7 }).map((_, k) => (
+            <line key={k} x1={x + 4} x2={x + w - 4} y1={y + 5 + k * 2.6} y2={y + 5 + k * 2.6}
+              className="stroke-sky-500 dark:stroke-sky-600" strokeWidth="0.9" opacity="0.45" />
+          ))}
+          {Array.from({ length: fans }).map((_, k) => (
+            <Fan key={k} cx={x + (w / fans) * (k + 0.5)} cy={y + h / 2 + 7} r={Math.min(w / fans, h) * 0.3}
+              className="stroke-sky-700 dark:stroke-sky-300" />
+          ))}
+          <text x={x + w / 2} y={y + h - 7} textAnchor="middle" fontSize="7" fontWeight="700" className="fill-slate-700 dark:fill-slate-100">{node.id}</text>
+        </g>
+      )
+    }
     case 'station': {
       // Wall stations carry the pin at their centre and the tech stands beside them, so the name goes underneath.
       const stationLabel = vertical ? (

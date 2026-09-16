@@ -1,6 +1,7 @@
 import { CLASSROOM_MAP } from './maps/classroom'
 import { GAS_STATION_MAP } from './maps/gas-station'
 import { SUPERMARKET_MAP } from './maps/supermarket'
+import { PROTOCOL_STORE_MAP } from './maps/protocol-store'
 import { GLYCOL_STORE_MAP } from './maps/glycol-store'
 import { CASCADE_STORE_MAP } from './maps/cascade-store'
 import { CO2_STORE_MAP } from './maps/co2-store'
@@ -67,7 +68,7 @@ export const LEVELS: LevelDef[] = [
     id: 'supermarket',
     order: 3,
     name: 'Full Supermarket',
-    subtitle: 'Parallel rack, walk-ins, RTUs',
+    subtitle: 'Hussmann parallel rack',
     description: 'The whole store: display cases off a rack, walk-ins, two rooftop units, and a floor that never stops moving. Eight hours, four systems, triage everything.',
     kind: 'shift',
     map: SUPERMARKET_MAP,
@@ -83,8 +84,37 @@ export const LEVELS: LevelDef[] = [
     passGrades: ['A', 'B', 'C'],
   },
   {
-    id: 'glycol-store',
+    id: 'protocol-store',
     order: 4,
+    name: 'Eastgate Foods',
+    subtitle: 'Protocol HE distributed',
+    description: 'No machine room. Two Protocol modules in an alcove behind the floor, each with its own charge, and a remote condenser on the pad. The low-temp module runs vapour-injection scrolls with demand cooling — compressors that depend on liquid injection to survive their own discharge temperature.',
+    kind: 'shift',
+    map: PROTOCOL_STORE_MAP,
+    faultPool: [
+      'pro_demand_cooling', 'pro_false_discharge_trip', 'pro_digital_scroll',
+      'pro_small_charge_leak', 'pro_case_drier', 'pro_hgd_stuck',
+      'dt_failed_open', 'door_ajar', 'txv_starved', 'condensate_clog', 'dry_trap',
+      'fan_shorted', 'economizer_stuck', 'filter_clogged', 'condensate_pump',
+    ],
+    shiftLenMin: 8 * 60,
+    spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 85, 135, 185, 235, 285, 335, 385] },
+    maxOpen: { apprentice: 2, journeyman: 3 },
+    passGrades: ['A', 'B', 'C'],
+    briefing: {
+      lead: 'Same refrigerant you already know. Completely different shape: no machine room, no one big rack, and low-temp compressors that will cook themselves without a working injection line.',
+      points: [
+        { head: 'Vapour injection is not a bonus feature', body: 'The low-temp module runs EVI scrolls. A small liquid injection line feeds the intermediate port on each compressor, and that is what keeps discharge temperature survivable at low-temp compression ratios. Lose injection and all of them climb toward the 225 °F limit together. If every discharge line is hot, look at the injection line before you look at any one compressor.' },
+        { head: 'Believe the alarm, then check the sensor', body: 'High discharge temperature is the alarm that matters most here, and it is also the one most likely to be lying. Clamp a thermocouple on the same pipe before you act. A real 231 °F and a reported 238 °F with a cool pipe are two completely different calls, and only one of them is fixed with refrigerant tools.' },
+        { head: 'Each module carries its own small charge', body: 'A Protocol module holds 80 to 275 lb, where a parallel rack in the same store would hold well over a thousand. A leak that a big rack would ride out for months puts a module into flash gas inside a day — and it stays on that module. One system flashing while its neighbour is perfect is the architecture telling you where to look.' },
+        { head: 'The lead scroll is a digital', body: 'It trims the module by unloading on a solenoid. Stuck unloaded, you lose both its capacity and all the modulation range, and the symptom is a module that runs flat out all day and never quite catches up — with no alarm, because nothing failed.' },
+        { head: 'Check the drier at the case, not just at the rack', body: 'These circuits have their own liquid driers out at the case. A plugged one starves that circuit while the module reads perfectly normal, and the module drier will show you nothing. Two thermocouples and a minute tell you which drier is the problem.' },
+      ],
+    },
+  },
+  {
+    id: 'glycol-store',
+    order: 5,
     name: 'Northside Market',
     subtitle: 'Glycol secondary loop',
     description: 'The medium-temp cases here are not fed refrigerant at all. A DX chiller cools glycol through a plate heat exchanger and two pumps push it around the floor. Low temp stays DX. Half your calls are hydronic problems wearing a refrigeration hat, and a refractometer earns its place on the truck.',
@@ -114,7 +144,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'cascade-store',
-    order: 5,
+    order: 6,
     name: 'Harbour Foods',
     subtitle: 'CO2 cascade',
     description: 'Medium temp on a conventional R-448A rack, low temp on a subcritical CO2 pack that rejects its heat into the MT side instead of to outdoor air. Two systems welded together by one vessel — which is why the frozen food complains first when the MT rack has a problem.',
@@ -142,7 +172,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'co2-store',
-    order: 6,
+    order: 7,
     name: 'Summit Grocers',
     subtitle: 'CO2 transcritical booster',
     description: 'Same sales floor, completely different machine room. One booster pack running MT and LT, a flash tank instead of a receiver, an intercooler between the stages, and a gas cooler that runs above the critical point every warm afternoon. Pressures you cannot guess at, and a gas detector on the wall for a reason.',
@@ -192,20 +222,15 @@ export function levelUnlock(p: GameProgress, id: LevelId): { ok: boolean; reason
       const ok = !!g && LEVEL_BY_ID['gas-station'].passGrades.includes(g)
       return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at the gas station' }
     }
-    case 'glycol-store': {
+    // Rack styles are a branch, not a chain — once you can hold a store
+    // together on a parallel rack, dispatch can send you to any of them.
+    case 'protocol-store':
+    case 'glycol-store':
+    case 'cascade-store':
+    case 'co2-store': {
       const g = p.levels['supermarket']?.bestGrade
       const ok = !!g && LEVEL_BY_ID['supermarket'].passGrades.includes(g)
       return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at the supermarket' }
-    }
-    case 'cascade-store': {
-      const g = p.levels['glycol-store']?.bestGrade
-      const ok = !!g && LEVEL_BY_ID['glycol-store'].passGrades.includes(g)
-      return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at Northside Market' }
-    }
-    case 'co2-store': {
-      const g = p.levels['cascade-store']?.bestGrade
-      const ok = !!g && LEVEL_BY_ID['cascade-store'].passGrades.includes(g)
-      return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at Harbour Foods' }
     }
   }
 }

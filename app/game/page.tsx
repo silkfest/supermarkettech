@@ -62,8 +62,8 @@ export default function ColdCallPage() {
     const g = shiftGrade(state.results, state.results.length + state.calls.length, state.complaints, state.shrink)
     const before = save.progress
     const after = recordShift(before, state.levelId, g.total, g.grade)
-    const next = LEVELS.find(l => l.order === LEVEL_BY_ID[state.levelId].order + 1)
-    const unlocked = next && !levelUnlock(before, next.id).ok && levelUnlock(after, next.id).ok ? next.name : null
+    const newly = LEVELS.filter(l => !levelUnlock(before, l.id).ok && levelUnlock(after, l.id).ok)
+    const unlocked = newly.length === 0 ? null : newly.length === 1 ? newly[0].name : `${newly.length} new stores`
     const isBest = g.total > (before.levels[state.levelId]?.bestScore ?? 0)
     const ns = { ...save, progress: after }
     setSave(ns)
