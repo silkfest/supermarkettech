@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       stationsPassed,
       graduated: stationsPassed >= LESSONS.length,
       xp: p.xp ?? 0,
+      hours: p.hours ?? 0,
       levels: p.levels ?? {},
       updatedAt: r.updated_at,
     })

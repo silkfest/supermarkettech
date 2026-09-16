@@ -12,7 +12,7 @@ export class NavGrid {
     this.cols = Math.ceil(map.w / CELL)
     this.rows = Math.ceil(map.h / CELL)
     this.blocked = new Uint8Array(this.cols * this.rows)
-    for (const o of map.obstacles) this.markRect(o)
+    for (const o of map.obstacles) if (!o.walkable) this.markRect(o)
     for (const e of map.equipment) if (!e.walkable) this.markRect(e.rect)
   }
 

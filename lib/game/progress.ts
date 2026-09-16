@@ -1,3 +1,4 @@
+import { HOURS_PER_STATION } from './ranks'
 import type { Character } from './types'
 
 export type LevelId =
@@ -11,18 +12,30 @@ export interface GameProgress {
   lessons: Record<string, { passed: boolean; bestScore: number }>
   levels: Partial<Record<LevelId, LevelStat>>
   xp: number
+  /** Hours on the book toward the next apprenticeship level — shifts worked plus in-school time. */
+  hours: number
 }
 
 export interface SavedGame { character: Character | null; progress: GameProgress }
 
-export const EMPTY_PROGRESS: GameProgress = { version: 1, lessons: {}, levels: {}, xp: 0 }
+export const EMPTY_PROGRESS: GameProgress = { version: 1, lessons: {}, levels: {}, xp: 0, hours: 0 }
+
+/** Saves written before hours existed get credited for the work they already did. */
+function withHours(p: GameProgress): GameProgress {
+  if (typeof p.hours === 'number') return p
+  const shifts = Object.values(p.levels).reduce((a, l) => a + (l?.shifts ?? 0), 0)
+  const stations = Object.values(p.lessons).filter(l => l?.passed).length
+  return { ...p, hours: shifts * 8 + stations * HOURS_PER_STATION }
+}
 
 const LOCAL_KEY = 'coldcall_save'
 
 function readLocal(): SavedGame | null {
   try {
     const raw = localStorage.getItem(LOCAL_KEY)
-    return raw ? (JSON.parse(raw) as SavedGame) : null
+    if (!raw) return null
+    const save = JSON.parse(raw) as SavedGame
+    return { ...save, progress: withHours(save.progress) }
   } catch { return null }
 }
 function writeLocal(save: SavedGame) {
@@ -39,7 +52,7 @@ export async function loadGame(): Promise<SavedGame> {
       const data = await res.json() as { character: Character | Record<string, never>; progress: GameProgress } | null
       if (data && data.progress && data.progress.version === 1) {
         const character = data.character && 'name' in data.character ? data.character as Character : null
-        const save = { character, progress: data.progress }
+        const save = { character, progress: withHours(data.progress) }
         writeLocal(save)
         return save
       }
@@ -61,12 +74,13 @@ export function saveGame(save: SavedGame): void {
   } catch { /* never block play on a save */ }
 }
 
-export function recordShift(p: GameProgress, level: LevelId, score: number, grade: string): GameProgress {
+export function recordShift(p: GameProgress, level: LevelId, score: number, grade: string, hours: number): GameProgress {
   const prev = p.levels[level] ?? { shifts: 0, bestScore: 0, bestGrade: null }
   const better = score > prev.bestScore
   return {
     ...p,
     xp: p.xp + score,
+    hours: p.hours + hours,
     levels: {
       ...p.levels,
       [level]: { shifts: prev.shifts + 1, bestScore: better ? score : prev.bestScore, bestGrade: better || !prev.bestGrade ? grade : prev.bestGrade },
@@ -76,9 +90,11 @@ export function recordShift(p: GameProgress, level: LevelId, score: number, grad
 
 export function recordLesson(p: GameProgress, lessonId: string, score: number, passed: boolean): GameProgress {
   const prev = p.lessons[lessonId]
+  const firstPass = passed && !prev?.passed
   return {
     ...p,
-    xp: p.xp + (passed && !prev?.passed ? 25 : 0),
+    xp: p.xp + (firstPass ? 25 : 0),
+    hours: p.hours + (firstPass ? HOURS_PER_STATION : 0),
     lessons: { ...p.lessons, [lessonId]: { passed: passed || !!prev?.passed, bestScore: Math.max(score, prev?.bestScore ?? 0) } },
   }
 }
@@ -89,6 +105,7 @@ export interface TeamTrainingRow {
   stationsPassed: number
   graduated: boolean
   xp: number
+  hours: number
   levels: Partial<Record<LevelId, LevelStat>>
   updatedAt: string | null
 }

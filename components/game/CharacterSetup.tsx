@@ -13,11 +13,6 @@ const COLORS = [
   { hex: '#475569', name: 'Grey' },
 ]
 
-const ROLES: { key: Character['role']; label: string; blurb: string }[] = [
-  { key: 'apprentice', label: 'Apprentice', blurb: 'Up to 2 calls open at once, 6 calls a shift. Learn the systems.' },
-  { key: 'journeyman', label: 'Journeyman', blurb: 'Up to 3 calls open, 9 a shift. Triage under pressure.' },
-]
-
 interface Props {
   initial: Character
   submitLabel?: string
@@ -28,7 +23,6 @@ interface Props {
 export default function CharacterSetup({ initial, submitLabel = 'Clock in', onStart, onCancel }: Props) {
   const [name, setName] = useState(initial.name)
   const [color, setColor] = useState(initial.color)
-  const [role, setRole] = useState<Character['role']>(initial.role)
 
   return (
     <div className="max-w-md mx-auto w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-5">
@@ -64,17 +58,13 @@ export default function CharacterSetup({ initial, submitLabel = 'Clock in', onSt
       </div>
 
       <div className="space-y-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Role</span>
-        <div className="grid grid-cols-2 gap-2">
-          {ROLES.map(r => (
-            <button key={r.key} onClick={() => setRole(r.key)}
-              className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${role === r.key
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'}`}>
-              <p className="text-[13px] font-semibold text-slate-900 dark:text-white">{r.label}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">{r.blurb}</p>
-            </button>
-          ))}
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Where you start</span>
+        <div className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40">
+          <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Apprentice — Level 1</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
+            Nobody hands you a ticket. Hours on the job and grades on the board move you up the ladder, and dispatch
+            puts harder calls on your board as you go.
+          </p>
         </div>
       </div>
 
@@ -84,7 +74,7 @@ export default function CharacterSetup({ initial, submitLabel = 'Clock in', onSt
             Cancel
           </button>
         )}
-        <button onClick={() => onStart({ name: name.trim() || 'Tech', color, role })}
+        <button onClick={() => onStart({ name: name.trim() || 'Tech', color, role: initial.role })}
           className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
           <Play size={15} /> {submitLabel}
         </button>

@@ -216,6 +216,11 @@ export default function TechniciansPage() {
                         {tr.graduated ? 'Trade School complete' : `Trade School ${tr.stationsPassed}/${stationsTotal}`}
                       </span>
                       <GradeChips row={tr} />
+                      {tr.hours > 0 && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                          {Math.round(tr.hours)} h logged
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

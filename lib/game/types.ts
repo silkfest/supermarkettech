@@ -1,3 +1,5 @@
+import type { RefrigerantId } from './pt'
+
 export type SystemKey = 'refrigeration' | 'electrical' | 'plumbing' | 'hvac'
 
 export type EquipmentKind =
@@ -7,20 +9,23 @@ export type EquipmentKind =
   | 'gas-cooler' | 'flash-tank' | 'co2-rack' | 'intercooler' | 'gas-detector'
   | 'glycol-skid' | 'plate-hx' | 'expansion-tank' | 'cascade-hx'
   | 'protocol-module' | 'protocol-lt' | 'condenser' | 'receiver'
-  | 'station'
+  | 'station' | 'storefront'
 
 export interface Point { x: number; y: number }
 
 export interface Obstacle {
   x: number; y: number; w: number; h: number
   kind: 'wall' | 'shelf' | 'checkout' | 'produce' | 'desk' | 'counter' | 'bench' | 'pump'
+    | 'road' | 'parking' | 'building' | 'tree'
   label?: string
+  /** Scenery you can walk or drive over — roads, lots, lawns. Default is solid. */
+  walkable?: boolean
 }
 
 export interface GameMap {
   w: number
   h: number
-  floor: 'tile' | 'concrete' | 'shop'
+  floor: 'tile' | 'concrete' | 'shop' | 'town'
   obstacles: Obstacle[]
   zones: { label: string; x: number; y: number }[]
   equipment: EquipmentNode[]
@@ -40,6 +45,8 @@ export interface EquipmentNode {
   /** Walkable point the tech stands at to work on it. */
   stand: Point
   walkable?: boolean
+  /** Sign / awning colour, for hand-authored scenery like the town storefronts. */
+  accent?: string
 }
 
 export interface Reading {
@@ -57,6 +64,23 @@ export interface Reading {
   after?: number
 }
 
+/** A check you have to actually perform, rather than just pay time for.
+ *  `circuit` drops you onto the compressor safety string at 120 V or 208 V;
+ *  `casecircuit` onto the case fan and defrost rungs; `ptchart` puts a gauge
+ *  reading and a line temperature in front of you and makes you work out the
+ *  superheat or subcooling off the chart. */
+export type Instrument =
+  | { kind: 'circuit'; variant: '120' | '208'; prompt: string }
+  | { kind: 'casecircuit'; defrost: boolean; prompt: string }
+  | {
+      kind: 'ptchart'
+      refrigerant: RefrigerantId
+      psig: number
+      lineTempF: number
+      ask: 'superheat' | 'subcooling'
+      prompt: string
+    }
+
 export interface Check {
   id: string
   label: string
@@ -66,6 +90,8 @@ export interface Check {
   finding: string
   /** A check that actually discriminates between the causes. */
   key?: boolean
+  /** Work you do yourself before the finding is yours. */
+  instrument?: Instrument
 }
 
 export interface Option {
@@ -88,6 +114,11 @@ export interface FaultDef {
   checks: Check[]
   causes: Option[]
   fixes: Option[]
+  /** How far up the apprenticeship you have to be before dispatch sends you this.
+   *  1 — basic: doors, drains, filters, dirty coils.
+   *  2 — meters and gauges: contactors, capacitors, valves, controls.
+   *  3 — system level: the call is about how this whole rack is put together. */
+  difficulty: 1 | 2 | 3
   /** Dollars of product at risk per game-minute while open (refrigeration only, else 0). */
   shrinkPerMin: number
   /** Game minutes until the store logs a customer complaint. */

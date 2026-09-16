@@ -130,7 +130,13 @@ function ElementSymbol({ el, x, y, open, reveal }: { el: CircuitElement; x: numb
   )
 }
 
-export default function CaseCircuitTrainer({ defrostMode = false }: { defrostMode?: boolean }) {
+interface Props {
+  defrostMode?: boolean
+  /** Called each time a Find-the-Fault round is solved, with the round's score. */
+  onSolved?: (score: number) => void
+}
+
+export default function CaseCircuitTrainer({ defrostMode = false, onSolved }: Props) {
   const [mode, setMode] = useState<'practice' | 'mystery'>('practice')
   const [practiceFault, setPracticeFault] = useState<string | null>(null)
   const [mysteryFault, setMysteryFault] = useState<string | null>(null)
@@ -183,6 +189,7 @@ export default function CaseCircuitTrainer({ defrostMode = false }: { defrostMod
         scenarioName: 'DT Bunker — Case Circuit Fault', difficulty: 'Intermediate',
         mode: 'wiring', score, correct: 1, total: 1, falsePositives: wrongGuesses,
       })
+      onSolved?.(score)
     } else {
       setWrongGuesses(w => w + 1)
       setPicked(null)

@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Snowflake, Zap, Droplets, Wind, BookOpen, Check } from 'lucide-react'
+import { Snowflake, Zap, Droplets, Wind, BookOpen, Check, Store, Wrench } from 'lucide-react'
 import { NavGrid } from '@/lib/game/grid'
 import { useIsMobile } from '@/components/simulation/useIsMobile'
 import type { Character, EquipmentNode, GameMap, Obstacle, Point, SystemKey } from '@/lib/game/types'
@@ -13,7 +13,7 @@ export const SYSTEM_COLOR: Record<SystemKey, string> = {
 }
 export const LESSON_COLOR = '#10b981'
 
-const ICONS = { refrigeration: Snowflake, electrical: Zap, plumbing: Droplets, hvac: Wind, lesson: BookOpen }
+const ICONS = { refrigeration: Snowflake, electrical: Zap, plumbing: Droplets, hvac: Wind, lesson: BookOpen, store: Store, shop: Wrench }
 
 export interface Hotspot {
   id: string
@@ -27,7 +27,10 @@ export interface Hotspot {
 }
 
 const WALK_SPEED = 150
+/** The town is a map you drive, not walk — a van covers it without the trip feeling long. */
+const DRIVE_SPEED = 270
 const ARRIVE_RADIUS = 30
+const PARK_RADIUS = 46
 const KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
   w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
@@ -41,9 +44,11 @@ interface Props {
   paused: boolean
   onArrive: (hotspotId: string) => void
   onNearChange: (hotspotId: string | null) => void
+  /** Town map: the tech drives the service van instead of walking the floor. */
+  vehicle?: boolean
 }
 
-export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange }: Props) {
+export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange, vehicle }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile(768)
@@ -114,19 +119,20 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
       let moved = false
       let vx = 0, vy = 0
 
+      const speed = vehicle ? DRIVE_SPEED : WALK_SPEED
       let kx = 0, ky = 0
       for (const k of keysRef.current) { const v = KEYS[k]; if (v) { kx += v[0]; ky += v[1] } }
       if (kx || ky) {
         const len = Math.hypot(kx, ky)
-        const nx = p.x + (kx / len) * WALK_SPEED * dt
-        const ny = p.y + (ky / len) * WALK_SPEED * dt
+        const nx = p.x + (kx / len) * speed * dt
+        const ny = p.y + (ky / len) * speed * dt
         if (grid.isWalkable({ x: nx, y: p.y })) { vx = nx - p.x; p.x = nx; moved = true }
         if (grid.isWalkable({ x: p.x, y: ny })) { vy = ny - p.y; p.y = ny; moved = true }
       } else if (pathRef.current.length) {
         const t = pathRef.current[0]
         const dx = t.x - p.x, dy = t.y - p.y
         const dist = Math.hypot(dx, dy)
-        const stepLen = WALK_SPEED * dt
+        const stepLen = speed * dt
         vx = dx; vy = dy
         if (dist <= stepLen) {
           p.x = t.x; p.y = t.y
@@ -145,7 +151,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
       }
 
       let near: string | null = null
-      let best = ARRIVE_RADIUS
+      let best = vehicle ? PARK_RADIUS : ARRIVE_RADIUS
       for (const h of hotspotsRef.current) {
         const n = map.equipment.find(e => e.id === h.equipmentId)
         if (!n) continue
@@ -163,7 +169,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [paused, onArrive, onNearChange, grid, map])
+  }, [paused, onArrive, onNearChange, grid, map, vehicle])
 
   function toMap(e: React.PointerEvent): Point | null {
     const svg = svgRef.current
@@ -188,7 +194,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
   let viewBox = `0 0 ${map.w} ${map.h}`
   if (follow) {
     const aspect = box.w / Math.max(1, box.h)
-    let vw = Math.min(map.w, 440)
+    let vw = Math.min(map.w, vehicle ? 620 : 440)
     let vh = vw / aspect
     if (vh > map.h) { vh = map.h; vw = Math.min(map.w, vh * aspect) }
     const cx = Math.min(map.w - vw / 2, Math.max(vw / 2, pos.x))
@@ -235,7 +241,9 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
           return <FaultCue key={`cue-${h.id}`} system={h.cue} at={{ x: (n.pin.x + n.stand.x) / 2, y: (n.pin.y + n.stand.y) / 2 }} />
         })}
 
-        <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />
+        {vehicle
+          ? <Van pos={pos} facing={facing} color={character.color} moving={walking} />
+          : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />}
 
         {hotspots.map(h => {
           const n = nodeForHotspot(h)
@@ -262,7 +270,9 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
       </svg>
 
       <div className="absolute bottom-2 left-2 text-[10px] text-slate-600 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 backdrop-blur px-2 py-1 rounded-md pointer-events-none">
-        {follow ? 'Tap the floor to walk · tap a pin to take it' : 'Click to walk or WASD · click a pin · Enter when you arrive'}
+        {vehicle
+          ? (follow ? 'Tap the road to drive · tap a sign to pull in' : 'Click to drive or WASD · click a sign · Enter when you pull in')
+          : (follow ? 'Tap the floor to walk · tap a pin to take it' : 'Click to walk or WASD · click a pin · Enter when you arrive')}
       </div>
     </div>
   )
@@ -291,6 +301,11 @@ function MapDefs() {
       <pattern id="floor-concrete" width="60" height="60" patternUnits="userSpaceOnUse">
         <rect width="60" height="60" className="fill-stone-200 dark:fill-slate-900" />
         <path d="M60 0 H0 V60" fill="none" className="stroke-stone-300 dark:stroke-slate-800" strokeWidth="1" />
+      </pattern>
+      <pattern id="floor-town" width="80" height="80" patternUnits="userSpaceOnUse">
+        <rect width="80" height="80" className="fill-lime-100 dark:fill-emerald-950" />
+        <path d="M12 18 l3 -6 l3 6 M50 58 l3 -6 l3 6 M62 14 l2.5 -5 l2.5 5" fill="none"
+          className="stroke-lime-300 dark:stroke-emerald-900" strokeWidth="1.2" strokeLinecap="round" />
       </pattern>
       <pattern id="floor-shop" width="60" height="60" patternUnits="userSpaceOnUse">
         <rect width="60" height="60" className="fill-zinc-200 dark:fill-zinc-900" />
@@ -382,6 +397,69 @@ function ObstacleGlyph({ o, seed }: { o: Obstacle; seed: number }) {
           {Array.from({ length: Math.floor((w - 10) / 12) }).map((_, i) => (
             <circle key={i} cx={x + 10 + i * 12} cy={y + 12 + (i % 2) * 8} r="4" fill={PRODUCE[(seed + i) % PRODUCE.length]} opacity="0.85" />
           ))}
+        </g>
+      )
+    case 'road': {
+      // Asphalt with a dashed centre line and the street name painted along it.
+      const alongY = w >= h
+      const mid = alongY ? y + h / 2 : x + w / 2
+      return (
+        <g className="pointer-events-none">
+          <rect x={x} y={y} width={w} height={h} className="fill-zinc-400 dark:fill-zinc-800" />
+          {alongY ? (
+            <>
+              <line x1={x} x2={x + w} y1={y + 2} y2={y + 2} className="stroke-zinc-300 dark:stroke-zinc-700" strokeWidth="3" />
+              <line x1={x} x2={x + w} y1={y + h - 2} y2={y + h - 2} className="stroke-zinc-300 dark:stroke-zinc-700" strokeWidth="3" />
+              <line x1={x} x2={x + w} y1={mid} y2={mid} stroke="#fcd34d" strokeWidth="2" strokeDasharray="18 16" opacity="0.8" />
+              {o.label && (
+                <text x={x + w * 0.5} y={mid - 8} textAnchor="middle" fontSize="11" fontWeight="800" letterSpacing="3"
+                  fill="#ffffff" opacity="0.5">{o.label}</text>
+              )}
+            </>
+          ) : (
+            <>
+              <line x1={x + 2} x2={x + 2} y1={y} y2={y + h} className="stroke-zinc-300 dark:stroke-zinc-700" strokeWidth="3" />
+              <line x1={x + w - 2} x2={x + w - 2} y1={y} y2={y + h} className="stroke-zinc-300 dark:stroke-zinc-700" strokeWidth="3" />
+              <line x1={mid} x2={mid} y1={y} y2={y + h} stroke="#fcd34d" strokeWidth="2" strokeDasharray="18 16" opacity="0.8" />
+              {o.label && (
+                <text x={mid} y={y + h * 0.82} textAnchor="middle" fontSize="11" fontWeight="800" letterSpacing="3"
+                  fill="#ffffff" opacity="0.5" transform={`rotate(-90 ${mid} ${y + h * 0.82})`}>{o.label}</text>
+              )}
+            </>
+          )}
+        </g>
+      )
+    }
+    case 'parking':
+      return (
+        <g className="pointer-events-none">
+          <rect x={x} y={y} width={w} height={h} rx="2" className="fill-zinc-300 dark:fill-zinc-800/80" />
+          {Array.from({ length: Math.max(1, Math.floor(w / 34)) }).map((_, i) => (
+            <line key={i} x1={x + 17 + i * 34} x2={x + 17 + i * 34} y1={y + 6} y2={y + h - 6}
+              className="stroke-white dark:stroke-zinc-600" strokeWidth="1.5" opacity="0.7" />
+          ))}
+        </g>
+      )
+    case 'building':
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-stone-300 dark:fill-slate-700" front="fill-stone-500 dark:fill-slate-900" />
+          {Array.from({ length: Math.max(1, Math.floor(h / 26)) }).map((_, i) => (
+            <line key={i} x1={x + 5} x2={x + w - 5} y1={y + 12 + i * 26} y2={y + 12 + i * 26}
+              className="stroke-stone-400 dark:stroke-slate-800" strokeWidth="1.5" />
+          ))}
+          {o.label && (
+            <text x={x + w / 2} y={y + h - 8} textAnchor="middle" fontSize="7" fontWeight="700" letterSpacing="0.6"
+              className="fill-slate-700 dark:fill-slate-200 stroke-white dark:stroke-slate-900" strokeWidth="2.2" paintOrder="stroke" strokeOpacity="0.6">{o.label}</text>
+          )}
+        </g>
+      )
+    case 'tree':
+      return (
+        <g className="pointer-events-none">
+          <ellipse cx={x + w / 2 + 2} cy={y + h / 2 + 3} rx={w / 2} ry={h / 2.6} fill="#000" opacity="0.15" />
+          <circle cx={x + w / 2} cy={y + h / 2} r={w / 2} className="fill-emerald-500 dark:fill-emerald-800" />
+          <circle cx={x + w / 2 - 3} cy={y + h / 2 - 3} r={w / 3.4} className="fill-emerald-400 dark:fill-emerald-700" />
         </g>
       )
     case 'desk':
@@ -964,6 +1042,46 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
     }
+    case 'storefront': {
+      // A town building seen from above. The sign band and the doors go on
+      // whichever side the pin is on, so every shop faces its own street.
+      const faceUp = node.pin.y < y + h / 2
+      const accent = node.accent ?? '#2563eb'
+      const bandH = Math.min(24, h * 0.28)
+      const bandY = faceUp ? y + 4 : y + h - bandH - 4
+      const doorY = faceUp ? y : y + h - 8
+      const bays = Math.max(2, Math.floor(w / 46))
+      return (
+        <g className="pointer-events-none">
+          <rect x={x + 3} y={y + 5} width={w} height={h} rx="4" fill="#000" opacity="0.18" />
+          <rect x={x} y={y} width={w} height={h} rx="4" className="fill-stone-200 dark:fill-slate-700" />
+          {/* roof */}
+          <rect x={x + 8} y={y + (faceUp ? bandH + 10 : 8)} width={w - 16} height={h - bandH - 20} rx="3"
+            className="fill-stone-300 dark:fill-slate-800" />
+          {Array.from({ length: Math.max(1, Math.floor((h - bandH - 24) / 22)) }).map((_, i) => (
+            <line key={i} x1={x + 12} x2={x + w - 12} y1={y + (faceUp ? bandH + 22 : 20) + i * 22} y2={y + (faceUp ? bandH + 22 : 20) + i * 22}
+              className="stroke-stone-400 dark:stroke-slate-900" strokeWidth="1.2" opacity="0.7" />
+          ))}
+          {/* rooftop units — every one of these stores has them */}
+          {[0.3, 0.7].map((f, i) => (
+            <g key={i}>
+              <rect x={x + w * f - 9} y={y + h * 0.45 - 7} width="18" height="14" rx="2" className="fill-slate-400 dark:fill-slate-500" />
+              <Fan cx={x + w * f} cy={y + h * 0.45} r={5} className="stroke-slate-600 dark:stroke-slate-300" dur="1.6s" />
+            </g>
+          ))}
+          {/* sign band */}
+          <rect x={x + 4} y={bandY} width={w - 8} height={bandH} rx="3" fill={accent} />
+          <rect x={x + 4} y={bandY} width={w - 8} height={bandH / 2.4} rx="3" fill="#ffffff" opacity="0.18" />
+          <text x={x + w / 2} y={bandY + bandH / 2 + 3.5} textAnchor="middle" fontSize={w > 220 ? 10 : 8.5}
+            fontWeight="800" letterSpacing="1.1" fill="#ffffff">{node.short ?? node.id}</text>
+          {/* glass front */}
+          {Array.from({ length: bays }).map((_, i) => (
+            <rect key={i} x={x + 10 + i * ((w - 20) / bays)} y={doorY + (faceUp ? bandH + 10 : -12)}
+              width={(w - 20) / bays - 6} height="9" rx="1.5" fill="url(#glass)" stroke="#94a3b8" strokeWidth="0.8" />
+          ))}
+        </g>
+      )
+    }
     case 'entrance':
       return (
         <g className="pointer-events-none">
@@ -973,6 +1091,44 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
   }
+}
+
+/** Top-down service van for the town map. "Forward" is −y, same as the tech. */
+function Van({ pos, facing, color, moving }: { pos: Point; facing: number; color: string; moving: boolean }) {
+  return (
+    <g transform={`translate(${pos.x} ${pos.y})`} className="pointer-events-none">
+      <ellipse cy="4" rx="17" ry="9" fill="#000" opacity="0.22" />
+      <g transform={`rotate(${facing})`}>
+        {/* tyres */}
+        {[-13, 11].map(cy => (
+          <g key={cy}>
+            <rect x="-15" y={cy} width="5" height="9" rx="2" fill="#1f2937" />
+            <rect x="10" y={cy} width="5" height="9" rx="2" fill="#1f2937" />
+          </g>
+        ))}
+        {/* body */}
+        <rect x="-13" y="-22" width="26" height="44" rx="6" fill={color} stroke="#ffffff" strokeWidth="1.4" />
+        {/* windscreen and cab */}
+        <path d="M-10 -20 h20 a3 3 0 0 1 3 3 v5 h-26 v-5 a3 3 0 0 1 3 -3 Z" fill="#cbd5e1" opacity="0.9" />
+        <rect x="-13" y="-11" width="26" height="2.5" fill="#0f172a" opacity="0.25" />
+        {/* side windows */}
+        <rect x="-12" y="-9" width="3" height="8" rx="1" fill="#e2e8f0" opacity="0.8" />
+        <rect x="9" y="-9" width="3" height="8" rx="1" fill="#e2e8f0" opacity="0.8" />
+        {/* roof rack with a ladder */}
+        <rect x="-9" y="-4" width="18" height="20" rx="2" fill="#ffffff" opacity="0.22" />
+        {[0, 1, 2, 3].map(i => <line key={i} x1="-8" x2="8" y1={-1 + i * 5} y2={-1 + i * 5} stroke="#e2e8f0" strokeWidth="1.4" opacity="0.85" />)}
+        <line x1="-6" x2="-6" y1="-3" y2="15" stroke="#e2e8f0" strokeWidth="1.6" />
+        <line x1="6" x2="6" y1="-3" y2="15" stroke="#e2e8f0" strokeWidth="1.6" />
+        {/* beacon */}
+        <circle cy="-17" r="2.6" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8">
+          {moving && <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" repeatCount="indefinite" />}
+        </circle>
+        {/* rear doors */}
+        <line x1="0" x2="0" y1="16" y2="22" stroke="#ffffff" strokeWidth="1" opacity="0.7" />
+        <rect x="-13" y="19" width="26" height="3" rx="1.5" fill="#0f172a" opacity="0.2" />
+      </g>
+    </g>
+  )
 }
 
 // ── Fault cues ─────────────────────────────────────────────────────────────

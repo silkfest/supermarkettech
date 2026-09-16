@@ -1,8 +1,8 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, Wrench, Sparkles, Zap, GraduationCap } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, Wrench, Sparkles, Zap, GraduationCap, Map as MapIcon, LayoutGrid, BadgeCheck, Clock3, Truck } from 'lucide-react'
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
@@ -16,25 +16,30 @@ import ShiftReport from '@/components/game/ShiftReport'
 import { shiftReducer, INITIAL_STATE, REAL_MS_PER_GAME_MIN, shiftGrade } from '@/lib/game/engine'
 import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
+import { TOWN_MAP } from '@/lib/game/maps/town'
+import { rankOf, rankGap, shiftHours, RANKS, DIFFICULTY_LABEL, type RankDef } from '@/lib/game/ranks'
+import { TOOLS, ownedTools } from '@/lib/game/tools'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
-import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type SavedGame } from '@/lib/game/progress'
+import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type GameProgress, type LevelId, type SavedGame } from '@/lib/game/progress'
 import { portraitFor } from '@/lib/game/art'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
 const TICK_MS = 250
 
-type View = 'hub' | 'setup' | 'classroom' | 'shift'
+type View = 'town' | 'hub' | 'setup' | 'classroom' | 'shift'
 interface Panel { callId: string; faultId: string; equipmentId: string }
 
 export default function ColdCallPage() {
   const [save, setSave] = useState<SavedGame | null>(null)
-  const [view, setView] = useState<View>('hub')
+  const [view, setView] = useState<View>('town')
   const [state, dispatch] = useReducer(shiftReducer, INITIAL_STATE)
   const [panel, setPanel] = useState<Panel | null>(null)
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [walkTo, setWalkTo] = useState<{ hotspotId: string; nonce: number } | null>(null)
   const [nearId, setNearId] = useState<string | null>(null)
-  const [shiftOutcome, setShiftOutcome] = useState<{ isBest: boolean; unlocked: string | null } | null>(null)
+  const [shiftOutcome, setShiftOutcome] = useState<{ isBest: boolean; unlocked: string | null; promoted: string | null; hours: number } | null>(null)
+  const [stop, setStop] = useState<string | null>(null)
+  const [driveTo, setDriveTo] = useState<{ hotspotId: string; nonce: number } | null>(null)
   const [graduated, setGraduated] = useState(false)
   const [briefing, setBriefing] = useState<LevelDef | null>(null)
   const recordedRef = useRef(false)
@@ -61,33 +66,42 @@ export default function ColdCallPage() {
     recordedRef.current = true
     const g = shiftGrade(state.results, state.results.length + state.calls.length, state.complaints, state.shrink)
     const before = save.progress
-    const after = recordShift(before, state.levelId, g.total, g.grade)
+    const hours = shiftHours(state.levelId)
+    const after = recordShift(before, state.levelId, g.total, g.grade, hours)
     const newly = LEVELS.filter(l => !levelUnlock(before, l.id).ok && levelUnlock(after, l.id).ok)
     const unlocked = newly.length === 0 ? null : newly.length === 1 ? newly[0].name : `${newly.length} new stores`
+    const promoted = rankOf(after).tier > rankOf(before).tier ? rankOf(after).name : null
     const isBest = g.total > (before.levels[state.levelId]?.bestScore ?? 0)
     const ns = { ...save, progress: after }
     setSave(ns)
     saveGame(ns)
-    setShiftOutcome({ isBest, unlocked })
+    setShiftOutcome({ isBest, unlocked, promoted, hours })
   }, [state.status, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, save])
 
   function persist(ns: SavedGame) { setSave(ns); saveGame(ns) }
 
   function startLevel(level: LevelDef) {
     if (!save?.character) { setView('setup'); return }
-    setPanel(null); setLesson(null); setNearId(null); setWalkTo(null)
+    setPanel(null); setLesson(null); setNearId(null); setWalkTo(null); setStop(null)
     if (level.kind === 'classroom') { setView('classroom'); return }
     recordedRef.current = false
     setShiftOutcome(null)
     // First time on a level with a briefing, read it before the clock starts.
     setBriefing(level.briefing && !save.progress.levels[level.id]?.shifts ? level : null)
-    dispatch({ type: 'START', character: save.character, levelId: level.id })
+    // Your rank decides which board you work and how hard a call dispatch will send.
+    const rank = rankOf(save.progress)
+    dispatch({
+      type: 'START',
+      character: { ...save.character, role: rank.pacing },
+      levelId: level.id,
+      maxDifficulty: rank.maxDifficulty,
+    })
     setView('shift')
   }
 
   function saveCharacter(c: Character) {
     persist({ character: c, progress: save?.progress ?? EMPTY_PROGRESS })
-    setView('hub')
+    setView('town')
   }
 
   const openCall = useCallback((callId: string) => {
@@ -103,6 +117,8 @@ export default function ColdCallPage() {
   arriveRef.current = view === 'classroom' ? openLesson : openCall
   const handleArrive = useCallback((id: string) => arriveRef.current(id), [])
   const handleNear = useCallback((id: string | null) => setNearId(id), [])
+  // Stable, so the town map's animation loop is not torn down on every frame it renders.
+  const handlePullIn = useCallback((id: string) => setStop(id), [])
 
   function finishLesson(l: Lesson, score: number, passed: boolean) {
     if (!save) return
@@ -125,13 +141,89 @@ export default function ColdCallPage() {
         return { id: c.id, equipmentId: c.equipmentId, color: SYSTEM_COLOR[f.system], icon: f.system, cue: f.system, flagged: c.complained }
       })
 
+  // The crib travels with the tech, so the shift and the dispatch board agree on it.
+  const owned = useMemo(() => ownedTools(rankOf(progress)), [progress])
   const playing = (view === 'classroom') || (view === 'shift' && state.status === 'running')
   const sidePanelOpen = view === 'classroom' ? lesson !== null : panel !== null
   const handsOn = view === 'classroom' && lesson?.kind === 'handson' ? lesson : null
 
   function leavePlay() {
     if (view === 'shift' && state.status === 'running') { dispatch({ type: 'END_SHIFT' }); return }
-    setLesson(null); setPanel(null); setView('hub')
+    setLesson(null); setPanel(null); setView('town')
+  }
+
+  // ── The town: drive between the stores on the career path ──
+  if (view === 'town' && save?.character) {
+    const rank = rankOf(progress)
+    const townHotspots: Hotspot[] = TOWN_MAP.equipment.map(n => {
+      if (n.id === 'shop') return { id: n.id, equipmentId: n.id, color: '#f59e0b', icon: 'shop' as const }
+      const l = LEVEL_BY_ID[n.id as LevelId]
+      const open = levelUnlock(progress, l.id).ok
+      const stat = progress.levels[l.id]
+      const done = l.kind === 'classroom'
+        ? lessonsPassed(progress) === LESSONS.length
+        : !!stat?.bestGrade && l.passGrades.includes(stat.bestGrade)
+      return { id: n.id, equipmentId: n.id, color: open ? (n.accent ?? '#2563eb') : '#94a3b8', icon: 'store' as const, done }
+    })
+    return (
+      <div className="h-[100dvh] flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
+        <PageHeader
+          title="Hillcrest"
+          home={false}
+          back={false}
+          variant="learning"
+          sticky={false}
+          className="safe-top flex-shrink-0 border-b border-slate-200 dark:border-slate-700 py-2.5"
+          actions={
+            <button onClick={() => setView('hub')}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <LayoutGrid size={13} /> Job list
+            </button>
+          }
+        />
+        <div className="flex-1 min-h-0 p-2 lg:p-3">
+          <StoreMap key="town" map={TOWN_MAP} character={save.character} hotspots={townHotspots} walkTo={driveTo}
+            paused={stop !== null} vehicle onArrive={handlePullIn} onNearChange={handleNear} />
+        </div>
+        <div className="flex-shrink-0 px-3 pb-2 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <RankChip rank={rank} hours={progress.hours} />
+            <button onClick={() => setStop('shop')}
+              className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-amber-400">
+              <Wrench size={11} /> Dispatch board
+            </button>
+          </div>
+          {/* Every stop in town, so nobody has to hunt for a sign on a phone screen. */}
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {TOWN_MAP.equipment.filter(n => n.id !== 'shop').map(n => {
+              const l = LEVEL_BY_ID[n.id as LevelId]
+              const open = levelUnlock(progress, l.id).ok
+              const here = nearId === n.id
+              return (
+                <button key={n.id} onClick={() => here ? setStop(n.id) : setDriveTo({ hotspotId: n.id, nonce: Date.now() })}
+                  className={`flex-shrink-0 flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border ${
+                    here ? 'bg-emerald-600 border-emerald-600 text-white font-semibold'
+                    : open ? 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}`}>
+                  {here ? <ChevronRight size={11} /> : open ? <Navigation size={11} /> : <Lock size={10} />}
+                  {n.short}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {stop === 'shop' && <DispatchBoard progress={progress} onClose={() => setStop(null)} />}
+        {stop && stop !== 'shop' && (
+          <StopCard
+            level={LEVEL_BY_ID[stop as LevelId]}
+            progress={progress}
+            onClose={() => setStop(null)}
+            onStart={() => startLevel(LEVEL_BY_ID[stop as LevelId])}
+          />
+        )}
+      </div>
+    )
   }
 
   // ── Play screen (classroom or running shift) ──
@@ -144,7 +236,7 @@ export default function ColdCallPage() {
             onFinish={(score, passed) => finishLesson(lesson, score, passed)} onClose={() => setLesson(null)} />
         ))
       : (panel && panelFault && panelNode && (
-          <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode}
+          <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
             onUpdate={patch => dispatch({ type: 'UPDATE_CALL', callId: panel.callId, patch })}
             onSpend={minutes => dispatch({ type: 'SPEND_MINUTES', callId: panel.callId, minutes })}
             onComplete={(r: CallResult) => dispatch({ type: 'COMPLETE_CALL', result: r })}
@@ -218,7 +310,7 @@ export default function ColdCallPage() {
   // ── Scrolling views: hub, setup, report ──
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <PageHeader title="Cold Call" home={false} back={view === 'hub' ? '/simulation' : true} variant="learning" />
+      <PageHeader title="Cold Call" home={false} back={view === 'hub' || view === 'town' ? '/simulation' : true} variant="learning" />
       <LearningTabBar />
       <div className="max-w-5xl mx-auto w-full px-4 py-6">
         {view === 'setup' && (
@@ -231,18 +323,19 @@ export default function ColdCallPage() {
             levelName={level.name} map={level.map} character={state.character}
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
+            promoted={shiftOutcome?.promoted ?? null} hours={shiftOutcome?.hours ?? 0} hoursTotal={progress.hours}
             onAgain={() => startLevel(level)}
-            onHub={() => { dispatch({ type: 'RESET' }); setView('hub') }}
+            onHub={() => { dispatch({ type: 'RESET' }); setView('town') }}
           />
         )}
 
-        {view === 'hub' && (
+        {(view === 'hub' || view === 'town') && (
           save === null ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Loading your progress…</p>
           ) : !save.character ? (
             <CharacterSetup initial={INITIAL_STATE.character} onStart={saveCharacter} />
           ) : (
-            <Hub save={save} onEdit={() => setView('setup')} onStart={startLevel} />
+            <Hub save={save} onEdit={() => setView('setup')} onStart={startLevel} onTown={() => setView('town')} />
           )
         )}
       </div>
@@ -252,10 +345,11 @@ export default function ColdCallPage() {
 }
 
 // ── Hub ──────────────────────────────────────────────────────────────────────
-function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; onStart: (l: LevelDef) => void }) {
+function Hub({ save, onEdit, onStart, onTown }: { save: SavedGame; onEdit: () => void; onStart: (l: LevelDef) => void; onTown: () => void }) {
   const c = save.character!
   const p = save.progress
   const passed = lessonsPassed(p)
+  const rank = rankOf(p)
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4">
@@ -268,7 +362,8 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 capitalize">{c.role} · {p.xp} XP · {passed}/{LESSONS.length} stations · {Object.values(p.levels).reduce((a, l) => a + (l?.shifts ?? 0), 0)} shifts</p>
+          <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">{rank.name}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{Math.round(p.hours)} h logged · {p.xp} XP · {passed}/{LESSONS.length} stations · {Object.values(p.levels).reduce((a, l) => a + (l?.shifts ?? 0), 0)} shifts</p>
         </div>
         <button onClick={onEdit} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
           <Pencil size={12} /> Edit
@@ -279,6 +374,10 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={15} className="text-blue-600 dark:text-blue-400" />
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">Career path</h1>
+          <button onClick={onTown}
+            className="ml-auto flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400">
+            <MapIcon size={12} /> Town map
+          </button>
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Learn the basics in the shop, prove it at a gas station, then run a full supermarket. Progress saves to your account.</p>
         <div className="grid gap-4 md:grid-cols-3">
@@ -369,6 +468,189 @@ function StationList({ progress, nearId, compact, onWalkTo, onOpen }: {
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Stations · {n}/{LESSONS.length} passed</p>
       <p className="text-[12px] text-slate-500 dark:text-slate-400">Walk to a station and open it. Read, then pass the check. No clock in here.</p>
       <div className="space-y-1.5">{items}</div>
+    </div>
+  )
+}
+
+// ── Town: rank chip, stop card, dispatch board ────────────────────────────────
+function RankChip({ rank, hours }: { rank: RankDef; hours: number }) {
+  return (
+    <span className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300">
+      <BadgeCheck size={12} /> {rank.name}
+      <span className="font-normal text-blue-600/70 dark:text-blue-400/70">· {Math.round(hours)} h</span>
+    </span>
+  )
+}
+
+/** Pulled up outside a store: what this stop is, and whether you can take it. */
+function StopCard({ level, progress, onClose, onStart }: {
+  level: LevelDef; progress: GameProgress; onClose: () => void; onStart: () => void
+}) {
+  const unlock = levelUnlock(progress, level.id)
+  const stat = progress.levels[level.id]
+  const passedStations = lessonsPassed(progress)
+  const rank = rankOf(progress)
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="w-full sm:max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl overflow-hidden page-fade-in"
+        onClick={e => e.stopPropagation()}>
+        <div className="relative h-28 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+          {level.card
+            ? <Image src={level.card} alt="" fill sizes="440px" className="object-cover" />
+            : <MapThumb map={level.map} className="w-full h-full" />}
+          <button onClick={onClose} aria-label="Close"
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <X size={14} />
+          </button>
+          <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+            Level {level.order}
+          </span>
+        </div>
+        <div className="p-4 space-y-2">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">{level.name}</h2>
+            <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{level.subtitle}</p>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{level.description}</p>
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+            {level.kind === 'classroom' ? (
+              <span className="flex items-center gap-1"><BookOpen size={11} /> {passedStations}/{LESSONS.length} stations passed</span>
+            ) : stat ? (
+              <span className="flex items-center gap-1"><Trophy size={11} /> Best {stat.bestGrade} · {stat.bestScore} pts · {stat.shifts} shift{stat.shifts !== 1 ? 's' : ''}</span>
+            ) : (
+              <span>No shifts here yet</span>
+            )}
+            {level.kind === 'shift' && (
+              <span className="flex items-center gap-1 ml-auto"><Clock3 size={11} /> {level.shiftLenMin / 60} h shift</span>
+            )}
+          </div>
+          {unlock.ok && level.kind === 'shift' && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+              Dispatch has you at <b className="text-slate-700 dark:text-slate-200">{rank.name}</b> — {DIFFICULTY_LABEL[rank.maxDifficulty].toLowerCase()} and everything below it.
+            </p>
+          )}
+          {unlock.ok ? (
+            <button onClick={onStart}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 mt-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+              {level.kind === 'classroom' ? 'Go in' : 'Clock in'} <ChevronRight size={14} />
+            </button>
+          ) : (
+            <p className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400 px-3 py-2.5 mt-1 rounded-xl border border-slate-200 dark:border-slate-600">
+              <Lock size={12} className="flex-shrink-0" /> {unlock.reason}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The board on the shop wall: where you are on the ladder and what moves you up. */
+function DispatchBoard({ progress, onClose }: { progress: GameProgress; onClose: () => void }) {
+  const rank = rankOf(progress)
+  const gap = rankGap(progress)
+  const span = gap ? Math.max(1, gap.next.hours - rank.hours) : 1
+  const pct = gap ? Math.min(100, Math.max(0, ((progress.hours - rank.hours) / span) * 100)) : 100
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 page-fade-in"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+            <Truck size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Dispatch board</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{rank.name}</h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">{Math.round(progress.hours)} hours on the book</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={16} /></button>
+        </div>
+
+        <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed mb-3">{rank.blurb}</p>
+
+        {gap ? (
+          <div className="px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 mb-4">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+              <span>Next: {gap.next.name}</span>
+              <span className="text-slate-500 dark:text-slate-400 tabular-nums">{Math.round(progress.hours)} / {gap.next.hours} h</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div className="h-full bg-blue-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
+            </div>
+            <ul className="mt-2.5 space-y-1">
+              {gap.hoursLeft > 0 && (
+                <li className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                  <Clock3 size={11} className="mt-0.5 flex-shrink-0 text-slate-400" /> {gap.hoursLeft} more hours on the job
+                </li>
+              )}
+              {gap.needs.map(n => (
+                <li key={n} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                  <Lock size={11} className="mt-0.5 flex-shrink-0 text-slate-400" /> {n}
+                </li>
+              ))}
+              {gap.hoursLeft === 0 && gap.needs.length === 0 && (
+                <li className="flex items-start gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0" /> Signed off — it takes effect on your next shift.
+                </li>
+              )}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-[12px] text-emerald-700 dark:text-emerald-400 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 mb-4">
+            Top of the ladder. Every call in town is yours.
+          </p>
+        )}
+
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">What we send you</p>
+        <ul className="space-y-1 mb-4">
+          {([1, 2, 3] as const).map(d => (
+            <li key={d} className={`flex items-start gap-1.5 text-[11px] ${d <= rank.maxDifficulty ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>
+              {d <= rank.maxDifficulty
+                ? <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0 text-emerald-500" />
+                : <Lock size={11} className="mt-0.5 flex-shrink-0" />}
+              {DIFFICULTY_LABEL[d]}
+            </li>
+          ))}
+        </ul>
+
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">The truck</p>
+        <ul className="space-y-1 mb-4">
+          {TOOLS.map(t => {
+            const have = t.tier <= rank.tier
+            return (
+              <li key={t.id} className={`flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] ${have
+                ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                : 'border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}`}>
+                {have
+                  ? <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0 text-emerald-500" />
+                  : <Lock size={11} className="mt-0.5 flex-shrink-0" />}
+                <span className="min-w-0 flex-1">
+                  <b className="font-semibold">{t.name}</b>
+                  <span className="block text-[10px] leading-snug opacity-80">{t.blurb}</span>
+                </span>
+                {!have && <span className="text-[9px] font-bold flex-shrink-0 mt-0.5">{RANKS[t.tier - 1].short}</span>}
+              </li>
+            )
+          })}
+        </ul>
+
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">The ladder</p>
+        <ol className="space-y-1">
+          {RANKS.map(r => (
+            <li key={r.tier} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] ${
+              r.tier === rank.tier
+                ? 'border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold'
+                : r.tier < rank.tier
+                  ? 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}`}>
+              <span className="w-7 text-center font-bold">{r.short}</span>
+              <span className="flex-1 min-w-0 truncate">{r.name}</span>
+              <span className="tabular-nums flex-shrink-0">{r.hours} h</span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   )
 }
