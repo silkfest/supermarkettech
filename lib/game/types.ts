@@ -4,6 +4,7 @@ export type EquipmentKind =
   | 'reach-in-freezer' | 'bunker' | 'dairy-case' | 'deli-case' | 'meat-case' | 'produce-case'
   | 'walk-in-freezer' | 'walk-in-cooler' | 'rack' | 'rtu' | 'floor-drain' | 'entrance'
   | 'reach-in-cooler' | 'chest-freezer' | 'ice-machine' | 'condensing-unit' | 'split-ac'
+  | 'gas-cooler' | 'flash-tank' | 'co2-rack' | 'intercooler' | 'gas-detector'
   | 'station'
 
 export interface Point { x: number; y: number }

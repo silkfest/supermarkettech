@@ -468,7 +468,7 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
   const seed = node.id.charCodeAt(node.id.length - 1)
   const label = (
     <text x={x + w / 2} y={y + h / 2 + 3} textAnchor="middle" fontSize="8" fontWeight="700"
-      className="fill-slate-800 dark:fill-white" stroke="#ffffff" strokeWidth="2.5" paintOrder="stroke" strokeOpacity="0.7"
+      className="fill-slate-800 dark:fill-white stroke-white dark:stroke-slate-900" strokeWidth="2.5" paintOrder="stroke" strokeOpacity="0.75"
       transform={vertical ? `rotate(-90 ${x + w / 2} ${y + h / 2})` : undefined}>{node.id}</text>
   )
   switch (node.kind) {
@@ -606,6 +606,112 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
           {label}
         </g>
       )
+    // ── CO2 machine room ──────────────────────────────────────────────────
+    case 'gas-cooler': {
+      // Transcritical high side: a long finned coil with a row of fans on top.
+      const fans = Math.min(6, Math.max(2, Math.round(w / 60)))
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-amber-100 dark:fill-amber-950/60" front="fill-slate-500 dark:fill-slate-900" />
+          {Array.from({ length: 7 }).map((_, k) => (
+            <line key={k} x1={x + 4} x2={x + w - 4} y1={y + 5 + k * 2.6} y2={y + 5 + k * 2.6}
+              className="stroke-amber-500 dark:stroke-amber-600" strokeWidth="0.9" opacity="0.5" />
+          ))}
+          {Array.from({ length: fans }).map((_, k) => (
+            <Fan key={k} cx={x + (w / fans) * (k + 0.5)} cy={y + h / 2 + 7} r={Math.min(w / fans, h) * 0.3}
+              className="stroke-amber-700 dark:stroke-amber-300" />
+          ))}
+          <text x={x + w / 2} y={y + h - 7} textAnchor="middle" fontSize="7" fontWeight="700" className="fill-slate-700 dark:fill-slate-100">{node.id}</text>
+        </g>
+      )
+    }
+    case 'flash-tank': {
+      // Receiver seen from above: a vessel circle with the HPV and flash-gas
+      // bypass valve blocks piped off it.
+      const cx = x + w / 2, cy = y + h / 2 + 4
+      const r = Math.min(w, h) * 0.32
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <circle cx={cx} cy={cy} r={r} className="fill-slate-100 dark:fill-slate-400 stroke-slate-500 dark:stroke-slate-800" strokeWidth="1.5" />
+          <circle cx={cx} cy={cy} r={r * 0.55} className="fill-slate-300 dark:fill-slate-600" />
+          <rect x={cx - r - 9} y={cy - 5} width="8" height="10" rx="1.5" className="fill-amber-400 dark:fill-amber-500 stroke-slate-600" strokeWidth="0.8" />
+          <rect x={cx + r + 1} y={cy - 5} width="8" height="10" rx="1.5" className="fill-blue-400 dark:fill-blue-500 stroke-slate-600" strokeWidth="0.8" />
+          <circle cx={cx} cy={cy - r - 4} r="2.5" className="fill-red-500" />
+          {label}
+        </g>
+      )
+    }
+    case 'co2-rack': {
+      // Booster pack: an MT skid and a smaller LT skid side by side under one
+      // set of headers — discharge to the gas cooler, MT suction, LT suction.
+      const row = y + h * 0.62
+      const mtX = [x + 26, x + 56, x + 86]
+      const ltX = [x + 132, x + 160]
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-300 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 8} y={y + 8} width={w - 16} height="4" rx="2" className="fill-amber-400 dark:fill-amber-500" opacity="0.9" />
+          <rect x={x + 8} y={y + 15} width={w - 16} height="4" rx="2" className="fill-blue-400 dark:fill-blue-500" opacity="0.9" />
+          <rect x={x + 8} y={y + 22} width={w - 16} height="4" rx="2" className="fill-cyan-300 dark:fill-cyan-600" opacity="0.9" />
+          {mtX.map((cx, i) => (
+            <g key={`mt${i}`}>
+              <circle cx={cx} cy={row} r="10" className="fill-slate-500 dark:fill-slate-500" />
+              <circle cx={cx} cy={row} r="6.5" className="fill-slate-700 dark:fill-slate-800" />
+              <circle cx={cx} cy={row} r="2" fill="#10b981">
+                <animate attributeName="opacity" values="1;0.3;1" dur={`${1.1 + i * 0.25}s`} repeatCount="indefinite" />
+              </circle>
+            </g>
+          ))}
+          <line x1={x + 112} x2={x + 112} y1={row - 15} y2={row + 15} className="stroke-slate-500 dark:stroke-slate-400" strokeWidth="1" opacity="0.6" />
+          {ltX.map((cx, i) => (
+            <g key={`lt${i}`}>
+              <circle cx={cx} cy={row} r="8" className="fill-slate-400 dark:fill-slate-600" />
+              <circle cx={cx} cy={row} r="5" className="fill-slate-700 dark:fill-slate-900" />
+              <circle cx={cx} cy={row} r="1.7" fill="#38bdf8">
+                <animate attributeName="opacity" values="1;0.3;1" dur={`${1.4 + i * 0.3}s`} repeatCount="indefinite" />
+              </circle>
+            </g>
+          ))}
+          <text x={x + 56} y={row + 24} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">MT</text>
+          <text x={x + 146} y={row + 24} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">LT</text>
+          <rect x={x + w - 28} y={y + 34} width="18" height="26" rx="2" className="fill-slate-200 dark:fill-slate-900 stroke-slate-500" strokeWidth="1" />
+          <circle cx={x + w - 19} cy={y + 40} r="1.6" fill="#22c55e" />
+          {[0, 1].map(k => <line key={k} x1={x + w - 24} x2={x + w - 14} y1={y + 47 + k * 4} y2={y + 47 + k * 4} className="stroke-slate-400" strokeWidth="1" />)}
+        </g>
+      )
+    }
+    case 'intercooler': {
+      // Horizontal flooded vessel between the LT discharge and the MT suction.
+      const cy = y + h / 2 + 4
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 5} y={cy - 7} width={w - 10} height="14" rx="7"
+            className="fill-slate-100 dark:fill-slate-400 stroke-slate-500 dark:stroke-slate-800" strokeWidth="1.2" />
+          <rect x={x + 5} y={cy} width={w - 10} height="7" rx="3.5" className="fill-sky-300 dark:fill-sky-700" opacity="0.8" />
+          <line x1={x + 5} x2={x + w - 5} y1={cy} y2={cy} className="stroke-sky-600 dark:stroke-sky-300" strokeWidth="1" />
+          {label}
+        </g>
+      )
+    }
+    case 'gas-detector': {
+      // Wall-mounted CO2 head wired to the machine-room ventilation.
+      const cx = x + w / 2, cy = y + h / 2
+      return (
+        <g className="pointer-events-none">
+          <rect x={x} y={y} width={w} height={h} rx="2.5"
+            className="fill-amber-200 dark:fill-amber-900/70 stroke-amber-600 dark:stroke-amber-500" strokeWidth="1.2" />
+          {[0, 1, 2].map(k => (
+            <line key={k} x1={cx - w * 0.28} x2={cx + w * 0.28} y1={cy - 3 + k * 3} y2={cy - 3 + k * 3}
+              className="stroke-amber-700 dark:stroke-amber-300" strokeWidth="1" />
+          ))}
+          <circle cx={cx} cy={y + h - 4} r="1.8" fill="#22c55e">
+            <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite" />
+          </circle>
+        </g>
+      )
+    }
     case 'station': {
       // Wall stations carry the pin at their centre and the tech stands beside them, so the name goes underneath.
       const stationLabel = vertical ? (

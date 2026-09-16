@@ -36,16 +36,17 @@ export default function ColdCallPage() {
   const [nearId, setNearId] = useState<string | null>(null)
   const [shiftOutcome, setShiftOutcome] = useState<{ isBest: boolean; unlocked: string | null } | null>(null)
   const [graduated, setGraduated] = useState(false)
+  const [briefing, setBriefing] = useState<LevelDef | null>(null)
   const recordedRef = useRef(false)
 
   useEffect(() => { loadGame().then(setSave) }, [])
 
   // Game clock
   useEffect(() => {
-    if (view !== 'shift' || state.status !== 'running') return
+    if (view !== 'shift' || state.status !== 'running' || briefing) return
     const id = setInterval(() => dispatch({ type: 'TICK', dtMin: TICK_MS / REAL_MS_PER_GAME_MIN }), TICK_MS)
     return () => clearInterval(id)
-  }, [view, state.status])
+  }, [view, state.status, briefing])
 
   useEffect(() => {
     if (!state.toasts.length) return
@@ -78,6 +79,8 @@ export default function ColdCallPage() {
     if (level.kind === 'classroom') { setView('classroom'); return }
     recordedRef.current = false
     setShiftOutcome(null)
+    // First time on a level with a briefing, read it before the clock starts.
+    setBriefing(level.briefing && !save.progress.levels[level.id]?.shifts ? level : null)
     dispatch({ type: 'START', character: save.character, levelId: level.id })
     setView('shift')
   }
@@ -195,6 +198,10 @@ export default function ColdCallPage() {
           </div>
         )}
 
+        {briefing && briefing.briefing && (
+          <Briefing level={briefing} onStart={() => setBriefing(null)} />
+        )}
+
         {graduated && (
           <Graduation
             name={save!.character!.name}
@@ -284,7 +291,9 @@ function Hub({ save, onEdit, onStart }: { save: SavedGame; onEdit: () => void; o
                 className={`text-left bg-white dark:bg-slate-800 border rounded-2xl overflow-hidden transition-all flex flex-col ${
                   unlock.ok ? 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500' : 'border-slate-200 dark:border-slate-700 opacity-70 cursor-not-allowed'}`}>
                 <div className="relative h-32 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                  <MapThumb map={l.map} className="w-full h-full" />
+                  {l.card
+                    ? <Image src={l.card} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
+                    : <MapThumb map={l.map} className="w-full h-full" />}
                   <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                     Level {l.order}
                   </span>
@@ -360,6 +369,40 @@ function StationList({ progress, nearId, compact, onWalkTo, onOpen }: {
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Stations · {n}/{LESSONS.length} passed</p>
       <p className="text-[12px] text-slate-500 dark:text-slate-400">Walk to a station and open it. Read, then pass the check. No clock in here.</p>
       <div className="space-y-1.5">{items}</div>
+    </div>
+  )
+}
+
+function Briefing({ level, onStart }: { level: LevelDef; onStart: () => void }) {
+  const b = level.briefing!
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 page-fade-in">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500" />
+        <div className="flex items-center gap-3 mb-3 mt-1">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+            <BookOpen size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Before you start · {level.subtitle}</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{level.name}</h2>
+          </div>
+        </div>
+        <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed mb-3">{b.lead}</p>
+        <ul className="space-y-2.5">
+          {b.points.map(p => (
+            <li key={p.head} className="px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+              <p className="text-[12px] font-bold text-slate-900 dark:text-white mb-0.5">{p.head}</p>
+              <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed">{p.body}</p>
+            </li>
+          ))}
+        </ul>
+        <p className="text-[11px] text-slate-400 mt-3">The clock is not running yet. It starts when you close this.</p>
+        <button onClick={onStart}
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 mt-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+          Clock in <ChevronRight size={14} />
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import type { Character } from './types'
 
-export type LevelId = 'classroom' | 'gas-station' | 'supermarket'
+export type LevelId = 'classroom' | 'gas-station' | 'supermarket' | 'co2-store'
 
 export interface LevelStat { shifts: number; bestScore: number; bestGrade: string | null }
 
