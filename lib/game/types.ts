@@ -7,20 +7,23 @@ export type EquipmentKind =
   | 'gas-cooler' | 'flash-tank' | 'co2-rack' | 'intercooler' | 'gas-detector'
   | 'glycol-skid' | 'plate-hx' | 'expansion-tank' | 'cascade-hx'
   | 'protocol-module' | 'protocol-lt' | 'condenser' | 'receiver'
-  | 'station'
+  | 'station' | 'storefront'
 
 export interface Point { x: number; y: number }
 
 export interface Obstacle {
   x: number; y: number; w: number; h: number
   kind: 'wall' | 'shelf' | 'checkout' | 'produce' | 'desk' | 'counter' | 'bench' | 'pump'
+    | 'road' | 'parking' | 'building' | 'tree'
   label?: string
+  /** Scenery you can walk or drive over — roads, lots, lawns. Default is solid. */
+  walkable?: boolean
 }
 
 export interface GameMap {
   w: number
   h: number
-  floor: 'tile' | 'concrete' | 'shop'
+  floor: 'tile' | 'concrete' | 'shop' | 'town'
   obstacles: Obstacle[]
   zones: { label: string; x: number; y: number }[]
   equipment: EquipmentNode[]
@@ -40,6 +43,8 @@ export interface EquipmentNode {
   /** Walkable point the tech stands at to work on it. */
   stand: Point
   walkable?: boolean
+  /** Sign / awning colour, for hand-authored scenery like the town storefronts. */
+  accent?: string
 }
 
 export interface Reading {
@@ -88,6 +93,11 @@ export interface FaultDef {
   checks: Check[]
   causes: Option[]
   fixes: Option[]
+  /** How far up the apprenticeship you have to be before dispatch sends you this.
+   *  1 — basic: doors, drains, filters, dirty coils.
+   *  2 — meters and gauges: contactors, capacitors, valves, controls.
+   *  3 — system level: the call is about how this whole rack is put together. */
+  difficulty: 1 | 2 | 3
   /** Dollars of product at risk per game-minute while open (refrigeration only, else 0). */
   shrinkPerMin: number
   /** Game minutes until the store logs a customer complaint. */

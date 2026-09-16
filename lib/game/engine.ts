@@ -20,12 +20,14 @@ export interface ShiftState {
   shrink: number
   complaints: number
   usedFaultIds: string[]
+  /** Hardest call dispatch will put on this board — the tech's apprenticeship level. */
+  maxDifficulty: 1 | 2 | 3
   toasts: Toast[]
   seq: number
 }
 
 export type ShiftAction =
-  | { type: 'START'; character: Character; levelId: LevelId }
+  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3 }
   | { type: 'TICK'; dtMin: number }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
   | { type: 'SPEND_MINUTES'; callId: string; minutes: number }
@@ -39,7 +41,7 @@ export const INITIAL_STATE: ShiftState = {
   levelId: 'supermarket',
   character: { name: '', color: '#2563eb', role: 'apprentice' },
   elapsedMin: 0, spawnIdx: 0, calls: [], results: [],
-  shrink: 0, complaints: 0, usedFaultIds: [], toasts: [], seq: 1,
+  shrink: 0, complaints: 0, usedFaultIds: [], maxDifficulty: 1, toasts: [], seq: 1,
 }
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
@@ -47,15 +49,21 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
 function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equipmentId: string } | null {
   const occupied = new Set(state.calls.map(c => c.equipmentId))
   const usedSystems = new Set<SystemKey>([...state.calls, ...state.results].map(c => FAULT_BY_ID[c.faultId].system))
-  const candidates = FAULTS
+  const open = FAULTS
     .filter(f => level.faultPool.includes(f.id) && !state.usedFaultIds.includes(f.id))
     .map(f => ({ f, nodes: level.map.equipment.filter(e => f.kinds.includes(e.kind) && !occupied.has(e.id)) }))
     .filter(c => c.nodes.length > 0)
-  if (candidates.length === 0) return null
-  // Prefer a system the player has not seen yet this shift so every shift mixes all four.
-  const fresh = candidates.filter(c => !usedSystems.has(c.f.system))
-  const chosen = pick(fresh.length ? fresh : candidates)
-  return { fault: chosen.f, equipmentId: pick(chosen.nodes).id }
+  // Dispatch sends what you are signed off for. If this store has nothing left at
+  // your level, they stretch you a tier rather than leave you sitting in the van.
+  for (let cap = state.maxDifficulty; cap <= 3; cap++) {
+    const candidates = open.filter(c => c.f.difficulty <= cap)
+    if (candidates.length === 0) continue
+    // Prefer a system the player has not seen yet this shift so every shift mixes all four.
+    const fresh = candidates.filter(c => !usedSystems.has(c.f.system))
+    const chosen = pick(fresh.length ? fresh : candidates)
+    return { fault: chosen.f, equipmentId: pick(chosen.nodes).id }
+  }
+  return null
 }
 
 function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftState {
@@ -65,10 +73,10 @@ function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftS
 export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState {
   switch (action.type) {
     case 'START':
-      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId }
+      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty }
 
     case 'RESET':
-      return { ...INITIAL_STATE, character: state.character, levelId: state.levelId }
+      return { ...INITIAL_STATE, character: state.character, levelId: state.levelId, maxDifficulty: state.maxDifficulty }
 
     case 'TICK': {
       if (state.status !== 'running') return state

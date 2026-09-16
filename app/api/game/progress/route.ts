@@ -20,6 +20,8 @@ const progressSchema = z.object({
   lessons: z.record(z.string().max(40), z.object({ passed: z.boolean(), bestScore: z.number().int().min(0).max(100) })),
   levels: z.record(z.string().max(40), levelStatSchema),
   xp: z.number().int().min(0),
+  // Optional so saves written before the apprenticeship ladder existed still round-trip.
+  hours: z.number().min(0).optional(),
 })
 
 const bodySchema = z.object({ character: characterSchema.nullable(), progress: progressSchema })

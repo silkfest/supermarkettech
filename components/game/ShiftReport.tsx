@@ -1,5 +1,5 @@
 'use client'
-import { Trophy, RotateCcw, CheckCircle2, AlertTriangle, Map as MapIcon, Lock, ArrowRight } from 'lucide-react'
+import { Trophy, RotateCcw, CheckCircle2, AlertTriangle, Map as MapIcon, Lock, ArrowRight, BadgeCheck } from 'lucide-react'
 import { shiftGrade } from '@/lib/game/engine'
 import { FAULT_BY_ID, SYSTEM_META } from '@/lib/game/faults'
 import { SYSTEM_COLOR } from './StoreMap'
@@ -16,6 +16,11 @@ interface Props {
   isBest: boolean
   /** Set when this shift unlocked the next level. */
   unlocked: string | null
+  /** Set when the hours on this shift moved the tech up the apprenticeship ladder. */
+  promoted: string | null
+  /** Hours this shift put on the book, and the running total. */
+  hours: number
+  hoursTotal: number
   onAgain: () => void
   onHub: () => void
 }
@@ -25,7 +30,7 @@ const GRADE_TONE: Record<string, string> = {
   C: 'text-amber-600 dark:text-amber-400', D: 'text-red-600 dark:text-red-400', F: 'text-red-600 dark:text-red-400',
 }
 
-export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, onAgain, onHub }: Props) {
+export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, promoted, hours, hoursTotal, onAgain, onHub }: Props) {
   const g = shiftGrade(results, results.length + unfinished.length, complaints, shrink)
   const systems = (Object.keys(SYSTEM_META) as SystemKey[]).map(s => {
     const rs = results.filter(r => r.system === s)
@@ -42,11 +47,17 @@ export default function ShiftReport({ levelName, map, character, results, unfini
           <h1 className="text-base font-bold text-slate-900 dark:text-white">Shift over, {character.name}.</h1>
           <p className="text-[12px] text-slate-500 dark:text-slate-400">
             {g.total} pts of {g.possible} possible · {results.length} call{results.length !== 1 ? 's' : ''} closed
-            {unfinished.length > 0 && `, ${unfinished.length} left open`}
+            {unfinished.length > 0 && `, ${unfinished.length} left open`} · +{hours} h on the book ({Math.round(hoursTotal)} h total)
           </p>
           {isBest && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5"><Trophy size={11} /> New personal best</p>}
         </div>
       </div>
+
+      {promoted && (
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[12px] text-amber-800 dark:text-amber-200">
+          <BadgeCheck size={13} className="flex-shrink-0" /> <span>Signed off at <b>{promoted}</b>. Dispatch will start putting harder calls on your board.</span>
+        </div>
+      )}
 
       {unlocked && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-[12px] text-emerald-800 dark:text-emerald-200">
