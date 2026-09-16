@@ -17,6 +17,48 @@ function Gauge({ x, y, red = false }: { x: number; y: number; red?: boolean }) {
   </g>
 }
 
+function SemiHermeticCompressor({ x, y, scale = 1 }: { x: number; y: number; scale?: number }) {
+  return <g transform={`translate(${x} ${y}) scale(${scale})`}>
+    <rect x="-17" y="9" width="36" height="5" fill="#26383c" />
+    <rect x="-14" y="-4" width="29" height="15" fill="#315e50" />
+    <path d="M-11 -4V-10H-3V-4M4 -4V-11H12V-4" fill="#56896b" stroke={ink} strokeWidth="2" />
+    <rect x="-11" y="-1" width="22" height="9" fill="#47765e" />
+    {[0, 1, 2, 3, 4].map(i => <rect key={i} x={-9 + i * 4} y="0" width="1" height="7" fill="#234b43" />)}
+    <rect x="-4" y="-6" width="8" height="4" fill="#d0a84f" />
+    <path d="M-14 2H-19V-8M15 2H20V-6" fill="none" stroke={copper} strokeWidth="2" />
+  </g>
+}
+
+function FinnedCoil({ x, y, w, h, fans = 2 }: { x: number; y: number; w: number; h: number; fans?: number }) {
+  return <g transform={`translate(${x} ${y})`}>
+    <rect width={w} height={h} fill={ink} />
+    <rect x="2" y="2" width={w - 4} height={h - 4} fill="#9db0af" />
+    {Array.from({ length: Math.max(3, Math.floor(h / 4)) }).map((_, i) =>
+      <path key={i} d={`M3 ${4 + i * 4}H${w - 3}`} stroke="#607982" />)}
+    {Array.from({ length: fans }).map((_, i) => <Fan key={i} x={(w / (fans + 1)) * (i + 1)} y={h / 2} />)}
+  </g>
+}
+
+function Cylinder({ x, y, color, wide = false }: { x: number; y: number; color: string; wide?: boolean }) {
+  const w = wide ? 15 : 11
+  return <g transform={`translate(${x} ${y})`}>
+    <rect x="2" width={w - 4} height="4" fill={ink} />
+    <rect width={w} y="4" height="17" fill={ink} />
+    <rect x="2" y="5" width={w - 4} height="14" fill={color} />
+    <rect x="3" y="7" width="2" height="10" fill="#fff" opacity="0.22" />
+  </g>
+}
+
+function DigitalMeter({ x, y }: { x: number; y: number }) {
+  return <g transform={`translate(${x} ${y})`}>
+    <rect width="18" height="24" rx="2" fill={ink} />
+    <rect x="2" y="2" width="14" height="20" fill="#e3ad32" />
+    <rect x="5" y="5" width="8" height="6" fill="#bfd7c5" />
+    <rect x="7" y="14" width="4" height="4" fill="#354752" />
+    <path d="M3 23V29M15 23V29" stroke="#b9534b" strokeWidth="2" />
+  </g>
+}
+
 function Station({ node }: { node: EquipmentNode }) {
   const { x, y, w, h } = node.rect
   const horizontal = w > h
@@ -57,36 +99,51 @@ function Station({ node }: { node: EquipmentNode }) {
     </> : horizontal ? <>
       <rect x="5" y="6" width={w - 10} height={h - 16} fill="#d1b280" />
       {node.id === 'EVAP' ? <>
-        <rect x="12" y="9" width="74" height="21" fill={steel} />
-        <Fan x={29} y={19} /><Fan x={53} y={19} /><Fan x={77} y={19} />
-        <path d="M91 13H122V27H102" stroke={copper} strokeWidth="3" fill="none" />
+        <FinnedCoil x={10} y={8} w={76} h={23} fans={3} />
+        <path d="M87 12H101V18H111V27H126" stroke={copper} strokeWidth="3" fill="none" />
+        <path d="M101 18L105 14L109 18L105 22Z" fill="#d4a63f" stroke={ink} strokeWidth="1" />
+        <path d="M109 18H119M114 18V10" stroke="#d4a63f" strokeWidth="2" />
+        <circle cx="124" cy="27" r="3" fill="#4a8193" stroke={ink} />
       </> : node.id === 'SERV' ? <>
-        {[0, 1, 2].map(i => <g key={i}><rect x={13 + i * 19} y="13" width="12" height="16" fill={['#d4a94f', '#819c89', '#b5c3bc'][i]} /><rect x={16 + i * 19} y="9" width="6" height="4" fill={ink} /></g>)}
-        <rect x="84" y="11" width="34" height="19" fill="#3b6277" /><Gauge x={103} y={19} />
+        <Cylinder x={10} y={8} color="#478264" wide /><Cylinder x={29} y={8} color="#a6a9a0" /><Cylinder x={44} y={8} color="#d2a838" />
+        <rect x="67" y="10" width="25" height="18" fill={ink} /><rect x="70" y="13" width="19" height="12" fill="#6d8588" />
+        <circle cx="80" cy="19" r="5" fill="#33464d" /><rect x="76" y="7" width="8" height="4" fill="#d3a14a" />
+        <rect x="99" y="10" width="28" height="19" fill="#31536a" stroke={ink} strokeWidth="2" />
+        <Gauge x={108} y={18} /><rect x="118" y="14" width="6" height="10" fill="#182f3a" />
       </> : <>
-        <rect x="12" y="10" width="24" height="20" fill="#d99c45" /><rect x="16" y="13" width="16" height="7" fill="#cee0ba" />
-        <path d="M20 26V31H49V12M30 26H61V11" fill="none" stroke="#b25442" strokeWidth="2" />
-        <rect x="78" y="10" width="38" height="19" fill={steel} />
-        <rect x="83" y="14" width="11" height="10" fill={ink} />
-        <rect x="100" y="14" width="11" height="10" fill={ink} />
+        <DigitalMeter x={12} y={6} />
+        <path d="M15 30V33H48V12M27 30H61V10" fill="none" stroke="#b25442" strokeWidth="2" />
+        <rect x="55" y="8" width="25" height="22" fill="#d6ded2" stroke={ink} strokeWidth="2" />
+        <path d="M59 13H76M59 18H69M59 23H74" stroke="#467083" strokeWidth="2" />
+        <rect x="88" y="7" width="37" height="23" fill={steel} stroke={ink} strokeWidth="2" />
+        <rect x="93" y="11" width="10" height="9" fill="#273d48" /><rect x="109" y="11" width="10" height="9" fill="#273d48" />
+        <rect x="96" y="23" width="20" height="4" fill="#b85c4b" />
       </>}
     </> : <>
-      {node.id === 'COMP' ? <>
-        <rect x="9" y="16" width="23" height="21" fill="#355d50" />
-        <rect x="12" y="12" width="8" height="9" fill="#78a17e" /><rect x="23" y="12" width="7" height="9" fill="#78a17e" />
-        <rect x="12" y="22" width="18" height="10" fill="#527c63" />
-        {[0, 1, 2, 3].map(i => <rect key={i} x={13 + i * 4} y="23" width="1" height="8" fill="#264b45" />)}
-        <rect x="7" y="35" width="27" height="4" fill={steel} />
+      {node.id === 'RIG' ? <>
+        <rect x="5" y="8" width="30" height="18" fill="#a8b6b2" stroke={ink} strokeWidth="2" />
+        <Fan x={20} y={17} />
+        <SemiHermeticCompressor x={20} y={42} scale={0.58} />
+        <rect x="9" y="57" width="9" height="20" fill="#345465" stroke={ink} strokeWidth="2" />
+        <rect x="22" y="58" width="10" height="18" fill="#777f7b" stroke={ink} strokeWidth="2" />
+        <path d="M7 30H13V38H8V66H9M32 34H35V68H32M18 67H22" stroke={copper} strokeWidth="2" fill="none" />
+        <Gauge x={13} y={85} /><Gauge x={27} y={85} red />
+        <path d="M13 80V74M27 80V74" stroke={copper} strokeWidth="2" />
+      </> : node.id === 'COMP' ? <>
+        <rect x="5" y="8" width="30" height="34" fill="#b7a06f" />
+        <SemiHermeticCompressor x={20} y={27} scale={0.82} />
+        <rect x="8" y="45" width="25" height="8" fill="#456674" />
+        <rect x="10" y="47" width="8" height="4" fill="#d2a94e" /><rect x="22" y="47" width="8" height="4" fill="#8ea6a6" />
       </> : <>
-        <rect x="6" y="10" width={w - 12} height="30" fill={steel} />
-        {[0, 1, 2, 3, 4, 5].map(i => <path key={i} d={`M8 ${13 + i * 4}H${w - 8}`} stroke="#607d86" />)}
-        <Fan x={w / 2} y={25} />
+        <FinnedCoil x={5} y={8} w={w - 10} h={34} fans={1} />
       </>}
-      <path d={`M8 45H${w - 8}V65H9V84H${w - 8}`} stroke={ink} strokeWidth="5" fill="none" />
-      <path d={`M8 44H${w - 8}V64H9V83H${w - 8}`} stroke={copper} strokeWidth="3" fill="none" />
-      <rect x="12" y="70" width="16" height="20" fill={node.id === 'COMP' ? '#598576' : '#294954'} />
-      <rect x="15" y="72" width="4" height="14" fill="#7b9e8a" />
-      <Gauge x={13} y={53} /><Gauge x={27} y={53} red />
+      {node.id !== 'RIG' && <>
+        <path d={`M8 45H${w - 8}V65H9V84H${w - 8}`} stroke={ink} strokeWidth="5" fill="none" />
+        <path d={`M8 44H${w - 8}V64H9V83H${w - 8}`} stroke={copper} strokeWidth="3" fill="none" />
+        <rect x="12" y="70" width="16" height="20" fill={node.id === 'COMP' ? '#598576' : '#294954'} />
+        <rect x="15" y="72" width="4" height="14" fill="#7b9e8a" />
+        <Gauge x={13} y={53} /><Gauge x={27} y={53} red />
+      </>}
       <rect x="7" y="94" width={w - 14} height="5" fill={steel} />
     </>}
     <rect x={Math.max(1, w / 2 - 33)} y={h + 5} width={Math.min(w, 66)} height="10" fill="#e7ddbe" opacity="0.96" />
