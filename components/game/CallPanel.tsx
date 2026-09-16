@@ -86,7 +86,8 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
     if (missingTools(chk.tool, owned).length > 0) return
     // Some checks are work, not a purchase: you do them on the instrument first.
     if (chk.instrument && !instrument) { setInstrument(chk); return }
-    setInstrument(null)
+    // Locking out from inside the ohms bench must not close the bench under you.
+    if (instrument?.id === id) setInstrument(null)
     onUpdate({ checksDone: [...call.checksDone, id], lotoDone: call.lotoDone || id === 'loto' })
     onSpend(chk.minutes)
   }
@@ -246,8 +247,8 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                             : <span className="w-3 h-3 rounded-full border border-slate-300 dark:border-slate-500 flex-shrink-0" />}
                           <span className={`text-[12px] flex-1 ${done || locked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>{c.label}</span>
                           {!done && !locked && c.instrument && (
-                            <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded-full text-white flex-shrink-0 ${c.instrument.kind === 'circuit' ? 'bg-amber-500' : 'bg-cyan-500'}`}>
-                              {c.instrument.kind === 'circuit' ? 'TRACE IT' : 'READ IT'}
+                            <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded-full text-white flex-shrink-0 ${c.instrument.kind === 'meter' ? 'bg-amber-500' : 'bg-cyan-500'}`}>
+                              {c.instrument.kind === 'meter' ? (c.instrument.mode === 'ohms' ? 'OHM IT' : 'METER IT') : 'READ IT'}
                             </span>
                           )}
                           <span className="text-[9px] text-slate-400 flex items-center gap-0.5 flex-shrink-0"><Clock size={9} />{c.minutes}m</span>
@@ -377,6 +378,9 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
         <InstrumentPanel
           key={instrument.id}
           check={instrument}
+          needsLoto={!!fault.loto}
+          lotoDone={!!call?.lotoDone}
+          onLoto={() => runCheck('loto')}
           onSpend={onSpend}
           onDone={() => runCheck(instrument.id)}
           onClose={() => setInstrument(null)} />
