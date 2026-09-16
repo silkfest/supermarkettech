@@ -68,7 +68,7 @@ const bubbleTempFrom = (psig: number) => ptInterpReverse(psig, R448A_BUBBLE)
 
 // ── Field Readings diagnostic ─────────────────────────────────────────────────
 // Enter measured values from the rack → derived calcs + a findings list, tailored
-// to this single-temp R-448A LT rack with EVI scrolls + demand cooling.
+// to this single-temp R-448A LT rack with EVI scrolls + DTC liquid injection.
 const FIELD_EMPTY = {
   oat: '', suctionPsig: '', suctionTemp: '',
   dischargePsig: '', dischargeTemp: '', liquidLineTemp: '',
@@ -122,14 +122,14 @@ function analyzeField(r: FieldReadings, opSST: number): { derived: DerivedRow[];
         checks: ['Inspect condenser coil', 'Check fan amp draw and blade condition'] })
   }
 
-  if (dischargeTemp !== null && dischargeTemp > 225)
-    findings.push({ severity: 'critical', label: 'Discharge temp at EVI limit', measurement: `${Math.round(dischargeTemp)}°F (limit ~225°F)`,
-      causes: ['Demand cooling (liquid injection) failed', 'High compression ratio', 'Very high suction superheat'],
-      checks: ['Verify demand cooling solenoid + liquid feed to intermediate stage', 'Check discharge temp sensor accuracy', 'Address compression-ratio root cause'] })
+  if (dischargeTemp !== null && dischargeTemp > 260)
+    findings.push({ severity: 'critical', label: 'Discharge temp past the line limit', measurement: `${Math.round(dischargeTemp)}°F (260°F maximum)`,
+      causes: ['DTC liquid injection to the intermediate port failed', 'High compression ratio', 'Very high suction superheat'],
+      checks: ['Check the DTC filter and confirm a solid column of liquid to the valves', 'Verify the DTC bulb is seated in the top cap thermal well', 'Check discharge temp sensor against a thermocouple', 'Address compression-ratio root cause'] })
   else if (dischargeSH !== null && dischargeSH > 90)
     findings.push({ severity: 'warning', label: 'High discharge superheat', measurement: `${dischargeSH.toFixed(0)}°F above condensing sat`,
-      causes: ['Demand cooling injecting weakly', 'High suction superheat', 'High compression ratio'],
-      checks: ['Confirm demand cooling is functioning', 'Correlate with suction superheat'] })
+      causes: ['DTC injecting weakly — filter partly restricted or flashing feed', 'High suction superheat', 'High compression ratio'],
+      checks: ['Confirm the injection line is cold and the sight glass is solid', 'Correlate with suction superheat'] })
 
   if (suctionSH !== null) {
     if (suctionSH > 30)
@@ -261,7 +261,7 @@ const CIRCUITS: Circuit[] = [
 type FaultKey =
   | 'comp1Failed' | 'comp2Failed' | 'comp3Failed'
   | 'comp4Failed' | 'comp5Failed' | 'comp6Failed'
-  | 'demandCoolingFailed'
+  | 'dtcInjectionFailed'
   | 'a1TxvFailed'  | 'a2TxvFailed'  | 'a3TxvFailed' | 'a4TxvFailed' | 'a5TxvFailed'
   | 'a6TxvFailed'  | 'a7TxvFailed'  | 'a8TxvFailed' | 'a9TxvFailed'
   | 'a1DefrostStuck'  | 'a2DefrostStuck'  | 'a3DefrostStuck'
@@ -278,7 +278,7 @@ type FaultState = Record<FaultKey, boolean>
 const INITIAL_FAULTS: FaultState = {
   comp1Failed: false, comp2Failed: false, comp3Failed: false,
   comp4Failed: false, comp5Failed: false, comp6Failed: false,
-  demandCoolingFailed: false,
+  dtcInjectionFailed: false,
   a1TxvFailed: false, a2TxvFailed: false, a3TxvFailed: false,
   a4TxvFailed: false, a5TxvFailed: false, a6TxvFailed: false,
   a7TxvFailed: false, a8TxvFailed: false, a9TxvFailed: false,
@@ -313,7 +313,7 @@ const FAULT_DEFS: FaultDef[] = [
   { key: 'comp4Failed', group: 'Compressors', label: 'C4 ZF18KVE failed (Lag-2A)',      hint: 'First Lag-2 scroll offline. C5 & C6 continue; 18.6 MBH lost. C1 modulation may increase to compensate.' },
   { key: 'comp5Failed', group: 'Compressors', label: 'C5 ZF18KVE failed (Lag-2B)',      hint: 'Second Lag-2 down. Only C6 remains in group; 37.2 MBH lost if C4 also failed.' },
   { key: 'comp6Failed', group: 'Compressors', label: 'C6 ZF18KVE failed (Lag-2C)',      hint: 'Full Lag-2 group offline — all three 18K scrolls down. 55.8 MBH lost. Significant suction rise.' },
-  { key: 'demandCoolingFailed', group: 'Compressors', label: 'Demand cooling system failed', hint: 'All 6 EVI scrolls require liquid injection to intermediate stage. Loss = discharge temps spike to 200 °F+. Protect compressors immediately.' },
+  { key: 'dtcInjectionFailed', group: 'Compressors', label: 'DTC liquid injection failed', hint: 'All 6 EVI scrolls inject into the intermediate port to survive low-temp compression ratios. Lose it and discharge climbs past the 260 °F line maximum on every one. Check the DTC filter for a solid column of liquid before condemning a valve.' },
   { key: 'dirtyCondenser',  group: 'Condenser', label: 'Dirty condenser coil',      hint: 'Fouled coil raises approach ΔT — condensing and discharge pressure rise. Head pressure goes up; subcooling may increase slightly from liquid backup.' },
   { key: 'fan1Failed',      group: 'Condenser', label: 'Condenser fan #1 failed',   hint: 'Reduced airflow — head pressure rises ~12 psig. Approach ΔT up ~9 °F. Compressor amps increase.' },
   { key: 'fan2Failed',      group: 'Condenser', label: 'Condenser fan #2 failed',   hint: 'Both fans out: severe head pressure rise — approach ΔT +30 °F. Discharge temps spike. Risk of HPCO.' },
@@ -387,9 +387,9 @@ const SCENARIOS: Scenario[] = [
     id: 'demand_cooling',
     name: 'High Discharge Temp on All Comps',
     difficulty: 'Intermediate',
-    description: 'All 6 compressors running but discharge temperature is approaching 210 °F on every unit simultaneously. Suction and head pressure look near-normal. No refrigerant alarms. What is the common system element that protects all 6 Copeland EVI scrolls from high discharge temps?',
-    faults: { demandCoolingFailed: true },
-    answer: ['demandCoolingFailed'],
+    description: 'All 6 compressors running but discharge temperature is past 270 °F on every unit simultaneously — beyond the 260 °F line maximum. Suction and head pressure look near-normal. No refrigerant alarms. What is the common system element that protects all 6 Copeland EVI scrolls from high discharge temps?',
+    faults: { dtcInjectionFailed: true },
+    answer: ['dtcInjectionFailed'],
     knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }],
   },
   {
@@ -530,8 +530,8 @@ interface RackResult {
 function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: number = OPERATING_SST, hpMin: number = HP_CTRL_MIN): RackResult {
   const period = loadPeriod(timeOfDay)
 
-  // ── Demand cooling ─────────────────────────────────────────────────────────
-  const dcFactor = f.demandCoolingFailed ? 0.85 : 1.0
+  // ── DTC liquid injection ───────────────────────────────────────────────────
+  const dcFactor = f.dtcInjectionFailed ? 0.85 : 1.0
 
   // ── Condenser ──────────────────────────────────────────────────────────────
   let approach = BASE_APPROACH
@@ -696,7 +696,7 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: n
   // ── Discharge ──────────────────────────────────────────────────────────────
   condensing = Math.max(condensing, sst + 30)
   const dischargePsig  = bubblePsig(condensing)
-  const baseDischargeSH = f.demandCoolingFailed ? 110 : 48
+  const baseDischargeSH = f.dtcInjectionFailed ? 175 : 48
   const dischargeSH     = baseDischargeSH + Math.max(0, condensing - 85) * 0.3
   const dischargeTemp   = condensing + dischargeSH
   const compressionRatio = (dischargePsig + 14.696) / (suctionPsig + 14.696)
@@ -708,7 +708,7 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: n
   if (f.dirtyCondenser)      ampsMult *= 1.06
   if (fansFailed === 1)      ampsMult *= 1.04
   if (fansFailed === 2)      ampsMult *= 1.10
-  if (f.demandCoolingFailed) ampsMult *= 1.04
+  if (f.dtcInjectionFailed) ampsMult *= 1.04
 
   const compAmps  = COMP_SPECS.map((c, i) => {
     if (!compRunning[i]) return 0
@@ -748,13 +748,13 @@ function computeRack(f: FaultState, ambient: number, timeOfDay: number, opSST: n
   else if (dischargePsig >= 295)
     alarms.push({ code: 'HP-HIGH', severity: 'WARNING', message: `High discharge pressure — ${Math.round(dischargePsig)} psig. Approach ΔT: ${approach.toFixed(0)} °F.` })
 
-  if (dischargeTemp >= 225)
-    alarms.push({ code: 'HI-DT', severity: 'CRITICAL', message: `Discharge temp ${Math.round(dischargeTemp)} °F — compressors at risk. Demand cooling required.` })
-  else if (dischargeTemp >= 200)
-    alarms.push({ code: 'DT-W', severity: 'WARNING', message: `Elevated discharge temp — ${Math.round(dischargeTemp)} °F (EVI limit ~225 °F).` })
+  if (dischargeTemp >= 260)
+    alarms.push({ code: 'HI-DT', severity: 'CRITICAL', message: `Discharge temp ${Math.round(dischargeTemp)} °F — past the 260 °F line maximum. Oil breaking down; compressors at risk.` })
+  else if (dischargeTemp >= 230)
+    alarms.push({ code: 'DT-W', severity: 'WARNING', message: `Elevated discharge temp — ${Math.round(dischargeTemp)} °F (260 °F line maximum).` })
 
-  if (f.demandCoolingFailed)
-    alarms.push({ code: 'DC-FAIL', severity: 'CRITICAL', message: 'Demand cooling offline — liquid injection to EVI intermediate stage lost. All 6 compressors at shutdown risk.' })
+  if (f.dtcInjectionFailed)
+    alarms.push({ code: 'DTC-FAIL', severity: 'CRITICAL', message: 'DTC injection lost — no liquid to the EVI intermediate port. All 6 compressors at shutdown risk.' })
 
   compStatus.forEach((s, i) => {
     if (s === 'TRIPPED') alarms.push({ code: `C${i + 1}-TRIP`, severity: 'CRITICAL', message: `Compressor ${i + 1} (${COMP_SPECS[i].model}, ${COMP_SPECS[i].group}) tripped on safety.` })
@@ -1161,7 +1161,7 @@ export default function ProtocolRackASimulatorPage() {
               {Math.round(result.dischargePsig)} <span className="text-sm font-normal">psig</span>
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{result.condensingBubble.toFixed(1)} °F sat (bubble)</p>
-            <p className={`text-xs mt-0.5 ${result.dischargeTemp >= 225 ? 'text-red-600 dark:text-red-400 font-semibold' : result.dischargeTemp >= 200 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+            <p className={`text-xs mt-0.5 ${result.dischargeTemp >= 260 ? 'text-red-600 dark:text-red-400 font-semibold' : result.dischargeTemp >= 230 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
               DT: {Math.round(result.dischargeTemp)} °F · SC: {result.subcooling.toFixed(1)} °F
             </p>
           </div>
@@ -1717,7 +1717,7 @@ export default function ProtocolRackASimulatorPage() {
                       ['MOPD', '60 A'],
                       ['Design load', '132.70 MBH (incl. 3 spare circuits)'],
                       ['Active load', '105.70 MBH (9 circuits)'],
-                      ['Demand cooling', 'Required — all 6 EVI scrolls'],
+                      ['DTC injection', 'Required — all 6 EVI scrolls'],
                     ].map(([label, value]) => (
                       <div key={label} className="flex gap-2 text-xs">
                         <span className="text-slate-500 dark:text-slate-400 w-32 flex-shrink-0">{label}</span>
