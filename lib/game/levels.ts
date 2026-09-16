@@ -2,6 +2,7 @@ import { CLASSROOM_MAP } from './maps/classroom'
 import { GAS_STATION_MAP } from './maps/gas-station'
 import { SUPERMARKET_MAP } from './maps/supermarket'
 import { PROTOCOL_STORE_MAP } from './maps/protocol-store'
+import { TYLER_STORE_MAP } from './maps/tyler-store'
 import { GLYCOL_STORE_MAP } from './maps/glycol-store'
 import { CASCADE_STORE_MAP } from './maps/cascade-store'
 import { CO2_STORE_MAP } from './maps/co2-store'
@@ -113,8 +114,37 @@ export const LEVELS: LevelDef[] = [
     },
   },
   {
-    id: 'glycol-store',
+    id: 'tyler-store',
     order: 5,
+    name: 'Lakeshore Market',
+    subtitle: 'Tyler parallel rack — EnviroGuard',
+    description: 'A legacy Tyler rack on R-404A with Nature’s Cooling and EnviroGuard III: head pressure floats down with the weather to save energy, and a set of regulators keeps the system working while it does. Half the calls here only happen when it is cold outside, and most of them are fixed with a wrench and a chart rather than a part.',
+    kind: 'shift',
+    map: TYLER_STORE_MAP,
+    faultPool: [
+      'tyl_opr_misset', 'tyl_nc2_bypass', 'tyl_gas_defrost_low_head',
+      'tyl_sentronic', 'tyl_heat_reclaim', 'tyl_enviroguard_fans',
+      'dt_failed_open', 'door_ajar', 'txv_starved', 'condensate_clog', 'dry_trap',
+      'fan_shorted', 'contactor_burned', 'contactor_welded', 'filter_clogged', 'condensate_pump',
+    ],
+    shiftLenMin: 8 * 60,
+    spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 85, 135, 185, 235, 285, 335, 385] },
+    maxOpen: { apprentice: 2, journeyman: 3 },
+    passGrades: ['A', 'B', 'C'],
+    briefing: {
+      lead: 'Nothing exotic here — semi-hermetics, R-404A, a receiver and a remote condenser. What makes this store its own animal is that the head pressure is deliberately allowed to fall, and a handful of regulators are all that keep the system working when it does.',
+      points: [
+        { head: 'Floating head is the feature, not the fault', body: 'Nature’s Cooling lets condensing pressure follow the weather down instead of holding it at a fixed setpoint. That is where the energy saving lives. Low head on a cold night is the system working. Low head with warm cases means something that was supposed to hold a floor did not.' },
+        { head: 'The OPR is that floor', body: 'A gas bypass from the discharge header to the receiver, holding receiver pressure above the point where the case valves can still feed. The chart in the manual gives the setting for the refrigerant and the application — on R-404A here, 125 psig. Set it low and the store runs out of liquid pressure at three in the morning and fixes itself at sunrise, which makes it very easy to blame the wrong thing.' },
+        { head: 'The receiver level is supposed to fall when it gets cold', body: 'Refrigerant backs up in the condenser as condensing temperature drops. A receiver that is full in July and a third full in January is behaving. Judging the charge by the glass on a cold night is how these systems end up overcharged every summer.' },
+        { head: 'Gas defrost needs pressure you may not have at 3 AM', body: 'Hot gas defrost is driven by a pressure difference. Float the head down far enough and there is not enough of it left, so defrosts run their full time and terminate on the failsafe instead of on temperature. The DDPR exists to preserve that difference — the manual puts its minimum at 20 psi.' },
+        { head: 'Most of these are adjustments, not parts', body: 'An OPR setting, a DDPR differential, a controller deadband, a thermostat bulb back in its clamp. On this rack the parts cannon is almost always the wrong answer, and the manual on the shelf is almost always the right one.' },
+      ],
+    },
+  },
+  {
+    id: 'glycol-store',
+    order: 6,
     name: 'Northside Market',
     subtitle: 'Glycol secondary loop',
     description: 'The medium-temp cases here are not fed refrigerant at all. A DX chiller cools glycol through a plate heat exchanger and two pumps push it around the floor. Low temp stays DX. Half your calls are hydronic problems wearing a refrigeration hat, and a refractometer earns its place on the truck.',
@@ -144,7 +174,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'cascade-store',
-    order: 6,
+    order: 7,
     name: 'Harbour Foods',
     subtitle: 'CO2 cascade',
     description: 'Medium temp on a conventional R-448A rack, low temp on a subcritical CO2 pack that rejects its heat into the MT side instead of to outdoor air. Two systems welded together by one vessel — which is why the frozen food complains first when the MT rack has a problem.',
@@ -172,7 +202,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'co2-store',
-    order: 7,
+    order: 8,
     name: 'Summit Grocers',
     subtitle: 'CO2 transcritical booster',
     description: 'Same sales floor, completely different machine room. One booster pack running MT and LT, a flash tank instead of a receiver, an intercooler between the stages, and a gas cooler that runs above the critical point every warm afternoon. Pressures you cannot guess at, and a gas detector on the wall for a reason.',
@@ -225,6 +255,7 @@ export function levelUnlock(p: GameProgress, id: LevelId): { ok: boolean; reason
     // Rack styles are a branch, not a chain — once you can hold a store
     // together on a parallel rack, dispatch can send you to any of them.
     case 'protocol-store':
+    case 'tyler-store':
     case 'glycol-store':
     case 'cascade-store':
     case 'co2-store': {

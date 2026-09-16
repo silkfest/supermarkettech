@@ -6,7 +6,7 @@ export type EquipmentKind =
   | 'reach-in-cooler' | 'chest-freezer' | 'ice-machine' | 'condensing-unit' | 'split-ac'
   | 'gas-cooler' | 'flash-tank' | 'co2-rack' | 'intercooler' | 'gas-detector'
   | 'glycol-skid' | 'plate-hx' | 'expansion-tank' | 'cascade-hx'
-  | 'protocol-module' | 'protocol-lt' | 'condenser'
+  | 'protocol-module' | 'protocol-lt' | 'condenser' | 'receiver'
   | 'station'
 
 export interface Point { x: number; y: number }

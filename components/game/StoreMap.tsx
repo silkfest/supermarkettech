@@ -848,6 +848,26 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
         </g>
       )
     }
+    case 'receiver': {
+      // Horizontal liquid receiver with its sight column and the OPR gas
+      // bypass teeing in from the discharge header.
+      const cy = y + h / 2 + 3
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 6} y={cy - 10} width={w - 12} height="20" rx="10"
+            className="fill-slate-100 dark:fill-slate-400 stroke-slate-500 dark:stroke-slate-800" strokeWidth="1.3" />
+          <rect x={x + 6} y={cy - 1} width={(w - 12) * 0.62} height="11" rx="5.5" className="fill-amber-300 dark:fill-amber-600" opacity="0.9" />
+          {[0.25, 0.5, 0.75].map((f, i) => (
+            <line key={i} x1={x + 6 + (w - 12) * f} x2={x + 6 + (w - 12) * f} y1={cy - 10} y2={cy + 10}
+              className="stroke-slate-400 dark:stroke-slate-600" strokeWidth="0.8" opacity="0.7" />
+          ))}
+          <rect x={x + w - 20} y={y + 5} width="9" height="11" rx="1.5" className="fill-red-400 dark:fill-red-500 stroke-slate-600" strokeWidth="0.8" />
+          <line x1={x + w - 15.5} x2={x + w - 15.5} y1={y + 16} y2={cy - 10} className="stroke-red-400 dark:stroke-red-500" strokeWidth="1.5" />
+          {label}
+        </g>
+      )
+    }
     case 'station': {
       // Wall stations carry the pin at their centre and the tech stands beside them, so the name goes underneath.
       const stationLabel = vertical ? (

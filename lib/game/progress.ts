@@ -2,7 +2,7 @@ import type { Character } from './types'
 
 export type LevelId =
   | 'classroom' | 'gas-station' | 'supermarket'
-  | 'protocol-store' | 'glycol-store' | 'cascade-store' | 'co2-store'
+  | 'protocol-store' | 'tyler-store' | 'glycol-store' | 'cascade-store' | 'co2-store'
 
 export interface LevelStat { shifts: number; bestScore: number; bestGrade: string | null }
 
