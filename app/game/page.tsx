@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Flag, X, Lock, CheckCircle2, ChevronRight, Pencil, Trophy, Navigation, BookOpen, Wrench, Sparkles, Zap, GraduationCap, Map as MapIcon, LayoutGrid, BadgeCheck, Clock3, Truck } from 'lucide-react'
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
@@ -18,6 +18,7 @@ import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
 import { TOWN_MAP } from '@/lib/game/maps/town'
 import { rankOf, rankGap, shiftHours, RANKS, DIFFICULTY_LABEL, type RankDef } from '@/lib/game/ranks'
+import { TOOLS, ownedTools } from '@/lib/game/tools'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type GameProgress, type LevelId, type SavedGame } from '@/lib/game/progress'
 import { portraitFor } from '@/lib/game/art'
@@ -140,6 +141,8 @@ export default function ColdCallPage() {
         return { id: c.id, equipmentId: c.equipmentId, color: SYSTEM_COLOR[f.system], icon: f.system, cue: f.system, flagged: c.complained }
       })
 
+  // The crib travels with the tech, so the shift and the dispatch board agree on it.
+  const owned = useMemo(() => ownedTools(rankOf(progress)), [progress])
   const playing = (view === 'classroom') || (view === 'shift' && state.status === 'running')
   const sidePanelOpen = view === 'classroom' ? lesson !== null : panel !== null
   const handsOn = view === 'classroom' && lesson?.kind === 'handson' ? lesson : null
@@ -233,7 +236,7 @@ export default function ColdCallPage() {
             onFinish={(score, passed) => finishLesson(lesson, score, passed)} onClose={() => setLesson(null)} />
         ))
       : (panel && panelFault && panelNode && (
-          <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode}
+          <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
             onUpdate={patch => dispatch({ type: 'UPDATE_CALL', callId: panel.callId, patch })}
             onSpend={minutes => dispatch({ type: 'SPEND_MINUTES', callId: panel.callId, minutes })}
             onComplete={(r: CallResult) => dispatch({ type: 'COMPLETE_CALL', result: r })}
@@ -609,6 +612,27 @@ function DispatchBoard({ progress, onClose }: { progress: GameProgress; onClose:
               {DIFFICULTY_LABEL[d]}
             </li>
           ))}
+        </ul>
+
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">The truck</p>
+        <ul className="space-y-1 mb-4">
+          {TOOLS.map(t => {
+            const have = t.tier <= rank.tier
+            return (
+              <li key={t.id} className={`flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] ${have
+                ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                : 'border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}`}>
+                {have
+                  ? <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0 text-emerald-500" />
+                  : <Lock size={11} className="mt-0.5 flex-shrink-0" />}
+                <span className="min-w-0 flex-1">
+                  <b className="font-semibold">{t.name}</b>
+                  <span className="block text-[10px] leading-snug opacity-80">{t.blurb}</span>
+                </span>
+                {!have && <span className="text-[9px] font-bold flex-shrink-0 mt-0.5">{RANKS[t.tier - 1].short}</span>}
+              </li>
+            )
+          })}
         </ul>
 
         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">The ladder</p>

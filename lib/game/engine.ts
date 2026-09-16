@@ -1,5 +1,6 @@
 import { FAULTS, FAULT_BY_ID } from './faults'
 import { LEVEL_BY_ID, type LevelDef } from './levels'
+import { requiredTier } from './tools'
 import type { LevelId } from './progress'
 import type { ActiveCall, CallResult, Character, FaultDef, SystemKey } from './types'
 
@@ -46,6 +47,12 @@ export const INITIAL_STATE: ShiftState = {
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
+/** What a fault really costs you: its own tier, or the tier of tools it takes to
+ *  get a discriminating reading, whichever is higher. */
+export function effectiveDifficulty(f: FaultDef): number {
+  return Math.max(f.difficulty, requiredTier(f.checks))
+}
+
 function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equipmentId: string } | null {
   const occupied = new Set(state.calls.map(c => c.equipmentId))
   const usedSystems = new Set<SystemKey>([...state.calls, ...state.results].map(c => FAULT_BY_ID[c.faultId].system))
@@ -56,7 +63,7 @@ function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equ
   // Dispatch sends what you are signed off for. If this store has nothing left at
   // your level, they stretch you a tier rather than leave you sitting in the van.
   for (let cap = state.maxDifficulty; cap <= 3; cap++) {
-    const candidates = open.filter(c => c.f.difficulty <= cap)
+    const candidates = open.filter(c => effectiveDifficulty(c.f) <= cap)
     if (candidates.length === 0) continue
     // Prefer a system the player has not seen yet this shift so every shift mixes all four.
     const fresh = candidates.filter(c => !usedSystems.has(c.f.system))

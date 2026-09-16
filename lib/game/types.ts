@@ -1,3 +1,5 @@
+import type { RefrigerantId } from './pt'
+
 export type SystemKey = 'refrigeration' | 'electrical' | 'plumbing' | 'hvac'
 
 export type EquipmentKind =
@@ -62,6 +64,23 @@ export interface Reading {
   after?: number
 }
 
+/** A check you have to actually perform, rather than just pay time for.
+ *  `circuit` drops you onto the compressor safety string at 120 V or 208 V;
+ *  `casecircuit` onto the case fan and defrost rungs; `ptchart` puts a gauge
+ *  reading and a line temperature in front of you and makes you work out the
+ *  superheat or subcooling off the chart. */
+export type Instrument =
+  | { kind: 'circuit'; variant: '120' | '208'; prompt: string }
+  | { kind: 'casecircuit'; defrost: boolean; prompt: string }
+  | {
+      kind: 'ptchart'
+      refrigerant: RefrigerantId
+      psig: number
+      lineTempF: number
+      ask: 'superheat' | 'subcooling'
+      prompt: string
+    }
+
 export interface Check {
   id: string
   label: string
@@ -71,6 +90,8 @@ export interface Check {
   finding: string
   /** A check that actually discriminates between the causes. */
   key?: boolean
+  /** Work you do yourself before the finding is yours. */
+  instrument?: Instrument
 }
 
 export interface Option {

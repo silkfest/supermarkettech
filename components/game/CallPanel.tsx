@@ -1,12 +1,14 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock, DollarSign } from 'lucide-react'
+import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock, DollarSign, Briefcase } from 'lucide-react'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import { SYSTEM_META } from '@/lib/game/faults'
 import { scoreCall } from '@/lib/game/engine'
 import { SYSTEM_COLOR } from './StoreMap'
-import type { ActiveCall, CallResult, EquipmentNode, FaultDef, Option } from '@/lib/game/types'
+import InstrumentPanel from './InstrumentPanel'
+import { missingTools, type ToolId } from '@/lib/game/tools'
+import type { ActiveCall, CallResult, Check, EquipmentNode, FaultDef, Option } from '@/lib/game/types'
 
 interface Props {
   call: ActiveCall | null
@@ -16,6 +18,8 @@ interface Props {
   onSpend: (minutes: number) => void
   onComplete: (result: CallResult) => void
   onClose: () => void
+  /** What is on the truck at this rank — checks needing anything else are locked. */
+  owned: Set<ToolId>
 }
 
 const STAGES = [
@@ -51,13 +55,14 @@ const STATUS_TEXT = {
   crit: 'text-red-600 dark:text-red-400',
 }
 
-export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComplete, onClose }: Props) {
+export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComplete, onClose, owned }: Props) {
   const router = useRouter()
   const [wrongCauses, setWrongCauses] = useState<string[]>([])
   const [wrongFixes, setWrongFixes] = useState<string[]>([])
   const [feedback, setFeedback] = useState<{ tone: 'good' | 'bad'; text: string } | null>(null)
   const [note, setNote] = useState('')
   const [result, setResult] = useState<CallResult | null>(null)
+  const [instrument, setInstrument] = useState<Check | null>(null)
 
   const color = SYSTEM_COLOR[fault.system]
   const stage = result ? 'done' : (call?.stage ?? 'ticket')
@@ -78,6 +83,10 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   function runCheck(id: string) {
     if (!call || call.checksDone.includes(id)) return
     const chk = fault.checks.find(c => c.id === id)!
+    if (missingTools(chk.tool, owned).length > 0) return
+    // Some checks are work, not a purchase: you do them on the instrument first.
+    if (chk.instrument && !instrument) { setInstrument(chk); return }
+    setInstrument(null)
     onUpdate({ checksDone: [...call.checksDone, id], lotoDone: call.lotoDone || id === 'loto' })
     onSpend(chk.minutes)
   }
@@ -125,7 +134,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   const stageIdx = STAGES.findIndex(s => s.key === stage)
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+    <div className="relative flex flex-col h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-start gap-3" style={{ borderTopColor: color, borderTopWidth: 3 }}>
         <div className="min-w-0 flex-1">
@@ -221,18 +230,34 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                 <div className="space-y-1.5">
                   {fault.checks.map(c => {
                     const done = call.checksDone.includes(c.id)
+                    const missing = missingTools(c.tool, owned)
+                    const locked = !done && missing.length > 0
                     return (
-                      <button key={c.id} onClick={() => runCheck(c.id)} disabled={done}
+                      <button key={c.id} onClick={() => runCheck(c.id)} disabled={done || locked}
                         className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
                           done ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 cursor-default'
+                          : locked ? 'bg-slate-50 dark:bg-slate-900/40 border-dashed border-slate-300 dark:border-slate-600 cursor-not-allowed'
                           : c.id === 'loto' ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 hover:border-amber-400'
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-400'}`}>
                         <div className="flex items-center gap-2">
-                          {c.id === 'loto' ? <Lock size={12} className="text-amber-600 dark:text-amber-400 flex-shrink-0" /> : done ? <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" /> : <span className="w-3 h-3 rounded-full border border-slate-300 dark:border-slate-500 flex-shrink-0" />}
-                          <span className={`text-[12px] flex-1 ${done ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>{c.label}</span>
+                          {locked ? <Briefcase size={12} className="text-slate-400 flex-shrink-0" />
+                            : c.id === 'loto' ? <Lock size={12} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            : done ? <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                            : <span className="w-3 h-3 rounded-full border border-slate-300 dark:border-slate-500 flex-shrink-0" />}
+                          <span className={`text-[12px] flex-1 ${done || locked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>{c.label}</span>
+                          {!done && !locked && c.instrument && (
+                            <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded-full text-white flex-shrink-0 ${c.instrument.kind === 'circuit' ? 'bg-amber-500' : 'bg-cyan-500'}`}>
+                              {c.instrument.kind === 'circuit' ? 'TRACE IT' : 'READ IT'}
+                            </span>
+                          )}
                           <span className="text-[9px] text-slate-400 flex items-center gap-0.5 flex-shrink-0"><Clock size={9} />{c.minutes}m</span>
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5 ml-5">{c.tool}</p>
+                        {locked && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 ml-5">
+                            Not on the truck yet — {missing.map(m => m.name).join(' and ')}.
+                          </p>
+                        )}
                         {done && <p className="text-[12px] text-slate-700 dark:text-slate-300 mt-1.5 ml-5 leading-relaxed">{c.finding}</p>}
                       </button>
                     )
@@ -347,6 +372,15 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
           </div>
         )}
       </div>
+
+      {instrument && (
+        <InstrumentPanel
+          key={instrument.id}
+          check={instrument}
+          onSpend={onSpend}
+          onDone={() => runCheck(instrument.id)}
+          onClose={() => setInstrument(null)} />
+      )}
     </div>
   )
 }

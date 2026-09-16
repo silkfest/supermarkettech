@@ -26,7 +26,7 @@ export const FAULTS: FaultDef[] = [
     ],
     checks: [
       { id: 'log', label: 'Pull the controller defrost log', tool: 'Case controller', minutes: 8, key: true, finding: 'Defrost initiated on schedule every 6 h all week. Every cycle logs a termination 40–55 seconds after it started.' },
-      { id: 'dt', label: 'Meter the DT switch with the coil cold', tool: 'Multimeter (Ω)', minutes: 10, key: true, finding: 'Coil is at −5 °F. Across the switch terminals: OPEN. The body is stamped OPEN 55 °F / CLOSE 30 °F.' },
+      { id: 'dt', label: 'Meter the DT switch with the coil cold', tool: 'Multimeter (Ω)', minutes: 10, key: true, finding: 'Coil is at −5 °F. Across the switch terminals: OPEN. The body is stamped OPEN 55 °F / CLOSE 30 °F.', instrument: { kind: 'casecircuit', defrost: true, prompt: 'Put the case into defrost and meter the rung that is actually commanded. In refrigeration the defrost rung is dead on purpose, so probing it there tells you nothing. Work from the fuse out and find where the volts stop.' } },
       { id: 'sight', label: 'Check the sight glass at the rack', tool: 'Eyes', minutes: 12, finding: 'Clear, no bubbles.' },
       { id: 'gasket', label: 'Walk the door gaskets', tool: 'Hands', minutes: 6, finding: 'A dollar bill drags on every door. No ice on any gasket face.' },
     ],
@@ -57,10 +57,11 @@ export const FAULTS: FaultDef[] = [
     readings: [
       { key: 'dis', label: 'Discharge air', value: 38, unit: '°F', jitter: 0.5, wander: 0.8, status: 'crit', expect: '28–30 °F', after: 29 },
       { key: 'suct', label: 'Suction at case', value: 44, unit: 'psig', decimals: 1, jitter: 0.4, wander: 0.6, status: 'warn', expect: '≈ 53 psig (+18 °F SST, R-404A)', after: 52.6 },
-      { key: 'sh', label: 'Superheat', value: 28, unit: '°F', jitter: 0.6, status: 'crit', expect: '8–10 °F', after: 9 },
+      { key: 'sline', label: 'Suction line temp at coil outlet', value: 38.8, unit: '°F', decimals: 1, jitter: 0.5, wander: 0.7, status: 'crit', expect: '8–10 °F above saturation', after: 26.9 },
       { key: 'liq', label: 'Liquid pressure at rack', value: 195, unit: 'psig', jitter: 0.8, status: 'ok', expect: '≈ 195 psig' },
     ],
     checks: [
+      { id: 'sh', label: 'Take superheat at the coil outlet', tool: 'Thermocouple / gauges', minutes: 8, key: true, finding: '28 °F of superheat against 8–10 °F design. The coil is starved — only the first pass is doing any work.', instrument: { kind: 'ptchart', refrigerant: 'R-404A', psig: 44, lineTempF: 38.8, ask: 'superheat', prompt: 'Gauge on the suction service valve at the case, clamped probe on the line six inches from the bulb. Work out the superheat.' } },
       { id: 'strainer', label: 'Feel for a temperature drop across the liquid strainer', tool: 'Hands / IR gun', minutes: 6, key: true, finding: 'Strainer inlet 88 °F, outlet 88 °F.' },
       { id: 'bulb', label: 'Inspect the TXV sensing bulb', tool: 'Eyes', minutes: 5, key: true, finding: 'Bulb is strapped tight to the suction line and insulated; capillary intact. You hold the bulb in your hand for two minutes — suction pressure and superheat do not move.' },
       { id: 'sight', label: 'Check the sight glass at the rack', tool: 'Eyes', minutes: 12, finding: 'Clear and full. The other cases on this line are holding temperature.' },
@@ -92,12 +93,13 @@ export const FAULTS: FaultDef[] = [
     cue: 'The rack room is hot. Discharge lines are too hot to touch. Condenser fans on the roof are all running flat out.',
     readings: [
       { key: 'disch', label: 'Discharge pressure', value: 322, unit: 'psig', jitter: 1.2, wander: 2, status: 'crit', expect: '≈ 240 psig at 88 °F ambient (R-404A)', after: 238 },
-      { key: 'sct', label: 'Condensing temp (approx.)', value: 121, unit: '°F', jitter: 0.4, status: 'crit', expect: 'ambient + 15–20 °F', after: 104 },
+      { key: 'sct', label: 'Condensing temp (approx.)', value: 122, unit: '°F', jitter: 0.4, status: 'crit', expect: 'ambient + 15–20 °F', after: 100 },
       { key: 'amb', label: 'Roof ambient', value: 88, unit: '°F', jitter: 0.2, status: 'ok' },
-      { key: 'sc', label: 'Subcooling', value: 4, unit: '°F', jitter: 0.3, status: 'warn', expect: '8–12 °F', after: 10 },
+      { key: 'lline', label: 'Liquid line temp at the receiver', value: 118.3, unit: '°F', decimals: 1, jitter: 0.4, status: 'warn', expect: '8–12 °F below saturation', after: 90.3 },
     ],
     checks: [
       { id: 'roof', label: 'Walk up to the condenser', tool: 'Eyes', minutes: 12, key: true, finding: 'The coil face is matted solid with cottonwood fluff and dust. You cannot see fin through it. Fans are all turning.' },
+      { id: 'sc', label: 'Take subcooling at the receiver outlet', tool: 'Thermometer / gauges', minutes: 8, finding: '4 °F of subcooling against 8–12 °F design. The condenser is not turning enough vapour into liquid to build a proper column.', instrument: { kind: 'ptchart', refrigerant: 'R-404A', psig: 322, lineTempF: 118.3, ask: 'subcooling', prompt: 'Gauge on the liquid header, probe on the line leaving the receiver. Work out the subcooling.' } },
       { id: 'fans', label: 'Clamp the condenser fan motors', tool: 'Amp clamp', minutes: 8, finding: 'Every fan turning, each pulling nameplate amps. Fan control has all stages energized.' },
       { id: 'sight', label: 'Check the sight glass', tool: 'Eyes', minutes: 4, finding: 'Clear. Receiver level normal.' },
       { id: 'nc', label: 'Compare SCT to ambient with the rack pumped down', tool: 'Gauges', minutes: 20, finding: 'The rack has to be off and equalized for this reading to mean anything — not something you can do at 2 PM with product on the floor.' },
@@ -129,11 +131,12 @@ export const FAULTS: FaultDef[] = [
     readings: [
       { key: 'box', label: 'Box temperature', value: -9, unit: '°F', jitter: 0.4, wander: 0.8, status: 'ok', expect: '−10 °F' },
       { key: 'suct', label: 'Suction at coil outlet', value: 11.4, unit: 'psig', decimals: 1, jitter: 0.3, status: 'ok', expect: '≈ 10 psig (R-448A)' },
-      { key: 'sh', label: 'Superheat', value: 1, unit: '°F', jitter: 0.4, status: 'crit', expect: '6–8 °F', after: 7 },
+      { key: 'sline', label: 'Suction line temp at coil outlet', value: -15.9, unit: '°F', decimals: 1, jitter: 0.4, status: 'crit', expect: '6–8 °F above saturation', after: -9.9 },
       { key: 'll', label: 'Suction line frost', value: 100, unit: '%', jitter: 0, status: 'crit', expect: 'frost ends at the coil', after: 10 },
     ],
     checks: [
       { id: 'bulb', label: 'Inspect the TXV bulb on the suction line', tool: 'Eyes / hands', minutes: 6, key: true, finding: 'The bulb strap has rusted through. The bulb is hanging free in the fan air stream, not touching the suction line.' },
+      { id: 'sh', label: 'Take superheat at the coil outlet', tool: 'Thermocouple / gauges', minutes: 8, finding: '1 °F of superheat. That is liquid leaving the coil and heading for the compressor.', instrument: { kind: 'ptchart', refrigerant: 'R-448A', psig: 11.4, lineTempF: -15.9, ask: 'superheat', prompt: 'R-448A glides, so the column you read is the whole question. Gauge on the coil outlet, probe on the line beside it.' } },
       { id: 'defrost', label: 'Check the defrost schedule and last cycle', tool: 'Controller', minutes: 6, finding: 'Four defrosts a day, each terminated on temperature. Coil is clean.' },
       { id: 'sight', label: 'Sight glass at the rack', tool: 'Eyes', minutes: 12, finding: 'Clear.' },
       { id: 'door', label: 'Door gasket and closer', tool: 'Hands', minutes: 4, finding: 'Door seals and self-closes. Box holds temp.' },
@@ -207,7 +210,7 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'reset', label: 'Reset the breaker and watch', tool: 'Eyes', minutes: 3, finding: 'Trips the instant the handle comes up, with a snap. No run time at all.' },
-      { id: 'ohm', label: 'Ohm each fan motor winding to ground', tool: 'Multimeter (Ω)', minutes: 12, key: true, finding: 'Fan #1 windings to frame: OL. Fan #2 windings to frame: 0.3 Ω.' },
+      { id: 'ohm', label: 'Ohm each fan motor winding to ground', tool: 'Multimeter (Ω)', minutes: 12, key: true, finding: 'Fan #1 windings to frame: OL. Fan #2 windings to frame: 0.3 Ω.', instrument: { kind: 'casecircuit', defrost: false, prompt: 'The breaker holds long enough to take readings. Walk the fan rung with the meter — fuse, relay contact, fan delay klixon, harness, motors — and find the element that is not passing what it should.' } },
       { id: 'heater', label: 'Ohm the anti-sweat / heater circuit', tool: 'Multimeter (Ω)', minutes: 8, finding: 'Heater circuit reads 48 Ω, and OL to ground.' },
       { id: 'harness', label: 'Inspect the harness for chafed insulation', tool: 'Eyes', minutes: 8, finding: 'Harness looks clean. No rub marks.' },
     ],
@@ -319,7 +322,7 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'clamp', label: 'Clamp the heater feed while the controller says REFRIGERATION', tool: 'Amp clamp', minutes: 5, key: true, finding: '8.4 A on the heater feed.' },
-      { id: 'coil', label: 'Meter the defrost contactor coil', tool: 'Multimeter', minutes: 5, key: true, finding: '0 V across the defrost contactor coil. The contactor is pulled in.' },
+      { id: 'coil', label: 'Meter the defrost contactor coil', tool: 'Multimeter', minutes: 5, key: true, finding: '0 V across the defrost contactor coil. The contactor is pulled in.', instrument: { kind: 'casecircuit', defrost: true, prompt: 'The controller says refrigeration and the heaters are drawing current anyway, so something on the defrost rung is passing when it should not. Meter the rung and find it.' } },
       { id: 'dt', label: 'Meter the DT switch', tool: 'Multimeter', minutes: 8, finding: 'Opens and closes with coil temp. Fine.' },
       { id: 'sh', label: 'Check superheat', tool: 'Gauges', minutes: 8, finding: 'About 9 °F. The coil is frosted evenly and the TXV is feeding it.' },
     ],
@@ -1032,13 +1035,13 @@ export const FAULTS: FaultDef[] = [
     report: 'Night crew says the machine room was banging around 2 AM. Cases are all on temperature; the pack just sounds wrong.',
     cue: 'The LT compressors are noisy and the common suction line into them is frosted well past where insulation ends. The bunker itself is holding −12 °F.',
     readings: [
-      { key: 'ltSH', label: 'LT suction superheat', value: 1, unit: '°F', decimals: 1, jitter: 0.3, status: 'crit', expect: '10–14 °F', after: 11 },
+      { key: 'ltLine', label: 'LT suction line temp at the pack', value: -18.1, unit: '°F', decimals: 1, jitter: 0.3, status: 'crit', expect: '10–14 °F above saturation', after: -11.4 },
       { key: 'ltSuct', label: 'LT suction pressure', value: 204, unit: 'psig', jitter: 2, status: 'warn', expect: '190 psig (−22 °F sat)', after: 191 },
       { key: 'ltAmps', label: 'LT compressor amps (each)', value: 21.4, unit: 'A', decimals: 1, jitter: 0.3, status: 'warn', expect: '17 A', after: 17.2 },
       { key: 'caseT', label: 'Bunker air', value: -12, unit: '°F', jitter: 0.5, status: 'ok', expect: '−12 °F' },
     ],
     checks: [
-      { id: 'probe', label: 'Compare the EEV driver superheat against a clamped probe and gauge', tool: 'Thermocouple / gauges', minutes: 8, key: true, finding: 'Driver is reporting 11 °F superheat. Your clamped probe and gauge on the same line read 1 °F.' },
+      { id: 'probe', label: 'Compare the EEV driver superheat against a clamped probe and gauge', tool: 'Thermocouple / gauges', minutes: 8, key: true, finding: 'Driver is reporting 11 °F superheat. Your clamped probe and gauge on the same line read 1 °F.', instrument: { kind: 'ptchart', refrigerant: 'R-744', psig: 204, lineTempF: -18.1, ask: 'superheat', prompt: 'The driver says 11 °F. Put your own gauge and clamped probe on the same line and work it out yourself — CO2 is a single component, so there is no glide to argue about, only the arithmetic.' } },
       { id: 'well', label: 'Inspect the suction temperature sensor at the case', tool: 'Eyes / hands', minutes: 5, key: true, finding: 'The sensor has come out of its well and is hanging in the return airstream behind the coil. The strap is still on the pipe, empty.' },
       { id: 'eev', label: 'Read the EEV position', tool: 'Controller', minutes: 4, finding: 'Valve at 94 % and holding there.' },
       { id: 'coil', label: 'Look at the bunker coil', tool: 'Eyes', minutes: 5, finding: 'Even light frost across the whole face, fans moving air, drain clear.' },
@@ -1333,7 +1336,7 @@ export const FAULTS: FaultDef[] = [
     report: 'All the frozen doors and the ice cream bunker have been drifting up for a few days. The dairy and meat side is fine.',
     cue: 'The LT pack is running continuously and its discharge gauge is much higher than the tag on the panel says it should be. The MT rack beside it looks unbothered.',
     readings: [
-      { key: 'co2Head', label: 'CO2 condensing pressure', value: 512, unit: 'psig', jitter: 3, status: 'crit', expect: '360 psig (10 °F)', after: 362 },
+      { key: 'co2Head', label: 'CO2 condensing pressure', value: 512, unit: 'psig', jitter: 3, status: 'crit', expect: '360 psig (12 °F)', after: 362 },
       { key: 'approach', label: 'Cascade HX approach', value: 27, unit: '°F', jitter: 0.4, status: 'crit', expect: '8–10 °F', after: 9 },
       { key: 'mtSST', label: 'MT side saturated suction (cascade circuit)', value: 0, unit: '°F', jitter: 0.3, status: 'ok', expect: '0 °F' },
       { key: 'caseT', label: 'Frozen door air', value: 4, unit: '°F', jitter: 0.5, status: 'crit', expect: '−8 °F', after: -8 },
@@ -1370,7 +1373,7 @@ export const FAULTS: FaultDef[] = [
     report: 'Frozen food is climbing again and the CO2 pack is alarming on high discharge. The store swears nothing has been done to it.',
     cue: 'The LT pack is alarming, but next door the MT rack has one compressor sitting idle with its crankcase cold and the suction header is running higher than it should.',
     readings: [
-      { key: 'co2Head', label: 'CO2 condensing pressure', value: 478, unit: 'psig', jitter: 3, status: 'crit', expect: '360 psig (10 °F)', after: 364 },
+      { key: 'co2Head', label: 'CO2 condensing pressure', value: 478, unit: 'psig', jitter: 3, status: 'crit', expect: '360 psig (12 °F)', after: 364 },
       { key: 'mtSST', label: 'MT saturated suction (cascade circuit)', value: 14, unit: '°F', jitter: 0.4, status: 'crit', expect: '0 °F', after: 0 },
       { key: 'mtAmps', label: 'MT compressor #3 amps', value: 0, unit: 'A', decimals: 1, jitter: 0, status: 'crit', expect: '19 A', after: 19.2 },
       { key: 'mtCase', label: 'Dairy case air', value: 39, unit: '°F', jitter: 0.4, status: 'warn', expect: '36 °F', after: 36 },
@@ -1488,7 +1491,7 @@ export const FAULTS: FaultDef[] = [
     ],
     checks: [
       LOTO_CHECK,
-      { id: 'volts', label: 'Read all three phase-to-phase voltages at the rack main lugs', tool: 'Multimeter (V)', minutes: 6, key: true, finding: 'L1-L2 478 V, L1-L3 477 V, L2-L3 441 V. The L2-L3 reading wanders several volts while you watch it.' },
+      { id: 'volts', label: 'Read all three phase-to-phase voltages at the rack main lugs', tool: 'Multimeter (V)', minutes: 6, key: true, finding: 'L1-L2 478 V, L1-L3 477 V, L2-L3 441 V. The L2-L3 reading wanders several volts while you watch it.', instrument: { kind: 'circuit', variant: '208', prompt: 'The control transformer here is fed leg to leg, so both sides of this string are hot and a reading to ground will not find an open. Probe across, not to ground, and walk the run.' } },
       { id: 'lugs', label: 'Open the panel and inspect the incoming lugs', tool: 'Eyes / torque wrench', minutes: 8, key: true, finding: 'L2 lug is discoloured and the insulation is stiffened back about an inch. The lug turns a quarter turn before it takes any torque.' },
       { id: 'thermal', label: 'Thermal-scan the panel with the rack running', tool: 'Thermal camera', minutes: 6, key: true, finding: 'L2 lug at 168 °F. L1 and L3 both under 95 °F.' },
       { id: 'utility', label: 'Read the utility side of the main disconnect', tool: 'Multimeter (V)', minutes: 5, finding: 'All three legs within 2 V of each other, steady. The supply into the building is fine.' },
@@ -1567,7 +1570,7 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'compare', label: 'Read the controller against a thermocouple on the same pipe', tool: 'Thermocouple', minutes: 6, key: true, finding: 'Controller 271 °F. Thermocouple clamped alongside it on the same line: 188 °F. The gap wanders between 50 and 85 °F.' },
-      { id: 'sensor', label: 'Inspect the sensor, its well and its leads back to the board', tool: 'Eyes / meter', minutes: 8, key: true, finding: 'Sensor seated properly. The two-wire lead runs 40 ft back to the board in the same tray as the condenser fan feeders, and the last 8 inches of shield is cut off and hanging loose at the board end.' },
+      { id: 'sensor', label: 'Inspect the sensor, its well and its leads back to the board', tool: 'Eyes / meter', minutes: 8, key: true, finding: 'Sensor seated properly. The two-wire lead runs 40 ft back to the board in the same tray as the condenser fan feeders, and the last 8 inches of shield is cut off and hanging loose at the board end.', instrument: { kind: 'circuit', variant: '120', prompt: 'Follow the leads back with the meter and work the safety string while you are in there. If a device really is opening the circuit, the meter will show you which one — and if nothing is, the alarm is coming from somewhere other than the string.' } },
       { id: 'ohm', label: 'Ohm the sensor out of circuit and compare to its curve', tool: 'Multimeter (Ω)', minutes: 6, key: true, finding: 'Reads dead on its resistance curve at three different temperatures in a cup of ice water and warm water.' },
       { id: 'inj', label: 'Check the DTC filter and the injection feed', tool: 'Hands / eyes', minutes: 5, finding: 'Filter clean, sight glass solid, injection lines cold at every scroll. Working properly.' },
       { id: 'trend', label: 'Pull the discharge temperature trend against the fan staging', tool: 'Controller', minutes: 6, finding: 'Every spike in the reported temperature lands on a condenser fan stage change. The pipe temperature does not move at all.' },
@@ -1869,7 +1872,7 @@ export const FAULTS: FaultDef[] = [
       LOTO_CHECK,
       { id: 'net', label: 'Measure net oil pressure at compressor 4', tool: 'Gauges', minutes: 7, key: true, finding: 'Oil pump discharge minus crankcase pressure comes to 6 psid. The Sentronic cuts out at 9 psid and cuts back in at 12 to 14, after a two minute delay. It is tripping on a real reading.' },
       { id: 'float', label: 'Check the oil level control on compressor 4', tool: 'Eyes / hands', minutes: 8, key: true, finding: 'Oil standing in the feed line right up to the regulator and nothing passing into the crankcase. The float arm does not move when you tip it. The other five regulators are all feeding.' },
-      { id: 'bench', label: 'Bench-check the Sentronic module and sensor', tool: 'Meter / 120 V cord', minutes: 8, key: true, finding: 'Module times out correctly with the sensor open and holds when the sensor connections are jumpered. It is working exactly to spec.' },
+      { id: 'bench', label: 'Bench-check the Sentronic module and sensor', tool: 'Meter / 120 V cord', minutes: 8, key: true, finding: 'Module times out correctly with the sensor open and holds when the sensor connections are jumpered. It is working exactly to spec.', instrument: { kind: 'circuit', variant: '120', prompt: 'Same string you learned in the shop: L1 through the control fuse, the switch and every safety, out to the contactor coil. Number 4 is dropping out, so hopscotch the meter along the run and find which device is opening it.' } },
       { id: 'sep', label: 'Check the oil separator and reservoir', tool: 'Hands / eyes', minutes: 5, finding: 'Separator return warm, reservoir at 88 % and climbing. Separation is fine; the oil just is not getting into number 4.' },
       { id: 'oil', label: 'Look at the oil in the other compressors', tool: 'Eyes', minutes: 4, finding: 'Mid-glass on all five, clean and clear.' },
     ],
