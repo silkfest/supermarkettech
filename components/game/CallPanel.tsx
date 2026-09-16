@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock } from 'lucide-react'
+import { X, ClipboardList, Gauge, Wrench, Search, CheckCircle2, XCircle, Lock, AlertTriangle, BookOpen, Trophy, ArrowRight, Clock, DollarSign } from 'lucide-react'
 import { useLiveReadings } from '@/components/simulation/useLiveReadings'
 import { SYSTEM_META } from '@/lib/game/faults'
 import { scoreCall } from '@/lib/game/engine'
@@ -22,8 +22,28 @@ const STAGES = [
   { key: 'ticket', label: 'Ticket', icon: ClipboardList },
   { key: 'diagnose', label: 'Diagnose', icon: Search },
   { key: 'fix', label: 'Fix', icon: Wrench },
+  { key: 'verify', label: 'Verify', icon: Gauge },
   { key: 'log', label: 'Log', icon: ClipboardList },
 ] as const
+
+/** Stable per-call shuffle: the right answer must not always sit in the same slot. */
+function hash(str: string): number {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) }
+  return h >>> 0
+}
+function shuffled<T>(arr: T[], seed: number): T[] {
+  const a = [...arr]
+  let x = seed || 1
+  for (let i = a.length - 1; i > 0; i--) {
+    x ^= x << 13; x >>>= 0
+    x ^= x >>> 17
+    x ^= x << 5; x >>>= 0
+    const j = x % (i + 1)
+    const t = a[i]; a[i] = a[j]; a[j] = t
+  }
+  return a
+}
 
 const STATUS_TEXT = {
   ok: 'text-emerald-600 dark:text-emerald-400',
@@ -39,13 +59,21 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   const [note, setNote] = useState('')
   const [result, setResult] = useState<CallResult | null>(null)
 
-  const specs = useMemo(() => fault.readings.map(r => ({ key: r.key, target: r.value, jitter: r.jitter ?? 0, wander: r.wander ?? 0, bias: 0 })), [fault])
-  const live = useLiveReadings(specs, 900)
-
   const color = SYSTEM_COLOR[fault.system]
   const stage = result ? 'done' : (call?.stage ?? 'ticket')
+  // Once the repair is in, the gauges settle on the post-fix values.
+  const repaired = stage === 'verify' || stage === 'log' || stage === 'done'
+  const specs = useMemo(() => fault.readings.map(r => ({
+    key: r.key,
+    target: repaired ? r.after ?? r.value : r.value,
+    jitter: r.jitter ?? 0, wander: r.wander ?? 0, bias: 0,
+  })), [fault, repaired])
+  const live = useLiveReadings(specs, 900)
   const correctCause = fault.causes.find(c => c.correct)!
   const correctFix = fault.fixes.find(f => f.correct)!
+  const seed = hash(`${call?.id ?? 'x'}:${fault.id}`)
+  const causeOptions = useMemo(() => shuffled(fault.causes, seed), [fault, seed])
+  const fixOptions = useMemo(() => shuffled(fault.fixes, seed ^ 0x9e3779b9), [fault, seed])
 
   function runCheck(id: string) {
     if (!call || call.checksDone.includes(id)) return
@@ -72,15 +100,18 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
     if (!call) return
     const attempts = call.fixAttempts + 1
     if (opt.correct) {
-      onUpdate({ fixAttempts: attempts, stage: 'log' })
+      onUpdate({ fixAttempts: attempts, stage: 'verify' })
       onSpend(30)
       setFeedback(null)
       setNote(`Found: ${correctCause.label}. Repaired: ${opt.label}. Next: `)
     } else {
       setWrongFixes(w => [...w, opt.id])
-      onUpdate({ fixAttempts: attempts })
+      onUpdate({ fixAttempts: attempts, partsWasted: call.partsWasted + (opt.cost ?? 0) })
       onSpend(20)
-      setFeedback({ tone: 'bad', text: opt.why })
+      setFeedback({
+        tone: 'bad',
+        text: opt.cost ? `${opt.why} That is $${opt.cost} of parts on the truck you will not get back.` : opt.why,
+      })
     }
   }
 
@@ -111,7 +142,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
 
       {/* Stage strip */}
       {stage !== 'done' && (
-        <div className="grid grid-cols-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="grid grid-cols-5 border-b border-slate-200 dark:border-slate-700">
           {STAGES.map((s, i) => {
             const Icon = s.icon
             const active = i === stageIdx
@@ -155,20 +186,32 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
         )}
 
         {/* ── Diagnose ── */}
-        {(stage === 'diagnose' || stage === 'fix' || stage === 'log') && call && (
+        {(stage === 'diagnose' || stage === 'fix' || stage === 'verify' || stage === 'log') && call && (
           <>
             <section>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1"><Gauge size={10} /> Live readings</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
+                <Gauge size={10} /> {repaired ? 'Readings after the repair' : 'Live readings'}
+              </p>
               <div className="grid grid-cols-2 gap-2">
-                {fault.readings.map(r => (
-                  <div key={r.key} className="px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{r.label}</p>
-                    <p className={`text-base font-bold tabular-nums leading-tight ${STATUS_TEXT[r.status]}`}>
-                      {live[r.key].toFixed(r.decimals ?? 0)}<span className="text-[10px] font-medium ml-0.5 text-slate-400">{r.unit}</span>
-                    </p>
-                    {r.expect && <p className="text-[9px] text-slate-400 leading-tight mt-0.5">expect {r.expect}</p>}
-                  </div>
-                ))}
+                {fault.readings.map(r => {
+                  const moved = repaired && r.after !== undefined && r.after !== r.value
+                  return (
+                    <div key={r.key} className={`px-2.5 py-2 rounded-lg border ${moved
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30'
+                      : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700'}`}>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{r.label}</p>
+                      <p className={`text-base font-bold tabular-nums leading-tight ${repaired ? STATUS_TEXT.ok : STATUS_TEXT[r.status]}`}>
+                        {live[r.key].toFixed(r.decimals ?? 0)}<span className="text-[10px] font-medium ml-0.5 text-slate-400">{r.unit}</span>
+                      </p>
+                      {moved && (
+                        <p className="text-[9px] text-slate-400 leading-tight mt-0.5 tabular-nums">
+                          was {r.value.toFixed(r.decimals ?? 0)} {r.unit}
+                        </p>
+                      )}
+                      {!moved && r.expect && <p className="text-[9px] text-slate-400 leading-tight mt-0.5">expect {r.expect}</p>}
+                    </div>
+                  )
+                })}
               </div>
             </section>
 
@@ -201,7 +244,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
             {stage === 'diagnose' && (
               <section>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Call it — what&apos;s the root cause?</p>
-                <OptionList options={fault.causes} wrong={wrongCauses} onPick={pickCause} />
+                <OptionList options={causeOptions} wrong={wrongCauses} onPick={pickCause} />
               </section>
             )}
 
@@ -220,8 +263,25 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                 {fault.loto && call.lotoDone && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Lock size={11} /> Locked out and verified dead.</p>
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Repair — pick the fix</p>
-                <OptionList options={fault.fixes} wrong={wrongFixes} onPick={pickFix} />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Repair — pick the fix <span className="normal-case tracking-normal font-normal">— wrong parts are billed to the company, not the customer</span></p>
+                <OptionList options={fixOptions} wrong={wrongFixes} onPick={pickFix} />
+              </section>
+            )}
+
+            {stage === 'verify' && (
+              <section className="space-y-2">
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-[12px]">
+                  <Wrench size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div><span className="font-semibold text-emerald-700 dark:text-emerald-300">Repaired: {correctFix.label}</span><p className="text-slate-600 dark:text-slate-400 mt-0.5">{correctFix.why}</p></div>
+                </div>
+                <p className="text-[12px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                  Do not leave yet. Let it run and watch the numbers come back — this is what the equipment should look like
+                  when it is right, and it is the only proof the repair actually worked.
+                </p>
+                <button onClick={() => onUpdate({ stage: 'log' })}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">
+                  Readings are back in range <ArrowRight size={13} />
+                </button>
               </section>
             )}
 
@@ -229,7 +289,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
               <section className="space-y-2">
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-[12px]">
                   <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div><span className="font-semibold text-emerald-700 dark:text-emerald-300">Fixed: {correctFix.label}</span><p className="text-slate-600 dark:text-slate-400 mt-0.5">{correctFix.why}</p></div>
+                  <div><span className="font-semibold text-emerald-700 dark:text-emerald-300">Fixed and verified: {correctFix.label}</span><p className="text-slate-600 dark:text-slate-400 mt-0.5">{correctFix.why}</p></div>
                 </div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Service note</p>
                 <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
@@ -242,7 +302,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
               </section>
             )}
 
-            {feedback && stage !== 'log' && (
+            {feedback && stage !== 'log' && stage !== 'verify' && (
               <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-[12px] ${feedback.tone === 'good'
                 ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
                 : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-200'}`}>
@@ -267,6 +327,9 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
               <ScoreRow label="Efficiency" pts={result.efficiencyPts} max={20} detail={`${result.checksUsed} checks · ${result.keyChecksTotal} needed`} />
               {result.safetyPenalty > 0 && (
                 <li className="flex items-center gap-2 text-red-600 dark:text-red-400"><AlertTriangle size={12} /> Safety: worked live without lockout <span className="ml-auto font-bold tabular-nums">−{result.safetyPenalty}</span></li>
+              )}
+              {result.partsWasted > 0 && (
+                <li className="flex items-center gap-2 text-red-600 dark:text-red-400"><DollarSign size={12} /> Parts thrown at it that did not fix it <span className="ml-auto font-bold tabular-nums">${result.partsWasted}</span></li>
               )}
             </ul>
             {(fault.knowledge?.length ?? 0) > 0 && (

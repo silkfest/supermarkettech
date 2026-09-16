@@ -50,6 +50,8 @@ export interface Reading {
   status: 'ok' | 'warn' | 'crit'
   /** What a healthy reading would be, shown as reference. */
   expect?: string
+  /** Value once the correct repair has settled in, shown at the verify step. Defaults to `value`. */
+  after?: number
 }
 
 export interface Check {
@@ -68,6 +70,8 @@ export interface Option {
   label: string
   correct?: boolean
   why: string
+  /** Parts off the truck, in dollars. A wrong fix bills the company for these. */
+  cost?: number
 }
 
 export interface FaultDef {
@@ -96,7 +100,7 @@ export interface Character {
   role: 'apprentice' | 'journeyman'
 }
 
-export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'log' | 'done'
+export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'verify' | 'log' | 'done'
 
 export interface ActiveCall {
   id: string
@@ -110,6 +114,8 @@ export interface ActiveCall {
   causeAttempts: number
   fixAttempts: number
   minutesSpent: number
+  /** Dollars of parts thrown at the wrong diagnosis. */
+  partsWasted: number
 }
 
 export interface CallResult {
@@ -126,6 +132,7 @@ export interface CallResult {
   fixAttempts: number
   checksUsed: number
   keyChecksTotal: number
+  partsWasted: number
   note: string
   minutesSpent: number
 }

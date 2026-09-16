@@ -178,8 +178,19 @@ export const LESSONS: Lesson[] = [
         bullets: [
           'Amps vs RLA — well under is normal at low load; well over means high head, low voltage, or a mechanical problem.',
           'Discharge line temperature — over ~225 °F six inches from the compressor means the internal temperature is heading past where oil breaks down. Find the high compression ratio (low suction, high head) causing it.',
-          'Windings — ohm all three legs; they should match. Any leg to ground on a good meter should read open; use a megger for the real answer.',
           'Pumping — high suction and low head together on a compressor that runs means it is not compressing: broken valves or a failed scroll set. Confirm with a pump-down test before you condemn it.',
+        ],
+      },
+      {
+        heading: 'Ohming windings — and why it depends on the motor',
+        body: [
+          'Power off, leads disconnected, and know which kind of motor you have before you decide a reading is bad. The two cases read completely differently, and judging a single-phase compressor by the three-phase rule is how good compressors get condemned.',
+        ],
+        bullets: [
+          'Three-phase (most rack semi-hermetics and larger scrolls) — T1-T2, T2-T3 and T1-T3 should all read the SAME, within a few percent. One leg off from the other two is a winding problem.',
+          'Single-phase (reach-ins, ice machines, small condensing units — PSC and CSR hermetics) — three terminals, Common, Start and Run, and the readings are SUPPOSED to differ. Start winding (C-S) is the high one: more turns of finer wire. Run winding (C-R) is the low one. And S-R is the two in series, so the check is C-S + C-R = S-R.',
+          'Finding Common on an unmarked single-phase compressor: measure all three pairs. The LARGEST reading is Start to Run, so the terminal left out of that pair is Common.',
+          'Either type: any winding to the shell should read open. A decent meter reading "OL" is not proof — use a megger for the real answer, and expect a burnout to show up there first.',
         ],
       },
     ],
@@ -187,7 +198,7 @@ export const LESSONS: Lesson[] = [
       { q: 'A rack compressor runs, suction is high, head is low, and the case never satisfies. Most likely:', options: ['Low charge', 'Broken discharge valve — not pumping', 'Dirty condenser', 'TXV starving'], answer: 1, why: 'High suction and low head on a running compressor means it is not compressing. Low charge would drop suction, not raise it.' },
       { q: 'What is the practical limit for three-phase voltage imbalance?', options: ['10 %', '5 %', '2 %', '0.1 %'], answer: 2, why: 'Above about 2 % imbalance winding heating climbs fast — 5 % roughly halves motor life.' },
       { q: 'Discharge line reads 240 °F near the compressor. The right conclusion is:', options: ['Normal for a freezer', 'The compressor is being run at a high compression ratio — find why suction is low or head is high', 'Add oil', 'Replace the contactor'], answer: 1, why: 'Hot discharge is a symptom of compression ratio. Fix the low-suction or high-head cause before the oil cokes.' },
-      { q: 'Why is liquid refrigerant entering a compressor a problem?', options: ['It raises head pressure', 'Liquid will not compress — it breaks valves and washes out oil', 'It makes the compressor run backwards', 'It trips the HPCO'], answer: 1, why: 'Slugging and floodback are mechanical damage and oil dilution, both from liquid where only vapor belongs.' },
+      { q: 'A single-phase reach-in compressor ohms C-R 2.1 Ω, C-S 7.8 Ω, S-R 9.9 Ω. This compressor is…', options: ['Bad — the windings do not match', 'Normal — start reads higher than run, and C-S + C-R = S-R', 'Shorted to ground', 'Wired backwards'], answer: 1, why: 'Single-phase windings are supposed to differ: the start winding is the high reading, and the two in series equal S-R. Only three-phase windings should match each other.' },
     ],
     knowledge: [{ slug: 'copeland', label: 'Copeland Compressors' }, { slug: 'compound-compressors', label: 'Compound Compressors' }],
   },

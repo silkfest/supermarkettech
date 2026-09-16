@@ -4,8 +4,9 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { Shield, AlertTriangle, CheckCircle, ChevronRight, UserCircle } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, ChevronRight, UserCircle, GraduationCap } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
+import type { LevelId, TeamTrainingRow } from '@/lib/game/progress'
 
 import { ROLE_LABEL, ROLE_COLOR } from '@/lib/constants'
 import type { Role, Status } from '@/lib/constants'
@@ -33,11 +34,41 @@ function certStatus(certs: Cert[]): 'none' | 'expiring' | 'expired' | 'ok' {
   return 'ok'
 }
 
+const GRADE_COLOR: Record<string, string> = {
+  A: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400',
+  B: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-400',
+  C: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400',
+}
+const SHIFT_LEVELS: { id: LevelId; label: string }[] = [
+  { id: 'gas-station', label: 'Gas station' },
+  { id: 'supermarket', label: 'Supermarket' },
+]
+
+/** Best grade earned on each shift level, as small chips. */
+function GradeChips({ row }: { row: TeamTrainingRow }) {
+  const earned = SHIFT_LEVELS.filter(l => row.levels[l.id]?.bestGrade)
+  if (earned.length === 0) return null
+  return (
+    <>
+      {earned.map(l => {
+        const g = row.levels[l.id]!.bestGrade!
+        return (
+          <span key={l.id} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${GRADE_COLOR[g] ?? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
+            {l.label} {g}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 export default function TechniciansPage() {
   const router = useRouter()
   const [users, setUsers]   = useState<UserRow[]>([])
   const [certs, setCerts]   = useState<Cert[]>([])
   const [pmCounts, setPmCounts] = useState<Record<string, number>>({})
+  const [training, setTraining] = useState<Record<string, TeamTrainingRow>>({})
+  const [stationsTotal, setStationsTotal] = useState(0)
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
@@ -64,6 +95,17 @@ export default function TechniciansPage() {
         if (id) counts[id] = (counts[id] ?? 0) + 1
       }
       setPmCounts(counts)
+
+      // Training lives in the game save, which only the server can read.
+      try {
+        const res = await fetch('/api/game/team-progress', { signal: AbortSignal.timeout(5000) })
+        if (res.ok) {
+          const body = await res.json() as { stationsTotal: number; rows: TeamTrainingRow[] }
+          setStationsTotal(body.stationsTotal)
+          setTraining(Object.fromEntries(body.rows.map(r => [r.userId, r])))
+        }
+      } catch { /* a nice-to-have — never hold up the roster for it */ }
+
       setLoading(false)
     }
     load()
@@ -78,6 +120,11 @@ export default function TechniciansPage() {
     if (!certsByUser[c.user_id]) certsByUser[c.user_id] = []
     certsByUser[c.user_id].push(c)
   }
+
+  const trainingRows = Object.values(training)
+  const graduates = trainingRows.filter(r => r.graduated).length
+  const started = trainingRows.length
+  const shiftsLogged = trainingRows.reduce((n, r) => n + SHIFT_LEVELS.reduce((m, l) => m + (r.levels[l.id]?.shifts ?? 0), 0), 0)
 
   const CertIcon = ({ status }: { status: ReturnType<typeof certStatus> }) => {
     if (status === 'none')     return <span className="text-xs text-slate-400 dark:text-slate-500">No certs</span>
@@ -99,10 +146,37 @@ export default function TechniciansPage() {
           </div>
         )}
 
+        {/* ColdCall training at a glance */}
+        {stationsTotal > 0 && Object.keys(training).length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <GraduationCap size={15} className="text-blue-600 dark:text-blue-400" />
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">ColdCall training</p>
+              <button onClick={() => router.push('/game')}
+                className="ml-auto text-xs text-blue-600 dark:text-blue-400 hover:underline">Open the game</button>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-200 tabular-nums">{graduates}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">graduated Trade School</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-200 tabular-nums">{started}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">of {users.length} have started</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-200 tabular-nums">{shiftsLogged}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">shifts worked</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {users.map(u => {
             const cs = certStatus(certsByUser[u.id] ?? [])
             const jobCount = pmCounts[u.id] ?? 0
+            const tr = training[u.id]
             return (
               <button
                 key={u.id}
@@ -135,6 +209,15 @@ export default function TechniciansPage() {
                       <span className="text-slate-400 dark:text-slate-500">{jobCount} PM{jobCount !== 1 ? 's' : ''}</span>
                     )}
                   </div>
+                  {tr && (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                      <GraduationCap size={11} className={tr.graduated ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'} />
+                      <span className={`text-xs ${tr.graduated ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {tr.graduated ? 'Trade School complete' : `Trade School ${tr.stationsPassed}/${stationsTotal}`}
+                      </span>
+                      <GradeChips row={tr} />
+                    </div>
+                  )}
                 </div>
                 <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-1" />
               </button>

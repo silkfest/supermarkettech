@@ -30,7 +30,7 @@ export const LEVELS: LevelDef[] = [
     order: 1,
     name: 'Trade School',
     subtitle: 'Refrigeration basics',
-    description: 'Five stations, no clock. Learn how the cycle works, read a PT chart, use a meter, understand defrost, and lock things out before you touch them.',
+    description: 'Twelve stations, no clock. The cycle, PT charts, superheat and subcooling, compressors, TXVs, defrost, airflow, drains — plus a meter bench and live 120 V and 208 V panels to troubleshoot before anyone hands you a real one.',
     kind: 'classroom',
     map: CLASSROOM_MAP,
     faultPool: [],
