@@ -1,6 +1,8 @@
 import { CLASSROOM_MAP } from './maps/classroom'
 import { GAS_STATION_MAP } from './maps/gas-station'
 import { SUPERMARKET_MAP } from './maps/supermarket'
+import { GLYCOL_STORE_MAP } from './maps/glycol-store'
+import { CASCADE_STORE_MAP } from './maps/cascade-store'
 import { CO2_STORE_MAP } from './maps/co2-store'
 import { LESSONS } from './lessons'
 import type { GameMap, Character } from './types'
@@ -81,8 +83,66 @@ export const LEVELS: LevelDef[] = [
     passGrades: ['A', 'B', 'C'],
   },
   {
-    id: 'co2-store',
+    id: 'glycol-store',
     order: 4,
+    name: 'Northside Market',
+    subtitle: 'Glycol secondary loop',
+    description: 'The medium-temp cases here are not fed refrigerant at all. A DX chiller cools glycol through a plate heat exchanger and two pumps push it around the floor. Low temp stays DX. Half your calls are hydronic problems wearing a refrigeration hat, and a refractometer earns its place on the truck.',
+    kind: 'shift',
+    map: GLYCOL_STORE_MAP,
+    faultPool: [
+      'gly_air_locked', 'gly_hx_approach', 'gly_concentration', 'gly_balancing_valve',
+      'gly_pump_vfd', 'gly_expansion_tank',
+      'dt_failed_open', 'condensate_clog', 'dry_trap', 'fan_shorted', 'contactor_burned',
+      'contactor_welded', 'frozen_drain', 'floodback_bulb',
+      'economizer_stuck', 'filter_clogged', 'condensate_pump',
+    ],
+    shiftLenMin: 8 * 60,
+    spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 85, 135, 185, 235, 285, 335, 385] },
+    maxOpen: { apprentice: 2, journeyman: 3 },
+    passGrades: ['A', 'B', 'C'],
+    briefing: {
+      lead: 'Two loops, and only one of them has refrigerant in it. Get clear which side of the plate pack you are standing on before you start diagnosing.',
+      points: [
+        { head: 'The cases are a hydronic system', body: 'Medium temp runs on 38–40 % propylene glycol at about 20 °F supply, with 8–10 °F across each case coil and 26–30 psid across the pumps. A warm case is a flow problem or a temperature problem, and those are two different calls. Take supply and return at the case before you touch anything else.' },
+        { head: 'The plate pack is where the two sides meet', body: 'Design approach is 6–8 °F between the refrigerant saturated suction and the glycol leaving. If the approach is wide, the heat is not getting through the plates. Pressure drop across the glycol side tells you why: three times design means the channels are packed.' },
+        { head: 'Concentration is not optional', body: 'At 38 % the loop freezes around −10 °F. Top it up with water a couple of times and you are at 18 % with a freeze point of 19 °F — above your own supply temperature. It slushes in the coldest plate channels, flow drops, and the chiller starts tripping on low suction every afternoon. Carry a refractometer and use it.' },
+        { head: 'Air is a fault, not a nuisance', body: 'Every time a circuit is opened for a coil or a fan, air goes in. Air at the high points starves the far end of the loop and makes a pump sound like it is passing gravel. Purging is part of the job, not an afterthought.' },
+        { head: 'Two pumps only help if both are in AUTO', body: 'Duty and standby exist so a motor failure is not a store failure. A selector switch left in OFF after a PM turns a redundant pump house into a single point of failure, and nobody finds out until the cases are at 48 °F.' },
+      ],
+    },
+  },
+  {
+    id: 'cascade-store',
+    order: 5,
+    name: 'Harbour Foods',
+    subtitle: 'CO2 cascade',
+    description: 'Medium temp on a conventional R-448A rack, low temp on a subcritical CO2 pack that rejects its heat into the MT side instead of to outdoor air. Two systems welded together by one vessel — which is why the frozen food complains first when the MT rack has a problem.',
+    kind: 'shift',
+    map: CASCADE_STORE_MAP,
+    faultPool: [
+      'casc_hx_approach', 'casc_mt_starved', 'casc_no_pumpdown', 'casc_oil_return', 'casc_phase_monitor',
+      'dt_failed_open', 'door_ajar', 'txv_starved', 'condensate_clog', 'dry_trap',
+      'fan_shorted', 'contactor_welded', 'economizer_stuck', 'filter_clogged', 'condensate_pump',
+    ],
+    shiftLenMin: 8 * 60,
+    spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 85, 135, 185, 235, 285, 335, 385] },
+    maxOpen: { apprentice: 2, journeyman: 3 },
+    passGrades: ['A', 'B', 'C'],
+    briefing: {
+      lead: 'Your first CO2 store, and the gentle one: the low side is subcritical, so the numbers still behave. What is new is that two systems are tied together through one vessel.',
+      points: [
+        { head: 'The CO2 condenses into the MT rack, not into outdoor air', body: 'The cascade heat exchanger is the whole relationship. CO2 condenses at about 10 °F (360 psig) on one side; R-448A evaporates at about 0 °F on the other. Design approach is 8–10 °F. That one number tells you which side of the vessel your problem is on.' },
+        { head: 'An LT complaint often starts on the MT rack', body: 'Take the MT rack a compressor short and its suction floats up. The CO2 now has to condense warmer, head climbs, and the frozen food is the first thing anyone notices. Read the approach before you touch the CO2 pack: normal approach with a warm MT side means the call is next door.' },
+        { head: 'Oil goes where it is cold and stays there', body: 'On the CO2 side, oil that gets past the separator collects in the cascade vessel and in the case coils, and it does not come back on its own. A widening approach with compressors sitting low in the glass is oil, not fouling.' },
+        { head: 'Never shut the MT rack down without a plan for the CO2', body: 'Stop the MT rack and the CO2 has nothing to condense into. It warms to room temperature and the receiver climbs toward the relief within a couple of hours. There is an auxiliary condensing unit on the receiver for this — check what panel feeds it before you lock anything out.' },
+        { head: 'CO2 pressures are still four times what you expect', body: 'LT suction sits near 190 psig at −22 °F saturated, the receiver near 500, and standstill goes wherever the room temperature takes it. Subcritical does not mean low pressure.' },
+      ],
+    },
+  },
+  {
+    id: 'co2-store',
+    order: 6,
     name: 'Summit Grocers',
     subtitle: 'CO2 transcritical booster',
     description: 'Same sales floor, completely different machine room. One booster pack running MT and LT, a flash tank instead of a receiver, an intercooler between the stages, and a gas cooler that runs above the critical point every warm afternoon. Pressures you cannot guess at, and a gas detector on the wall for a reason.',
@@ -92,6 +152,7 @@ export const LEVELS: LevelDef[] = [
       'co2_hpv_stuck', 'co2_fgbv_closed', 'co2_gc_fan_bank', 'co2_intercooler_dry',
       'co2_standstill', 'co2_lt_eev_overfeed', 'co2_leak_alarm',
       'dt_failed_open', 'door_ajar', 'condensate_clog', 'dry_trap', 'fan_shorted', 'contactor_welded',
+      'economizer_stuck', 'filter_clogged', 'condensate_pump',
     ],
     shiftLenMin: 8 * 60,
     spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 85, 135, 185, 235, 285, 335, 385] },
@@ -131,10 +192,20 @@ export function levelUnlock(p: GameProgress, id: LevelId): { ok: boolean; reason
       const ok = !!g && LEVEL_BY_ID['gas-station'].passGrades.includes(g)
       return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at the gas station' }
     }
-    case 'co2-store': {
+    case 'glycol-store': {
       const g = p.levels['supermarket']?.bestGrade
       const ok = !!g && LEVEL_BY_ID['supermarket'].passGrades.includes(g)
       return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at the supermarket' }
+    }
+    case 'cascade-store': {
+      const g = p.levels['glycol-store']?.bestGrade
+      const ok = !!g && LEVEL_BY_ID['glycol-store'].passGrades.includes(g)
+      return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at Northside Market' }
+    }
+    case 'co2-store': {
+      const g = p.levels['cascade-store']?.bestGrade
+      const ok = !!g && LEVEL_BY_ID['cascade-store'].passGrades.includes(g)
+      return ok ? { ok: true, reason: '' } : { ok: false, reason: 'Earn a C or better at Harbour Foods' }
     }
   }
 }

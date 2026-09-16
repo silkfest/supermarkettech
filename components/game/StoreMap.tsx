@@ -646,8 +646,11 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
       // Booster pack: an MT skid and a smaller LT skid side by side under one
       // set of headers — discharge to the gas cooler, MT suction, LT suction.
       const row = y + h * 0.62
-      const mtX = [x + 26, x + 56, x + 86]
-      const ltX = [x + 132, x + 160]
+      const rMt = Math.min(10, w * 0.05)
+      const rLt = Math.min(8, w * 0.042)
+      const mtX = [0.13, 0.26, 0.39].map(f => x + w * f)
+      const ltX = [0.62, 0.75].map(f => x + w * f)
+      const divX = x + w * 0.53
       return (
         <g className="pointer-events-none">
           <Extruded x={x} y={y} w={w} h={h} top="fill-slate-300 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
@@ -656,28 +659,28 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
           <rect x={x + 8} y={y + 22} width={w - 16} height="4" rx="2" className="fill-cyan-300 dark:fill-cyan-600" opacity="0.9" />
           {mtX.map((cx, i) => (
             <g key={`mt${i}`}>
-              <circle cx={cx} cy={row} r="10" className="fill-slate-500 dark:fill-slate-500" />
-              <circle cx={cx} cy={row} r="6.5" className="fill-slate-700 dark:fill-slate-800" />
-              <circle cx={cx} cy={row} r="2" fill="#10b981">
+              <circle cx={cx} cy={row} r={rMt} className="fill-slate-500 dark:fill-slate-500" />
+              <circle cx={cx} cy={row} r={rMt * 0.65} className="fill-slate-700 dark:fill-slate-800" />
+              <circle cx={cx} cy={row} r={rMt * 0.2} fill="#10b981">
                 <animate attributeName="opacity" values="1;0.3;1" dur={`${1.1 + i * 0.25}s`} repeatCount="indefinite" />
               </circle>
             </g>
           ))}
-          <line x1={x + 112} x2={x + 112} y1={row - 15} y2={row + 15} className="stroke-slate-500 dark:stroke-slate-400" strokeWidth="1" opacity="0.6" />
+          <line x1={divX} x2={divX} y1={row - 15} y2={row + 15} className="stroke-slate-500 dark:stroke-slate-400" strokeWidth="1" opacity="0.6" />
           {ltX.map((cx, i) => (
             <g key={`lt${i}`}>
-              <circle cx={cx} cy={row} r="8" className="fill-slate-400 dark:fill-slate-600" />
-              <circle cx={cx} cy={row} r="5" className="fill-slate-700 dark:fill-slate-900" />
-              <circle cx={cx} cy={row} r="1.7" fill="#38bdf8">
+              <circle cx={cx} cy={row} r={rLt} className="fill-slate-400 dark:fill-slate-600" />
+              <circle cx={cx} cy={row} r={rLt * 0.62} className="fill-slate-700 dark:fill-slate-900" />
+              <circle cx={cx} cy={row} r={rLt * 0.21} fill="#38bdf8">
                 <animate attributeName="opacity" values="1;0.3;1" dur={`${1.4 + i * 0.3}s`} repeatCount="indefinite" />
               </circle>
             </g>
           ))}
-          <text x={x + 56} y={row + 24} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">MT</text>
-          <text x={x + 146} y={row + 24} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">LT</text>
-          <rect x={x + w - 28} y={y + 34} width="18" height="26" rx="2" className="fill-slate-200 dark:fill-slate-900 stroke-slate-500" strokeWidth="1" />
-          <circle cx={x + w - 19} cy={y + 40} r="1.6" fill="#22c55e" />
-          {[0, 1].map(k => <line key={k} x1={x + w - 24} x2={x + w - 14} y1={y + 47 + k * 4} y2={y + 47 + k * 4} className="stroke-slate-400" strokeWidth="1" />)}
+          <text x={x + w * 0.26} y={row + 22} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">MT</text>
+          <text x={x + w * 0.685} y={row + 22} textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.6" className="fill-slate-600 dark:fill-slate-300">LT</text>
+          <rect x={x + w - 24} y={row - 13} width="16" height="26" rx="2" className="fill-slate-200 dark:fill-slate-900 stroke-slate-500" strokeWidth="1" />
+          <circle cx={x + w - 16} cy={row - 7} r="1.6" fill="#22c55e" />
+          {[0, 1].map(k => <line key={k} x1={x + w - 20} x2={x + w - 12} y1={row + k * 4} y2={row + k * 4} className="stroke-slate-400" strokeWidth="1" />)}
         </g>
       )
     }
@@ -709,6 +712,79 @@ function EquipmentGlyph({ node }: { node: EquipmentNode }) {
           <circle cx={cx} cy={y + h - 4} r="1.8" fill="#22c55e">
             <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite" />
           </circle>
+        </g>
+      )
+    }
+    // ── Secondary loop / cascade machine room ─────────────────────────────
+    case 'glycol-skid': {
+      // Two inline pumps on a base frame, duty and standby.
+      const cy = y + h * 0.55
+      const pumps = [x + w * 0.32, x + w * 0.68]
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-300 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 6} y={y + 8} width={w - 12} height="5" rx="2.5" className="fill-teal-300 dark:fill-teal-600" opacity="0.9" />
+          {pumps.map((cx, i) => (
+            <g key={i}>
+              <circle cx={cx} cy={cy} r="11" className="fill-slate-400 dark:fill-slate-600" />
+              <circle cx={cx} cy={cy} r="7" className="fill-slate-600 dark:fill-slate-800" />
+              <circle cx={cx} cy={cy} r="2" fill={i === 0 ? '#10b981' : '#94a3b8'}>
+                {i === 0 && <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite" />}
+              </circle>
+              <rect x={cx - 3} y={cy + 11} width="6" height={Math.max(4, y + h - 8 - (cy + 11))} className="fill-slate-500 dark:fill-slate-700" />
+            </g>
+          ))}
+          {label}
+        </g>
+      )
+    }
+    case 'plate-hx': {
+      // Brazed plate pack — a stack of thin plates between two end covers.
+      const n = Math.max(5, Math.round(w / 7))
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 4} y={y + 6} width={w - 8} height={h * 0.5} rx="2" className="fill-slate-400 dark:fill-slate-500" />
+          {Array.from({ length: n }).map((_, k) => (
+            <line key={k} x1={x + 7 + k * ((w - 14) / (n - 1))} x2={x + 7 + k * ((w - 14) / (n - 1))} y1={y + 8} y2={y + 6 + h * 0.5 - 2}
+              className="stroke-slate-200 dark:stroke-slate-300" strokeWidth="1.2" opacity="0.8" />
+          ))}
+          <circle cx={x + 8} cy={y + h * 0.72} r="3" className="fill-teal-400 dark:fill-teal-500" />
+          <circle cx={x + w - 8} cy={y + h * 0.72} r="3" className="fill-cyan-400 dark:fill-cyan-500" />
+          {label}
+        </g>
+      )
+    }
+    case 'expansion-tank': {
+      // Small vertical bladder tank with a sight glass and a relief on top.
+      const cx = x + w / 2, cy = y + h / 2 + 3
+      const r = Math.min(w, h) * 0.3
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <circle cx={cx} cy={cy} r={r} className="fill-teal-100 dark:fill-teal-900 stroke-slate-500 dark:stroke-slate-800" strokeWidth="1.4" />
+          <path d={`M ${cx - r} ${cy} a ${r} ${r} 0 0 0 ${r * 2} 0 Z`} className="fill-teal-400 dark:fill-teal-600" opacity="0.85" />
+          <circle cx={cx} cy={y + 6} r="2.2" className="fill-red-500" />
+          {label}
+        </g>
+      )
+    }
+    case 'cascade-hx': {
+      // The vessel where the LT side rejects into the MT side: one shell, two
+      // circuits, frost on the cold end.
+      const cy = y + h / 2 + 3
+      return (
+        <g className="pointer-events-none">
+          <Extruded x={x} y={y} w={w} h={h} top="fill-slate-200 dark:fill-slate-700" front="fill-slate-500 dark:fill-slate-900" />
+          <rect x={x + 5} y={cy - 9} width={w - 10} height="18" rx="9"
+            className="fill-slate-100 dark:fill-slate-400 stroke-slate-500 dark:stroke-slate-800" strokeWidth="1.2" />
+          <rect x={x + 5} y={cy - 9} width={(w - 10) * 0.45} height="18" rx="9" className="fill-sky-200 dark:fill-sky-700" opacity="0.9" />
+          {[0, 1, 2, 3].map(k => (
+            <line key={k} x1={x + 10 + k * 6} x2={x + 10 + k * 6} y1={cy - 9} y2={cy + 9} className="stroke-white dark:stroke-sky-200" strokeWidth="1.4" opacity="0.8" />
+          ))}
+          <circle cx={x + 6} cy={y + h - 9} r="2.4" className="fill-cyan-400 dark:fill-cyan-500" />
+          <circle cx={x + w - 6} cy={y + h - 9} r="2.4" className="fill-amber-400 dark:fill-amber-500" />
+          {label}
         </g>
       )
     }
