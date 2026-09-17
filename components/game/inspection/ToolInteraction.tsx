@@ -2,8 +2,16 @@
 import { useState } from 'react'
 import type { Measurement } from '@/lib/game/inspection/types'
 
-/** InstrumentPanel's shared measurement surface: function, leads, then sampling.
- * Results are owned by the call, never by this disposable instrument view. */
+const FUNCTIONS = [
+  { mode: 'volts', glyph: 'V', label: 'Voltage' },
+  { mode: 'ohms', glyph: 'Ω', label: 'Resistance' },
+  { mode: 'amps', glyph: 'A~', label: 'Clamp current' }
+] as const
+
+/** InstrumentPanel's shared measurement surface. Choosing the function is the
+ * decision that matters — ohms on a live circuit is the mistake this teaches —
+ * so that stays a real choice, while the leads go to the labelled points with
+ * it rather than being toggled one at a time. Results are owned by the call. */
 export default function ToolInteraction({
   measurement,
   reading,
@@ -13,8 +21,11 @@ export default function ToolInteraction({
   reading?: string
   onSample: (mode: string, terminals: string[]) => void
 }) {
-  const [mode, setMode] = useState('volts')
-  const [terminals, setTerminals] = useState<string[]>([])
+  const [mode, setMode] = useState('')
+  const needsMode = !!measurement.mode
+  const terminals = measurement.terminals ? [...measurement.terminals] : []
+  const clamp = mode === 'amps'
+  const ready = !needsMode || !!mode
   return (
     <div className="rounded-xl border-2 border-amber-400 bg-slate-900 text-white p-3 space-y-3">
       <output
@@ -24,54 +35,42 @@ export default function ToolInteraction({
         {reading ?? '— — —'}
       </output>
       <p className="text-xs font-semibold">{measurement.label}</p>
-      {measurement.mode && (
-        <label className="block text-xs">
-          Instrument function
-          <select
-            aria-label="Instrument function"
-            value={mode}
-            onChange={(e) => {
-              setMode(e.target.value)
-              setTerminals([])
-            }}
-            className="block w-full bg-slate-700 rounded p-2 mt-1"
-          >
-            <option value="volts">V — voltage</option>
-            <option value="ohms">Ω — resistance</option>
-            <option value="amps">A~ — clamp current</option>
-          </select>
-        </label>
-      )}
-      {measurement.terminals && (
-        <div className="grid grid-cols-2 gap-2">
-          {measurement.terminals.map((t, i) => (
+      {needsMode && (
+        <div role="radiogroup" aria-label="Instrument function" className="grid grid-cols-3 gap-2">
+          {FUNCTIONS.map((f) => (
             <button
-              key={t}
-              aria-pressed={terminals.includes(t)}
-              onClick={() =>
-                setTerminals((old) =>
-                  old.includes(t) ? old.filter((v) => v !== t) : [...old, t]
-                )
-              }
-              className={`min-h-12 p-2 border-2 rounded text-xs ${terminals.includes(t) ? 'border-emerald-400 bg-emerald-900' : i === 0 ? 'border-red-400' : 'border-slate-400'}`}
+              key={f.mode}
+              role="radio"
+              aria-checked={mode === f.mode}
+              aria-label={f.label}
+              onClick={() => setMode(f.mode)}
+              className={`min-h-12 rounded border-2 px-1 py-2 leading-tight ${mode === f.mode ? 'border-amber-300 bg-amber-400 text-slate-950' : 'border-slate-500 bg-slate-800 text-slate-200'}`}
             >
-              {measurement.mode === 'amps'
-                ? i === 0
-                  ? 'Position around: '
-                  : 'Close: '
-                : i === 0
-                  ? 'Red lead: '
-                  : 'Black lead: '}
-              {t}
+              <span className="block font-mono text-base font-bold">{f.glyph}</span>
+              <span className="block text-[10px]">{f.label}</span>
             </button>
           ))}
         </div>
       )}
+      {!!terminals.length && (
+        <p className={`text-[11px] rounded border p-2 ${ready ? 'border-emerald-500 bg-emerald-950 text-emerald-200' : 'border-slate-600 text-slate-400'}`}>
+          {ready ? (
+            clamp ? (
+              <>Jaw around <b>{terminals[0]}</b>, closed on <b>{terminals[1]}</b>.</>
+            ) : (
+              <>Red lead on <b>{terminals[0]}</b>, black on <b>{terminals[1]}</b>.</>
+            )
+          ) : (
+            'Choose the instrument function and the leads go to the labelled test points.'
+          )}
+        </p>
+      )}
       <button
-        onClick={() => onSample(mode, terminals)}
-        className="w-full min-h-11 bg-amber-400 text-slate-950 font-bold rounded text-xs"
+        disabled={!ready}
+        onClick={() => onSample(needsMode ? mode : '', terminals)}
+        className="w-full min-h-12 bg-amber-400 text-slate-950 font-bold rounded text-sm disabled:opacity-40 disabled:bg-slate-700 disabled:text-slate-400"
       >
-        {measurement.mode ? 'Read instrument' : 'Place probe and sample'}
+        {ready ? 'Read it' : 'Select a function first'}
       </button>
     </div>
   )

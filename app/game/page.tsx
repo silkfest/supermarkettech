@@ -253,7 +253,7 @@ export default function ColdCallPage() {
         ))
     const hud = (compact: boolean) => view === 'classroom'
       ? <StationList progress={progress} nearId={nearId} compact={compact} onWalkTo={id => setWalkTo({ hotspotId: id, nonce: Date.now() })} onOpen={openLesson} />
-      : <ShiftHUD map={map} shiftLenMin={level.shiftLenMin} elapsedMin={state.elapsedMin} shrink={state.shrink} complaints={state.complaints}
+      : <ShiftHUD map={map} shiftLenMin={level.shiftLenMin} callTarget={level.callTarget} elapsedMin={state.elapsedMin} shrink={state.shrink} complaints={state.complaints}
           results={state.results} calls={state.calls} nearCallId={nearId} compact={compact}
           onWalkTo={id => setWalkTo({ hotspotId: id, nonce: Date.now() })} onOpen={openCall} />
 
@@ -418,6 +418,11 @@ function Hub({ save, onEdit, onStart, onTown }: { save: SavedGame; onEdit: () =>
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white">{l.name}</h2>
                   <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{l.subtitle}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed flex-1">{l.description}</p>
+                  {l.kind === 'shift' && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Clock3 size={10} /> {l.callTarget ? `${l.callTarget} calls, then you are done` : `${l.shiftLenMin / 60} h shift`}
+                    </p>
+                  )}
                   <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2 text-[11px]">
                     {!unlock.ok ? (
                       <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Lock size={10} /> {unlock.reason}</span>
@@ -532,7 +537,7 @@ function StopCard({ level, progress, onClose, onStart }: {
               <span>No shifts here yet</span>
             )}
             {level.kind === 'shift' && (
-              <span className="flex items-center gap-1 ml-auto"><Clock3 size={11} /> {level.shiftLenMin / 60} h shift</span>
+              <span className="flex items-center gap-1 ml-auto"><Clock3 size={11} /> {level.callTarget ? `${level.callTarget} calls` : `${level.shiftLenMin / 60} h shift`}</span>
             )}
           </div>
           {unlock.ok && level.kind === 'shift' && (

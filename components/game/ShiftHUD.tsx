@@ -1,5 +1,5 @@
 'use client'
-import { Clock, DollarSign, MessageSquareWarning, Trophy, Navigation } from 'lucide-react'
+import { Clock, ClipboardList, DollarSign, MessageSquareWarning, Trophy, Navigation } from 'lucide-react'
 import { clockLabel } from '@/lib/game/engine'
 import { FAULT_BY_ID, SYSTEM_META } from '@/lib/game/faults'
 import { SYSTEM_COLOR } from './StoreMap'
@@ -8,6 +8,8 @@ import type { ActiveCall, CallResult, GameMap } from '@/lib/game/types'
 interface Props {
   map: GameMap
   shiftLenMin: number
+  /** Set on levels that end after a number of closed calls rather than on the clock. */
+  callTarget?: number
   elapsedMin: number
   shrink: number
   complaints: number
@@ -20,10 +22,14 @@ interface Props {
   compact?: boolean
 }
 
-export default function ShiftHUD({ map, shiftLenMin, elapsedMin, shrink, complaints, results, calls, nearCallId, onWalkTo, onOpen, compact }: Props) {
+export default function ShiftHUD({ map, shiftLenMin, callTarget, elapsedMin, shrink, complaints, results, calls, nearCallId, onWalkTo, onOpen, compact }: Props) {
   const points = results.reduce((a, r) => a + r.points, 0)
-  const pct = Math.min(100, (elapsedMin / shiftLenMin) * 100)
+  // On a call-count level the bar tracks the work list, not the clock.
+  const pct = callTarget
+    ? Math.min(100, (results.length / callTarget) * 100)
+    : Math.min(100, (elapsedMin / shiftLenMin) * 100)
   const left = Math.max(0, Math.round(shiftLenMin - elapsedMin))
+  const remaining = callTarget ? Math.max(0, callTarget - results.length) : 0
   const shrinkTone = shrink > 500 ? 'text-red-600 dark:text-red-400' : shrink > 150 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
   const complaintTone = complaints > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'
 
@@ -34,7 +40,7 @@ export default function ShiftHUD({ map, shiftLenMin, elapsedMin, shrink, complai
           <div className="h-full bg-blue-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
         </div>
         <div className="flex items-center justify-between gap-2 text-[11px] font-semibold tabular-nums">
-          <span className="text-slate-900 dark:text-white flex items-center gap-1"><Clock size={11} className="text-slate-400" />{clockLabel(elapsedMin)} <span className="text-slate-400 font-normal">· {left}m</span></span>
+          <span className="text-slate-900 dark:text-white flex items-center gap-1"><Clock size={11} className="text-slate-400" />{clockLabel(elapsedMin)} <span className="text-slate-400 font-normal">· {callTarget ? `${remaining} to go` : `${left}m`}</span></span>
           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Trophy size={11} />{points}</span>
           <span className={`${shrinkTone} flex items-center gap-1`}><DollarSign size={11} />{Math.round(shrink)}</span>
           <span className={`${complaintTone} flex items-center gap-1`}><MessageSquareWarning size={11} />{complaints}</span>
@@ -50,8 +56,10 @@ export default function ShiftHUD({ map, shiftLenMin, elapsedMin, shrink, complai
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat icon={Clock} label="Shift" value={clockLabel(elapsedMin)} sub={`${left} min left`} tone="text-slate-900 dark:text-white" />
-        <Stat icon={Trophy} label="Points" value={String(points)} sub={`${results.length} closed`} tone="text-emerald-600 dark:text-emerald-400" />
+        {callTarget
+          ? <Stat icon={ClipboardList} label="Work list" value={`${results.length}/${callTarget}`} sub={remaining ? `${remaining} call${remaining !== 1 ? 's' : ''} to go` : 'list complete'} tone="text-slate-900 dark:text-white" />
+          : <Stat icon={Clock} label="Shift" value={clockLabel(elapsedMin)} sub={`${left} min left`} tone="text-slate-900 dark:text-white" />}
+        <Stat icon={Trophy} label="Points" value={String(points)} sub={callTarget ? clockLabel(elapsedMin) : `${results.length} closed`} tone="text-emerald-600 dark:text-emerald-400" />
         <Stat icon={DollarSign} label="Shrink" value={`$${Math.round(shrink)}`} sub="product at risk" tone={shrinkTone} />
         <Stat icon={MessageSquareWarning} label="Complaints" value={String(complaints)} sub="from the store" tone={complaintTone} />
       </div>

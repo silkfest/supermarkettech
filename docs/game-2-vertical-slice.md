@@ -4,22 +4,24 @@
 
 Open `/game`, create or select your existing technician, and choose **F1 field practice** in Hillcrest's header. Walk to the F1 work order using the existing Walk control, floor clicks/taps, or WASD/arrow keys. Practice uses the Full Supermarket map, supplies any missing instruments as temporary dispatch loaners, dispatches only F1, and awards no career hours/XP. Career Full Supermarket also dispatches F1 first; later calls keep the existing dispatch pool.
 
-Select equipment areas, select a tool, then interact. The service notebook separates measured/observed evidence from recorded evidence. Readings are snapshots with timestamps, including repeated product measurements so pull-down can be compared. There is no live fault-reading table.
+Pick the spot on the case you want to work at, then pick what to do there. Each action names the tool it takes and reaches for it, so there is no separate tool to arm first, and a **Next** line above the actions says what the call still needs. Findings are written into the service notebook as you make them; the notebook is for reading back, and the written report at the end is where you put it into words. Readings are timestamped snapshots, including repeated product measurements so pull-down can be compared. There is no live fault-reading table.
+
+The meter keeps the one decision that matters — the function. Choosing V, Ω or A~ places the leads on that measurement's labelled test points, and ohms on a live circuit is still the mistake it teaches.
 
 ### Suggested evaluation route
 
-1. Flashlight: inspect evaporator and record the frost observation.
-2. Controller: inspect history/nameplate, then request manual defrost.
-3. Hand tools: remove the service cover. Clamp meter: select feeder position, A function, conductor and clamp jaw, then read and record approximately 5.8 A.
-4. Wait/watch the coil. Flashlight: observe two clear sections and one iced section, then record.
-5. Hand tools: secure heater disconnect OFF. Multimeter: voltage test points, V function, place both leads and read to prove dead.
-6. Hand tools: disconnect element leads. Multimeter: use H1/H2/H3 terminal pairs in Ω mode, plus frame tests if desired. Record 19.1 Ω, 18.8 Ω and OL.
-7. Diagnosis: Defrost → Electric heaters → Heater #3 open.
-8. Hand tools: replace H3 only, reconnect/secure covers/restore.
-9. Controller: request another defrost. Open the service cover, then clamp and record approximately 8.7 A while energised.
-10. Observe and record the cleared coil, and read/record the controller after temperature termination.
-11. Allow pull-down. Sample product with the temperature probe and record a reading at or below −8 °F. Secure the service cover.
-12. Report: confirm verification, write the service note and close. The debrief is also accessible in the existing shift report.
+1. Evaporator → inspect the coil.
+2. Controller → read the history/nameplate, then request a manual defrost.
+3. Defrost circuit → remove the service cover, clamp the heater feeder, read A~ for roughly 5.8 A.
+4. Wait/watch the coil, then inspect the evaporator again: two sections clear, the return section still iced.
+5. Defrost circuit → secure the heater disconnect OFF, prove the circuit dead on V.
+6. Disconnect one lead per element, then ohm H1/H2/H3 on Ω — 19.1 Ω, 18.8 Ω and OL — plus the frame tests if you want them.
+7. Diagnose: Defrost → Electric heaters → Heater #3 open.
+8. Replace heater 3 only, then reconnect, secure covers and restore.
+9. Controller → request another defrost. Remove the service cover, clamp for roughly 8.7 A while energised.
+10. Inspect the cleared coil, and read the controller after temperature termination.
+11. Allow pull-down, probe the product for a reading at or below −8 °F, secure the service cover.
+12. Report: the checklist shows what verification still needs; confirm it, build the service note from the chips or type it, and close. The debrief is also in the existing shift report.
 
 ## Integration boundaries
 
@@ -27,6 +29,7 @@ Select equipment areas, select a tool, then interact. The service notebook separ
 - `f1.ts`: dispatch, inspection areas, measurement definitions and references to `defrost_heater_open` in the existing catalogue.
 - `inspection/engine.ts`: physical prerequisites, action costs, frost/temperature evolution, diagnosis and verification gates.
 - Existing `shiftReducer`: atomic `INSPECT` actions and the existing clock, dispatch, shrink, complaints and score path. State belongs to each `ActiveCall`, surviving UI closure/reopening.
+- `inspection/engine.ts` exports `diagnoseChecklist`, `verifyChecklist` and `nextStep`. `canDiagnose`/`canVerify` are derived from those lists, so what the technician is shown cannot drift from what is enforced.
 - `EquipmentInspection`, `EquipmentScene`, `EvidenceNotebook`, `DiagnosisTree`, `ToolInteraction`, `ServiceDebrief`: separate interaction and presentation modules.
 - Existing `InstrumentPanel` exports the physical sampling surface; its guided legacy meter/PT benches remain available unchanged.
 - `PixelEquipment`: reusable transparent SVG sprites on integer grids with `crispEdges`. Frozen sections/frost, compressor, vessels, electrical panel, fan, shelving, wall, checkout, produce, case/walk-in/RTU and player pieces are rendered in the actual StoreMap. No raster downloads, external asset paths or giant background. Existing navigation geometry is untouched.
@@ -46,7 +49,11 @@ npm run test:e2e
 
 Browser tests cover desktop and touch-phone full repair paths, notebook reopening, report, no horizontal overflow/runtime errors, and practice not changing saved progression. They stub the progress API and use a local fixture only. An existing Chromium can be selected with `CHROMIUM_EXECUTABLE_PATH`.
 
-Reducer tests cover electrical prerequisites, tools/functions/leads, wrong parts and checks, failsafe vs temperature termination, evidence recording/history, dispatch isolation, pathfinding and full completion/scoring.
+Reducer tests cover electrical prerequisites, tools/functions/leads, wrong parts and checks, failsafe vs temperature termination, evidence history, dispatch isolation, pathfinding and full completion/scoring, plus call-count shift pacing and the checklist/gate equivalence.
+
+## Shift pacing
+
+Corner Gas Station and Full Supermarket end on a **work list** rather than a clock: five and ten closed calls respectively (`LevelDef.callTarget`). Dispatch feeds the board on demand up to `maxOpen`, spaced by `dispatchGapMin`, and stops once the list has been handed out — so a shift always ends with nothing left open. The clock still runs and still drives shrink and complaints; it just no longer cuts the shift off. The deeper stores are unchanged and still run `shiftLenMin` against the fixed `spawnAt` schedule.
 
 ## Deliberate limits
 
