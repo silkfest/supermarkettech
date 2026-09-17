@@ -65,13 +65,25 @@ export interface Reading {
 }
 
 /** A check you have to actually perform, rather than just pay time for.
- *  `circuit` drops you onto the compressor safety string at 120 V or 208 V;
- *  `casecircuit` onto the case fan and defrost rungs; `ptchart` puts a gauge
- *  reading and a line temperature in front of you and makes you work out the
- *  superheat or subcooling off the chart. */
+ *
+ *  `meter` is the bench: you take the readings this particular call calls for and
+ *  say what they tell you. `ohms` means the circuit is dead and locked out — an
+ *  ohmmeter on a live circuit reads nothing you can trust — and `volts` means
+ *  live work. The readings belong to the fault, not to a sandbox, so what you
+ *  measure is always what is actually wrong with this piece of equipment.
+ *
+ *  `ptchart` puts a gauge reading and a line temperature in front of you and
+ *  makes you work out the superheat or subcooling off the chart. */
 export type Instrument =
-  | { kind: 'circuit'; variant: '120' | '208'; prompt: string }
-  | { kind: 'casecircuit'; defrost: boolean; prompt: string }
+  | {
+      kind: 'meter'
+      mode: 'ohms' | 'volts'
+      prompt: string
+      /** Test points, in the order a tech would take them. */
+      points: { id: string; label: string; expect: string; reading: string }[]
+      /** What the readings tell you — a verdict on this circuit, not the whole call. */
+      verdicts: Option[]
+    }
   | {
       kind: 'ptchart'
       refrigerant: RefrigerantId

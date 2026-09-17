@@ -1,3 +1,5 @@
+import { COMMON_FAULTS } from './faults-common'
+import { LOTO_CHECK } from './fault-parts'
 import type { FaultDef, SystemKey } from './types'
 
 export const SYSTEM_META: Record<SystemKey, { label: string; short: string }> = {
@@ -7,9 +9,7 @@ export const SYSTEM_META: Record<SystemKey, { label: string; short: string }> = 
   hvac:          { label: 'HVAC',          short: 'HVAC' },
 }
 
-const LOTO_CHECK = { id: 'loto', label: 'Lock out / tag out the circuit', tool: 'Lock & tag', minutes: 5, finding: 'Breaker locked open, tag hung, verified dead with the meter. Safe to open the panel.' }
-
-export const FAULTS: FaultDef[] = [
+const SITE_FAULTS: FaultDef[] = [
   // ── Refrigeration ──────────────────────────────────────────────────────────
   {
     id: 'dt_failed_open',
@@ -25,8 +25,25 @@ export const FAULTS: FaultDef[] = [
       { key: 'frost', label: 'Coil frost', value: 92, unit: '%', jitter: 0, status: 'crit', expect: '< 30 %', after: 12 },
     ],
     checks: [
+      LOTO_CHECK,
       { id: 'log', label: 'Pull the controller defrost log', tool: 'Case controller', minutes: 8, key: true, finding: 'Defrost initiated on schedule every 6 h all week. Every cycle logs a termination 40–55 seconds after it started.' },
-      { id: 'dt', label: 'Meter the DT switch with the coil cold', tool: 'Multimeter (Ω)', minutes: 10, key: true, finding: 'Coil is at −5 °F. Across the switch terminals: OPEN. The body is stamped OPEN 55 °F / CLOSE 30 °F.', instrument: { kind: 'casecircuit', defrost: true, prompt: 'Put the case into defrost and meter the rung that is actually commanded. In refrigeration the defrost rung is dead on purpose, so probing it there tells you nothing. Work from the fuse out and find where the volts stop.' } },
+      { id: 'dt', label: 'Meter the DT switch with the coil cold', tool: 'Multimeter (Ω)', minutes: 10, key: true, finding: 'Coil is at −5 °F. Across the switch terminals: OPEN. The body is stamped OPEN 55 °F / CLOSE 30 °F.', instrument: {
+        kind: 'meter', mode: 'ohms',
+        prompt: 'The coil is at −5 °F, well below the 30 °F close point stamped on the switch body, so a healthy DT switch should be closed right now. Power off and ring out the defrost side of the case.',
+        points: [
+          { id: 'dt', label: 'Defrost termination switch, across the terminals', expect: 'closed below 30 °F', reading: 'OL — open' },
+          { id: 'htr', label: 'Defrost heater element, end to end', expect: '≈ 12 Ω', reading: '12.4 Ω' },
+          { id: 'htrg', label: 'Defrost heaters to ground', expect: 'OL', reading: 'OL' },
+          { id: 'fans', label: 'Evap fan windings', expect: '≈ 180 Ω each', reading: '181 Ω and 180 Ω' },
+          { id: 'ctrl', label: 'Controller defrost output contacts', expect: 'closed while calling', reading: 'closed' },
+        ],
+        verdicts: [
+          { id: 'dt', label: 'The DT switch is open when it should be closed', correct: true, why: 'Coil at −5 °F against a switch stamped CLOSE 30 °F, reading open. The controller starts defrost, immediately sees the terminate signal, and ends the cycle in under a minute.' },
+          { id: 'htr', label: 'The defrost heaters are burned out', why: '12.4 Ω end to end and OL to ground. The heaters are fine — they are never getting the chance to run.' },
+          { id: 'ctrl', label: 'The controller is not calling defrost', why: 'Its output contacts are closed and the log shows defrost initiating on schedule every six hours. It is calling; something ends it.' },
+          { id: 'fans', label: 'A fan motor has failed', why: 'Both windings read normal, and the fans are moving air — the case is fogged, not still.' },
+        ],
+      } },
       { id: 'sight', label: 'Check the sight glass at the rack', tool: 'Eyes', minutes: 12, finding: 'Clear, no bubbles.' },
       { id: 'gasket', label: 'Walk the door gaskets', tool: 'Hands', minutes: 6, finding: 'A dollar bill drags on every door. No ice on any gasket face.' },
     ],
@@ -43,6 +60,7 @@ export const FAULTS: FaultDef[] = [
       { id: 'scrape', label: 'Scrape the ice off and leave it', why: 'It will be iced again by tomorrow. The termination switch is still open.' },
     ],
     difficulty: 1,
+    loto: true,
     shrinkPerMin: 4,
     complaintAfterMin: 90,
     knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
@@ -210,7 +228,24 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'reset', label: 'Reset the breaker and watch', tool: 'Eyes', minutes: 3, finding: 'Trips the instant the handle comes up, with a snap. No run time at all.' },
-      { id: 'ohm', label: 'Ohm each fan motor winding to ground', tool: 'Multimeter (Ω)', minutes: 12, key: true, finding: 'Fan #1 windings to frame: OL. Fan #2 windings to frame: 0.3 Ω.', instrument: { kind: 'casecircuit', defrost: false, prompt: 'The breaker holds long enough to take readings. Walk the fan rung with the meter — fuse, relay contact, fan delay klixon, harness, motors — and find the element that is not passing what it should.' } },
+      { id: 'ohm', label: 'Ohm each fan motor winding to ground', tool: 'Multimeter (Ω)', minutes: 12, key: true, finding: 'Fan #1 windings to frame: OL. Fan #2 windings to frame: 0.3 Ω.', instrument: {
+        kind: 'meter', mode: 'ohms',
+        prompt: 'The breaker snaps the instant it comes up, so nothing runs long enough to clamp. Ring out every load in the case: winding to winding for continuity, winding to frame for the short.',
+        points: [
+          { id: 'f1w', label: 'Fan #1 winding, line to neutral', expect: '≈ 180 Ω', reading: '182 Ω' },
+          { id: 'f1g', label: 'Fan #1 winding to frame', expect: 'OL — no path to ground', reading: 'OL' },
+          { id: 'f2w', label: 'Fan #2 winding, line to neutral', expect: '≈ 180 Ω', reading: '179 Ω' },
+          { id: 'f2g', label: 'Fan #2 winding to frame', expect: 'OL — no path to ground', reading: '0.3 Ω' },
+          { id: 'htr', label: 'Anti-sweat heater circuit, end to end', expect: '≈ 48 Ω', reading: '48 Ω' },
+          { id: 'htrg', label: 'Anti-sweat heater to ground', expect: 'OL', reading: 'OL' },
+        ],
+        verdicts: [
+          { id: 'fan2', label: 'Fan #2 winding is shorted to its frame', correct: true, why: '0.3 Ω from winding to frame is a dead short to ground. That is your instant trip, and the motor is scrap — a grounded winding cannot be repaired.' },
+          { id: 'fan1', label: 'Fan #1 is the problem', why: '182 Ω across the winding and OL to frame. Fan #1 reads exactly like a healthy motor.' },
+          { id: 'heater', label: 'The anti-sweat heater circuit is shorted', why: '48 Ω end to end and OL to ground. The heaters are clean.' },
+          { id: 'open', label: 'Something in the circuit is open', why: 'Both windings and the heater circuit all read continuity. Nothing here is open — you are looking for a short, and you found one.' },
+        ],
+      } },
       { id: 'heater', label: 'Ohm the anti-sweat / heater circuit', tool: 'Multimeter (Ω)', minutes: 8, finding: 'Heater circuit reads 48 Ω, and OL to ground.' },
       { id: 'harness', label: 'Inspect the harness for chafed insulation', tool: 'Eyes', minutes: 8, finding: 'Harness looks clean. No rub marks.' },
     ],
@@ -322,7 +357,23 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'clamp', label: 'Clamp the heater feed while the controller says REFRIGERATION', tool: 'Amp clamp', minutes: 5, key: true, finding: '8.4 A on the heater feed.' },
-      { id: 'coil', label: 'Meter the defrost contactor coil', tool: 'Multimeter', minutes: 5, key: true, finding: '0 V across the defrost contactor coil. The contactor is pulled in.', instrument: { kind: 'casecircuit', defrost: true, prompt: 'The controller says refrigeration and the heaters are drawing current anyway, so something on the defrost rung is passing when it should not. Meter the rung and find it.' } },
+      { id: 'coil', label: 'Meter the defrost contactor coil', tool: 'Multimeter', minutes: 5, key: true, finding: '0 V across the defrost contactor coil. The contactor is pulled in.', instrument: {
+        kind: 'meter', mode: 'volts',
+        prompt: 'The controller says REFRIGERATION and the heater feed is pulling 8.4 A anyway. Something downstream is passing power that nothing is asking it to pass. Take voltages with the case running.',
+        points: [
+          { id: 'out', label: 'Controller defrost output', expect: 'open in refrigeration', reading: '0 V — not calling' },
+          { id: 'coil', label: 'Across the defrost contactor coil', expect: '120 V only in defrost', reading: '0 V' },
+          { id: 'line', label: 'Line side of the contactor', expect: '120 V', reading: '121 V' },
+          { id: 'load', label: 'Load side of the contactor, to neutral', expect: '0 V in refrigeration', reading: '121 V' },
+          { id: 'dt', label: 'Across the DT switch', expect: 'closed below 30 °F', reading: 'closed, 0 V across' },
+        ],
+        verdicts: [
+          { id: 'welded', label: 'The contactor is passing power with no coil voltage — the contacts are stuck', correct: true, why: 'Nothing is telling that contactor to close and it is closed anyway. Line voltage straight through to the load side with a dead coil means the contacts are welded together mechanically.' },
+          { id: 'controller', label: 'The controller is stuck in defrost', why: '0 V on both its output and the contactor coil. It is not calling defrost.' },
+          { id: 'coilshort', label: 'The contactor coil is shorted', why: 'A shorted coil would blow its fuse or hold the contactor in with voltage present. There is no voltage on it at all.' },
+          { id: 'dt', label: 'The DT switch is stuck closed', why: 'The DT switch only ends a defrost cycle. It cannot energise heaters on its own.' },
+        ],
+      } },
       { id: 'dt', label: 'Meter the DT switch', tool: 'Multimeter', minutes: 8, finding: 'Opens and closes with coil temp. Fine.' },
       { id: 'sh', label: 'Check superheat', tool: 'Gauges', minutes: 8, finding: 'About 9 °F. The coil is frosted evenly and the TXV is feeding it.' },
     ],
@@ -446,42 +497,92 @@ export const FAULTS: FaultDef[] = [
     complaintAfterMin: 30,
   },
   {
-    id: 'condensate_pump',
+    id: 'rtu_drain_trap',
     system: 'plumbing',
     kinds: ['rtu'],
     title: 'Water dripping from the ceiling in grocery',
-    report: 'Ceiling tile is sagging in aisle 5 with water dripping onto the shelf. It has not rained in a week.',
-    cue: 'On the roof, the RTU condensate pan is full and overflowing the lip into the curb. The pump is silent.',
+    report: 'Ceiling tile over aisle 4 is stained and dripping onto the floor. The store is convinced the roof is leaking. It has not rained in nine days.',
+    cue: 'RTU-2 sits on the curb right above that aisle. The unit is running and cooling, and there is a rust trail down the outside of the casing under the drain stub.',
     readings: [
-      { key: 'pan', label: 'RTU condensate pan level', value: 100, unit: '%', jitter: 0, status: 'crit', expect: 'empty', after: 0 },
-      { key: 'pumpA', label: 'Condensate pump current', value: 0, unit: 'A', decimals: 1, jitter: 0, status: 'crit', expect: '0.6 A when running', after: 0.6 },
-      { key: 'sup', label: 'Supply air', value: 57, unit: '°F', jitter: 0.4, status: 'ok', expect: '55–58 °F' },
+      { key: 'pan', label: 'RTU drain pan level', value: 100, unit: '%', jitter: 0, status: 'crit', expect: 'below the lip', after: 0 },
+      { key: 'flow', label: 'Flow from the drain stub', value: 0, unit: 'L/min', decimals: 1, jitter: 0, status: 'crit', expect: '≈ 0.4 L/min while cooling', after: 0.5 },
+      { key: 'sup', label: 'Supply air', value: 57, unit: '\u00b0F', jitter: 0.4, status: 'ok', expect: '55\u201358 \u00b0F' },
     ],
     checks: [
-      { id: 'float', label: 'Lift the pump float by hand', tool: 'Hands', minutes: 3, key: true, finding: 'Float moves freely through its whole travel. 120 V at the pump leads. Nothing turns, and the shaft will not move by hand.' },
-      { id: 'roof', label: 'Inspect the roof membrane and curb', tool: 'Eyes', minutes: 8, finding: 'Roof is dry and the curb seal is intact. The water is coming from the unit, not the sky.' },
-      { id: 'duct', label: 'Check the supply duct for sweating', tool: 'Eyes', minutes: 6, finding: 'Duct is insulated and dry.' },
-      { id: 'sh', label: 'Check RTU superheat', tool: 'Gauges', minutes: 10, finding: 'Superheat 11 °F, subcooling 9 °F, supply air 57 °F.' },
+      { id: 'pan', label: 'Open the blower section and look at the drain pan', tool: 'Eyes / flashlight', minutes: 6, key: true, finding: 'Pan is full to the lip and sloshing toward the blower every time it starts. The outlet is packed solid with dirt, insulation fibre and slime.' },
+      { id: 'trap', label: 'Check the condensate trap at the drain stub', tool: 'Eyes / hands', minutes: 6, key: true, finding: 'There is a trap and it is deep enough for the blower\u2019s negative pressure \u2014 but it is bone dry. Nothing has reached it in weeks.' },
+      { id: 'roof', label: 'Inspect the roof membrane and the curb seal', tool: 'Eyes', minutes: 8, finding: 'Membrane sound, curb seal intact, and everything around the unit is dry. The water is coming out of the unit, not off the roof.' },
+      { id: 'duct', label: 'Check the supply duct for sweating', tool: 'Eyes', minutes: 6, finding: 'Duct is insulated and dry to the hand.' },
+      { id: 'sh', label: 'Check RTU superheat and supply air', tool: 'Gauges', minutes: 10, finding: 'Superheat 11 \u00b0F, subcooling 9 \u00b0F, supply air 57 \u00b0F. The cooling side is behaving \u2014 it is making the condensate it is supposed to make.' },
     ],
     causes: [
-      { id: 'pump', label: 'Condensate pump motor failed', correct: true, why: '120 V at the pump, float free, no rotation — the pump is dead and the pan overflowed into the curb and down the drop.' },
-      { id: 'roof', label: 'Roof leak', why: 'No rain in a week and the membrane is dry.' },
-      { id: 'duct', label: 'Duct sweating', why: 'Duct is insulated and dry.' },
-      { id: 'leak', label: 'Refrigerant leak', why: 'Superheat is normal. And refrigerant does not drip.' },
+      { id: 'drain', label: 'RTU condensate drain plugged \u2014 the pan is overflowing into the curb', correct: true, why: 'Full pan, an outlet packed solid, nothing reaching the trap, and a dry roof. The unit makes normal condensate and has nowhere to put it, so it goes over the lip and down through the curb into the ceiling.' },
+      { id: 'roof', label: 'Roof leak', why: 'Nine days without rain, a sound membrane and an intact curb seal. And the water is warm and smells of the pan.' },
+      { id: 'duct', label: 'Supply duct sweating', why: 'The duct is insulated and dry. Sweat wets the duct itself; it does not fill a drain pan.' },
+      { id: 'over', label: 'Unit making too much condensate', why: 'Superheat, subcooling and supply air are all normal. It is making exactly the water it should.' },
     ],
     fixes: [
-      { id: 'pump', label: 'Replace the condensate pump, clean the pan, verify it cycles', correct: true, cost: 135, why: 'Pump kicks on with a cup of water. Pan is dry. Tell the store to replace the tile.' },
-      { id: 'roof', label: 'Patch the roof', why: 'The roof was fine. The pan is still overflowing.' },
-      { id: 'float', label: 'Jiggle the float and leave it', why: 'The motor is seized. It was never the float.' },
-      { id: 'bypass', label: 'Run a hose off the pan over the roof edge', cost: 20, why: 'Now it drains onto the sidewalk and the customer entrance. And it freezes in winter.' },
+      { id: 'clear', label: 'Clear the pan outlet and the drain line, flush it, prime the trap, confirm it runs', correct: true, why: 'Pan empties in a couple of minutes and the stub runs steadily. Prime the trap so it seals against the blower, and put the pan on the spring PM list \u2014 this one plugs every couple of years.' },
+      { id: 'pump', label: 'Fit a condensate pump', cost: 210, why: 'The unit is on a curb with a gravity drain that works perfectly well once it is clear. You have added a motor, a float and a second thing to plug.' },
+      { id: 'roof', label: 'Call a roofer', why: 'The roof is fine. You would be paying somebody to look at a dry membrane while the pan keeps overflowing.' },
+      { id: 'weep', label: 'Drill a weep hole in the side of the pan', why: 'Now it drips into the curb on purpose instead of by accident, and the blower still throws water. The drain is the drain \u2014 clear it.' },
     ],
     difficulty: 1,
     shrinkPerMin: 0,
-    complaintAfterMin: 60,
-    knowledge: [{ slug: 'rtu-diagnostics', label: 'RTU Diagnostics' }],
+    complaintAfterMin: 150,
   },
-
-  // ── HVAC ────────────────────────────────────────────────────────────────────
+  {
+    id: 'pan_heater',
+    system: 'electrical',
+    kinds: ['reach-in-cooler', 'chest-freezer'],
+    title: 'Water running out from under the pop cooler',
+    report: 'Puddle across the floor in front of the drinks cooler every morning. Somebody has been putting a towel down. The pop is cold, so nobody called it in for a week.',
+    cue: 'Self-contained box \u2014 no drain line runs to it and none leaves it. Pull the front grille and the evaporator pan under the condensing unit is brim-full and stone cold.',
+    readings: [
+      { key: 'cab', label: 'Cabinet temperature', value: 37, unit: '\u00b0F', jitter: 0.3, status: 'ok', expect: '36\u201338 \u00b0F' },
+      { key: 'pan', label: 'Evaporator pan level', value: 100, unit: '%', jitter: 0, status: 'crit', expect: 'damp, never standing', after: 5 },
+      { key: 'panT', label: 'Pan water temperature', value: 54, unit: '\u00b0F', jitter: 0.4, status: 'crit', expect: 'warm \u2014 it is meant to be boiling off', after: 96 },
+      { key: 'htrA', label: 'Pan heater current', value: 0, unit: 'A', decimals: 1, jitter: 0, status: 'crit', expect: '0.7 A with the compressor running', after: 0.7 },
+    ],
+    checks: [
+      LOTO_CHECK,
+      { id: 'drain', label: 'Look for a condensate drain line', tool: 'Eyes', minutes: 3, key: true, finding: 'There is not one, and there never was. On a self-contained box the condensate is meant to be evaporated in the pan by a heater loop and the warm condenser discharge \u2014 it is not piped anywhere.' },
+      { id: 'ohm', label: 'Ohm the condensate pan heater', tool: 'Multimeter (\u03a9)', minutes: 8, key: true, finding: 'Heater element reads OL end to end. The leads and the relay are both fine \u2014 the element itself has burned through.', instrument: {
+        kind: 'meter', mode: 'ohms',
+        prompt: 'The pan is full of water and the heater sits in it, so this is dead-circuit work whatever else you do today. Ring out the heater loop from the relay to the element.',
+        points: [
+          { id: 'htr', label: 'Pan heater element, end to end', expect: '\u2248 170 \u03a9', reading: 'OL \u2014 open' },
+          { id: 'htrg', label: 'Pan heater element to the pan', expect: 'OL', reading: 'OL' },
+          { id: 'leads', label: 'Supply leads, relay to heater', expect: '< 1 \u03a9', reading: '0.3 \u03a9' },
+          { id: 'relay', label: 'Across the heater relay contacts, compressor called', expect: 'closed', reading: 'closed' },
+        ],
+        verdicts: [
+          { id: 'open', label: 'The heater element itself is open', correct: true, why: 'OL end to end with good leads and a closed relay. Power is arriving and nothing is taking it, so nothing is evaporating the condensate and the pan simply fills until it runs over.' },
+          { id: 'ground', label: 'The heater is shorted to the pan', why: 'OL from the element to the pan. A grounded heater sitting in water would have you chasing a tripped breaker, not a full pan.' },
+          { id: 'leads', label: 'A supply lead is broken', why: '0.3 \u03a9 from the relay right through to the heater terminals. The leads are fine.' },
+          { id: 'relay', label: 'The heater relay is not closing', why: 'It is closed with the compressor called. The circuit is being made \u2014 the element is not answering.' },
+        ],
+      } },
+      { id: 'cond', label: 'Check the condenser coil and fan', tool: 'Eyes / clamp', minutes: 6, finding: 'Coil is clean and the fan is pulling nameplate amps. The condenser is rejecting heat normally, which is why the box is still cold.' },
+      { id: 'gasket', label: 'Check the door gaskets', tool: 'Hands', minutes: 5, finding: 'A dollar bill drags all the way round both doors. No extra infiltration making extra water.' },
+    ],
+    causes: [
+      { id: 'heater', label: 'Condensate pan heater burned out', correct: true, why: 'A self-contained box with no drain, an open heater element and a cold pan full of water. The pan is the disposal, and the thing that does the disposing is dead.' },
+      { id: 'drain', label: 'Condensate drain line plugged', why: 'There is no drain line to plug. This box was never piped to anything \u2014 that is the whole point of the heated pan.' },
+      { id: 'gasket', label: 'Door gaskets leaking and making extra condensate', why: 'Gaskets seal all the way round and the cabinet is holding 37 \u00b0F. Even double the water would boil off with a working heater.' },
+      { id: 'cond', label: 'Condenser coil dirty', why: 'Coil is clean and the fan is at nameplate. A dirty condenser shows up as a warm box long before it shows up as a full pan.' },
+    ],
+    fixes: [
+      { id: 'heater', label: 'Replace the pan heater element, verify 0.7 A and a warm pan', correct: true, cost: 85, why: 'Pan is dry by the end of the shift and stays dry. Nothing to pipe, nothing to pump, and the towel comes off the floor.' },
+      { id: 'drain', label: 'Pipe the pan to the nearest floor drain', cost: 40, why: 'You have run a drain line across a sales floor on a box designed without one, left a burned-out heater in it, and in most jurisdictions created a cross-connection somebody will make you undo.' },
+      { id: 'pump', label: 'Fit a condensate pump under the cooler', cost: 190, why: 'A motor, a float and a discharge line to solve what an 85 dollar element solves \u2014 and it still needs somewhere to pump to.' },
+      { id: 'bail', label: 'Empty the pan and ask the store to keep an eye on it', why: 'It is full again tomorrow morning and the towel goes back down.' },
+    ],
+    difficulty: 2,
+    shrinkPerMin: 0,
+    complaintAfterMin: 240,
+    loto: true,
+  },
   {
     id: 'economizer_stuck',
     system: 'hvac',
@@ -1491,7 +1592,23 @@ export const FAULTS: FaultDef[] = [
     ],
     checks: [
       LOTO_CHECK,
-      { id: 'volts', label: 'Read all three phase-to-phase voltages at the rack main lugs', tool: 'Multimeter (V)', minutes: 6, key: true, finding: 'L1-L2 478 V, L1-L3 477 V, L2-L3 441 V. The L2-L3 reading wanders several volts while you watch it.', instrument: { kind: 'circuit', variant: '208', prompt: 'The control transformer here is fed leg to leg, so both sides of this string are hot and a reading to ground will not find an open. Probe across, not to ground, and walk the run.' } },
+      { id: 'volts', label: 'Read all three phase-to-phase voltages at the rack main lugs', tool: 'Multimeter (V)', minutes: 6, key: true, finding: 'L1-L2 478 V, L1-L3 477 V, L2-L3 441 V. The L2-L3 reading wanders several volts while you watch it.', instrument: {
+        kind: 'meter', mode: 'volts',
+        prompt: 'Rack running. Read the three legs at the main lugs, read the same three at the utility side of the disconnect, and then read across the suspect connection itself — a bad joint shows up as voltage dropped across it.',
+        points: [
+          { id: 'ab', label: 'L1-L2 at the rack main lugs', expect: '480 V', reading: '478 V' },
+          { id: 'ac', label: 'L1-L3 at the rack main lugs', expect: '480 V', reading: '477 V' },
+          { id: 'bc', label: 'L2-L3 at the rack main lugs', expect: '480 V', reading: '441 V, wandering' },
+          { id: 'util', label: 'All three legs at the utility side of the disconnect', expect: 'within 2 V of each other', reading: '479 / 478 / 479 V, steady' },
+          { id: 'drop', label: 'Across the L2 lug, line side to load side', expect: '≈ 0 V', reading: '37 V' },
+        ],
+        verdicts: [
+          { id: 'lug', label: '37 V is being dropped across the L2 connection itself', correct: true, why: 'Balanced and steady at the utility side, 4.9 % out at the rack, and 37 V burned across one lug. That voltage is leaving as heat in the joint — which is why the insulation around it is discoloured.' },
+          { id: 'utility', label: 'The utility supply is out of balance', why: 'All three legs within 2 V of each other at the disconnect, rock steady. The supply is clean; the imbalance appears between there and the rack.' },
+          { id: 'monitor', label: 'The phase monitor is reading wrong', why: 'It is reporting a real 4.9 % imbalance and tripping at its 4 % setting. It is the only thing standing between this and three burned compressors.' },
+          { id: 'motor', label: 'A compressor winding is dragging one leg down', why: 'A motor cannot pull 37 V out of one leg upstream of itself at the main lugs. The drop is in the connection, not the load.' },
+        ],
+      } },
       { id: 'lugs', label: 'Open the panel and inspect the incoming lugs', tool: 'Eyes / torque wrench', minutes: 8, key: true, finding: 'L2 lug is discoloured and the insulation is stiffened back about an inch. The lug turns a quarter turn before it takes any torque.' },
       { id: 'thermal', label: 'Thermal-scan the panel with the rack running', tool: 'Thermal camera', minutes: 6, key: true, finding: 'L2 lug at 168 °F. L1 and L3 both under 95 °F.' },
       { id: 'utility', label: 'Read the utility side of the main disconnect', tool: 'Multimeter (V)', minutes: 5, finding: 'All three legs within 2 V of each other, steady. The supply into the building is fine.' },
@@ -1570,7 +1687,24 @@ export const FAULTS: FaultDef[] = [
     checks: [
       LOTO_CHECK,
       { id: 'compare', label: 'Read the controller against a thermocouple on the same pipe', tool: 'Thermocouple', minutes: 6, key: true, finding: 'Controller 271 °F. Thermocouple clamped alongside it on the same line: 188 °F. The gap wanders between 50 and 85 °F.' },
-      { id: 'sensor', label: 'Inspect the sensor, its well and its leads back to the board', tool: 'Eyes / meter', minutes: 8, key: true, finding: 'Sensor seated properly. The two-wire lead runs 40 ft back to the board in the same tray as the condenser fan feeders, and the last 8 inches of shield is cut off and hanging loose at the board end.', instrument: { kind: 'circuit', variant: '120', prompt: 'Follow the leads back with the meter and work the safety string while you are in there. If a device really is opening the circuit, the meter will show you which one — and if nothing is, the alarm is coming from somewhere other than the string.' } },
+      { id: 'sensor', label: 'Inspect the sensor, its well and its leads back to the board', tool: 'Eyes / meter', minutes: 8, key: true, finding: 'Sensor seated properly. The two-wire lead runs 40 ft back to the board in the same tray as the condenser fan feeders, and the last 8 inches of shield is cut off and hanging loose at the board end.', instrument: {
+        kind: 'meter', mode: 'ohms',
+        prompt: 'Module locked out and the sensor unplugged from the board. Check the sensor against its own curve out of circuit, then ring out the cable and its shield — the reading only misbehaves when the fan contactors switch, so the cable is worth as much attention as the sensor.',
+        points: [
+          { id: 's70', label: 'Sensor at 70 °F, out of circuit', expect: 'on its resistance curve', reading: 'on the curve' },
+          { id: 's190', label: 'Sensor in a 190 °F bath', expect: 'on its resistance curve', reading: 'on the curve' },
+          { id: 's260', label: 'Sensor in a 260 °F bath', expect: 'on its resistance curve', reading: 'on the curve' },
+          { id: 'cable', label: 'Both cable conductors, board end to sensor end', expect: '< 1 Ω', reading: '0.4 Ω each' },
+          { id: 'ins', label: 'Conductor to conductor, sensor disconnected', expect: 'OL', reading: 'OL' },
+          { id: 'shield', label: 'Cable shield to the board ground terminal', expect: 'bonded, near 0 Ω', reading: 'OL — the shield is not landed' },
+        ],
+        verdicts: [
+          { id: 'shield', label: 'The sensor and cable are good, but the shield is not landed', correct: true, why: 'Dead on its curve at three temperatures, 0.4 Ω conductors, no leakage — and a shield hanging loose at the board end, in the same tray as the condenser fan feeders. What arrives at the board is not what the pipe is doing.' },
+          { id: 'sensor', label: 'The sensor has failed', why: 'Three points on its curve, out of circuit, all correct. Replacing it costs you a part and changes nothing.' },
+          { id: 'cable', label: 'A conductor in the cable is broken', why: '0.4 Ω end to end on both conductors. Nothing is broken.' },
+          { id: 'board', label: 'The controller input board has failed', why: 'Possible in principle — but the reading only misbehaves when the fan contactors switch, and the fault follows the cable, not the board.' },
+        ],
+      } },
       { id: 'ohm', label: 'Ohm the sensor out of circuit and compare to its curve', tool: 'Multimeter (Ω)', minutes: 6, key: true, finding: 'Reads dead on its resistance curve at three different temperatures in a cup of ice water and warm water.' },
       { id: 'inj', label: 'Check the DTC filter and the injection feed', tool: 'Hands / eyes', minutes: 5, finding: 'Filter clean, sight glass solid, injection lines cold at every scroll. Working properly.' },
       { id: 'trend', label: 'Pull the discharge temperature trend against the fan staging', tool: 'Controller', minutes: 6, finding: 'Every spike in the reported temperature lands on a condenser fan stage change. The pipe temperature does not move at all.' },
@@ -1869,10 +2003,24 @@ export const FAULTS: FaultDef[] = [
       { key: 'trips', label: 'Oil trips on #4 since yesterday', value: 4, unit: '', jitter: 0, status: 'crit', expect: '0', after: 0 },
     ],
     checks: [
-      LOTO_CHECK,
       { id: 'net', label: 'Measure net oil pressure at compressor 4', tool: 'Gauges', minutes: 7, key: true, finding: 'Oil pump discharge minus crankcase pressure comes to 6 psid. The Sentronic cuts out at 9 psid and cuts back in at 12 to 14, after a two minute delay. It is tripping on a real reading.' },
       { id: 'float', label: 'Check the oil level control on compressor 4', tool: 'Eyes / hands', minutes: 8, key: true, finding: 'Oil standing in the feed line right up to the regulator and nothing passing into the crankcase. The float arm does not move when you tip it. The other five regulators are all feeding.' },
-      { id: 'bench', label: 'Bench-check the Sentronic module and sensor', tool: 'Meter / 120 V cord', minutes: 8, key: true, finding: 'Module times out correctly with the sensor open and holds when the sensor connections are jumpered. It is working exactly to spec.', instrument: { kind: 'circuit', variant: '120', prompt: 'Same string you learned in the shop: L1 through the control fuse, the switch and every safety, out to the contactor coil. Number 4 is dropping out, so hopscotch the meter along the run and find which device is opening it.' } },
+      { id: 'bench', label: 'Bench-check the Sentronic module and sensor', tool: 'Meter / 120 V cord', minutes: 8, key: true, finding: 'Module times out correctly with the sensor open and holds when the sensor connections are jumpered. It is working exactly to spec.', instrument: {
+        kind: 'meter', mode: 'volts',
+        prompt: 'Module out on the bench with a 120 V cord. Run it against an open sensor and a jumpered one and time what it does. The point of a bench check is to find out whether the control is lying — not to prove what is wrong with the compressor.',
+        points: [
+          { id: 'open', label: 'Output with the sensor terminals open', expect: 'trips after ~120 s', reading: 'trips at 121 s' },
+          { id: 'jump', label: 'Output with the sensor terminals jumpered', expect: 'holds indefinitely', reading: 'holds — no trip in 5 min' },
+          { id: 'sense', label: 'Sensor resistance across its terminals', expect: 'per spec', reading: 'in spec' },
+          { id: 'reset', label: 'Manual reset after a trip', expect: 'latches out until the button is pushed', reading: 'latches and resets correctly' },
+        ],
+        verdicts: [
+          { id: 'good', label: 'The module and sensor are both good — the 6 psid is real', correct: true, why: 'It times out at 121 s against a 120 s spec and holds when jumpered, exactly to the book. The control is reporting genuine low net oil pressure; whatever is wrong is upstream of it.' },
+          { id: 'module', label: 'The module is faulty', why: 'It does every step the book asks for. Replacing it would cost you a part and leave compressor 4 tripping tomorrow.' },
+          { id: 'sensor', label: 'The sensor is faulty', why: 'Jumper the terminals and it holds; open them and it times out. The sensor circuit is behaving exactly as designed.' },
+          { id: 'timer', label: 'The time delay is set too short', why: '121 s against a 120 s spec. That is the standard delay, and shortening or lengthening it would only change how long the compressor runs dry.' },
+        ],
+      } },
       { id: 'sep', label: 'Check the oil separator and reservoir', tool: 'Hands / eyes', minutes: 5, finding: 'Separator return warm, reservoir at 88 % and climbing. Separation is fine; the oil just is not getting into number 4.' },
       { id: 'oil', label: 'Look at the oil in the other compressors', tool: 'Eyes', minutes: 4, finding: 'Mid-glass on all five, clean and clear.' },
     ],
@@ -1891,7 +2039,6 @@ export const FAULTS: FaultDef[] = [
     difficulty: 2,
     shrinkPerMin: 3,
     complaintAfterMin: 999,
-    loto: true,
     knowledge: [{ slug: 'temprite', label: 'Oil Management' }, { slug: 'parallel-rack-systems', label: 'Parallel Racks' }],
   },
   {
@@ -1969,5 +2116,9 @@ export const FAULTS: FaultDef[] = [
     knowledge: [{ slug: 'danfoss', label: 'Danfoss Controls' }, { slug: 'parallel-rack-systems', label: 'Parallel Racks' }],
   },
 ]
+
+/** The whole board: the architecture-specific calls above, plus the everyday
+ *  ones every technician sees whatever the rack out back happens to be. */
+export const FAULTS: FaultDef[] = [...SITE_FAULTS, ...COMMON_FAULTS]
 
 export const FAULT_BY_ID: Record<string, FaultDef> = Object.fromEntries(FAULTS.map(f => [f.id, f]))

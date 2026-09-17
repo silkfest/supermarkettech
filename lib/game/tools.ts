@@ -47,24 +47,30 @@ function map(ids: ToolId[], ...strings: string[]) { for (const s of strings) TOO
 
 map(['hands'], 'Eyes', 'Hands', 'Eyes / hands', 'Hands / eyes', 'Flashlight', 'Eyes / flashlight',
   'Screwdriver', 'Cup of water', 'Service log', 'Panel schedule', 'Timer', 'Eyes / stopwatch',
-  'Lock & tag', 'Eyes / torque wrench', 'CO2 detector')
+  'Lock & tag', 'Eyes / torque wrench', 'CO2 detector', 'Ears / flashlight', 'Eyes / level',
+  'Hands / dollar bill')
 map(['controller'], 'Controller', 'Case controller', 'Controller / hands', 'Eyes / controller',
   'Service log / controller', 'Level probe', 'Level', 'Level / manual', 'Level probe / sight glass')
 map(['thermometer'], 'Thermometer', 'Thermometer / eyes', 'Hands / thermometer', 'Hygrometer')
-map(['gauges'], 'Gauges', 'Pressure gauges', 'Gauges / manual', 'Gauges / eyes', 'Eyes / gauges', 'Ears / gauges')
-map(['thermocouples'], 'Thermocouple', 'Thermocouples')
+map(['gauges'], 'Gauges', 'Pressure gauge', 'Pressure gauges', 'Gauges / manual', 'Gauges / eyes',
+  'Eyes / gauges', 'Ears / gauges')
+map(['thermocouples'], 'Thermocouple', 'Thermocouples', 'Hands / thermocouple')
 map(['gauges', 'thermometer'], 'Thermometer / gauges')
-map(['gauges', 'thermocouples'], 'Thermocouple / gauges', 'Thermocouples / gauges')
+map(['gauges', 'thermocouples'], 'Thermocouple / gauges', 'Thermocouples / gauges',
+  'Gauges / thermocouple', 'PT chart / thermocouple')
 map(['multimeter'], 'Multimeter', 'Multimeter (Ω)', 'Multimeter (V)', 'Multimeter (µF)', 'Meter',
-  'Meter / eyes', 'Eyes / meter', 'Eyes / multimeter', 'Hands / meter', 'Meter / 120 V cord', 'Meter / controller')
-map(['clamp'], 'Clamp meter', 'Amp clamp', 'Eyes / clamp', 'Hands / clamp meter')
+  'Meter / eyes', 'Eyes / meter', 'Eyes / multimeter', 'Hands / meter', 'Meter / 120 V cord',
+  'Meter / controller', 'Meter \u2014 ohms')
+map(['clamp'], 'Clamp meter', 'Amp clamp', 'Eyes / clamp', 'Hands / clamp meter', 'Clamp / eyes',
+  'Hands / clamp')
 map(['megger'], 'Megohmmeter')
 map(['refractometer'], 'Refractometer', 'Sample kit')
 map(['leakdet'], 'Electronic leak detector')
 map(['thermal'], 'Thermal camera')
 // Feeling a strainer for a temperature drop is a bare-hands check; the IR gun is a nicety.
-map(['hands'], 'Hands / IR gun')
-map(['anemometer'], 'Eyes / anemometer')
+map(['hands'], 'Hands / IR gun', 'IR gun')
+map(['anemometer'], 'Anemometer', 'Eyes / anemometer')
+map(['anemometer', 'thermometer'], 'Anemometer / thermometer')
 map(['laptop'], 'VFD keypad')
 
 /** What a check's tool line requires. Unknown strings need nothing but your hands. */

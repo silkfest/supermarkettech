@@ -1,13 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { X, Zap, Gauge, CheckCircle2, ArrowRight } from 'lucide-react'
-import SafetyCircuitTrainer from '@/components/simulation/SafetyCircuitTrainer'
-import CaseCircuitTrainer from '@/components/simulation/CaseCircuitTrainer'
+import MeterBench from './MeterBench'
 import PTChartTool from './PTChartTool'
 import type { Check } from '@/lib/game/types'
 
 interface Props {
   check: Check
+  /** Ohming means dead-circuit work, so the bench stays shut until it is locked out. */
+  needsLoto: boolean
+  lotoDone: boolean
+  onLoto: () => void
   /** Wrong readings and dead ends cost shift time, same as anything else. */
   onSpend: (minutes: number) => void
   /** The instrument gave up its answer — the check can complete. */
@@ -17,10 +20,10 @@ interface Props {
 
 /** The check you have to actually perform. Sits over the call panel until the
  *  instrument gives you a number, then hands the finding back. */
-export default function InstrumentPanel({ check, onSpend, onDone, onClose }: Props) {
+export default function InstrumentPanel({ check, needsLoto, lotoDone, onLoto, onSpend, onDone, onClose }: Props) {
   const inst = check.instrument!
   const [solved, setSolved] = useState(false)
-  const electrical = inst.kind === 'circuit' || inst.kind === 'casecircuit'
+  const electrical = inst.kind === 'meter'
 
   return (
     <div className="absolute inset-0 z-30 bg-slate-900/60 flex items-end sm:items-center justify-center p-0 sm:p-3">
@@ -29,7 +32,9 @@ export default function InstrumentPanel({ check, onSpend, onDone, onClose }: Pro
           style={{ borderTopColor: electrical ? '#f59e0b' : '#06b6d4', borderTopWidth: 3 }}>
           <div className="min-w-0 flex-1">
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white flex items-center gap-1 w-fit ${electrical ? 'bg-amber-500' : 'bg-cyan-500'}`}>
-              {electrical ? <><Zap size={9} /> LIVE CIRCUIT</> : <><Gauge size={9} /> GAUGES + PT CHART</>}
+              {inst.kind === 'meter'
+                ? <><Zap size={9} /> {inst.mode === 'ohms' ? 'METER — RESISTANCE' : 'METER — VOLTAGE'}</>
+                : <><Gauge size={9} /> GAUGES + PT CHART</>}
             </span>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mt-1">{check.label}</h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400">{check.tool}</p>
@@ -40,16 +45,9 @@ export default function InstrumentPanel({ check, onSpend, onDone, onClose }: Pro
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {inst.kind === 'circuit' ? (
-            <div className="space-y-3">
-              <p className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-relaxed">{inst.prompt}</p>
-              <SafetyCircuitTrainer variant={inst.variant} onSolved={() => setSolved(true)} />
-            </div>
-          ) : inst.kind === 'casecircuit' ? (
-            <div className="space-y-3">
-              <p className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-relaxed">{inst.prompt}</p>
-              <CaseCircuitTrainer defrostMode={inst.defrost} onSolved={() => setSolved(true)} />
-            </div>
+          {inst.kind === 'meter' ? (
+            <MeterBench inst={inst} needsLoto={needsLoto} lotoDone={lotoDone} onLoto={onLoto}
+              onSpend={onSpend} onSolved={() => setSolved(true)} />
           ) : (
             <PTChartTool
               refrigerant={inst.refrigerant} psig={inst.psig} lineTempF={inst.lineTempF}
@@ -66,7 +64,7 @@ export default function InstrumentPanel({ check, onSpend, onDone, onClose }: Pro
             </button>
           ) : (
             <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
-              {electrical ? 'Find the open and call it before you put the meter away.' : 'Work the chart. The clock is still running.'}
+              {electrical ? 'Take your readings and call what they mean before you put the meter away.' : 'Work the chart. The clock is still running.'}
             </p>
           )}
         </div>
