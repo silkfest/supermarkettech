@@ -72,3 +72,7 @@ export default function InstrumentPanel({ check, needsLoto, lotoDone, onLoto, on
     </div>
   )
 }
+
+// Physical sampling is shared with equipment inspection; legacy benches retain
+// their guided verdicts for the earlier training levels.
+export { default as MeasurementInstrument } from './inspection/ToolInteraction'

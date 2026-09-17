@@ -1,6 +1,8 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Snowflake, Zap, Droplets, Wind, BookOpen, Check, Store, Wrench } from 'lucide-react'
+import { PixelEquipment, PixelObstacle, PixelTechnician } from './inspection/PixelEquipment'
+import type { VisualFaultState } from '@/lib/game/inspection/types'
 import { NavGrid } from '@/lib/game/grid'
 import { useIsMobile } from '@/components/simulation/useIsMobile'
 import type { Character, EquipmentNode, GameMap, Obstacle, Point, SystemKey } from '@/lib/game/types'
@@ -24,6 +26,7 @@ export interface Hotspot {
   cue?: SystemKey
   done?: boolean
   flagged?: boolean
+  physical?: boolean
 }
 
 const WALK_SPEED = 150
@@ -46,9 +49,11 @@ interface Props {
   onNearChange: (hotspotId: string | null) => void
   /** Town map: the tech drives the service van instead of walking the floor. */
   vehicle?: boolean
+  pixelArt?: boolean
+  visualStates?: Record<string, VisualFaultState>
 }
 
-export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange, vehicle }: Props) {
+export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange, vehicle, pixelArt, visualStates }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile(768)
@@ -218,15 +223,16 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
         aria-label="Floor plan"
       >
         <MapDefs />
-        <rect x="0" y="0" width={map.w} height={map.h} fill={`url(#floor-${map.floor})`} />
+        <defs><pattern id="pixel-floor" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#d8d6c1"/><path d="M0 0h24v24" stroke="#bdc1b0" fill="none"/><rect x="3" y="3" width="2" height="2" fill="#e5e2cd"/></pattern></defs>
+        <rect x="0" y="0" width={map.w} height={map.h} fill={pixelArt ? "url(#pixel-floor)" : `url(#floor-${map.floor})`} />
 
         {map.zones.map(z => (
           <text key={z.label} x={z.x} y={z.y} textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="1.5"
             className="fill-slate-500 dark:fill-slate-500 pointer-events-none" opacity="0.8">{z.label}</text>
         ))}
 
-        {map.obstacles.map((o, i) => <ObstacleGlyph key={i} o={o} seed={i} />)}
-        {map.equipment.map(e => <EquipmentGlyph key={e.id} node={e} />)}
+        {map.obstacles.map((o, i) => pixelArt ? <PixelObstacle key={i} o={o} /> : <ObstacleGlyph key={i} o={o} seed={i} />)}
+        {map.equipment.map(e => pixelArt ? <PixelEquipment key={e.id} node={e} visual={visualStates?.[e.id]} /> : <EquipmentGlyph key={e.id} node={e} />)}
 
         {tapMark && (
           <circle cx={tapMark.x} cy={tapMark.y} r="6" fill="none" stroke={character.color} strokeWidth="1.5" opacity="0.7" className="pointer-events-none">
@@ -236,17 +242,21 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
 
         {/* Floor cues sit under the avatar */}
         {hotspots.map(h => {
-          if (!h.cue || h.done) return null
+          if (!h.cue || h.done || h.physical) return null
           const n = nodeForHotspot(h)
           return <FaultCue key={`cue-${h.id}`} system={h.cue} at={{ x: (n.pin.x + n.stand.x) / 2, y: (n.pin.y + n.stand.y) / 2 }} />
         })}
 
         {vehicle
           ? <Van pos={pos} facing={facing} color={character.color} moving={walking} />
-          : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />}
+          : pixelArt ? <PixelTechnician pos={pos} color={character.color} walking={walking} /> : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />}
 
         {hotspots.map(h => {
           const n = nodeForHotspot(h)
+          if (h.physical) return <g key={h.id} onPointerDown={ev => handleHotspotTap(ev, h)} className="cursor-pointer">
+            <rect x={n.rect.x} y={n.rect.y} width={n.rect.w} height={n.rect.h} fill="transparent" />
+            <text x={n.stand.x} y={n.stand.y + 20} textAnchor="middle" fontSize="8" fill="#263845">Inspect F1</text>
+          </g>
           const Icon = h.done ? Check : ICONS[h.icon]
           const color = h.done ? '#64748b' : h.color
           return (
