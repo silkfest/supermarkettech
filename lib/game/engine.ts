@@ -1,3 +1,6 @@
+import { initialInspection, F1_TICKET } from './inspection/f1'
+import { interact, tickInspection, canVerify } from './inspection/engine'
+import type { InspectionAction } from './inspection/types'
 import { FAULTS, FAULT_BY_ID } from './faults'
 import { LEVEL_BY_ID, type LevelDef } from './levels'
 import { requiredTier } from './tools'
@@ -12,6 +15,7 @@ export interface Toast { id: number; text: string; tone: 'info' | 'warn' | 'crit
 
 export interface ShiftState {
   status: 'idle' | 'running' | 'over'
+  practice: boolean
   levelId: LevelId
   character: Character
   elapsedMin: number
@@ -28,8 +32,9 @@ export interface ShiftState {
 }
 
 export type ShiftAction =
-  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3 }
+  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean }
   | { type: 'TICK'; dtMin: number }
+  | { type: 'INSPECT'; callId: string; action: InspectionAction }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
   | { type: 'SPEND_MINUTES'; callId: string; minutes: number }
   | { type: 'COMPLETE_CALL'; result: CallResult }
@@ -38,7 +43,7 @@ export type ShiftAction =
   | { type: 'RESET' }
 
 export const INITIAL_STATE: ShiftState = {
-  status: 'idle',
+  status: 'idle', practice: false,
   levelId: 'supermarket',
   character: { name: '', color: '#2563eb', role: 'apprentice' },
   elapsedMin: 0, spawnIdx: 0, calls: [], results: [],
@@ -54,6 +59,7 @@ export function effectiveDifficulty(f: FaultDef): number {
 }
 
 function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equipmentId: string } | null {
+  if (state.levelId === 'supermarket' && state.spawnIdx === 0) return { fault: FAULT_BY_ID.defrost_heater_open, equipmentId: 'F1' }
   const occupied = new Set(state.calls.map(c => c.equipmentId))
   const usedSystems = new Set<SystemKey>([...state.calls, ...state.results].map(c => FAULT_BY_ID[c.faultId].system))
   const open = FAULTS
@@ -80,7 +86,7 @@ function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftS
 export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState {
   switch (action.type) {
     case 'START':
-      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty }
+      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty, practice: action.practice ?? false }
 
     case 'RESET':
       return { ...INITIAL_STATE, character: state.character, levelId: state.levelId, maxDifficulty: state.maxDifficulty }
@@ -92,9 +98,10 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
 
       let shrink = s.shrink
       let complaints = s.complaints
-      const calls = s.calls.map(c => {
+      const calls = s.calls.map(original => {
+        const c = original.inspection ? { ...original, inspection: tickInspection(original.inspection, s.elapsedMin, action.dtMin) } : original
         const f = FAULT_BY_ID[c.faultId]
-        shrink += f.shrinkPerMin * action.dtMin
+        shrink += c.inspection ? c.inspection.shrink - original.inspection!.shrink : f.shrinkPerMin * action.dtMin
         if (!c.complained && s.elapsedMin - c.spawnedAtMin >= f.complaintAfterMin) {
           complaints += 1
           s = withToast(s, `Customer complaint logged — ${level.map.equipment.find(e => e.id === c.equipmentId)?.label}`, 'warn')
@@ -105,22 +112,31 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
       s = { ...s, calls, shrink, complaints }
 
       const nextAt = level.spawnAt[s.character.role][s.spawnIdx]
-      if (nextAt !== undefined && s.elapsedMin >= nextAt && s.calls.length < level.maxOpen[s.character.role]) {
+      if ((!s.practice || s.spawnIdx === 0) && nextAt !== undefined && s.elapsedMin >= nextAt && s.calls.length < level.maxOpen[s.character.role]) {
         const choice = chooseFault(s, level)
         s = { ...s, spawnIdx: s.spawnIdx + 1 }
         if (choice) {
           const call: ActiveCall = {
+            inspection: s.levelId === 'supermarket' && choice.equipmentId === 'F1' && choice.fault.id === 'defrost_heater_open' ? initialInspection() : undefined,
             id: `call-${s.seq}`, faultId: choice.fault.id, equipmentId: choice.equipmentId,
             spawnedAtMin: s.elapsedMin, complained: false, stage: 'ticket',
             checksDone: [], lotoDone: false, causeAttempts: 0, fixAttempts: 0, minutesSpent: 0, partsWasted: 0,
           }
           const node = level.map.equipment.find(e => e.id === choice.equipmentId)
-          s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${choice.fault.title}`, 'crit')
+          s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${call.inspection ? F1_TICKET : choice.fault.title}`, 'crit')
         }
       }
 
       if (s.elapsedMin >= level.shiftLenMin) return { ...s, status: 'over', elapsedMin: level.shiftLenMin }
       return s
+    }
+
+    case 'INSPECT': {
+      const call = state.calls.find(c => c.id === action.callId)
+      if (!call?.inspection || state.status !== 'running') return state
+      const result = interact(call, action.action, state.elapsedMin)
+      const updated = { ...state, calls: state.calls.map(c => c.id === call.id ? result.call : c) }
+      return result.minutes ? shiftReducer(updated, { type: 'SPEND_MINUTES', callId: call.id, minutes: result.minutes }) : updated
     }
 
     case 'UPDATE_CALL':
@@ -132,6 +148,8 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
     }
 
     case 'COMPLETE_CALL': {
+      const call = state.calls.find(c => c.id === action.result.callId)
+      if (!call || (call.inspection && (!call.inspection.verified || !canVerify(call.inspection) || action.result.note.trim().length < 20))) return state
       const s: ShiftState = {
         ...state,
         calls: state.calls.filter(c => c.id !== action.result.callId),
@@ -155,14 +173,15 @@ export function scoreCall(call: ActiveCall, fault: FaultDef, note: string): Call
   const fixPts = call.fixAttempts <= 1 ? 30 : call.fixAttempts === 2 ? 15 : 0
   const keyChecks = fault.checks.filter(c => c.key).map(c => c.id)
   const nonLotoChecks = call.checksDone.filter(id => id !== 'loto')
-  const efficiencyPts = nonLotoChecks.length <= keyChecks.length + 1 ? 20 : nonLotoChecks.length <= keyChecks.length + 2 ? 10 : 0
-  const safetyPenalty = fault.loto && !call.lotoDone ? 15 : 0
+  const efficiencyPts = call.inspection ? Math.max(0, 20 - call.inspection.unnecessary.length * 4) : nonLotoChecks.length <= keyChecks.length + 1 ? 20 : nonLotoChecks.length <= keyChecks.length + 2 ? 10 : 0
+  const safetyPenalty = call.inspection ? Math.min(30, call.inspection.safetyMistakes.length * 5) : fault.loto && !call.lotoDone ? 15 : 0
   const points = Math.max(0, diagnosisPts + fixPts + efficiencyPts - safetyPenalty)
   return {
+    inspection: call.inspection,
     callId: call.id, faultId: fault.id, equipmentId: call.equipmentId, system: fault.system,
     points, diagnosisPts, fixPts, efficiencyPts, safetyPenalty,
     causeAttempts: call.causeAttempts, fixAttempts: call.fixAttempts,
-    checksUsed: nonLotoChecks.length, keyChecksTotal: keyChecks.length,
+    checksUsed: call.inspection ? call.inspection.evidence.length : nonLotoChecks.length, keyChecksTotal: keyChecks.length,
     partsWasted: call.partsWasted,
     note, minutesSpent: call.minutesSpent,
   }

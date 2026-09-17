@@ -1,3 +1,4 @@
+import type { InspectionState } from './inspection/types'
 import type { RefrigerantId } from './pt'
 
 export type SystemKey = 'refrigeration' | 'electrical' | 'plumbing' | 'hvac'
@@ -149,6 +150,7 @@ export interface Character {
 export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'verify' | 'log' | 'done'
 
 export interface ActiveCall {
+  inspection?: InspectionState
   id: string
   faultId: string
   equipmentId: string
@@ -165,6 +167,7 @@ export interface ActiveCall {
 }
 
 export interface CallResult {
+  inspection?: InspectionState
   callId: string
   faultId: string
   equipmentId: string
