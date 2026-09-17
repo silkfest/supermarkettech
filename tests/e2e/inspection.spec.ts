@@ -20,124 +20,99 @@ test('F1 physical workflow completes without changing practice progression', asy
   await page.getByRole('button', { name: 'Walk', exact: true }).first().click()
   await page.getByRole('heading', { name: 'WO #38471 — Frozen Food' }).waitFor()
 
-  const button = (name: string) =>
-    page.getByRole('button', { name, exact: true })
+  const nav = page.getByRole('navigation', { name: 'Inspection pages' })
+  const tab = (name: string) => nav.getByRole('button', { name })
+  /** Actions are labelled by what they do; the tool rides along as a badge. */
+  const act = (name: string) => page.getByRole('button', { name })
+  /** Pick a spot on the case to work at. */
   const area = async (name: string) => {
-    await button('inspect').click()
+    await tab('Work').click()
     await page.getByRole('button', { name, exact: true }).first().click()
   }
-  const tool = async (name: string) =>
-    page.getByRole('toolbar').getByRole('button', { name, exact: true }).click()
-  const record = async () => {
-    await button('evidence').click()
-    while (await button('Record evidence').count())
-      await button('Record evidence').first().click()
-    await button('inspect').click()
+  /** Meter: choose the function, the leads land on the labelled points, read. */
+  const read = async (fn: 'Voltage' | 'Resistance' | 'Clamp current') => {
+    const box = page.locator('.border-amber-400').last()
+    await box.getByRole('radio', { name: fn }).click()
+    await box.getByRole('button', { name: 'Read it' }).click()
   }
-  const read = async (mode: string) => {
-    await page.getByLabel('Instrument function').selectOption(mode)
-    const box = page
-      .locator('.border-amber-400')
-      .filter({
-        has: page.getByRole('button', { name: 'Read instrument', exact: true })
-      })
-      .last()
-    const leads = box
-      .getByRole('button')
-      .filter({ hasText: /^(Red lead:|Black lead:|Position around:|Close:)/ })
-    for (let i = 0; i < (await leads.count()); i++) await leads.nth(i).click()
-    await button('Read instrument').click()
+  const probe = async () => {
+    const box = page.locator('.border-amber-400').last()
+    await box.getByRole('button', { name: 'Read it' }).click()
   }
+
   await area('Evaporator')
-  await tool('Flashlight')
-  await button('Use flashlight on selected area').click()
-  await record()
-  await button('Back to supermarket').click()
-  await page
-    .getByRole('button', { name: 'Resume', exact: true })
-    .first()
-    .click()
-  await button('evidence').click()
-  await expect(page.getByText('Recorded ✓')).toBeVisible()
-  await button('inspect').click()
+  await act('Inspect the evaporator coil').click()
+
+  // Findings are booked as they are made — reopening the call keeps them.
+  const notebook = page.getByRole('region', { name: 'Service notebook' })
+  await tab('Notebook').click()
+  await expect(notebook.getByText('Coil frost', { exact: true })).toBeVisible()
+  await act('Back to supermarket').click()
+  await page.getByRole('button', { name: 'Resume', exact: true }).first().click()
+  await tab('Notebook').click()
+  await expect(notebook.getByText('Coil frost', { exact: true })).toBeVisible()
+
   await area('Defrost circuit')
-  await tool('Hand tools')
-  await button('Remove service cover').click()
+  await act('Remove the service cover').click()
   await area('Controller')
-  await tool('Controller')
-  await button('Use interface on selected area').click()
-  await button('Request manual defrost').click()
+  await act('Read the controller and its history').click()
+  await act('Request a manual defrost').click()
   await area('Defrost circuit')
-  await tool('Clamp meter')
-  await button('Feeder clamp position').click()
-  await read('amps')
-  await record()
-  await button('Wait 10 min').click()
+  await act('Clamp the heater feeder').click()
+  await read('Clamp current')
+  await act('Wait 10 min').click()
   await area('Evaporator')
-  await tool('Flashlight')
-  await button('Use flashlight on selected area').click()
-  await record()
+  await act('Inspect the evaporator coil').click()
+
   await area('Defrost circuit')
-  await tool('Hand tools')
-  await button('Secure heater disconnect OFF').click()
-  await tool('Multimeter')
-  await button('Voltage test points').click()
-  await read('volts')
-  await tool('Hand tools')
-  await button('Disconnect element leads').click()
+  await act('Secure the heater disconnect OFF').click()
+  await act('Prove the circuit dead').click()
+  await read('Voltage')
+  await act('Disconnect one lead per element').click()
   await area('Defrost heaters')
-  await tool('Multimeter')
-  for (let i = 1; i <= 3; i++) {
-    await button('H' + i + ' terminals').click()
-    await read('ohms')
+  for (const n of [1, 2, 3]) {
+    await act(`Ohm heater ${n} across its terminals`).click()
+    await read('Resistance')
   }
-  await record()
-  await button('diagnosis').click()
-  await page.getByLabel('Diagnosis system').selectOption('Defrost')
-  await page.getByLabel('Diagnosis component').selectOption('Electric heaters')
-  await page.getByLabel('Diagnosis failure').selectOption('Heater #3 open')
-  await button('Submit diagnosis').click()
+
+  await tab('Diagnose').click()
+  await page.getByRole('radio', { name: 'Defrost', exact: true }).click()
+  await page.getByRole('radio', { name: 'Electric heaters' }).click()
+  await page.getByRole('radio', { name: 'Heater #3 open' }).click()
+  await act('Call it: Heater #3 open').click()
+
   await area('Defrost heaters')
-  await tool('Hand tools')
-  await button('Replace H3 · $140').click()
-  await button('Reconnect / secure covers / restore').click()
+  await act('Replace heater 3').click()
+  await act('Reconnect, secure covers and restore').click()
   await area('Controller')
-  await tool('Controller')
-  await button('Request manual defrost').click()
+  await act('Request a manual defrost').click()
   await area('Defrost circuit')
-  await tool('Hand tools')
-  await button('Remove service cover').click()
-  await tool('Clamp meter')
-  await button('Feeder clamp position').click()
-  await read('amps')
-  await record()
-  await button('Wait 10 min').click()
+  await act('Remove the service cover').click()
+  await act('Clamp the heater feeder').click()
+  await read('Clamp current')
+  await act('Wait 10 min').click()
   await area('Evaporator')
-  await tool('Flashlight')
-  await button('Use flashlight on selected area').click()
+  await act('Inspect the evaporator coil').click()
   await area('Controller')
-  await tool('Controller')
-  await button('Use interface on selected area').click()
-  await record()
-  await button('Wait 10 min').click()
-  await button('Wait 10 min').click()
-  await button('Wait 10 min').click()
+  await act('Read the controller and its history').click()
+  await act('Wait 10 min').click()
+  await act('Wait 10 min').click()
+  await act('Wait 10 min').click()
   await area('Glass doors / product')
-  await tool('Temp probe')
-  await button('Position temperature probe').click()
-  await button('Place probe and sample').click()
-  await record()
+  await act('Probe between the product packs').click()
+  await probe()
   await area('Defrost circuit')
-  await tool('Hand tools')
-  await button('Secure service cover').click()
-  await button('report').click()
-  await button('Confirm verified operation').click()
-  await page
-    .getByLabel('Service report')
-    .fill(
-      'Found H3 open with missing heater load and uneven frost. Replaced H3 only. Verified full current, normal termination, clear coil and product pull-down.'
-    )
-  await button('Complete report and view debrief').click()
+  await act('Secure the service cover').click()
+
+  await tab('Report').click()
+  await act('Confirm verified operation').click()
+  // The report builds from what was actually found, without a phone keyboard.
+  for (const chip of ['+ Found', '+ Measured', '+ Repaired', '+ Verified'])
+    await page.getByRole('button', { name: chip, exact: true }).click()
+  await expect(page.getByLabel('Service report')).toHaveValue(
+    /Heater #3 open[\s\S]*Replaced Heater #3[\s\S]*Verified/
+  )
+  await act('Complete report and view debrief').click()
   await page
     .getByRole('heading', { name: 'Service debrief · 100/100' })
     .waitFor()
@@ -147,8 +122,8 @@ test('F1 physical workflow completes without changing practice progression', asy
       () => document.documentElement.scrollWidth > window.innerWidth
     )
   ).toBe(false)
-  await button('Back to supermarket').click()
-  await button('End shift').click()
+  await act('Back to supermarket').click()
+  await act('End shift').click()
   await expect(
     page.getByText('+0 h on the book', { exact: false })
   ).toBeVisible()
@@ -157,4 +132,36 @@ test('F1 physical workflow completes without changing practice progression', asy
   )
   expect(saved.progress.hours).toBe(0)
   expect(saved.progress.xp).toBe(0)
+})
+
+test('the supermarket work list ends the shift, not the clock', async ({
+  page
+}) => {
+  await page.route('**/api/game/progress', (r) => r.fulfill({ json: null }))
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'coldcall_save',
+      JSON.stringify({
+        character: { name: 'Ben', color: '#2563eb', role: 'apprentice' },
+        progress: {
+          version: 1,
+          lessons: {},
+          levels: { 'gas-station': { shifts: 3, bestScore: 150, bestGrade: 'B' } },
+          xp: 400,
+          hours: 40
+        }
+      })
+    )
+  )
+  await page.goto('/game')
+  await page.getByRole('button', { name: /Job list/ }).click()
+  // The cards advertise a work list rather than a shift length.
+  const card = (name: string) => page.getByRole('button').filter({ hasText: name })
+  await expect(card('Full Supermarket')).toContainText('10 calls, then you are done')
+  await expect(card('Corner Gas Station')).toContainText('5 calls, then you are done')
+  // Neither of the two converted levels advertises a clock any more; the deeper
+  // stores are untouched and still run a timed shift.
+  await expect(card('Full Supermarket')).not.toContainText('h shift')
+  await expect(card('Corner Gas Station')).not.toContainText('h shift')
+  await expect(card('Lakeshore Market')).toContainText('8 h shift')
 })

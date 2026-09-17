@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Check, X } from 'lucide-react'
 import { scoreCall } from '@/lib/game/engine'
 import {
   F1_FAULT,
@@ -8,10 +8,17 @@ import {
   F1_TICKET,
   MEASUREMENTS
 } from '@/lib/game/inspection/f1'
-import { canDiagnose, canVerify } from '@/lib/game/inspection/engine'
+import {
+  canDiagnose,
+  canVerify,
+  diagnoseChecklist,
+  nextStep,
+  verifyChecklist
+} from '@/lib/game/inspection/engine'
 import type {
   ComponentId,
   InspectionAction,
+  InspectionState,
   InspectionTool
 } from '@/lib/game/inspection/types'
 import type { ActiveCall, CallResult } from '@/lib/game/types'
@@ -22,16 +29,31 @@ import EvidenceNotebook from './EvidenceNotebook'
 import DiagnosisTree from './DiagnosisTree'
 import ServiceDebrief from './ServiceDebrief'
 
-const BAG: { id: InspectionTool; label: string }[] = [
-  { id: 'flashlight', label: 'Flashlight' },
-  { id: 'multimeter', label: 'Multimeter' },
-  { id: 'clamp', label: 'Clamp meter' },
-  { id: 'thermometer', label: 'Temp probe' },
-  { id: 'controller', label: 'Controller' },
-  { id: 'hands', label: 'Hand tools' }
+/** Short badge shown on every action, so which tool does what is still learned —
+ * it is just no longer a switch you have to flip before the job. */
+const TOOL_LABEL: Partial<Record<InspectionTool, string>> = {
+  flashlight: 'Flashlight',
+  multimeter: 'Multimeter',
+  clamp: 'Clamp meter',
+  thermometer: 'Temp probe',
+  controller: 'Controller',
+  hands: 'Hand tools'
+}
+type Group = 'look' | 'measure' | 'circuit' | 'repair'
+const GROUPS: { id: Group; title: string }[] = [
+  { id: 'look', title: 'Look it over' },
+  { id: 'measure', title: 'Take a reading' },
+  { id: 'circuit', title: 'Work the circuit' },
+  { id: 'repair', title: 'Repair' }
 ]
-const btn =
-  'min-h-11 px-3 py-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-xs disabled:opacity-40'
+type Tab = 'work' | 'notebook' | 'diagnosis' | 'report'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'work', label: 'Work' },
+  { id: 'notebook', label: 'Notebook' },
+  { id: 'diagnosis', label: 'Diagnose' },
+  { id: 'report', label: 'Report' }
+]
+
 export default function EquipmentInspection({
   call,
   result,
@@ -47,25 +69,21 @@ export default function EquipmentInspection({
   onComplete: (result: CallResult) => void
   onClose: () => void
 }) {
-  const [tool, setTool] = useState<InspectionTool>('flashlight')
   const [selected, setSelected] = useState<ComponentId>('product')
   const [measurementId, setMeasurementId] = useState<string | null>(null)
-  const [tab, setTab] = useState<
-    'inspect' | 'evidence' | 'diagnosis' | 'report'
-  >('inspect')
+  const [tab, setTab] = useState<Tab>('work')
   const s = call?.inspection
   const measurement = MEASUREMENTS.find((m) => m.id === measurementId)
   // Full Supermarket's first slice supplies loaner meters if career progression
   // has not unlocked them yet. No permanent rank/tool/save changes are made.
-  const loaned = BAG.filter(
-    (t) => t.id !== 'flashlight' && !owned.has(t.id as ToolId)
+  const loaned = useMemo(
+    () =>
+      (['multimeter', 'clamp', 'thermometer', 'controller', 'hands'] as const)
+        .filter((t) => !owned.has(t as ToolId))
+        .map((t) => TOOL_LABEL[t]),
+    [owned]
   )
-  function action(a: InspectionAction) {
-    onAction(a)
-  }
-  function measure(id: string) {
-    setMeasurementId(id)
-  }
+  const actions = s ? buildActions(s, selected, onAction, setMeasurementId) : []
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-100 rounded-xl border border-slate-600 overflow-hidden">
       <header className="p-3 border-b border-slate-700 flex items-start gap-2">
@@ -89,22 +107,28 @@ export default function EquipmentInspection({
         ) : s && call ? (
           <>
             <p className="text-xs text-slate-300">{F1_REPORT}</p>
-            <nav
-              className="grid grid-cols-4 gap-1"
-              aria-label="Inspection pages"
-            >
-              {(['inspect', 'evidence', 'diagnosis', 'report'] as const).map(
-                (t) => (
-                  <button
-                    key={t}
-                    aria-pressed={tab === t}
-                    onClick={() => setTab(t)}
-                    className={`${btn} capitalize px-1 ${tab === t ? 'border-amber-400 text-amber-200' : ''}`}
-                  >
-                    {t}
-                  </button>
-                )
-              )}
+            <nav className="grid grid-cols-4 gap-1" aria-label="Inspection pages">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  aria-pressed={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`min-h-11 px-1 py-2 rounded-lg border text-xs ${tab === t.id ? 'border-amber-400 bg-slate-800 text-amber-200' : 'border-slate-600 bg-slate-800 text-slate-300'}`}
+                >
+                  {t.label}
+                  {t.id === 'notebook' && s.evidence.length > 0 && (
+                    <span className="ml-1 text-[10px] text-slate-400">
+                      {s.evidence.length}
+                    </span>
+                  )}
+                  {t.id === 'diagnosis' && canDiagnose(s) && !s.diagnosis && (
+                    <span className="ml-1 text-emerald-400">&bull;</span>
+                  )}
+                  {t.id === 'report' && canVerify(s) && (
+                    <span className="ml-1 text-emerald-400">&bull;</span>
+                  )}
+                </button>
+              ))}
             </nav>
             {s.feedback && (
               <p
@@ -114,7 +138,13 @@ export default function EquipmentInspection({
                 {s.feedback}
               </p>
             )}
-            {tab === 'inspect' && (
+            <p className="text-xs text-blue-200 bg-blue-950/60 border border-blue-900 rounded-lg p-2">
+              <span className="text-[10px] uppercase tracking-widest text-blue-400 block">
+                Next
+              </span>
+              {nextStep(s)}
+            </p>
+            {tab === 'work' && (
               <>
                 <EquipmentScene
                   state={s}
@@ -130,149 +160,39 @@ export default function EquipmentInspection({
                     : s.terminatedAt !== null
                       ? 'Refrigeration / pull-down'
                       : 'Refrigeration'}{' '}
-                  ·{' '}
+                  &middot;{' '}
                   {s.isolated
                     ? s.provedDead
                       ? 'Heater circuit proved dead'
                       : 'Heater disconnect OFF; verify dead'
                     : 'Heater circuit available'}
+                  {s.coverOpen ? ' · service cover off' : ''}
                 </p>
-                <div
-                  role="toolbar"
-                  aria-label="Technician tools"
-                  className="grid grid-cols-3 gap-1"
-                >
-                  {BAG.map((t) => (
-                    <button
-                      key={t.id}
-                      aria-pressed={tool === t.id}
-                      onClick={() => {
-                        setTool(t.id)
-                        setMeasurementId(null)
-                      }}
-                      className={`${btn} px-1 ${tool === t.id ? 'bg-blue-800 border-blue-300' : ''}`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                {!!loaned.length && (
-                  <p className="text-[10px] text-slate-400">
-                    Dispatch loaners for this call:{' '}
-                    {loaned.map((t) => t.label).join(', ')}.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={btn}
-                    onClick={() =>
-                      action({ type: 'observe', component: selected, tool })
-                    }
-                  >
-                    Use {tool === 'controller' ? 'interface' : 'flashlight'} on
-                    selected area
-                  </button>
-                  {selected === 'product' && (
-                    <button className={btn} onClick={() => measure('product')}>
-                      Position temperature probe
-                    </button>
-                  )}
-                  {selected === 'controller' && (
-                    <button
-                      className={btn}
-                      onClick={() => action({ type: 'force-defrost', tool })}
-                    >
-                      Request manual defrost
-                    </button>
-                  )}
-                  {(selected === 'electrical' || selected === 'heaters') && (
-                    <>
-                      {!s.coverOpen && (
-                        <button
-                          className={btn}
-                          onClick={() => action({ type: 'open-cover', tool })}
-                        >
-                          Remove service cover
-                        </button>
-                      )}
-                      {s.coverOpen && (
-                        <button
-                          className={btn}
-                          onClick={() => action({ type: 'close-cover', tool })}
-                        >
-                          Secure service cover
-                        </button>
-                      )}
-                      <button
-                        className={btn}
-                        onClick={() => action({ type: 'isolate', tool })}
-                      >
-                        Secure heater disconnect OFF
-                      </button>
-                      <button className={btn} onClick={() => measure('dead')}>
-                        Voltage test points
-                      </button>
-                      <button
-                        className={btn}
-                        onClick={() => action({ type: 'disconnect', tool })}
-                      >
-                        Disconnect element leads
-                      </button>
-                      <button
-                        className={btn}
-                        onClick={() => measure('current')}
-                      >
-                        Feeder clamp position
-                      </button>
-                      <button
-                        className={btn}
-                        onClick={() => action({ type: 'restore', tool })}
-                      >
-                        Reconnect / secure covers / restore
-                      </button>
-                    </>
-                  )}
-                  {selected === 'heaters' &&
-                    [1, 2, 3].map((n) => (
-                      <div
-                        key={n}
-                        className="flex flex-wrap gap-1 border border-slate-600 rounded p-1"
-                      >
-                        <button
-                          className={btn}
-                          onClick={() => measure(`e${n}`)}
-                        >
-                          H{n} terminals
-                        </button>
-                        <button
-                          className={btn}
-                          onClick={() => measure(`g${n}`)}
-                        >
-                          H{n} → frame
-                        </button>
-                        {s.diagnosis && (
+                {GROUPS.map((g) => {
+                  const items = actions.filter((a) => a.group === g.id)
+                  if (!items.length) return null
+                  return (
+                    <section key={g.id} aria-label={g.title}>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">
+                        {g.title}
+                      </p>
+                      <div className="space-y-1.5">
+                        {items.map((a) => (
                           <button
-                            className={btn}
-                            onClick={() =>
-                              action({ type: 'replace', part: `H${n}`, tool })
-                            }
+                            key={a.key}
+                            onClick={a.run}
+                            className="w-full min-h-12 px-3 py-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-left flex items-center gap-2"
                           >
-                            Replace H{n} · $140
+                            <span className="text-xs flex-1">{a.label}</span>
+                            <span className="text-[9px] uppercase tracking-wide text-amber-300 border border-amber-700 rounded px-1.5 py-0.5 flex-shrink-0">
+                              {TOOL_LABEL[a.tool]}
+                            </span>
                           </button>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  {selected === 'controller' && s.diagnosis && (
-                    <button
-                      className={btn}
-                      onClick={() =>
-                        action({ type: 'replace', part: 'termination', tool })
-                      }
-                    >
-                      Replace termination control · $75
-                    </button>
-                  )}
-                </div>
+                    </section>
+                  )
+                })}
                 {measurement && (
                   <MeasurementInstrument
                     key={measurement.id}
@@ -290,103 +210,240 @@ export default function EquipmentInspection({
                         )?.value
                     }
                     onSample={(mode, terminals) =>
-                      action({
+                      onAction({
                         type: 'measure',
                         measurement: measurement.id,
                         mode,
                         terminals,
-                        tool
+                        tool: measurement.tool
                       })
                     }
                   />
                 )}
-                <div className="flex gap-2">
-                  <button
-                    className={btn}
-                    onClick={() => action({ type: 'wait', minutes: 3 })}
-                  >
-                    Watch / wait 3 min
-                  </button>
-                  <button
-                    className={btn}
-                    onClick={() => action({ type: 'wait', minutes: 10 })}
-                  >
-                    Wait 10 min
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Readings remain unknown until sampled. Open Evidence to record
-                  observations and measurements.
-                </p>
+                <section aria-label="Let it run">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">
+                    Let it run
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      className="min-h-12 rounded-lg border border-slate-600 bg-slate-800 text-xs"
+                      onClick={() => onAction({ type: 'wait', minutes: 3 })}
+                    >
+                      Watch 3 min
+                    </button>
+                    <button
+                      className="min-h-12 rounded-lg border border-slate-600 bg-slate-800 text-xs"
+                      onClick={() => onAction({ type: 'wait', minutes: 10 })}
+                    >
+                      Wait 10 min
+                    </button>
+                  </div>
+                </section>
+                {!!loaned.length && (
+                  <p className="text-[10px] text-slate-400">
+                    Dispatch loaners for this call: {loaned.join(', ')}.
+                  </p>
+                )}
               </>
             )}
-            {tab === 'evidence' && (
-              <EvidenceNotebook
-                evidence={s.evidence}
-                onRecord={(id) => action({ type: 'record', id })}
-              />
-            )}
+            {tab === 'notebook' && <EvidenceNotebook evidence={s.evidence} />}
             {tab === 'diagnosis' && (
               <>
                 <DiagnosisTree
-                  enabled={canDiagnose(s)}
+                  enabled={canDiagnose(s) && !s.diagnosis}
+                  checklist={diagnoseChecklist(s)}
                   onDiagnose={(system, component, failure) =>
-                    action({ type: 'diagnose', system, component, failure })
+                    onAction({ type: 'diagnose', system, component, failure })
                   }
                 />
                 {s.diagnosis && (
                   <p className="text-xs text-emerald-300">
-                    {s.diagnosis}. Use hand tools at the heater access to
-                    repair.
+                    {s.diagnosis}. Change the element on the Work page.
                   </p>
                 )}
               </>
             )}
             {tab === 'report' && (
-              <>
-                <h3 className="font-bold">Verify and close the work order</h3>
-                <p className="text-xs">
-                  Record the post-repair feeder current during defrost, cleared
-                  coil, controller termination and product temperature after
-                  pull-down. Secure the service cover.
-                </p>
-                <button
-                  className={btn}
-                  onClick={() => action({ type: 'verify' })}
-                >
-                  {canVerify(s)
-                    ? 'Confirm verified operation'
-                    : 'Review verification requirements'}
-                </button>
-                <label className="block text-xs">
-                  Service report
-                  <textarea
-                    aria-label="Service report"
-                    value={s.note}
-                    onChange={(e) =>
-                      action({ type: 'note', value: e.target.value })
-                    }
-                    rows={5}
-                    placeholder="Observed… Measured… Replaced… Verified…"
-                    className="block w-full mt-2 p-2 rounded bg-slate-800 border border-slate-600"
-                  />
-                </label>
-                <button
-                  className={`${btn} bg-emerald-800 w-full`}
-                  disabled={
-                    !s.verified || !canVerify(s) || s.note.trim().length < 20
-                  }
-                  onClick={() =>
-                    onComplete(scoreCall(call, F1_FAULT, s.note.trim()))
-                  }
-                >
-                  Complete report and view debrief
-                </button>
-              </>
+              <ReportTab
+                state={s}
+                onAction={onAction}
+                onComplete={(note) =>
+                  onComplete(scoreCall(call, F1_FAULT, note))
+                }
+              />
             )}
           </>
         ) : null}
       </div>
     </div>
+  )
+}
+
+interface UiAction {
+  key: string
+  group: Group
+  label: string
+  tool: InspectionTool
+  run: () => void
+}
+
+/** Every action names the tool it takes and reaches for it itself. The engine
+ * still enforces the same prerequisites — this only removes the extra tap. */
+function buildActions(
+  s: InspectionState,
+  selected: ComponentId,
+  onAction: (a: InspectionAction) => void,
+  openMeter: (id: string | null) => void
+): UiAction[] {
+  const out: UiAction[] = []
+  const add = (
+    key: string,
+    group: Group,
+    label: string,
+    tool: InspectionTool,
+    run: () => void
+  ) => out.push({ key, group, label, tool, run })
+  const act = (a: InspectionAction) => () => {
+    openMeter(null)
+    onAction(a)
+  }
+  const meter = (id: string) => () => openMeter(id)
+
+  if (selected === 'controller') {
+    add('look', 'look', 'Read the controller and its history', 'controller', act({ type: 'observe', component: 'controller', tool: 'controller' }))
+    add('defrost', 'circuit', 'Request a manual defrost', 'controller', act({ type: 'force-defrost', tool: 'controller' }))
+    if (s.diagnosis && !s.repaired)
+      add('rep-term', 'repair', 'Replace termination control · $75', 'hands', act({ type: 'replace', part: 'termination', tool: 'hands' }))
+  } else {
+    add('look', 'look', `Inspect the ${LOOK_LABEL[selected]}`, 'flashlight', act({ type: 'observe', component: selected, tool: 'flashlight' }))
+  }
+
+  if (selected === 'product')
+    add('probe', 'measure', 'Probe between the product packs', 'thermometer', meter('product'))
+
+  if (selected === 'electrical' || selected === 'heaters') {
+    add(
+      'cover',
+      'circuit',
+      s.coverOpen ? 'Secure the service cover' : 'Remove the service cover',
+      'hands',
+      act({ type: s.coverOpen ? 'close-cover' : 'open-cover', tool: 'hands' })
+    )
+    add('clampit', 'measure', 'Clamp the heater feeder', 'clamp', meter('current'))
+    if (!s.isolated)
+      add('isolate', 'circuit', 'Secure the heater disconnect OFF', 'hands', act({ type: 'isolate', tool: 'hands' }))
+    add('dead', 'measure', s.isolated ? 'Prove the circuit dead' : 'Check for voltage', 'multimeter', meter('dead'))
+    if (s.isolated && !s.leadsDisconnected)
+      add('disconnect', 'circuit', 'Disconnect one lead per element', 'hands', act({ type: 'disconnect', tool: 'hands' }))
+    if (s.isolated || s.leadsDisconnected || s.coverOpen)
+      add('restore', 'circuit', 'Reconnect, secure covers and restore', 'hands', act({ type: 'restore', tool: 'hands' }))
+  }
+
+  if (selected === 'heaters')
+    for (const n of [1, 2, 3]) {
+      add(`e${n}`, 'measure', `Ohm heater ${n} across its terminals`, 'multimeter', meter(`e${n}`))
+      add(`g${n}`, 'measure', `Ohm heater ${n} to the case frame`, 'multimeter', meter(`g${n}`))
+      if (s.diagnosis && !s.repaired)
+        add(`rep${n}`, 'repair', `Replace heater ${n} · $140`, 'hands', act({ type: 'replace', part: `H${n}`, tool: 'hands' }))
+    }
+
+  return out
+}
+const LOOK_LABEL: Record<ComponentId, string> = {
+  product: 'doors and product',
+  controller: 'controller',
+  coil: 'evaporator coil',
+  fans: 'fan bank',
+  heaters: 'heater access',
+  txv: 'TXV',
+  solenoid: 'liquid solenoid',
+  drain: 'drain and pan',
+  electrical: 'defrost circuit'
+}
+
+/** The written report is the one place the notebook still has to be turned into
+ * words. Chips assemble it from what was actually found, so a phone keyboard is
+ * not the thing standing between a finished repair and a closed work order. */
+function ReportTab({
+  state: s,
+  onAction,
+  onComplete
+}: {
+  state: InspectionState
+  onAction: (a: InspectionAction) => void
+  onComplete: (note: string) => void
+}) {
+  const checklist = verifyChecklist(s)
+  const ready = canVerify(s)
+  const chips: { label: string; text: string }[] = []
+  if (s.diagnosis) chips.push({ label: 'Found', text: `Found: ${s.diagnosis}.` })
+  const current = s.evidence.find((e) => e.id === 'current' && e.phase === 'before')
+  if (current)
+    chips.push({ label: 'Measured', text: `Measured ${current.value} on the heater feeder against 8.7 A nameplate.` })
+  if (s.repairs.length)
+    chips.push({ label: 'Repaired', text: `${s.repairs.join('; ')}.` })
+  if (s.verified)
+    chips.push({ label: 'Verified', text: 'Verified full defrost current, a cleared coil, temperature termination and pull-down.' })
+  const append = (text: string) =>
+    onAction({ type: 'note', value: s.note ? `${s.note.trim()} ${text}` : text })
+  return (
+    <section className="space-y-3">
+      <h3 className="font-bold">Verify and close the work order</h3>
+      <ul className="space-y-1" aria-label="Verification checklist">
+        {checklist.map((c) => (
+          <li
+            key={c.label}
+            className={`flex items-start gap-2 text-xs ${c.done ? 'text-emerald-300' : 'text-slate-400'}`}
+          >
+            <span className="mt-0.5 w-4 flex-shrink-0">
+              {c.done ? <Check size={12} /> : '○'}
+            </span>
+            {c.label}
+          </li>
+        ))}
+      </ul>
+      {!s.verified && (
+        <button
+          className="w-full min-h-12 rounded-lg border border-slate-600 bg-slate-800 text-xs disabled:opacity-40"
+          disabled={!ready}
+          onClick={() => onAction({ type: 'verify' })}
+        >
+          {ready ? 'Confirm verified operation' : 'Finish the checks above first'}
+        </button>
+      )}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">
+          Service report
+        </p>
+        {!!chips.length && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {chips.map((c) => (
+              <button
+                key={c.label}
+                onClick={() => append(c.text)}
+                className="min-h-9 px-2.5 rounded-full border border-blue-700 bg-blue-950 text-[11px] text-blue-200"
+              >
+                + {c.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          aria-label="Service report"
+          value={s.note}
+          onChange={(e) => onAction({ type: 'note', value: e.target.value })}
+          rows={5}
+          placeholder="Observed… Measured… Replaced… Verified…"
+          className="block w-full p-2 rounded bg-slate-800 border border-slate-600 text-xs"
+        />
+      </div>
+      <button
+        className="w-full min-h-12 rounded-lg bg-emerald-800 font-semibold text-sm disabled:opacity-40"
+        disabled={!s.verified || !ready || s.note.trim().length < 20}
+        onClick={() => onComplete(s.note.trim())}
+      >
+        Complete report and view debrief
+      </button>
+    </section>
   )
 }

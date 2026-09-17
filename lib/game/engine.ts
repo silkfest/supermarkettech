@@ -27,6 +27,8 @@ export interface ShiftState {
   usedFaultIds: string[]
   /** Hardest call dispatch will put on this board — the tech's apprenticeship level. */
   maxDifficulty: 1 | 2 | 3
+  /** When the last call was dispatched, for levels paced by call count. */
+  lastDispatchMin: number
   toasts: Toast[]
   seq: number
 }
@@ -48,6 +50,7 @@ export const INITIAL_STATE: ShiftState = {
   character: { name: '', color: '#2563eb', role: 'apprentice' },
   elapsedMin: 0, spawnIdx: 0, calls: [], results: [],
   shrink: 0, complaints: 0, usedFaultIds: [], maxDifficulty: 1, toasts: [], seq: 1,
+  lastDispatchMin: -999,
 }
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
@@ -111,10 +114,18 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
       })
       s = { ...s, calls, shrink, complaints }
 
-      const nextAt = level.spawnAt[s.character.role][s.spawnIdx]
-      if ((!s.practice || s.spawnIdx === 0) && nextAt !== undefined && s.elapsedMin >= nextAt && s.calls.length < level.maxOpen[s.character.role]) {
+      // Two pacing models. Levels with a `callTarget` dispatch on demand until the
+      // list is worked through; the rest still run the fixed clock schedule.
+      const dispatched = s.calls.length + s.results.length
+      const due = level.callTarget !== undefined
+        ? dispatched < level.callTarget && s.elapsedMin >= s.lastDispatchMin + (level.dispatchGapMin ?? 15)
+        : (() => {
+            const nextAt = level.spawnAt[s.character.role][s.spawnIdx]
+            return nextAt !== undefined && s.elapsedMin >= nextAt
+          })()
+      if ((!s.practice || s.spawnIdx === 0) && due && s.calls.length < level.maxOpen[s.character.role]) {
         const choice = chooseFault(s, level)
-        s = { ...s, spawnIdx: s.spawnIdx + 1 }
+        s = { ...s, spawnIdx: s.spawnIdx + 1, lastDispatchMin: s.elapsedMin }
         if (choice) {
           const call: ActiveCall = {
             inspection: s.levelId === 'supermarket' && choice.equipmentId === 'F1' && choice.fault.id === 'defrost_heater_open' ? initialInspection() : undefined,
@@ -127,6 +138,9 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
         }
       }
 
+      // A call-count level is never ended by the clock — the clock only drives
+      // shrink and complaints, so dawdling still costs you.
+      if (level.callTarget !== undefined) return s.results.length >= level.callTarget ? { ...s, status: 'over' } : s
       if (s.elapsedMin >= level.shiftLenMin) return { ...s, status: 'over', elapsedMin: level.shiftLenMin }
       return s
     }
@@ -156,7 +170,9 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
         results: [...state.results, action.result],
         usedFaultIds: [...state.usedFaultIds, action.result.faultId],
       }
-      return withToast(s, `Call closed — +${action.result.points} pts`, 'good')
+      const target = LEVEL_BY_ID[s.levelId].callTarget
+      const done = target !== undefined && s.results.length >= target
+      return withToast(done ? { ...s, status: 'over' } : s, `Call closed — +${action.result.points} pts`, 'good')
     }
 
     case 'DISMISS_TOAST':

@@ -11,32 +11,83 @@ export function recorded(
     (e) => e.id === id && e.recorded && (!phase || e.phase === phase)
   )
 }
+/** One step of what a call still needs. The gates below are derived from these,
+ *  so the checklist the technician reads can never drift from what is enforced. */
+export interface Step {
+  label: string
+  done: boolean
+}
+export function diagnoseChecklist(s: InspectionState): Step[] {
+  return [
+    {
+      label: 'Run a defrost and note which section stays iced',
+      done: recorded(s, 'pattern', 'before')
+    },
+    {
+      label: 'Clamp the heater feeder while defrost is energised',
+      done: recorded(s, 'current', 'before')
+    },
+    {
+      label: 'Ohm each element on its own — H1, H2 and H3',
+      done: ['e1', 'e2', 'e3'].every((id) => recorded(s, id, 'before'))
+    }
+  ]
+}
+export function verifyChecklist(s: InspectionState): Step[] {
+  return [
+    { label: 'Repair installed', done: s.repaired },
+    {
+      label: 'Leads reconnected, disconnect restored, cover secured',
+      done: !s.isolated && !s.leadsDisconnected && !s.coverOpen
+    },
+    {
+      label: 'Full heater current measured during defrost',
+      done: recorded(s, 'current', 'after')
+    },
+    {
+      label: 'Coil confirmed clear',
+      done: recorded(s, 'cleared', 'after') && s.frost.every((f) => f <= 8)
+    },
+    {
+      label: 'Defrost terminated on temperature',
+      done:
+        recorded(s, 'termination', 'after') &&
+        s.terminatedAt !== null &&
+        s.defrostStarted === null
+    },
+    {
+      label: 'Product at or below \u22128 \u00b0F after pull-down',
+      done:
+        s.productTemp <= -8 &&
+        s.evidence.some(
+          (e) =>
+            e.id === 'product' &&
+            e.phase === 'after' &&
+            e.recorded &&
+            parseFloat(e.value) <= -8
+        )
+    }
+  ]
+}
 export function canDiagnose(s: InspectionState) {
-  return ['pattern', 'current', 'e1', 'e2', 'e3'].every((id) =>
-    recorded(s, id, 'before')
-  )
+  return diagnoseChecklist(s).every((x) => x.done)
 }
 export function canVerify(s: InspectionState) {
-  return (
-    s.repaired &&
-    !s.isolated &&
-    !s.leadsDisconnected &&
-    !s.coverOpen &&
-    s.terminatedAt !== null &&
-    s.defrostStarted === null &&
-    s.frost.every((f) => f <= 8) &&
-    s.productTemp <= -8 &&
-    ['current', 'cleared', 'termination', 'product'].every((id) =>
-      recorded(s, id, 'after')
-    ) &&
-    s.evidence.some(
-      (e) =>
-        e.id === 'product' &&
-        e.phase === 'after' &&
-        e.recorded &&
-        parseFloat(e.value) <= -8
-    )
-  )
+  return verifyChecklist(s).every((x) => x.done)
+}
+/** The single line of guidance shown above the actions. Keeps a long call
+ *  legible without spelling out the answer. */
+export function nextStep(s: InspectionState): string {
+  if (s.verified) return 'Write up the work order and close the call.'
+  if (s.repaired) {
+    const left = verifyChecklist(s).find((x) => !x.done)
+    return left ? `Verify the repair: ${left.label.toLowerCase()}.` : 'Everything checks out \u2014 confirm verified operation.'
+  }
+  if (s.diagnosis)
+    return 'Isolate, prove dead, disconnect the leads, then change the faulty element.'
+  if (canDiagnose(s)) return 'You have the evidence \u2014 open Diagnosis and call it.'
+  const left = diagnoseChecklist(s).find((x) => !x.done)
+  return left ? `Still needed: ${left.label.toLowerCase()}.` : 'Look the case over and see what it is doing.'
 }
 /** One clock drives visuals, temperature, shrink and both interactive/legacy calls. */
 export function tickInspection(
@@ -107,9 +158,9 @@ export function interact(
     const phase = s.repaired ? 'after' : 'before'
     s.evidence = [
       ...s.evidence,
-      { id, label, value, kind, phase, atMin: now, recorded: false }
+      { id, label, value, kind, phase, atMin: now, recorded: true }
     ]
-    s.feedback = `${label}: ${value}. Record it in your notebook.`
+    s.feedback = `${label}: ${value}`
   }
   switch (action.type) {
     case 'note':

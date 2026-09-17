@@ -25,6 +25,14 @@ export interface LevelDef {
   shiftLenMin: number
   spawnAt: Record<Role, number[]>
   maxOpen: Record<Role, number>
+  /** Close this many calls and the shift is done. Levels with a target ignore
+   *  the clock for ending — dispatch keeps feeding the board until you have
+   *  worked your way through the list. Levels without one run on `shiftLenMin`
+   *  and the fixed `spawnAt` schedule. */
+  callTarget?: number
+  /** Shortest gap between dispatches on a `callTarget` level. `maxOpen` does the
+   *  real pacing; this just stops the whole list landing at once. */
+  dispatchGapMin?: number
   /** Grades that count as "passing" this level for unlocking the next one. */
   passGrades: string[]
   /** Illustration for the hub card, in public/game. Falls back to the map thumbnail. */
@@ -69,6 +77,8 @@ export const LEVELS: LevelDef[] = [
     shiftLenMin: 6 * 60,
     spawnAt: { apprentice: [0, 60, 120, 180, 240], journeyman: [0, 40, 80, 125, 170, 215, 260] },
     maxOpen: { apprentice: 2, journeyman: 3 },
+    callTarget: 5,
+    dispatchGapMin: 20,
     passGrades: ['A', 'B', 'C'],
   },
   {
@@ -98,6 +108,8 @@ export const LEVELS: LevelDef[] = [
     shiftLenMin: 8 * 60,
     spawnAt: { apprentice: [0, 75, 150, 225, 300, 375], journeyman: [0, 40, 80, 130, 180, 230, 280, 330, 380] },
     maxOpen: { apprentice: 2, journeyman: 3 },
+    callTarget: 10,
+    dispatchGapMin: 15,
     passGrades: ['A', 'B', 'C'],
   },
   {
