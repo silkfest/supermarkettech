@@ -1,3 +1,5 @@
+import { COMMON_FAULTS } from './faults-common'
+import { LOTO_CHECK } from './fault-parts'
 import type { FaultDef, SystemKey } from './types'
 
 export const SYSTEM_META: Record<SystemKey, { label: string; short: string }> = {
@@ -7,9 +9,7 @@ export const SYSTEM_META: Record<SystemKey, { label: string; short: string }> = 
   hvac:          { label: 'HVAC',          short: 'HVAC' },
 }
 
-const LOTO_CHECK = { id: 'loto', label: 'Lock out / tag out the circuit', tool: 'Lock & tag', minutes: 5, finding: 'Breaker locked open, tag hung, verified dead with the meter. Safe to open the panel.' }
-
-export const FAULTS: FaultDef[] = [
+const SITE_FAULTS: FaultDef[] = [
   // ── Refrigeration ──────────────────────────────────────────────────────────
   {
     id: 'dt_failed_open',
@@ -2116,5 +2116,9 @@ export const FAULTS: FaultDef[] = [
     knowledge: [{ slug: 'danfoss', label: 'Danfoss Controls' }, { slug: 'parallel-rack-systems', label: 'Parallel Racks' }],
   },
 ]
+
+/** The whole board: the architecture-specific calls above, plus the everyday
+ *  ones every technician sees whatever the rack out back happens to be. */
+export const FAULTS: FaultDef[] = [...SITE_FAULTS, ...COMMON_FAULTS]
 
 export const FAULT_BY_ID: Record<string, FaultDef> = Object.fromEntries(FAULTS.map(f => [f.id, f]))
