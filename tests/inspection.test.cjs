@@ -196,3 +196,29 @@ test('checklists are the gates the technician is shown', () => {
   assert.equal(verifyChecklist(f.call.inspection).every(c => c.done), canVerify(f.call.inspection))
   assert.ok(diagnoseChecklist(f.call.inspection).some(c => !c.done))
 })
+
+test('every kind on an oblique level has a sprite, not a fallback', () => {
+  const src = fs.readFileSync('components/game/inspection/PixelEquipment.tsx', 'utf8')
+  // Kinds the sprite module names explicitly, either as an own-size branch or a
+  // `kind === '…'` test inside the shared bodies.
+  const named = new Set([
+    ...[...src.matchAll(/'([a-z0-9-]+)':\s*<(?:WalkIn|ReachInCooler|ChestFreezer|IceMachine|CondensingUnit|SplitAc|Storefront)/g)].map(m => m[1]),
+    ...[...src.matchAll(/\bstorefront:\s*<Storefront/g)].map(() => 'storefront'),
+    ...[...src.matchAll(/kind === '([a-z0-9-]+)'/g)].map(m => m[1]),
+    ...[...src.matchAll(/o\.kind === '([a-z0-9-]+)'/g)].map(m => m[1])
+  ])
+  // The shared display-case body is the right drawing for these, so they need no
+  // branch of their own; the shelving body covers `shelf` the same way.
+  const shared = new Set(['dairy-case', 'shelf'])
+  // Mirrors PIXEL_LEVELS in app/game/page.tsx, plus the town, which always draws pixel.
+  const obliqueMaps = ['town', 'gas-station', 'supermarket']
+  const missing = []
+  for (const id of obliqueMaps) {
+    const map = id === 'town'
+      ? require('../lib/game/maps/town.ts').TOWN_MAP
+      : LEVELS.find(l => l.id === id).map
+    for (const n of [...map.equipment, ...map.obstacles])
+      if (!named.has(n.kind) && !shared.has(n.kind)) missing.push(`${id}: ${n.kind}`)
+  }
+  assert.deepEqual([...new Set(missing)], [], 'these would fall back to a display case or a shelf')
+})

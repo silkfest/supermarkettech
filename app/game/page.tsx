@@ -30,6 +30,10 @@ const TICK_MS = 250
 type View = 'town' | 'hub' | 'setup' | 'classroom' | 'shift'
 interface Panel { callId: string; faultId: string; equipmentId: string }
 
+/** Levels the oblique sprite set covers. The deeper stores still draw flat
+ *  until their gas coolers, flash tanks and skids have sprites of their own. */
+const PIXEL_LEVELS = new Set<LevelId>(['supermarket', 'gas-station'])
+
 export default function ColdCallPage() {
   const [save, setSave] = useState<SavedGame | null>(null)
   const [view, setView] = useState<View>('town')
@@ -188,7 +192,7 @@ export default function ColdCallPage() {
         />
         <div className="flex-1 min-h-0 p-2 lg:p-3">
           <StoreMap key="town" map={TOWN_MAP} character={save.character} hotspots={townHotspots} walkTo={driveTo}
-            paused={stop !== null} vehicle onArrive={handlePullIn} onNearChange={handleNear} />
+            paused={stop !== null} vehicle pixelArt onArrive={handlePullIn} onNearChange={handleNear} />
         </div>
         <div className="flex-shrink-0 px-3 pb-2 space-y-1.5">
           <div className="flex items-center gap-2">
@@ -276,7 +280,7 @@ export default function ColdCallPage() {
         <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-2 lg:gap-3 p-2 lg:p-3">
           <div className="flex-1 min-h-0">
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
-              pixelArt={view === 'shift' && state.levelId === 'supermarket'}
+              pixelArt={view === 'shift' && PIXEL_LEVELS.has(state.levelId)}
               visualStates={Object.fromEntries([...state.results, ...state.calls].filter(c => c.inspection).map(c => [c.equipmentId, { frost: c.inspection!.frost, defrost: c.inspection!.defrostStarted !== null, repaired: c.inspection!.repaired, pullingDown: c.inspection!.terminatedAt !== null }]))}
               paused={sidePanelOpen} onArrive={handleArrive} onNearChange={handleNear} />
           </div>

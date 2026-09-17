@@ -223,8 +223,13 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
         aria-label="Floor plan"
       >
         <MapDefs />
-        <defs><pattern id="pixel-floor" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#d8d6c1"/><path d="M0 0h24v24" stroke="#bdc1b0" fill="none"/><rect x="3" y="3" width="2" height="2" fill="#e5e2cd"/></pattern></defs>
-        <rect x="0" y="0" width={map.w} height={map.h} fill={pixelArt ? "url(#pixel-floor)" : `url(#floor-${map.floor})`} />
+        <defs>
+          <pattern id="pixel-floor" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#d8d6c1"/><path d="M0 0h24v24" stroke="#bdc1b0" fill="none"/><rect x="3" y="3" width="2" height="2" fill="#e5e2cd"/></pattern>
+          {/* Outdoors the same tile reads as a shop floor, so the town gets turf. */}
+          <pattern id="pixel-ground" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#cfdca8"/><rect x="4" y="6" width="3" height="2" fill="#bccd93"/><rect x="15" y="14" width="3" height="2" fill="#bccd93"/><rect x="9" y="19" width="2" height="2" fill="#dfe8bd"/></pattern>
+        </defs>
+        <rect x="0" y="0" width={map.w} height={map.h}
+          fill={pixelArt ? (map.floor === 'town' ? 'url(#pixel-ground)' : 'url(#pixel-floor)') : `url(#floor-${map.floor})`} />
 
         {map.zones.map(z => (
           <text key={z.label} x={z.x} y={z.y} textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="1.5"
