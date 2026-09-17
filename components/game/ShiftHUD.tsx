@@ -93,7 +93,7 @@ function CallChip({ call: c, map, elapsedMin, near, onWalkTo, onOpen, compact }:
       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: SYSTEM_COLOR[f.system] }} />
       <div className="min-w-0 flex-1">
         <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200 truncate">{node.label}</p>
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{SYSTEM_META[f.system].label} · {age} min{c.complained ? ' · complaint' : ''}{c.stage !== 'ticket' ? ' · in progress' : ''}</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{c.inspection ? 'WO #38471' : SYSTEM_META[f.system].label} · {age} min{c.complained ? ' · complaint' : ''}{c.stage !== 'ticket' ? ' · in progress' : ''}</p>
       </div>
       {action}
     </Tag>

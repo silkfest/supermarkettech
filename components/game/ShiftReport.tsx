@@ -1,5 +1,6 @@
 'use client'
 import { Trophy, RotateCcw, CheckCircle2, AlertTriangle, Map as MapIcon, Lock, ArrowRight, BadgeCheck } from 'lucide-react'
+import ServiceDebrief from './inspection/ServiceDebrief'
 import { shiftGrade } from '@/lib/game/engine'
 import { FAULT_BY_ID, SYSTEM_META } from '@/lib/game/faults'
 import { SYSTEM_COLOR } from './StoreMap'
@@ -100,6 +101,7 @@ export default function ShiftReport({ levelName, map, character, results, unfini
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{nodeLabel(r.equipmentId)} — {FAULT_BY_ID[r.faultId].title}</p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.note || 'No note'}</p>
+                {r.inspection && <details className="mt-2 text-slate-700 dark:text-slate-200"><summary>Diagnostic debrief</summary><ServiceDebrief result={r} /></details>}
               </div>
               <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-slate-300 flex-shrink-0">{r.points}</span>
             </li>

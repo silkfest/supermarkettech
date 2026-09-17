@@ -7,6 +7,7 @@ import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import StoreMap, { MapThumb, SYSTEM_COLOR, LESSON_COLOR, type Hotspot } from '@/components/game/StoreMap'
+import EquipmentInspection from '@/components/game/inspection/EquipmentInspection'
 import CallPanel from '@/components/game/CallPanel'
 import LessonPanel from '@/components/game/LessonPanel'
 import HandsOnPanel from '@/components/game/HandsOnPanel'
@@ -62,7 +63,7 @@ export default function ColdCallPage() {
 
   // Record the shift once it ends
   useEffect(() => {
-    if (state.status !== 'over' || recordedRef.current || !save) return
+    if (state.status !== 'over' || state.practice || recordedRef.current || !save) return
     recordedRef.current = true
     const g = shiftGrade(state.results, state.results.length + state.calls.length, state.complaints, state.shrink)
     const before = save.progress
@@ -76,18 +77,18 @@ export default function ColdCallPage() {
     setSave(ns)
     saveGame(ns)
     setShiftOutcome({ isBest, unlocked, promoted, hours })
-  }, [state.status, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, save])
+  }, [state.status, state.practice, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, save])
 
   function persist(ns: SavedGame) { setSave(ns); saveGame(ns) }
 
-  function startLevel(level: LevelDef) {
+  function startLevel(level: LevelDef, practice = false) {
     if (!save?.character) { setView('setup'); return }
     setPanel(null); setLesson(null); setNearId(null); setWalkTo(null); setStop(null)
     if (level.kind === 'classroom') { setView('classroom'); return }
     recordedRef.current = false
     setShiftOutcome(null)
     // First time on a level with a briefing, read it before the clock starts.
-    setBriefing(level.briefing && !save.progress.levels[level.id]?.shifts ? level : null)
+    setBriefing(!practice && level.briefing && !save.progress.levels[level.id]?.shifts ? level : null)
     // Your rank decides which board you work and how hard a call dispatch will send.
     const rank = rankOf(save.progress)
     dispatch({
@@ -95,6 +96,7 @@ export default function ColdCallPage() {
       character: { ...save.character, role: rank.pacing },
       levelId: level.id,
       maxDifficulty: rank.maxDifficulty,
+      practice,
     })
     setView('shift')
   }
@@ -138,7 +140,7 @@ export default function ColdCallPage() {
     ? LESSONS.map(l => ({ id: l.stationId, equipmentId: l.stationId, color: LESSON_COLOR, icon: 'lesson' as const, done: !!progress.lessons[l.id]?.passed }))
     : state.calls.map(c => {
         const f = FAULT_BY_ID[c.faultId]
-        return { id: c.id, equipmentId: c.equipmentId, color: SYSTEM_COLOR[f.system], icon: f.system, cue: f.system, flagged: c.complained }
+        return { id: c.id, equipmentId: c.equipmentId, color: SYSTEM_COLOR[f.system], icon: f.system, cue: f.system, flagged: c.complained, physical: !!c.inspection }
       })
 
   // The crib travels with the tech, so the shift and the dispatch board agree on it.
@@ -175,10 +177,13 @@ export default function ColdCallPage() {
           sticky={false}
           className="safe-top flex-shrink-0 border-b border-slate-200 dark:border-slate-700 py-2.5"
           actions={
+            <div className="flex gap-2">
+            <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true)} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">F1 field practice</button>
             <button onClick={() => setView('hub')}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
               <LayoutGrid size={13} /> Job list
             </button>
+            </div>
           }
         />
         <div className="flex-1 min-h-0 p-2 lg:p-3">
@@ -229,18 +234,22 @@ export default function ColdCallPage() {
   // ── Play screen (classroom or running shift) ──
   if (playing) {
     const map = view === 'classroom' ? LEVEL_BY_ID.classroom.map : level.map
-    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : level.name
+    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : state.practice ? 'Full Supermarket · F1 practice' : level.name
     const sidePanel = view === 'classroom'
       ? (lesson && lesson.kind === 'read' && (
           <LessonPanel key={lesson.id} lesson={lesson} alreadyPassed={!!progress.lessons[lesson.id]?.passed}
             onFinish={(score, passed) => finishLesson(lesson, score, passed)} onClose={() => setLesson(null)} />
         ))
       : (panel && panelFault && panelNode && (
-          <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
+          (state.levelId === 'supermarket' && panel.equipmentId === 'F1' && panel.faultId === 'defrost_heater_open'
+            ? <EquipmentInspection key={panel.callId} call={panelCall} result={state.results.find(r => r.callId === panel.callId)} owned={owned}
+                onAction={action => dispatch({ type: 'INSPECT', callId: panel.callId, action })}
+                onComplete={result => dispatch({ type: 'COMPLETE_CALL', result })} onClose={() => setPanel(null)} />
+            : <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
             onUpdate={patch => dispatch({ type: 'UPDATE_CALL', callId: panel.callId, patch })}
             onSpend={minutes => dispatch({ type: 'SPEND_MINUTES', callId: panel.callId, minutes })}
             onComplete={(r: CallResult) => dispatch({ type: 'COMPLETE_CALL', result: r })}
-            onClose={() => setPanel(null)} />
+            onClose={() => setPanel(null)} />)
         ))
     const hud = (compact: boolean) => view === 'classroom'
       ? <StationList progress={progress} nearId={nearId} compact={compact} onWalkTo={id => setWalkTo({ hotspotId: id, nonce: Date.now() })} onOpen={openLesson} />
@@ -267,6 +276,8 @@ export default function ColdCallPage() {
         <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-2 lg:gap-3 p-2 lg:p-3">
           <div className="flex-1 min-h-0">
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
+              pixelArt={view === 'shift' && state.levelId === 'supermarket'}
+              visualStates={Object.fromEntries([...state.results, ...state.calls].filter(c => c.inspection).map(c => [c.equipmentId, { frost: c.inspection!.frost, defrost: c.inspection!.defrostStarted !== null, repaired: c.inspection!.repaired, pullingDown: c.inspection!.terminatedAt !== null }]))}
               paused={sidePanelOpen} onArrive={handleArrive} onNearChange={handleNear} />
           </div>
           {/* Desktop: side column. Phone: the panel becomes a full-screen overlay; the HUD is hidden in favour of the compact one below. */}
@@ -324,7 +335,7 @@ export default function ColdCallPage() {
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
             promoted={shiftOutcome?.promoted ?? null} hours={shiftOutcome?.hours ?? 0} hoursTotal={progress.hours}
-            onAgain={() => startLevel(level)}
+            onAgain={() => startLevel(level, state.practice)}
             onHub={() => { dispatch({ type: 'RESET' }); setView('town') }}
           />
         )}
