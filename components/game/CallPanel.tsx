@@ -378,7 +378,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
         <InstrumentPanel
           key={instrument.id}
           check={instrument}
-          needsLoto={!!fault.loto}
+          needsLoto={instrument.instrument?.kind === 'meter' && instrument.instrument.mode === 'ohms'}
           lotoDone={!!call?.lotoDone}
           onLoto={() => runCheck('loto')}
           onSpend={onSpend}

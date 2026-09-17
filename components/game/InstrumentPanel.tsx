@@ -7,7 +7,7 @@ import type { Check } from '@/lib/game/types'
 
 interface Props {
   check: Check
-  /** This fault is electrical work — the ohms bench stays shut until it is dead. */
+  /** Ohming means dead-circuit work, so the bench stays shut until it is locked out. */
   needsLoto: boolean
   lotoDone: boolean
   onLoto: () => void
