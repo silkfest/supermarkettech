@@ -222,3 +222,31 @@ test('every kind on an oblique level has a sprite, not a fallback', () => {
   }
   assert.deepEqual([...new Set(missing)], [], 'these would fall back to a display case or a shelf')
 })
+
+test('guidance names the action, not just the goal', () => {
+  const { guidance } = require('../lib/game/inspection/engine.ts')
+  const f = fixture()
+  // Ben's stumper: defrost requested, feeder clamped, but the coil never
+  // re-inspected. The step has to say which button finishes it.
+  f.observe('coil').hands('open-cover').act({ type: 'force-defrost', tool: 'controller' }).sample('current').wait(10)
+  const g = guidance(f.call.inspection)
+  assert.match(g.text, /inspect the evaporator coil/i)
+  assert.equal(g.area, 'coil')
+  assert.ok(g.hints.length >= 2, 'a Stuck? ladder is available')
+  assert.match(g.hints[g.hints.length - 1], /Inspect the evaporator coil/i)
+
+  // Looking too early says so rather than silently recording nothing.
+  const early = fixture()
+  early.hands('open-cover').act({ type: 'force-defrost', tool: 'controller' }).observe('coil')
+  assert.equal(early.call.inspection.evidence.some(e => e.id === 'pattern'), false)
+  assert.match(early.call.inspection.feedback, /early in the defrost/i)
+
+  // Before any defrost it explains why a defrost is needed at all.
+  const cold = fixture().observe('coil')
+  assert.match(cold.call.inspection.feedback, /Run a defrost/i)
+  assert.equal(guidance(cold.call.inspection).area, 'controller')
+
+  // And the step actually clears once the coil is inspected.
+  f.observe('coil')
+  assert.notEqual(guidance(f.call.inspection).text, g.text)
+})

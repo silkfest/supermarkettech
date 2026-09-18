@@ -250,6 +250,7 @@ export default function ColdCallPage() {
                 onAction={action => dispatch({ type: 'INSPECT', callId: panel.callId, action })}
                 onComplete={result => dispatch({ type: 'COMPLETE_CALL', result })} onClose={() => setPanel(null)} />
             : <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
+            firstShift={!(save?.progress.levels[state.levelId]?.shifts ?? 0)}
             onUpdate={patch => dispatch({ type: 'UPDATE_CALL', callId: panel.callId, patch })}
             onSpend={minutes => dispatch({ type: 'SPEND_MINUTES', callId: panel.callId, minutes })}
             onComplete={(r: CallResult) => dispatch({ type: 'COMPLETE_CALL', result: r })}
