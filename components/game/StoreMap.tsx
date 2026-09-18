@@ -1,6 +1,8 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Snowflake, Zap, Droplets, Wind, BookOpen, Check, Store, Wrench } from 'lucide-react'
+import ObliqueScene from './ObliqueScene'
+import { FLOOR_DEPTH, WALL_HEIGHT, unprojectFloor } from '@/lib/game/oblique'
 import { PixelEquipment, PixelObstacle, PixelTechnician } from './inspection/PixelEquipment'
 import type { VisualFaultState } from '@/lib/game/inspection/types'
 import { NavGrid } from '@/lib/game/grid'
@@ -50,10 +52,11 @@ interface Props {
   /** Town map: the tech drives the service van instead of walking the floor. */
   vehicle?: boolean
   pixelArt?: boolean
+  oblique?: boolean
   visualStates?: Record<string, VisualFaultState>
 }
 
-export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange, vehicle, pixelArt, visualStates }: Props) {
+export default function StoreMap({ map, character, hotspots, walkTo, paused, onArrive, onNearChange, vehicle, pixelArt, oblique, visualStates }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile(768)
@@ -69,6 +72,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
   hotspotsRef.current = hotspots
   const [pos, setPos] = useState<Point>({ ...map.spawn })
   const [facing, setFacing] = useState(0)
+  const [overview, setOverview] = useState(false)
   const [walking, setWalking] = useState(false)
   const [tapMark, setTapMark] = useState<Point | null>(null)
   const [box, setBox] = useState({ w: 960, h: 560 })
@@ -102,7 +106,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (paused) return
+      if (paused || (e.target instanceof Element && e.target.closest('button, input, textarea, select, [role="button"]'))) return
       if (KEYS[e.key]) { keysRef.current.add(e.key); pathRef.current = []; targetRef.current = null; e.preventDefault() }
       if ((e.key === 'Enter' || e.key === ' ') && nearRef.current) { onArrive(nearRef.current); e.preventDefault() }
     }
@@ -181,7 +185,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
     const ctm = svg?.getScreenCTM()
     if (!svg || !ctm) return null
     const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
-    return { x: pt.x, y: pt.y }
+    return oblique ? unprojectFloor(pt) : { x: pt.x, y: pt.y }
   }
   function handleFloorTap(e: React.PointerEvent) {
     if (paused) return
@@ -195,15 +199,17 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
   }
 
   // Camera: whole map when there is room, follow-cam on narrow screens
-  const follow = isMobile || box.w < 640
-  let viewBox = `0 0 ${map.w} ${map.h}`
+  const follow = (isMobile || box.w < 640) && !overview
+  const sceneHeight = map.h * (oblique ? FLOOR_DEPTH : 1)
+  const top = oblique ? -WALL_HEIGHT : 0
+  let viewBox = `0 ${top} ${map.w} ${sceneHeight - top}`
   if (follow) {
     const aspect = box.w / Math.max(1, box.h)
-    let vw = Math.min(map.w, vehicle ? 620 : 440)
+    let vw = Math.min(map.w, vehicle ? 620 : oblique ? 320 : 440)
     let vh = vw / aspect
-    if (vh > map.h) { vh = map.h; vw = Math.min(map.w, vh * aspect) }
+    if (vh > sceneHeight - top) { vh = sceneHeight - top; vw = Math.min(map.w, vh * aspect) }
     const cx = Math.min(map.w - vw / 2, Math.max(vw / 2, pos.x))
-    const cy = Math.min(map.h - vh / 2, Math.max(vh / 2, pos.y))
+    const cy = Math.min(sceneHeight - vh / 2, Math.max(top + vh / 2, pos.y * (oblique ? FLOOR_DEPTH : 1) - (oblique ? 28 : 0)))
     viewBox = `${cx - vw / 2} ${cy - vh / 2} ${vw} ${vh}`
   }
 
@@ -220,7 +226,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
         className="w-full h-full select-none touch-none"
         onPointerDown={handleFloorTap}
         role="application"
-        aria-label="Floor plan"
+        aria-label={oblique ? 'Supermarket oblique view' : 'Floor plan'}
       >
         <MapDefs />
         <defs>
@@ -228,6 +234,7 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
           {/* Outdoors the same tile reads as a shop floor, so the town gets turf. */}
           <pattern id="pixel-ground" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#cfdca8"/><rect x="4" y="6" width="3" height="2" fill="#bccd93"/><rect x="15" y="14" width="3" height="2" fill="#bccd93"/><rect x="9" y="19" width="2" height="2" fill="#dfe8bd"/></pattern>
         </defs>
+        <g transform={oblique ? `scale(1 ${FLOOR_DEPTH})` : undefined}>
         <rect x="0" y="0" width={map.w} height={map.h}
           fill={pixelArt ? (map.floor === 'town' ? 'url(#pixel-ground)' : 'url(#pixel-floor)') : `url(#floor-${map.floor})`} />
 
@@ -236,8 +243,10 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
             className="fill-slate-500 dark:fill-slate-500 pointer-events-none" opacity="0.8">{z.label}</text>
         ))}
 
+        {oblique ? <ObliqueScene map={map} pos={pos} character={character} facing={facing} walking={walking} visualStates={visualStates} /> : <>
         {map.obstacles.map((o, i) => pixelArt ? <PixelObstacle key={i} o={o} /> : <ObstacleGlyph key={i} o={o} seed={i} />)}
         {map.equipment.map(e => pixelArt ? <PixelEquipment key={e.id} node={e} visual={visualStates?.[e.id]} /> : <EquipmentGlyph key={e.id} node={e} />)}
+        </>}
 
         {tapMark && (
           <circle cx={tapMark.x} cy={tapMark.y} r="6" fill="none" stroke={character.color} strokeWidth="1.5" opacity="0.7" className="pointer-events-none">
@@ -252,15 +261,20 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
           return <FaultCue key={`cue-${h.id}`} system={h.cue} at={{ x: (n.pin.x + n.stand.x) / 2, y: (n.pin.y + n.stand.y) / 2 }} />
         })}
 
-        {vehicle
+        {!oblique && (vehicle
           ? <Van pos={pos} facing={facing} color={character.color} moving={walking} />
-          : pixelArt ? <PixelTechnician pos={pos} color={character.color} walking={walking} /> : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />}
+          : pixelArt ? <PixelTechnician pos={pos} color={character.color} walking={walking} /> : <Avatar pos={pos} bob={bob} legPhase={legPhase} facing={facing} color={character.color} />)}
 
         {hotspots.map(h => {
           const n = nodeForHotspot(h)
-          if (h.physical) return <g key={h.id} onPointerDown={ev => handleHotspotTap(ev, h)} className="cursor-pointer">
-            <rect x={n.rect.x} y={n.rect.y} width={n.rect.w} height={n.rect.h} fill="transparent" />
-            <text x={n.stand.x} y={n.stand.y + 20} textAnchor="middle" fontSize="8" fill="#263845">Inspect F1</text>
+          if (h.physical) return <g key={h.id} onPointerDown={ev => handleHotspotTap(ev, h)} className="cursor-pointer" role="button" tabIndex={0} aria-label="Walk to F1 frozen case"
+            onKeyDown={ev => { if (!paused && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); ev.stopPropagation(); walkToPoint(n.stand, h.id) } }}>
+            <rect x={n.rect.x} y={n.rect.y - (oblique ? 84 / FLOOR_DEPTH : 0)} width={n.rect.w} height={n.rect.h + (oblique ? 84 / FLOOR_DEPTH : 0)} fill="transparent" />
+            <g transform={`translate(${n.stand.x} ${n.stand.y + 52}) scale(1 ${oblique ? 1 / FLOOR_DEPTH : 1})`}>
+              <rect x="-54" y="-22" width="108" height="44" rx="8" fill="#203744" stroke="#f0d58c" strokeWidth="2" />
+              <text y="-3" textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff3d7">F1 · Inspect</text>
+              <text y="12" textAnchor="middle" fontSize="10" fill="#c2d8df">Tap to walk over</text>
+            </g>
           </g>
           const Icon = h.done ? Check : ICONS[h.icon]
           const color = h.done ? '#64748b' : h.color
@@ -282,12 +296,14 @@ export default function StoreMap({ map, character, hotspots, walkTo, paused, onA
             </g>
           )
         })}
+        </g>
       </svg>
+      {oblique && <button type="button" aria-pressed={overview} onClick={() => setOverview(v => !v)} className="absolute top-2 right-2 min-h-11 min-w-11 px-3 rounded-lg bg-slate-900/95 text-white text-xs font-semibold border border-slate-500">{overview ? 'Follow technician' : 'Store overview'}</button>}
 
       <div className="absolute bottom-2 left-2 text-[10px] text-slate-600 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 backdrop-blur px-2 py-1 rounded-md pointer-events-none">
         {vehicle
           ? (follow ? 'Tap the road to drive · tap a sign to pull in' : 'Click to drive or WASD · click a sign · Enter when you pull in')
-          : (follow ? 'Tap the floor to walk · tap a pin to take it' : 'Click to walk or WASD · click a pin · Enter when you arrive')}
+          : (follow ? (oblique ? 'Tap floor to walk · tap F1 to inspect' : 'Tap the floor to walk · tap a pin to take it') : 'Click to walk or WASD · click a pin · Enter when you arrive')}
       </div>
     </div>
   )

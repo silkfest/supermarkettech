@@ -296,3 +296,24 @@ test('first account save uses its own checkpoint scope without importing another
     assert.equal(loaded.progress.hours, 0)
   } finally { global.fetch = oldFetch; delete global.localStorage }
 })
+
+test('oblique projection preserves tap coordinates and sorts by floor depth', () => {
+  const { projectFloor, unprojectFloor, depthOrder } = require('../lib/game/oblique.ts')
+  for (const p of [{ x: 450, y: 230 }, { x: 850, y: 270 }, { x: 380, y: 50 }]) {
+    const roundTrip = unprojectFloor(projectFloor(p))
+    assert.ok(Math.abs(roundTrip.x - p.x) < 0.0001)
+    assert.ok(Math.abs(roundTrip.y - p.y) < 0.0001)
+  }
+  const caseFront = { id: 'case', depth: 200 }
+  assert.deepEqual(depthOrder([caseFront, { id: 'tech', depth: 150 }]).map(x => x.id), ['tech', 'case'])
+  assert.deepEqual(depthOrder([caseFront, { id: 'tech', depth: 230 }]).map(x => x.id), ['case', 'tech'])
+})
+
+test('all supermarket work positions remain walkable and reachable after aisle changes', () => {
+  const map = LEVELS.find(l => l.id === 'supermarket').map
+  const grid = new NavGrid(map)
+  for (const node of map.equipment) {
+    assert.ok(grid.isWalkable(node.stand), node.id + ' stand is clear')
+    if (node.id !== 'EN') assert.ok(grid.findPath(map.spawn, node.stand).length, node.id + ' can be reached')
+  }
+})
