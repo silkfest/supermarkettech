@@ -42,10 +42,6 @@ export function verifyChecklist(s: InspectionState): Step[] {
   return [
     { label: 'Repair installed', done: s.repaired },
     {
-      label: 'Leads reconnected, disconnect restored, cover secured',
-      done: !s.isolated && !s.leadsDisconnected && !s.coverOpen
-    },
-    {
       label: 'Full heater current measured during defrost',
       done: recorded(s, 'current', 'after')
     },
@@ -71,6 +67,10 @@ export function verifyChecklist(s: InspectionState): Step[] {
             e.recorded &&
             parseFloat(e.value) <= -8
         )
+    },
+    {
+      label: 'Leads reconnected, disconnect restored, cover secured',
+      done: !s.isolated && !s.leadsDisconnected && !s.coverOpen
     }
   ]
 }
@@ -242,6 +242,11 @@ export function guidance(s: InspectionState): Guidance {
     ]
   }
 }
+/** How long the heaters run before the coil reaches the termination setpoint.
+ *  Roughly what it takes this coil to melt through and warm up, so the first
+ *  defrost after the repair terminates as the ice clears rather than early. */
+const MINUTES_TO_TERMINATION = 10
+
 /** One clock drives visuals, temperature, shrink and both interactive/legacy calls. */
 export function tickInspection(
   s: InspectionState,
@@ -257,11 +262,17 @@ export function tickInspection(
       i === 2 && !s.repaired ? v : Math.max(5, v - dt * 9)
     )
     // A manual defrost runs until the technician ends it. The one thing that
-    // ends it by itself is the termination thermostat seeing a clear coil —
-    // which only happens once the dead element is replaced, and is the whole
-    // point of the post-repair check. An iced coil never gets there, so it
-    // waits for you instead of cutting your readings short.
-    if (s.repaired && frost.every((f) => f <= 8)) {
+    // ends it by itself is the termination thermostat, and that needs two
+    // things: the ice gone, and the coil actually up to the setpoint. Melting
+    // absorbs the heat, so the temperature only climbs once the ice has gone —
+    // which is why a dead return-end element never terminates at all, and why
+    // a defrost on an already-clear coil still runs long enough to clamp the
+    // feeder rather than ending the moment it starts.
+    if (
+      s.repaired &&
+      frost.every((f) => f <= 8) &&
+      now - s.defrostStarted! >= MINUTES_TO_TERMINATION
+    ) {
       defrostStarted = null
       terminatedAt = now
     }
@@ -457,8 +468,9 @@ export function interact(
         s.defrostStarted = now
         s.terminatedAt = null
         s.cycle++
-        s.feedback =
-          'Defrost requested. It stays in defrost until you end it, so take your time over the readings.'
+        s.feedback = s.repaired
+          ? 'Defrost requested. It terminates on temperature once the coil is clear and warm, so clamp the feeder while it is energised.'
+          : 'Defrost requested. It stays in defrost until you end it, so take your time over the readings.'
         minutes = 1
       }
       break
