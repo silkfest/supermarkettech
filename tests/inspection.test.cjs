@@ -367,3 +367,40 @@ test('all supermarket work positions remain walkable and reachable after aisle c
     if (node.id !== 'EN') assert.ok(grid.findPath(map.spawn, node.stand).length, node.id + ' can be reached')
   }
 })
+
+test('a second defrost on a cleared coil still runs long enough to clamp', () => {
+  const { guidance, verifyChecklist } = require('../lib/game/inspection/engine.ts')
+  const f = fixture()
+  f.hands('open-cover').act({ type: 'force-defrost', tool: 'controller' }).sample('current')
+  f.wait(12).observe('coil').hands('isolate').sample('dead').hands('disconnect')
+  for (const id of ['e1', 'e2', 'e3']) f.sample(id)
+  f.act({ type: 'diagnose', system: 'Defrost', component: 'Electric heaters', failure: 'Heater #3 open' })
+  f.act({ type: 'replace', part: 'H3', tool: 'hands' }).hands('restore')
+  // Clear the ice first, which is the order that used to strand the call.
+  f.act({ type: 'force-defrost', tool: 'controller' }).wait(15)
+  assert.ok(f.call.inspection.frost.every(v => v <= 8), 'coil is clear')
+  assert.notEqual(f.call.inspection.terminatedAt, null)
+
+  // Now ask for another defrost purely to take the post-repair amp draw. It
+  // must not terminate the instant it starts just because the coil is clear.
+  f.act({ type: 'force-defrost', tool: 'controller' })
+  assert.notEqual(f.call.inspection.defrostStarted, null, 'the second defrost actually runs')
+  f.hands('open-cover').sample('current')
+  const after = f.call.inspection.evidence.filter(e => e.phase === 'after' && /^current/.test(e.id))
+  assert.equal(after.length, 1)
+  assert.equal(after[0].id, 'current', 'reads a live feeder, not "heaters not energised"')
+  assert.match(after[0].value, /8\.[5-9] A during defrost/)
+
+  // The panel is open for that reading, so securing it must not be the step
+  // the guidance pushes while readings are still outstanding.
+  assert.doesNotMatch(guidance(f.call.inspection).text, /secure the cover|reconnect the leads/i)
+  assert.equal(
+    verifyChecklist(f.call.inspection).at(-1).label,
+    'Leads reconnected, disconnect restored, cover secured',
+    'buttoning up comes last'
+  )
+
+  // And the call still closes from here.
+  f.wait(12).observe('coil').observe('controller').wait(15).wait(15).sample('product').hands('close-cover')
+  assert.equal(canVerify(f.call.inspection), true)
+})
