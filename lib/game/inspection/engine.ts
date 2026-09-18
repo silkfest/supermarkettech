@@ -1,6 +1,11 @@
 import type { ActiveCall } from '../types'
 import { F1_FAULT, MEASUREMENTS } from './f1'
-import type { EvidenceItem, InspectionAction, InspectionState } from './types'
+import type {
+  ComponentId,
+  EvidenceItem,
+  InspectionAction,
+  InspectionState
+} from './types'
 
 export function recorded(
   s: InspectionState,
@@ -75,19 +80,167 @@ export function canDiagnose(s: InspectionState) {
 export function canVerify(s: InspectionState) {
   return verifyChecklist(s).every((x) => x.done)
 }
-/** The single line of guidance shown above the actions. Keeps a long call
- *  legible without spelling out the answer. */
-export function nextStep(s: InspectionState): string {
-  if (s.verified) return 'Write up the work order and close the call.'
+/** What to do next, naming the place and the action rather than the goal. A
+ *  step that says "note which section stays iced" without saying "inspect the
+ *  coil" is a step you cannot act on. `hints` escalate for the Stuck? button:
+ *  why first, then where, then the exact button. */
+export interface Guidance {
+  text: string
+  /** Where on the case it happens, so the panel can take you straight there. */
+  area?: ComponentId
+  hints: string[]
+}
+export function guidance(s: InspectionState): Guidance {
+  if (s.verified)
+    return {
+      text: 'Write up the work order on the Report page and close the call.',
+      hints: [
+        'The repair is proved; what is left is the paperwork.',
+        'Open the Report page.',
+        'Use the chips to build the note from what you found, then Complete report.'
+      ]
+    }
+
   if (s.repaired) {
     const left = verifyChecklist(s).find((x) => !x.done)
-    return left ? `Verify the repair: ${left.label.toLowerCase()}.` : 'Everything checks out \u2014 confirm verified operation.'
+    if (!left)
+      return {
+        text: 'Everything checks out — confirm verified operation on the Report page.',
+        hints: ['Every verification step is ticked.', 'Open the Report page.', 'Press “Confirm verified operation”.']
+      }
+    switch (left.label) {
+      case 'Leads reconnected, disconnect restored, cover secured':
+        return {
+          text: 'Put the circuit back: reconnect the leads, restore the disconnect and secure the cover.',
+          area: 'electrical',
+          hints: [
+            'Nothing can be verified while the circuit is still opened up.',
+            'Go to the Defrost circuit.',
+            'Use “Reconnect, secure covers and restore”.'
+          ]
+        }
+      case 'Full heater current measured during defrost':
+        return {
+          text: 'Run another defrost and clamp the feeder again — it should pull full current now.',
+          area: 'electrical',
+          hints: [
+            'The before-and-after current is what proves the repair.',
+            'Controller → “Request a manual defrost”, then open the service cover.',
+            'Defrost circuit → “Clamp the heater feeder”, read on A~.'
+          ]
+        }
+      case 'Coil confirmed clear':
+        return {
+          text: 'Let the defrost finish, then inspect the evaporator coil and confirm every section cleared.',
+          area: 'coil',
+          hints: [
+            'All three sections should shed their ice now.',
+            'Use “Wait 10 min”, then go to the Evaporator.',
+            'Press “Inspect the evaporator coil”.'
+          ]
+        }
+      case 'Defrost terminated on temperature':
+        return {
+          text: 'Let the defrost terminate, then read the controller to confirm it ended on temperature.',
+          area: 'controller',
+          hints: [
+            'A defrost that runs its full failsafe has not really terminated.',
+            'Wait until the defrost stops, then go to the Controller.',
+            'Press “Read the controller and its history”.'
+          ]
+        }
+      case 'Product at or below \u22128 \u00b0F after pull-down':
+        return {
+          text: 'Give the case time to pull down, then probe the product again.',
+          area: 'product',
+          hints: [
+            'The number the manager will ask about is the product, not the coil.',
+            'Use “Wait 10 min” a few times, then go to the doors and product.',
+            'Press “Probe between the product packs” and read it.'
+          ]
+        }
+      default:
+        return {
+          text: 'Install the repair you called.',
+          area: 'heaters',
+          hints: ['You have a diagnosis but no repair yet.', 'Go to the Defrost heaters.', 'Replace the element you called.']
+        }
+    }
   }
+
   if (s.diagnosis)
-    return 'Isolate, prove dead, disconnect the leads, then change the faulty element.'
-  if (canDiagnose(s)) return 'You have the evidence \u2014 open Diagnosis and call it.'
-  const left = diagnoseChecklist(s).find((x) => !x.done)
-  return left ? `Still needed: ${left.label.toLowerCase()}.` : 'Look the case over and see what it is doing.'
+    return {
+      text: 'Isolate, prove dead and disconnect the leads, then change the element you called.',
+      area: 'heaters',
+      hints: [
+        'Nothing gets replaced on a live circuit.',
+        'Defrost circuit → secure the disconnect, prove dead, disconnect the leads.',
+        'Then Defrost heaters → “Replace heater 3”.'
+      ]
+    }
+
+  if (canDiagnose(s))
+    return {
+      text: 'You have the evidence — open the Diagnose page and call it.',
+      hints: [
+        'A pattern, a current reading and three element readings is enough to name the fault.',
+        'Open the Diagnose page.',
+        'Pick the system, the component and the failure, then submit.'
+      ]
+    }
+
+  if (!recorded(s, 'pattern', 'before')) {
+    if (s.cycle === 0)
+      return {
+        text: 'Ask the controller for a defrost, let it run, then inspect the evaporator coil.',
+        area: 'controller',
+        hints: [
+          'A section that is not heating only shows itself during a defrost.',
+          'Go to the Controller and press “Request a manual defrost”.',
+          'Then wait about ten minutes and inspect the evaporator coil.'
+        ]
+      }
+    if (s.defrostStarted !== null && (s.frost[0] > 12 || s.frost[1] > 12))
+      return {
+        text: 'Defrost is running — give it about ten minutes, then inspect the evaporator coil.',
+        area: 'coil',
+        hints: [
+          'Too early and every section still looks iced.',
+          'Press “Wait 10 min”, then go to the Evaporator.',
+          'Press “Inspect the evaporator coil” and see which one is still white.'
+        ]
+      }
+    return {
+      text: 'Now inspect the evaporator coil and note which section is still iced.',
+      area: 'coil',
+      hints: [
+        'The defrost has done its work; looking at the coil is what records it.',
+        'Go to the Evaporator.',
+        'Press “Inspect the evaporator coil”.'
+      ]
+    }
+  }
+
+  if (!recorded(s, 'current', 'before'))
+    return {
+      text: 'Clamp the heater feeder while a defrost is actually energised.',
+      area: 'electrical',
+      hints: [
+        'Clamped with the heaters off it reads zero and proves nothing.',
+        'Take the service cover off, and have a defrost running.',
+        'Defrost circuit → “Clamp the heater feeder”, read on A~.'
+      ]
+    }
+
+  return {
+    text: 'Isolate, prove dead, disconnect the leads, then ohm H1, H2 and H3 on their own.',
+    area: 'heaters',
+    hints: [
+      'Resistance readings only mean something on a dead circuit with the parallel paths broken.',
+      'Defrost circuit → secure the disconnect, prove dead, disconnect one lead per element.',
+      'Then Defrost heaters → ohm each element across its terminals.'
+    ]
+  }
 }
 /** One clock drives visuals, temperature, shrink and both interactive/legacy calls. */
 export function tickInspection(
@@ -213,6 +366,14 @@ export function interact(
               'Observed defrost pattern',
               'Sections 1 and 2 clear; return section 3 remains heavily iced.'
             )
+          // Looking mid-defrost used to record nothing and say nothing, which
+          // reads as a broken button rather than "you are early".
+          else if (s.cycle > 0 && s.defrostStarted !== null)
+            s.feedback =
+              'Still early in the defrost — every section is shedding frost. Let it run and look again.'
+          else if (s.cycle === 0)
+            s.feedback =
+              'Frost is uneven, but a cold coil looks much the same all over. Run a defrost and look again to see which section is not heating.'
           if (s.repaired && s.frost.every((f) => f <= 8))
             evidence(
               'cleared',
