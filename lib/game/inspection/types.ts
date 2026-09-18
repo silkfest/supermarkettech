@@ -58,7 +58,7 @@ export interface InspectionState {
 }
 export type InspectionAction =
   | { type: 'observe'; component: ComponentId; tool: InspectionTool }
-  | { type: 'force-defrost'; tool: InspectionTool }
+  | { type: 'force-defrost' | 'end-defrost'; tool: InspectionTool }
   | { type: 'wait'; minutes: number }
   | {
       type: 'isolate' | 'restore' | 'disconnect' | 'open-cover' | 'close-cover'

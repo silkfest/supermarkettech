@@ -165,7 +165,7 @@ export default function EquipmentInspection({
                 />
                 <p className="text-xs text-slate-300">
                   {s.defrostStarted !== null
-                    ? 'Defrost running'
+                    ? 'Defrost running — ends when you end it'
                     : s.terminatedAt !== null
                       ? 'Refrigeration / pull-down'
                       : 'Refrigeration'}{' '}
@@ -374,7 +374,10 @@ function buildActions(
 
   if (selected === 'controller') {
     add('look', 'look', 'Read the controller and its history', 'controller', act({ type: 'observe', component: 'controller', tool: 'controller' }))
-    add('defrost', 'circuit', 'Request a manual defrost', 'controller', act({ type: 'force-defrost', tool: 'controller' }))
+    if (s.defrostStarted === null)
+      add('defrost', 'circuit', 'Request a manual defrost', 'controller', act({ type: 'force-defrost', tool: 'controller' }))
+    else
+      add('enddefrost', 'circuit', 'End the defrost', 'controller', act({ type: 'end-defrost', tool: 'controller' }))
     if (s.diagnosis && !s.repaired)
       add('rep-term', 'repair', 'Replace termination control · $75', 'hands', act({ type: 'replace', part: 'termination', tool: 'hands' }))
   } else {

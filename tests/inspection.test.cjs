@@ -93,13 +93,35 @@ test('wrong tool/function/lead positions never grant measurements', () => {
   assert.equal(f.call.inspection.evidence[0].id, 'current-off')
   assert.equal(canDiagnose(f.call.inspection), false)
 })
-test('defrost requires a restored circuit; fault failsafe does not masquerade as successful termination', () => {
+test('defrost requires a restored circuit, runs until ended, and never fakes a termination', () => {
   const f = fixture().hands('isolate').act({ type: 'force-defrost', tool: 'controller' })
-  assert.equal(f.call.inspection.defrostStarted, null)
-  f.hands('restore').act({ type: 'force-defrost', tool: 'controller' }).wait(15)
+  assert.equal(f.call.inspection.defrostStarted, null, 'cannot defrost an isolated circuit')
+  f.hands('restore').act({ type: 'force-defrost', tool: 'controller' }).wait(15).wait(15)
+  // A manual defrost is the technician's to end: half an hour in, it is still
+  // running, so a long set of readings never gets cut short.
+  assert.notEqual(f.call.inspection.defrostStarted, null)
+  assert.equal(f.call.inspection.terminatedAt, null, 'an iced coil never terminates on temperature')
+  assert.ok(f.call.inspection.frost[2] >= 95, 'the dead section sheds nothing')
+  assert.ok(f.call.inspection.frost[0] <= 8, 'the live sections clear')
+
+  // Ending it by hand is not a temperature termination either.
+  f.act({ type: 'end-defrost', tool: 'controller' })
   assert.equal(f.call.inspection.defrostStarted, null)
   assert.equal(f.call.inspection.terminatedAt, null)
-  assert.ok(f.call.inspection.frost[2] >= 95)
+
+  // Once the element is replaced, the thermostat ends it on a clear coil.
+  const g = fixture()
+  g.hands('open-cover').act({ type: 'force-defrost', tool: 'controller' }).sample('current').wait(12).observe('coil')
+  g.hands('isolate').sample('dead').hands('disconnect')
+  for (const id of ['e1', 'e2', 'e3']) g.sample(id)
+  assert.equal(canDiagnose(g.call.inspection), true, 'evidence is in before diagnosing')
+  g.act({ type: 'diagnose', system: 'Defrost', component: 'Electric heaters', failure: 'Heater #3 open' })
+  g.act({ type: 'replace', part: 'H3', tool: 'hands' })
+  assert.equal(g.call.inspection.repaired, true, 'the element was actually replaced')
+  g.hands('restore').act({ type: 'force-defrost', tool: 'controller' }).wait(15)
+  assert.equal(g.call.inspection.defrostStarted, null, 'terminates on its own once the coil clears')
+  assert.notEqual(g.call.inspection.terminatedAt, null)
+  assert.ok(g.call.inspection.frost.every(v => v <= 8))
 })
 test('bad checks, wrong diagnosis, parts and safety have consequences', () => {
   const f = fixture().observe('txv')
