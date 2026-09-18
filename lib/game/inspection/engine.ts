@@ -144,8 +144,8 @@ export function guidance(s: InspectionState): Guidance {
           text: 'Let the defrost terminate, then read the controller to confirm it ended on temperature.',
           area: 'controller',
           hints: [
-            'A defrost that runs its full failsafe has not really terminated.',
-            'Wait until the defrost stops, then go to the Controller.',
+            'Let it run to temperature — ending a defrost by hand is not a termination.',
+            'Wait until the defrost stops on its own, then go to the Controller.',
             'Press “Read the controller and its history”.'
           ]
         }
@@ -256,9 +256,14 @@ export function tickInspection(
     frost = frost.map((v, i) =>
       i === 2 && !s.repaired ? v : Math.max(5, v - dt * 9)
     )
-    if (now - s.defrostStarted! >= (s.repaired ? 11 : 14)) {
+    // A manual defrost runs until the technician ends it. The one thing that
+    // ends it by itself is the termination thermostat seeing a clear coil —
+    // which only happens once the dead element is replaced, and is the whole
+    // point of the post-repair check. An iced coil never gets there, so it
+    // waits for you instead of cutting your readings short.
+    if (s.repaired && frost.every((f) => f <= 8)) {
       defrostStarted = null
-      if (s.repaired) terminatedAt = now
+      terminatedAt = now
     }
   } else if (!s.repaired)
     frost = frost.map((v, i) =>
@@ -453,7 +458,19 @@ export function interact(
         s.terminatedAt = null
         s.cycle++
         s.feedback =
-          'Defrost requested. Watch the sections and measure while the heater circuit is energised.'
+          'Defrost requested. It stays in defrost until you end it, so take your time over the readings.'
+        minutes = 1
+      }
+      break
+    case 'end-defrost':
+      if (action.tool !== 'controller')
+        fail('Use the controller interface to end the defrost.')
+      else if (s.defrostStarted === null) fail('No defrost is running.')
+      else {
+        // Ending it by hand is not a temperature termination, so it never
+        // stands in for the post-repair check.
+        s.defrostStarted = null
+        s.feedback = 'Defrost ended by hand; refrigeration resumes.'
         minutes = 1
       }
       break
