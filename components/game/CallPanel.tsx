@@ -7,6 +7,7 @@ import { SYSTEM_META } from '@/lib/game/faults'
 import { scoreCall } from '@/lib/game/engine'
 import { SYSTEM_COLOR } from './StoreMap'
 import InstrumentPanel from './InstrumentPanel'
+import CallCoach from './CallCoach'
 import { missingTools, type ToolId } from '@/lib/game/tools'
 import type { ActiveCall, CallResult, Check, EquipmentNode, FaultDef, Option } from '@/lib/game/types'
 
@@ -20,6 +21,8 @@ interface Props {
   onClose: () => void
   /** What is on the truck at this rank — checks needing anything else are locked. */
   owned: Set<ToolId>
+  /** First shift on this level: the walkthrough opens instead of waiting. */
+  firstShift?: boolean
 }
 
 const STAGES = [
@@ -55,7 +58,7 @@ const STATUS_TEXT = {
   crit: 'text-red-600 dark:text-red-400',
 }
 
-export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComplete, onClose, owned }: Props) {
+export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComplete, onClose, owned, firstShift }: Props) {
   const router = useRouter()
   const [wrongCauses, setWrongCauses] = useState<string[]>([])
   const [wrongFixes, setWrongFixes] = useState<string[]>([])
@@ -171,6 +174,8 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
 
         {/* ── Ticket ── */}
+        {stage !== 'done' && <CallCoach stage={stage} firstShift={!!firstShift} />}
+
         {stage === 'ticket' && call && (
           <>
             <div className="space-y-1">

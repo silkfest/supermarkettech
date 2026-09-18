@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, HelpCircle, MapPin, X } from 'lucide-react'
 import { scoreCall } from '@/lib/game/engine'
 import {
   F1_FAULT,
@@ -12,7 +12,7 @@ import {
   canDiagnose,
   canVerify,
   diagnoseChecklist,
-  nextStep,
+  guidance,
   verifyChecklist
 } from '@/lib/game/inspection/engine'
 import type {
@@ -72,6 +72,9 @@ export default function EquipmentInspection({
   const [selected, setSelected] = useState<ComponentId>('product')
   const [measurementId, setMeasurementId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('work')
+  // Tied to the step it was asked about, so the ladder resets itself when the
+  // call moves on without any render-time state juggling.
+  const [hint, setHint] = useState({ step: '', level: 0 })
   const s = call?.inspection
   const measurement = MEASUREMENTS.find((m) => m.id === measurementId)
   // Full Supermarket's first slice supplies loaner meters if career progression
@@ -83,6 +86,8 @@ export default function EquipmentInspection({
         .map((t) => TOOL_LABEL[t]),
     [owned]
   )
+  const stepKey = s ? guidance(s).text : ''
+  const shownHints = hint.step === stepKey ? hint.level : 0
   const actions = s ? buildActions(s, selected, onAction, setMeasurementId) : []
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-100 rounded-xl border border-slate-600 overflow-hidden">
@@ -138,12 +143,16 @@ export default function EquipmentInspection({
                 {s.feedback}
               </p>
             )}
-            <p className="text-xs text-blue-200 bg-blue-950/60 border border-blue-900 rounded-lg p-2">
-              <span className="text-[10px] uppercase tracking-widest text-blue-400 block">
-                Next
-              </span>
-              {nextStep(s)}
-            </p>
+            <NextStep
+              state={s}
+              hintLevel={shownHints}
+              onHint={() => setHint({ step: stepKey, level: shownHints + 1 })}
+              onGo={(area) => {
+                setSelected(area)
+                setMeasurementId(null)
+                setTab('work')
+              }}
+            />
             {tab === 'work' && (
               <>
                 <EquipmentScene
@@ -276,6 +285,60 @@ export default function EquipmentInspection({
         ) : null}
       </div>
     </div>
+  )
+}
+
+/** The one line that says what to do, a button that takes you to the spot, and
+ * a Stuck? ladder that gives up more detail each press rather than all at once. */
+function NextStep({
+  state,
+  hintLevel,
+  onHint,
+  onGo
+}: {
+  state: InspectionState
+  hintLevel: number
+  onHint: () => void
+  onGo: (area: ComponentId) => void
+}) {
+  const g = guidance(state)
+  const shown = g.hints.slice(0, hintLevel)
+  const more = hintLevel < g.hints.length
+  return (
+    <section
+      aria-label="Next step"
+      className="text-xs text-blue-100 bg-blue-950/60 border border-blue-900 rounded-lg p-2 space-y-2"
+    >
+      <div>
+        <span className="text-[10px] uppercase tracking-widest text-blue-400 block">
+          Next
+        </span>
+        {g.text}
+      </div>
+      {shown.map((h, i) => (
+        <p key={h} className="text-[11px] text-blue-300 border-l-2 border-blue-700 pl-2">
+          {i === g.hints.length - 1 ? <b>{h}</b> : h}
+        </p>
+      ))}
+      <div className="flex gap-2">
+        {g.area && (
+          <button
+            onClick={() => onGo(g.area!)}
+            className="min-h-10 px-3 rounded-lg border border-blue-600 bg-blue-900/60 text-[11px] flex items-center gap-1"
+          >
+            <MapPin size={11} /> Take me there
+          </button>
+        )}
+        {more && (
+          <button
+            onClick={onHint}
+            className="min-h-10 px-3 rounded-lg border border-slate-600 bg-slate-800 text-[11px] text-slate-300 flex items-center gap-1"
+          >
+            <HelpCircle size={11} /> {hintLevel ? 'More help' : 'Stuck?'}
+          </button>
+        )}
+      </div>
+    </section>
   )
 }
 
