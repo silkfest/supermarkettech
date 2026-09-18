@@ -66,6 +66,8 @@ test('complete observe → measure → repair → verify → score service path'
   assert.equal(result.inspection.verified, true)
   const closed = shiftReducer(f.state, { type: 'COMPLETE_CALL', result })
   assert.ok(!closed.calls.some(c => c.id === result.callId))
+  const practiceClosed = shiftReducer({ ...f.state, practice: true }, { type: 'COMPLETE_CALL', result })
+  assert.equal(practiceClosed.status, 'over', 'practice finishes after its only call')
   assert.equal(closed.results[0].inspection.diagnosis, 'Defrost → Electric heaters → Heater #3 open')
 })
 test('live ohms, isolation without proving dead, and replacement are rejected', () => {
@@ -249,4 +251,76 @@ test('guidance names the action, not just the goal', () => {
   // And the step actually clears once the coil is inspected.
   f.observe('coil')
   assert.notEqual(guidance(f.call.inspection).text, g.text)
+})
+
+const { assignedCalls, earnedShiftHours, shiftCallTarget, shiftGrade } = require('../lib/game/engine.ts')
+const { recordShift, EMPTY_PROGRESS } = require('../lib/game/progress.ts')
+const { saveActiveShift, loadActiveShift } = require('../lib/game/session.ts')
+
+test('early exits earn only completed work and grade the entire assignment', () => {
+  for (const id of ['gas-station', 'supermarket', 'tyler-store']) {
+    const s = start(id)
+    assert.equal(earnedShiftHours(s), 0, id)
+  }
+  const s = { ...start('gas-station'), results: [{ points: 100, partsWasted: 0 }], calls: [] }
+  assert.equal(assignedCalls(s), 5)
+  assert.equal(earnedShiftHours(s), 1.2)
+  assert.equal(shiftGrade(s.results, assignedCalls(s), 0, 0).grade, 'F')
+  const full = { ...s, results: Array(5).fill(s.results[0]) }
+  assert.equal(earnedShiftHours(full), 6)
+  const practice = { ...s, practice: true }
+  assert.equal(shiftCallTarget(practice), 1)
+  assert.equal(assignedCalls(practice), 1)
+  assert.equal(earnedShiftHours(practice), 0)
+})
+
+test('best grade and best score improve independently', () => {
+  const a = recordShift(EMPTY_PROGRESS, 'gas-station', 90, 'A', 6)
+  const c = recordShift(a, 'gas-station', 300, 'C', 6)
+  assert.equal(c.levels['gas-station'].bestGrade, 'A')
+  assert.equal(c.levels['gas-station'].bestScore, 300)
+  const betterGrade = recordShift(recordShift(EMPTY_PROGRESS, 'supermarket', 700, 'C', 8), 'supermarket', 600, 'A', 8)
+  assert.equal(betterGrade.levels.supermarket.bestGrade, 'A')
+  assert.equal(betterGrade.levels.supermarket.bestScore, 700)
+})
+
+test('active shifts round-trip evidence and dispatch; completion clears the checkpoint', () => {
+  const entries = new Map()
+  global.localStorage = { getItem: k => entries.get(k) ?? null, setItem: (k, v) => entries.set(k, v), removeItem: k => entries.delete(k) }
+  try {
+    const f = fixture().observe('coil').sample('product').hands('open-cover').hands('isolate').sample('dead')
+    f.state.calls[0].note = 'Measured heater current; continuing diagnosis.'
+    const save = { character: f.state.character, progress: EMPTY_PROGRESS, storageOwner: 'tech-1' }
+    assert.equal(saveActiveShift(save, f.state, true), true)
+    const restored = loadActiveShift(save)
+    assert.deepEqual(restored.state, f.state)
+    assert.equal(restored.briefing, true)
+    assert.equal(restored.state.calls[0].inspection.provedDead, true)
+    assert.deepEqual(shiftReducer(INITIAL_STATE, { type: 'RESTORE', state: restored.state }), f.state)
+    assert.equal(loadActiveShift({ ...save, storageOwner: 'tech-2' }), null)
+    assert.equal(loadActiveShift({ ...save, character: { ...save.character, name: 'Different' } }), null)
+    saveActiveShift(save, { ...f.state, status: 'over' }, false)
+    assert.equal(loadActiveShift(save), null)
+    entries.set('coldcall_active_shift:tech-1', '{broken')
+    assert.equal(loadActiveShift(save), null)
+    entries.set('coldcall_active_shift:tech-1', JSON.stringify({ version: 1, character: save.character, state: { ...f.state, levelId: 'removed-level' } }))
+    assert.equal(loadActiveShift(save), null)
+    localStorage.setItem = () => { throw new Error('Storage full') }
+    assert.equal(saveActiveShift(save, f.state, false), false)
+  } finally { delete global.localStorage }
+})
+
+test('first account save uses its own checkpoint scope without importing another account', async () => {
+  const { loadGame } = require('../lib/game/progress.ts')
+  const entries = new Map()
+  const oldFetch = global.fetch
+  global.localStorage = { getItem: k => entries.get(k) ?? null, setItem: (k, v) => entries.set(k, v) }
+  global.fetch = async () => ({ ok: true, json: async () => ({ userId: 'new-user', progress: null, character: null }) })
+  try {
+    entries.set('coldcall_save', JSON.stringify({ storageOwner: 'old-user', character: { name: 'Old', color: '#2563eb', role: 'apprentice' }, progress: { ...EMPTY_PROGRESS, hours: 200 } }))
+    const loaded = await loadGame()
+    assert.equal(loaded.storageOwner, 'new-user')
+    assert.equal(loaded.character, null)
+    assert.equal(loaded.progress.hours, 0)
+  } finally { global.fetch = oldFetch; delete global.localStorage }
 })

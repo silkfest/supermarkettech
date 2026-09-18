@@ -63,7 +63,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
   const [wrongCauses, setWrongCauses] = useState<string[]>([])
   const [wrongFixes, setWrongFixes] = useState<string[]>([])
   const [feedback, setFeedback] = useState<{ tone: 'good' | 'bad'; text: string } | null>(null)
-  const [note, setNote] = useState('')
+  const note = call?.note ?? ''
   const [result, setResult] = useState<CallResult | null>(null)
   const [instrument, setInstrument] = useState<Check | null>(null)
 
@@ -113,10 +113,9 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
     if (!call) return
     const attempts = call.fixAttempts + 1
     if (opt.correct) {
-      onUpdate({ fixAttempts: attempts, stage: 'verify' })
+      onUpdate({ fixAttempts: attempts, stage: 'verify', note: `Found: ${correctCause.label}. Repaired: ${opt.label}. Next: ` })
       onSpend(30)
       setFeedback(null)
-      setNote(`Found: ${correctCause.label}. Repaired: ${opt.label}. Next: `)
     } else {
       setWrongFixes(w => [...w, opt.id])
       onUpdate({ fixAttempts: attempts, partsWasted: call.partsWasted + (opt.cost ?? 0) })
@@ -323,7 +322,7 @@ export default function CallPanel({ call, fault, node, onUpdate, onSpend, onComp
                   <div><span className="font-semibold text-emerald-700 dark:text-emerald-300">Fixed and verified: {correctFix.label}</span><p className="text-slate-600 dark:text-slate-400 mt-0.5">{correctFix.why}</p></div>
                 </div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Service note</p>
-                <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
+                <textarea value={note} onChange={e => onUpdate({ note: e.target.value })} rows={4}
                   className="w-full text-[12px] px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-400" />
                 <p className="text-[10px] text-slate-400">Same shape as a real service report: fault found, work performed, next action.</p>
                 <button onClick={closeCall} disabled={note.trim().length < 10}

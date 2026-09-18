@@ -47,6 +47,9 @@ test('F1 physical workflow completes without changing practice progression', asy
   const notebook = page.getByRole('region', { name: 'Service notebook' })
   await tab('Notebook').click()
   await expect(notebook.getByText('Coil frost', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Full Supermarket · F1 practice', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Walk', exact: true }).first().click()
   await act('Back to supermarket').click()
   await page.getByRole('button', { name: 'Resume', exact: true }).first().click()
   await tab('Notebook').click()
@@ -113,17 +116,16 @@ test('F1 physical workflow completes without changing practice progression', asy
     /Heater #3 open[\s\S]*Replaced Heater #3[\s\S]*Verified/
   )
   await act('Complete report and view debrief').click()
-  await page
-    .getByRole('heading', { name: 'Service debrief · 100/100' })
-    .waitFor()
+  await expect(page.getByRole('heading', { name: 'Shift over, Ben.' })).toBeVisible()
+  await page.getByText('Diagnostic debrief', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Service debrief · 100/100' })).toBeVisible()
   expect(errors).toEqual([])
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth
     )
   ).toBe(false)
-  await act('Back to supermarket').click()
-  await act('End shift').click()
+  // Practice ends automatically after its one work order.
   await expect(
     page.getByText('+0 h on the book', { exact: false })
   ).toBeVisible()
@@ -164,4 +166,11 @@ test('the supermarket work list ends the shift, not the clock', async ({
   await expect(card('Full Supermarket')).not.toContainText('h shift')
   await expect(card('Corner Gas Station')).not.toContainText('h shift')
   await expect(card('Lakeshore Market')).toContainText('8 h shift')
+  await card('Full Supermarket').click()
+  await page.getByRole('button', { name: 'End shift', exact: true }).click()
+  await expect(page.getByText('+0 h on the book', { exact: false })).toBeVisible()
+  await expect(page.getByText('0 pts of 1000 possible', { exact: false })).toBeVisible()
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coldcall_save')!))
+  expect(saved.progress.hours).toBe(40)
+  expect(saved.progress.levels.supermarket).toBeUndefined()
 })

@@ -14,14 +14,15 @@ import HandsOnPanel from '@/components/game/HandsOnPanel'
 import ShiftHUD from '@/components/game/ShiftHUD'
 import CharacterSetup from '@/components/game/CharacterSetup'
 import ShiftReport from '@/components/game/ShiftReport'
-import { shiftReducer, INITIAL_STATE, REAL_MS_PER_GAME_MIN, shiftGrade } from '@/lib/game/engine'
+import { shiftReducer, INITIAL_STATE, REAL_MS_PER_GAME_MIN, shiftGrade, assignedCalls, earnedShiftHours, shiftCallTarget } from '@/lib/game/engine'
 import { FAULT_BY_ID } from '@/lib/game/faults'
 import { LEVELS, LEVEL_BY_ID, levelUnlock, lessonsPassed, type LevelDef } from '@/lib/game/levels'
 import { TOWN_MAP } from '@/lib/game/maps/town'
-import { rankOf, rankGap, shiftHours, RANKS, DIFFICULTY_LABEL, type RankDef } from '@/lib/game/ranks'
+import { rankOf, rankGap, RANKS, DIFFICULTY_LABEL, type RankDef } from '@/lib/game/ranks'
 import { TOOLS, ownedTools } from '@/lib/game/tools'
 import { LESSONS, LESSON_BY_STATION, type Lesson } from '@/lib/game/lessons'
 import { loadGame, saveGame, recordLesson, recordShift, EMPTY_PROGRESS, type GameProgress, type LevelId, type SavedGame } from '@/lib/game/progress'
+import { loadActiveShift, saveActiveShift } from '@/lib/game/session'
 import { portraitFor } from '@/lib/game/art'
 import type { ActiveCall, CallResult, Character } from '@/lib/game/types'
 
@@ -48,8 +49,29 @@ export default function ColdCallPage() {
   const [graduated, setGraduated] = useState(false)
   const [briefing, setBriefing] = useState<LevelDef | null>(null)
   const recordedRef = useRef(false)
+  const [checkpointFailed, setCheckpointFailed] = useState(false)
 
-  useEffect(() => { loadGame().then(setSave) }, [])
+  useEffect(() => {
+    let cancelled = false
+    loadGame().then(loaded => {
+      if (cancelled) return
+      setSave(loaded)
+      const active = loadActiveShift(loaded)
+      if (active) {
+        dispatch({ type: 'RESTORE', state: active.state })
+        setBriefing(active.briefing ? LEVEL_BY_ID[active.state.levelId] : null)
+        setView('shift')
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Save after actions and clock ticks. Completed shifts are removed before
+  // career credit is recorded, so reloading cannot award the same shift twice.
+  useEffect(() => {
+    if (!save || state.status === 'idle') return
+    setCheckpointFailed(!saveActiveShift(save, state, !!briefing))
+  }, [save, state, briefing])
 
   // Game clock
   useEffect(() => {
@@ -69,10 +91,10 @@ export default function ColdCallPage() {
   useEffect(() => {
     if (state.status !== 'over' || state.practice || recordedRef.current || !save) return
     recordedRef.current = true
-    const g = shiftGrade(state.results, state.results.length + state.calls.length, state.complaints, state.shrink)
+    const g = shiftGrade(state.results, assignedCalls(state), state.complaints, state.shrink)
     const before = save.progress
-    const hours = shiftHours(state.levelId)
-    const after = recordShift(before, state.levelId, g.total, g.grade, hours)
+    const hours = earnedShiftHours(state)
+    const after = state.results.length ? recordShift(before, state.levelId, g.total, g.grade, hours) : before
     const newly = LEVELS.filter(l => !levelUnlock(before, l.id).ok && levelUnlock(after, l.id).ok)
     const unlocked = newly.length === 0 ? null : newly.length === 1 ? newly[0].name : `${newly.length} new stores`
     const promoted = rankOf(after).tier > rankOf(before).tier ? rankOf(after).name : null
@@ -81,7 +103,7 @@ export default function ColdCallPage() {
     setSave(ns)
     saveGame(ns)
     setShiftOutcome({ isBest, unlocked, promoted, hours })
-  }, [state.status, state.practice, state.results, state.calls.length, state.complaints, state.shrink, state.levelId, save])
+  }, [state, save])
 
   function persist(ns: SavedGame) { setSave(ns); saveGame(ns) }
 
@@ -258,7 +280,7 @@ export default function ColdCallPage() {
         ))
     const hud = (compact: boolean) => view === 'classroom'
       ? <StationList progress={progress} nearId={nearId} compact={compact} onWalkTo={id => setWalkTo({ hotspotId: id, nonce: Date.now() })} onOpen={openLesson} />
-      : <ShiftHUD map={map} shiftLenMin={level.shiftLenMin} callTarget={level.callTarget} elapsedMin={state.elapsedMin} shrink={state.shrink} complaints={state.complaints}
+      : <ShiftHUD map={map} shiftLenMin={level.shiftLenMin} callTarget={shiftCallTarget(state)} elapsedMin={state.elapsedMin} shrink={state.shrink} complaints={state.complaints}
           results={state.results} calls={state.calls} nearCallId={nearId} compact={compact}
           onWalkTo={id => setWalkTo({ hotspotId: id, nonce: Date.now() })} onOpen={openCall} />
 
@@ -278,6 +300,7 @@ export default function ColdCallPage() {
             </button>
           }
         />
+        {checkpointFailed && <p role="status" className="px-3 py-1 text-xs text-amber-700 dark:text-amber-400">This browser could not save your shift. Keep this tab open to finish.</p>}
         <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-2 lg:gap-3 p-2 lg:p-3">
           <div className="flex-1 min-h-0">
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
@@ -336,7 +359,7 @@ export default function ColdCallPage() {
 
         {view === 'shift' && state.status === 'over' && (
           <ShiftReport
-            levelName={level.name} map={level.map} character={state.character}
+            assignedCalls={assignedCalls(state)} levelName={state.practice ? 'F1 field practice' : level.name} map={level.map} character={state.character}
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
             promoted={shiftOutcome?.promoted ?? null} hours={shiftOutcome?.hours ?? 0} hoursTotal={progress.hours}
