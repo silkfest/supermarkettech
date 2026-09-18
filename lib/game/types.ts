@@ -150,6 +150,8 @@ export interface Character {
 export type CallStage = 'ticket' | 'diagnose' | 'fix' | 'verify' | 'log' | 'done'
 
 export interface ActiveCall {
+  /** Draft report travels with the active call when resumed. */
+  note?: string
   inspection?: InspectionState
   id: string
   faultId: string

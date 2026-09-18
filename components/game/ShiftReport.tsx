@@ -7,6 +7,7 @@ import { SYSTEM_COLOR } from './StoreMap'
 import type { ActiveCall, CallResult, Character, GameMap, SystemKey } from '@/lib/game/types'
 
 interface Props {
+  assignedCalls: number
   levelName: string
   map: GameMap
   character: Character
@@ -31,8 +32,8 @@ const GRADE_TONE: Record<string, string> = {
   C: 'text-amber-600 dark:text-amber-400', D: 'text-red-600 dark:text-red-400', F: 'text-red-600 dark:text-red-400',
 }
 
-export default function ShiftReport({ levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, promoted, hours, hoursTotal, onAgain, onHub }: Props) {
-  const g = shiftGrade(results, results.length + unfinished.length, complaints, shrink)
+export default function ShiftReport({ assignedCalls, levelName, map, character, results, unfinished, shrink, complaints, isBest, unlocked, promoted, hours, hoursTotal, onAgain, onHub }: Props) {
+  const g = shiftGrade(results, assignedCalls, complaints, shrink)
   const systems = (Object.keys(SYSTEM_META) as SystemKey[]).map(s => {
     const rs = results.filter(r => r.system === s)
     return { s, n: rs.length, avg: rs.length ? Math.round(rs.reduce((a, r) => a + r.points, 0) / rs.length) : null }
@@ -48,7 +49,7 @@ export default function ShiftReport({ levelName, map, character, results, unfini
           <h1 className="text-base font-bold text-slate-900 dark:text-white">Shift over, {character.name}.</h1>
           <p className="text-[12px] text-slate-500 dark:text-slate-400">
             {g.total} pts of {g.possible} possible · {results.length} call{results.length !== 1 ? 's' : ''} closed
-            {unfinished.length > 0 && `, ${unfinished.length} left open`} · +{hours} h on the book ({Math.round(hoursTotal)} h total)
+            {assignedCalls > results.length && `, ${assignedCalls - results.length} assigned calls unfinished`} · +{hours} h on the book ({Math.round(hoursTotal)} h total)
           </p>
           {isBest && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5"><Trophy size={11} /> New personal best</p>}
         </div>

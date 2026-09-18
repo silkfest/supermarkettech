@@ -16,7 +16,7 @@ export interface GameProgress {
   hours: number
 }
 
-export interface SavedGame { character: Character | null; progress: GameProgress }
+export interface SavedGame { character: Character | null; progress: GameProgress; storageOwner?: string }
 
 export const EMPTY_PROGRESS: GameProgress = { version: 1, lessons: {}, levels: {}, xp: 0, hours: 0 }
 
@@ -49,15 +49,23 @@ export async function loadGame(): Promise<SavedGame> {
     // A slow or dead API must never keep the hub on "Loading…" — fall back to the local save.
     const res = await fetch('/api/game/progress', { signal: AbortSignal.timeout(5000) })
     if (res.ok) {
-      const data = await res.json() as { character: Character | Record<string, never>; progress: GameProgress } | null
+      const data = await res.json() as { character: Character | Record<string, never> | null; progress: GameProgress | null; userId?: string } | null
       if (data && data.progress && data.progress.version === 1) {
         const character = data.character && 'name' in data.character ? data.character as Character : null
-        const save = { character, progress: withHours(data.progress) }
+        const save = { character, progress: withHours(data.progress), storageOwner: data.userId }
         writeLocal(save)
         return save
       }
-      // Signed in but nothing saved yet — seed the server from any local save
-      if (local) void saveGame(local)
+      // A first account save still needs a stable owner for browser checkpoints.
+      if (data?.userId) {
+        const save = local && (!local.storageOwner || local.storageOwner === data.userId)
+          ? { ...local, storageOwner: data.userId }
+          : { character: null, progress: EMPTY_PROGRESS, storageOwner: data.userId }
+        writeLocal(save)
+        if (save.character) saveGame(save)
+        return save
+      }
+      if (local) saveGame(local)
     }
   } catch { /* offline — fall through to local */ }
   return local ?? { character: null, progress: EMPTY_PROGRESS }
@@ -77,13 +85,15 @@ export function saveGame(save: SavedGame): void {
 export function recordShift(p: GameProgress, level: LevelId, score: number, grade: string, hours: number): GameProgress {
   const prev = p.levels[level] ?? { shifts: 0, bestScore: 0, bestGrade: null }
   const better = score > prev.bestScore
+  const grades = ['F', 'D', 'C', 'B', 'A']
+  const bestGrade = grades.indexOf(grade) > grades.indexOf(prev.bestGrade ?? '') ? grade : prev.bestGrade
   return {
     ...p,
     xp: p.xp + score,
     hours: p.hours + hours,
     levels: {
       ...p.levels,
-      [level]: { shifts: prev.shifts + 1, bestScore: better ? score : prev.bestScore, bestGrade: better || !prev.bestGrade ? grade : prev.bestGrade },
+      [level]: { shifts: prev.shifts + 1, bestScore: better ? score : prev.bestScore, bestGrade },
     },
   }
 }
