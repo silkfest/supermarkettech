@@ -34,6 +34,7 @@ export interface ShiftState {
 }
 
 export type ShiftAction =
+  | { type: 'RESTORE'; state: ShiftState }
   | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean }
   | { type: 'TICK'; dtMin: number }
   | { type: 'INSPECT'; callId: string; action: InspectionAction }
@@ -88,6 +89,9 @@ function withToast(state: ShiftState, text: string, tone: Toast['tone']): ShiftS
 
 export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState {
   switch (action.type) {
+    case 'RESTORE':
+      return action.state
+
     case 'START':
       return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty, practice: action.practice ?? false }
 
@@ -170,7 +174,7 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
         results: [...state.results, action.result],
         usedFaultIds: [...state.usedFaultIds, action.result.faultId],
       }
-      const target = LEVEL_BY_ID[s.levelId].callTarget
+      const target = shiftCallTarget(s)
       const done = target !== undefined && s.results.length >= target
       return withToast(done ? { ...s, status: 'over' } : s, `Call closed — +${action.result.points} pts`, 'good')
     }
@@ -221,4 +225,24 @@ export function clockLabel(elapsedMin: number): string {
   const m = total % 60
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12
   return `${h12}:${m.toString().padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`
+}
+
+/** Practice is one work order; career levels retain their own pacing. */
+export function shiftCallTarget(state: ShiftState): number | undefined {
+  return state.practice ? 1 : LEVEL_BY_ID[state.levelId].callTarget
+}
+
+/** Undispatched work still belongs to the assigned shift when leaving early. */
+export function assignedCalls(state: ShiftState): number {
+  return shiftCallTarget(state) ?? LEVEL_BY_ID[state.levelId].spawnAt[state.character.role].length
+}
+
+/** Earn hours for completed work, never for merely starting a shift. */
+export function earnedShiftHours(state: ShiftState): number {
+  if (state.practice || state.results.length === 0) return 0
+  const level = LEVEL_BY_ID[state.levelId]
+  const fraction = level.callTarget
+    ? Math.min(1, state.results.length / level.callTarget)
+    : Math.min(1, state.elapsedMin / level.shiftLenMin)
+  return Math.round((level.shiftLenMin / 60) * fraction * 100) / 100
 }

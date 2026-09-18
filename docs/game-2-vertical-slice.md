@@ -62,7 +62,14 @@ Corner Gas Station and Full Supermarket end on a **work list** rather than a clo
 - Original reference element resistances and aggregate current are retained. They are not a validated voltage/topology model; do not infer supply voltage from these training values. Frame OL is a DMM continuity screen, not an insulation certification.
 - Before repair, the heavily iced coil can reach the existing failsafe timer. After repair, it clears and terminates on temperature; that behavior does not imply the termination device failed.
 - Service covers and element-lead isolation are represented as discrete actions; terminal placement uses accessible touch/mouse controls rather than freehand cable dragging.
-- Active shifts are in memory as before. Notebook/debrief state survives panel navigation, not a browser reload. Existing career progress saving is preserved.
+- Active shifts automatically checkpoint in the same browser, scoped to the signed-in account (or local play). Reload restores calls, evidence, repair state, draft reports and the clock; no time passes while away. The map returns to its spawn and instrument panels reopen from the work order. Career progress still syncs to the account; active shifts do not sync between devices. Ending a shift clears its checkpoint.
 - Customers/employees and directional player animation are not part of this first equipment interaction slice.
 
 Next conversion: `evap_fan_motor`, reusing three-section visuals, airflow observations, feeder current, isolated motor tests and post-repair verification.
+
+## Progression and practice corrections
+
+- F1 practice shows one assigned call and ends automatically on completion, with no career credit.
+- Call-count shifts award hours in proportion to calls completed. Timed shifts prorate by elapsed time, provided at least one call was completed. An empty shift awards no hours, XP or shift record.
+- Grades include the whole assignment, including calls not yet dispatched when leaving early.
+- Best grade and best total score are tracked independently; a higher score cannot lower a previous grade.

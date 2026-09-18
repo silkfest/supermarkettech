@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     .eq('user_id', auth.id)
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? null)
+  return NextResponse.json({ ...(data ?? { character: null, progress: null }), userId: auth.id })
 }
 
 // PUT /api/game/progress — upsert the caller's campaign progress
