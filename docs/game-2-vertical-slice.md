@@ -73,3 +73,27 @@ Next conversion: `evap_fan_motor`, reusing three-section visuals, airflow observ
 - Call-count shifts award hours in proportion to calls completed. Timed shifts prorate by elapsed time, provided at least one call was completed. An empty shift awards no hours, XP or shift record.
 - Grades include the whole assignment, including calls not yet dispatched when leaving early.
 - Best grade and best total score are tracked independently; a higher score cannot lower a previous grade.
+
+## Phone-first oblique aisle
+
+The supermarket now uses a parallel oblique floor projection (north/south depth
+at 68%, horizontal aisles retained) with upright equipment faces. F1/F2 face
+south with five glass doors; the lower bunkers sit between them. Collision and
+pathfinding still use floor coordinates; taps are unprojected before navigation.
+All supermarket work positions remain reachable.
+
+Solids and the technician draw in floor-depth order, allowing equipment to
+occlude someone walking behind it. Foreground boundary walls are cut away.
+Town, gas station and other stores retain their existing rendering. The rest of
+the supermarket equipment still uses the existing sprites while the frozen
+section and walk-ins establish the new visual direction.
+
+Phone follow view targets a 320-unit scene width, with a 44-pixel-high overview
+button. F1 has a large labelled tap target and a keyboard-accessible action.
+Overview and follow switch without changing technician position or navigation.
+
+![Component-rendered phone scene preview](game-art/f1-oblique-phone.png)
+
+This preview renders the actual scene components at a portrait crop; it is not a
+browser screenshot. Automated tests cover projection round-trips, depth ordering
+and reachability. Browser tests also exercise the overview toggle in the F1 flow.

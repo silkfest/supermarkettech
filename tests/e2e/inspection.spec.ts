@@ -17,6 +17,9 @@ test('F1 physical workflow completes without changing practice progression', asy
   )
   await page.goto('/game')
   await page.getByRole('button', { name: 'F1 field practice' }).click()
+  await expect(page.getByTestId('oblique-scene')).toBeVisible()
+  await page.getByRole('button', { name: 'Store overview', exact: true }).click()
+  await page.getByRole('button', { name: 'Follow technician', exact: true }).click()
   await page.getByRole('button', { name: 'Walk', exact: true }).first().click()
   await page.getByRole('heading', { name: 'WO #38471 — Frozen Food' }).waitFor()
 

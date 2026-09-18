@@ -305,6 +305,7 @@ export default function ColdCallPage() {
           <div className="flex-1 min-h-0">
             <StoreMap key={map.w + '-' + map.h} map={map} character={save!.character!} hotspots={hotspots} walkTo={walkTo}
               pixelArt={view === 'shift' && PIXEL_LEVELS.has(state.levelId)}
+              oblique={view === 'shift' && state.levelId === 'supermarket'}
               visualStates={Object.fromEntries([...state.results, ...state.calls].filter(c => c.inspection).map(c => [c.equipmentId, { frost: c.inspection!.frost, defrost: c.inspection!.defrostStarted !== null, repaired: c.inspection!.repaired, pullingDown: c.inspection!.terminatedAt !== null }]))}
               paused={sidePanelOpen} onArrive={handleArrive} onNearChange={handleNear} />
           </div>

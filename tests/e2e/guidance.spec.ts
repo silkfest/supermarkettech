@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-const OUT = '/tmp/claude-0/-home-user-supermarkettech/06c35e9f-917e-503d-a4eb-07db479778fd/scratchpad'
 const src = readFileSync('lib/game/lessons.ts', 'utf8')
 const lessons = Object.fromEntries(src.split(/\n  \{\n    id: '/).slice(1)
   .map((b) => b.slice(0, b.indexOf("'"))).map((id) => [id, { passed: true, bestScore: 100 }]))
 
-test('stuck state now names the action', async ({ page }) => {
+test('stuck state now names the action', async ({ page }, testInfo) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.route('**/api/game/progress', (r) => r.fulfill({ json: null }))
@@ -31,21 +30,21 @@ test('stuck state now names the action', async ({ page }) => {
   await act('Wait 10 min').click()
   const next = page.getByRole('region', { name: 'Next step' })
   await expect(next).toContainText(/inspect the evaporator coil/i)
-  await page.screenshot({ path: `${OUT}/help-1-next.png` })
+  await page.screenshot({ path: testInfo.outputPath('help-1-next.png') })
   // Stuck? ladders, and Take me there jumps to the right area.
   await next.getByRole('button', { name: /Stuck/ }).click()
   await next.getByRole('button', { name: /More help/ }).click()
   await next.getByRole('button', { name: /More help/ }).click()
-  await page.screenshot({ path: `${OUT}/help-2-hints.png` })
+  await page.screenshot({ path: testInfo.outputPath('help-2-hints.png') })
   await next.getByRole('button', { name: /Take me there/ }).click()
   await expect(act('Inspect the evaporator coil')).toBeVisible()
   await act('Inspect the evaporator coil').click()
   await expect(next).not.toContainText(/inspect the evaporator coil/i)
-  await page.screenshot({ path: `${OUT}/help-3-cleared.png` })
-  console.log('errors:', errors.length ? errors : 'none')
+  await page.screenshot({ path: testInfo.outputPath('help-3-cleared.png') })
+  expect(errors).toEqual([])
 })
 
-test('gas station opens the walkthrough on a first shift', async ({ page }) => {
+test('gas station opens the walkthrough on a first shift', async ({ page }, testInfo) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.route('**/api/game/progress', (r) => r.fulfill({ json: null }))
@@ -63,11 +62,11 @@ test('gas station opens the walkthrough on a first shift', async ({ page }) => {
   await page.getByRole('button', { name: /Start diagnosing/ }).waitFor({ timeout: 30000 })
   const coach = page.getByRole('region', { name: 'How this step works' })
   await expect(coach).toBeVisible()
-  await page.screenshot({ path: `${OUT}/help-4-gas-ticket.png` })
+  await page.screenshot({ path: testInfo.outputPath('help-4-gas-ticket.png') })
   await page.getByRole('button', { name: /Start diagnosing/ }).click()
   await page.waitForTimeout(500)
   await expect(coach).toContainText(/Readings first/)
   await coach.getByRole('button', { name: /nudge/i }).click()
-  await page.screenshot({ path: `${OUT}/help-5-gas-diagnose.png` })
-  console.log('errors:', errors.length ? errors : 'none')
+  await page.screenshot({ path: testInfo.outputPath('help-5-gas-diagnose.png') })
+  expect(errors).toEqual([])
 })
