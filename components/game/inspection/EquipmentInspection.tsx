@@ -2,12 +2,7 @@
 import { useMemo, useState } from 'react'
 import { Check, HelpCircle, MapPin, X } from 'lucide-react'
 import { scoreCall } from '@/lib/game/engine'
-import {
-  F1_FAULT,
-  F1_REPORT,
-  F1_TICKET,
-  MEASUREMENTS
-} from '@/lib/game/inspection/f1'
+import { defOf, type InspectionDef } from '@/lib/game/inspection/defs'
 import {
   canDiagnose,
   canVerify,
@@ -76,7 +71,8 @@ export default function EquipmentInspection({
   // call moves on without any render-time state juggling.
   const [hint, setHint] = useState({ step: '', level: 0 })
   const s = call?.inspection
-  const measurement = MEASUREMENTS.find((m) => m.id === measurementId)
+  const def = s ? defOf(s) : null
+  const measurement = def?.measurements.find((m) => m.id === measurementId)
   // Full Supermarket's first slice supplies loaner meters if career progression
   // has not unlocked them yet. No permanent rank/tool/save changes are made.
   const loaned = useMemo(
@@ -88,7 +84,8 @@ export default function EquipmentInspection({
   )
   const stepKey = s ? guidance(s).text : ''
   const shownHints = hint.step === stepKey ? hint.level : 0
-  const actions = s ? buildActions(s, selected, onAction, setMeasurementId) : []
+  const actions =
+    s && def ? buildActions(s, def, selected, onAction, setMeasurementId) : []
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-100 rounded-xl border border-slate-600 overflow-hidden">
       <header className="p-3 border-b border-slate-700 flex items-start gap-2">
@@ -96,7 +93,7 @@ export default function EquipmentInspection({
           <p className="text-[10px] text-amber-300 uppercase tracking-widest">
             Equipment inspection
           </p>
-          <h2 className="font-bold text-sm">{F1_TICKET}</h2>
+          <h2 className="font-bold text-sm">{def?.ticket}</h2>
         </div>
         <button
           onClick={onClose}
@@ -111,7 +108,7 @@ export default function EquipmentInspection({
           <ServiceDebrief result={result} />
         ) : s && call ? (
           <>
-            <p className="text-xs text-slate-300">{F1_REPORT}</p>
+            <p className="text-xs text-slate-300">{def?.report}</p>
             <nav className="grid grid-cols-4 gap-1" aria-label="Inspection pages">
               {TABS.map((t) => (
                 <button
@@ -163,20 +160,7 @@ export default function EquipmentInspection({
                     setMeasurementId(null)
                   }}
                 />
-                <p className="text-xs text-slate-300">
-                  {s.defrostStarted !== null
-                    ? 'Defrost running — ends when you end it'
-                    : s.terminatedAt !== null
-                      ? 'Refrigeration / pull-down'
-                      : 'Refrigeration'}{' '}
-                  &middot;{' '}
-                  {s.isolated
-                    ? s.provedDead
-                      ? 'Heater circuit proved dead'
-                      : 'Heater disconnect OFF; verify dead'
-                    : 'Heater circuit available'}
-                  {s.coverOpen ? ' · service cover off' : ''}
-                </p>
+<StatusLine state={s} def={def!} />
                 {GROUPS.map((g) => {
                   const items = actions.filter((a) => a.group === g.id)
                   if (!items.length) return null
@@ -212,9 +196,7 @@ export default function EquipmentInspection({
                         .find(
                           (e) =>
                             (e.id === measurement.id ||
-                              (measurement.id === 'current' &&
-                                e.id === 'current-off') ||
-                              (measurement.id === 'dead' && e.id === 'live')) &&
+                              e.id === def!.readingAliases[measurement.id]) &&
                             e.phase === (s.repaired ? 'after' : 'before')
                         )?.value
                     }
@@ -259,6 +241,7 @@ export default function EquipmentInspection({
             {tab === 'diagnosis' && (
               <>
                 <DiagnosisTree
+                  tree={def!.diagnosis}
                   enabled={canDiagnose(s) && !s.diagnosis}
                   checklist={diagnoseChecklist(s)}
                   onDiagnose={(system, component, failure) =>
@@ -267,7 +250,7 @@ export default function EquipmentInspection({
                 />
                 {s.diagnosis && (
                   <p className="text-xs text-emerald-300">
-                    {s.diagnosis}. Change the element on the Work page.
+                    {s.diagnosis}. Fit the part on the Work page.
                   </p>
                 )}
               </>
@@ -275,9 +258,10 @@ export default function EquipmentInspection({
             {tab === 'report' && (
               <ReportTab
                 state={s}
+                def={def!}
                 onAction={onAction}
                 onComplete={(note) =>
-                  onComplete(scoreCall(call, F1_FAULT, note))
+                  onComplete(scoreCall(call, def!.fault, note))
                 }
               />
             )}
@@ -352,8 +336,41 @@ interface UiAction {
 
 /** Every action names the tool it takes and reaches for it itself. The engine
  * still enforces the same prerequisites — this only removes the extra tap. */
+/** What the case is doing right now, in the terms of the call you are on. */
+function StatusLine({
+  state: s,
+  def
+}: {
+  state: InspectionState
+  def: InspectionDef
+}) {
+  const circuit = def.id === 'f2-evap-fan' ? 'Fan' : 'Heater'
+  const mode =
+    def.id === 'f2-evap-fan'
+      ? (s.fans ?? []).every(Boolean)
+        ? 'All three fans running'
+        : 'One fan stopped'
+      : s.defrostStarted !== null
+        ? 'Defrost running — ends when you end it'
+        : s.terminatedAt !== null
+          ? 'Refrigeration / pull-down'
+          : 'Refrigeration'
+  return (
+    <p className="text-xs text-slate-300">
+      {mode} &middot;{' '}
+      {s.isolated
+        ? s.provedDead
+          ? `${circuit} circuit proved dead`
+          : `${circuit} disconnect OFF; verify dead`
+        : `${circuit} circuit available`}
+      {s.coverOpen ? ' \u00b7 cover off' : ''}
+    </p>
+  )
+}
+
 function buildActions(
   s: InspectionState,
+  def: InspectionDef,
   selected: ComponentId,
   onAction: (a: InspectionAction) => void,
   openMeter: (id: string | null) => void
@@ -374,18 +391,56 @@ function buildActions(
 
   if (selected === 'controller') {
     add('look', 'look', 'Read the controller and its history', 'controller', act({ type: 'observe', component: 'controller', tool: 'controller' }))
-    if (s.defrostStarted === null)
-      add('defrost', 'circuit', 'Request a manual defrost', 'controller', act({ type: 'force-defrost', tool: 'controller' }))
-    else
-      add('enddefrost', 'circuit', 'End the defrost', 'controller', act({ type: 'end-defrost', tool: 'controller' }))
-    if (s.diagnosis && !s.repaired)
-      add('rep-term', 'repair', 'Replace termination control · $75', 'hands', act({ type: 'replace', part: 'termination', tool: 'hands' }))
+    if (def.id === 'f1-defrost') {
+      if (s.defrostStarted === null)
+        add('defrost', 'circuit', 'Request a manual defrost', 'controller', act({ type: 'force-defrost', tool: 'controller' }))
+      else
+        add('enddefrost', 'circuit', 'End the defrost', 'controller', act({ type: 'end-defrost', tool: 'controller' }))
+      if (s.diagnosis && !s.repaired)
+        add('rep-term', 'repair', 'Replace termination control · $75', 'hands', act({ type: 'replace', part: 'termination', tool: 'hands' }))
+    }
   } else {
-    add('look', 'look', `Inspect the ${LOOK_LABEL[selected]}`, 'flashlight', act({ type: 'observe', component: selected, tool: 'flashlight' }))
+    add('look', 'look', def.lookLabels[selected] ?? `Inspect the ${LOOK_LABEL[selected]}`, 'flashlight', act({ type: 'observe', component: selected, tool: 'flashlight' }))
   }
 
   if (selected === 'product')
-    add('probe', 'measure', 'Probe between the product packs', 'thermometer', meter('product'))
+    add(
+      'probe',
+      'measure',
+      def.id === 'f2-evap-fan'
+        ? 'Insert probe into product at the warm end'
+        : 'Probe between the product packs',
+      'thermometer',
+      meter('product')
+    )
+
+  if (def.id === 'f2-evap-fan') {
+    if (selected === 'product')
+      for (const [i, where] of ['supply', 'centre', 'return'].entries())
+        add(`air${i + 1}`, 'measure', `Read the discharge air at the ${where} end`, 'thermometer', meter(`air${i + 1}`))
+    if (selected === 'electrical' || selected === 'fans') {
+      add('cover', 'circuit', s.coverOpen ? 'Secure the fan compartment cover' : 'Open the fan compartment cover', 'hands', act({ type: s.coverOpen ? 'close-cover' : 'open-cover', tool: 'hands' }))
+      add('clampit', 'measure', 'Clamp the fan circuit conductor', 'clamp', meter('circuit'))
+      if (!s.isolated)
+        add('isolate', 'circuit', 'Secure the fan disconnect OFF', 'hands', act({ type: 'isolate', tool: 'hands' }))
+      add('dead', 'measure', s.isolated ? 'Prove the circuit dead' : 'Check for voltage', 'multimeter', meter('dead'))
+      add('leads', 'measure', 'Check voltage at the stopped motor leads', 'multimeter', meter('leads'))
+      if (s.isolated && !s.leadsDisconnected)
+        add('disconnect', 'circuit', 'Separate the motor leads', 'hands', act({ type: 'disconnect', tool: 'hands' }))
+      if (s.isolated || s.leadsDisconnected || s.coverOpen)
+        add('restore', 'circuit', 'Reconnect, secure covers and restore', 'hands', act({ type: 'restore', tool: 'hands' }))
+    }
+    if (selected === 'fans')
+      for (const n of [1, 2, 3]) {
+        add(`m${n}`, 'measure', `Ohm fan motor ${n} winding`, 'multimeter', meter(`m${n}`))
+        add(`mg${n}`, 'measure', `Ohm fan motor ${n} to the case frame`, 'multimeter', meter(`mg${n}`))
+        if (s.diagnosis && !s.repaired)
+          add(`rep${n}`, 'repair', `Replace fan motor ${n} · $95`, 'hands', act({ type: 'replace', part: `M${n}`, tool: 'hands' }))
+      }
+    if (selected === 'fans' && s.diagnosis && !s.repaired)
+      add('rep-all', 'repair', 'Replace all three fan motors · $285', 'hands', act({ type: 'replace', part: 'all-motors', tool: 'hands' }))
+    return out
+  }
 
   if (selected === 'electrical' || selected === 'heaters') {
     add(
@@ -432,24 +487,41 @@ const LOOK_LABEL: Record<ComponentId, string> = {
  * not the thing standing between a finished repair and a closed work order. */
 function ReportTab({
   state: s,
+  def,
   onAction,
   onComplete
 }: {
   state: InspectionState
+  def: InspectionDef
   onAction: (a: InspectionAction) => void
   onComplete: (note: string) => void
 }) {
   const checklist = verifyChecklist(s)
   const ready = canVerify(s)
+  const fanCall = def.id === 'f2-evap-fan'
   const chips: { label: string; text: string }[] = []
   if (s.diagnosis) chips.push({ label: 'Found', text: `Found: ${s.diagnosis}.` })
-  const current = s.evidence.find((e) => e.id === 'current' && e.phase === 'before')
-  if (current)
-    chips.push({ label: 'Measured', text: `Measured ${current.value} on the heater feeder against 8.7 A nameplate.` })
+  // The headline reading differs per call: heater feeder current on the defrost
+  // job, fan circuit current on the fan job.
+  const key = s.evidence.find(
+    (e) => e.id === (fanCall ? 'circuit' : 'current') && e.phase === 'before'
+  )
+  if (key)
+    chips.push({
+      label: 'Measured',
+      text: fanCall
+        ? `Measured ${key.value} on the fan circuit.`
+        : `Measured ${key.value} on the heater feeder against 8.7 A nameplate.`
+    })
   if (s.repairs.length)
     chips.push({ label: 'Repaired', text: `${s.repairs.join('; ')}.` })
   if (s.verified)
-    chips.push({ label: 'Verified', text: 'Verified full defrost current, a cleared coil, temperature termination and pull-down.' })
+    chips.push({
+      label: 'Verified',
+      text: fanCall
+        ? 'Verified full fan circuit current, even discharge air the length of the case, the heavy frost cleared and product pull-down.'
+        : 'Verified full defrost current, a cleared coil, temperature termination and pull-down.'
+    })
   const append = (text: string) =>
     onAction({ type: 'note', value: s.note ? `${s.note.trim()} ${text}` : text })
   return (

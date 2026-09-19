@@ -1,4 +1,7 @@
-import { initialInspection, F1_TICKET } from './inspection/f1'
+import { INSPECTION_DEFS } from './inspection/defs'
+import { initialInspection } from './inspection/f1'
+import { initialInspectionF2 } from './inspection/f2'
+import type { InspectionState } from './inspection/types'
 import { interact, tickInspection, canVerify } from './inspection/engine'
 import type { InspectionAction } from './inspection/types'
 import { FAULTS, FAULT_BY_ID } from './faults'
@@ -16,6 +19,8 @@ export interface Toast { id: number; text: string; tone: 'info' | 'warn' | 'crit
 export interface ShiftState {
   status: 'idle' | 'running' | 'over'
   practice: boolean
+  /** Which hands-on work order practice mode runs. */
+  practiceCall: 'f1' | 'f2'
   levelId: LevelId
   character: Character
   elapsedMin: number
@@ -35,7 +40,7 @@ export interface ShiftState {
 
 export type ShiftAction =
   | { type: 'RESTORE'; state: ShiftState }
-  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean }
+  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean; practiceCall?: 'f1' | 'f2' }
   | { type: 'TICK'; dtMin: number }
   | { type: 'INSPECT'; callId: string; action: InspectionAction }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
@@ -46,7 +51,7 @@ export type ShiftAction =
   | { type: 'RESET' }
 
 export const INITIAL_STATE: ShiftState = {
-  status: 'idle', practice: false,
+  status: 'idle', practice: false, practiceCall: 'f1',
   levelId: 'supermarket',
   character: { name: '', color: '#2563eb', role: 'apprentice' },
   elapsedMin: 0, spawnIdx: 0, calls: [], results: [],
@@ -62,8 +67,29 @@ export function effectiveDifficulty(f: FaultDef): number {
   return Math.max(f.difficulty, requiredTier(f.checks))
 }
 
+/** The calls that are worked hands-on rather than through the checklist panel.
+ *  Adding another one is a row here plus its own definition module. */
+const HANDS_ON: { equipmentId: string; faultId: string; start: () => InspectionState }[] = [
+  { equipmentId: 'F1', faultId: 'defrost_heater_open', start: initialInspection },
+  { equipmentId: 'M1', faultId: 'evap_fan_motor', start: initialInspectionF2 },
+]
+function inspectionFor(levelId: LevelId, equipmentId: string, faultId: string) {
+  if (levelId !== 'supermarket') return undefined
+  return HANDS_ON.find(h => h.equipmentId === equipmentId && h.faultId === faultId)?.start()
+}
+
 function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equipmentId: string } | null {
-  if (state.levelId === 'supermarket' && state.spawnIdx === 0) return { fault: FAULT_BY_ID.defrost_heater_open, equipmentId: 'F1' }
+  // The supermarket opens with the two hands-on work orders so they are always
+  // seen, and practice mode drops you straight onto the one you picked.
+  if (state.levelId === 'supermarket') {
+    const forced = state.practice
+      ? state.spawnIdx === 0
+        ? HANDS_ON[state.practiceCall === 'f2' ? 1 : 0]
+        : undefined
+      : HANDS_ON[state.spawnIdx]
+    if (forced)
+      return { fault: FAULT_BY_ID[forced.faultId], equipmentId: forced.equipmentId }
+  }
   const occupied = new Set(state.calls.map(c => c.equipmentId))
   const usedSystems = new Set<SystemKey>([...state.calls, ...state.results].map(c => FAULT_BY_ID[c.faultId].system))
   const open = FAULTS
@@ -93,7 +119,7 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
       return action.state
 
     case 'START':
-      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty, practice: action.practice ?? false }
+      return { ...INITIAL_STATE, status: 'running', character: action.character, levelId: action.levelId, maxDifficulty: action.maxDifficulty, practice: action.practice ?? false, practiceCall: action.practiceCall ?? 'f1' }
 
     case 'RESET':
       return { ...INITIAL_STATE, character: state.character, levelId: state.levelId, maxDifficulty: state.maxDifficulty }
@@ -132,13 +158,13 @@ export function shiftReducer(state: ShiftState, action: ShiftAction): ShiftState
         s = { ...s, spawnIdx: s.spawnIdx + 1, lastDispatchMin: s.elapsedMin }
         if (choice) {
           const call: ActiveCall = {
-            inspection: s.levelId === 'supermarket' && choice.equipmentId === 'F1' && choice.fault.id === 'defrost_heater_open' ? initialInspection() : undefined,
+            inspection: inspectionFor(s.levelId, choice.equipmentId, choice.fault.id),
             id: `call-${s.seq}`, faultId: choice.fault.id, equipmentId: choice.equipmentId,
             spawnedAtMin: s.elapsedMin, complained: false, stage: 'ticket',
             checksDone: [], lotoDone: false, causeAttempts: 0, fixAttempts: 0, minutesSpent: 0, partsWasted: 0,
           }
           const node = level.map.equipment.find(e => e.id === choice.equipmentId)
-          s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${call.inspection ? F1_TICKET : choice.fault.title}`, 'crit')
+          s = withToast({ ...s, seq: s.seq + 1, calls: [...s.calls, call] }, `New call: ${node?.label} — ${call.inspection ? INSPECTION_DEFS[call.inspection.definition].ticket : choice.fault.title}`, 'crit')
         }
       }
 

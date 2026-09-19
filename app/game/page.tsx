@@ -107,7 +107,11 @@ export default function ColdCallPage() {
 
   function persist(ns: SavedGame) { setSave(ns); saveGame(ns) }
 
-  function startLevel(level: LevelDef, practice = false) {
+  function startLevel(
+    level: LevelDef,
+    practice = false,
+    practiceCall: 'f1' | 'f2' = 'f1'
+  ) {
     if (!save?.character) { setView('setup'); return }
     setPanel(null); setLesson(null); setNearId(null); setWalkTo(null); setStop(null)
     if (level.kind === 'classroom') { setView('classroom'); return }
@@ -123,6 +127,7 @@ export default function ColdCallPage() {
       levelId: level.id,
       maxDifficulty: rank.maxDifficulty,
       practice,
+      practiceCall,
     })
     setView('shift')
   }
@@ -159,6 +164,11 @@ export default function ColdCallPage() {
   const level = LEVEL_BY_ID[state.levelId]
   const progress = save?.progress ?? EMPTY_PROGRESS
   const panelCall: ActiveCall | null = panel ? state.calls.find(c => c.id === panel.callId) ?? null : null
+  const panelResult = panel ? state.results.find(r => r.callId === panel.callId) : undefined
+  // Whether a call is worked hands-on is decided once, when dispatch attaches an
+  // inspection to it. The debrief still needs it after the call leaves the board,
+  // so the finished result counts too.
+  const inspectionCall = !!(panelCall?.inspection ?? panelResult?.inspection)
   const panelFault = panel ? FAULT_BY_ID[panel.faultId] : null
   const panelNode = panel ? level.map.equipment.find(e => e.id === panel.equipmentId)! : null
 
@@ -204,7 +214,8 @@ export default function ColdCallPage() {
           className="safe-top flex-shrink-0 border-b border-slate-200 dark:border-slate-700 py-2.5"
           actions={
             <div className="flex gap-2">
-            <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true)} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">F1 field practice</button>
+            <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true, 'f1')} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">F1 field practice</button>
+            <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true, 'f2')} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">M1 field practice</button>
             <button onClick={() => setView('hub')}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
               <LayoutGrid size={13} /> Job list
@@ -260,15 +271,15 @@ export default function ColdCallPage() {
   // ── Play screen (classroom or running shift) ──
   if (playing) {
     const map = view === 'classroom' ? LEVEL_BY_ID.classroom.map : level.map
-    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : state.practice ? 'Full Supermarket · F1 practice' : level.name
+    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : state.practice ? `Full Supermarket · ${state.practiceCall === 'f2' ? 'M1' : 'F1'} practice` : level.name
     const sidePanel = view === 'classroom'
       ? (lesson && lesson.kind === 'read' && (
           <LessonPanel key={lesson.id} lesson={lesson} alreadyPassed={!!progress.lessons[lesson.id]?.passed}
             onFinish={(score, passed) => finishLesson(lesson, score, passed)} onClose={() => setLesson(null)} />
         ))
       : (panel && panelFault && panelNode && (
-          (state.levelId === 'supermarket' && panel.equipmentId === 'F1' && panel.faultId === 'defrost_heater_open'
-            ? <EquipmentInspection key={panel.callId} call={panelCall} result={state.results.find(r => r.callId === panel.callId)} owned={owned}
+          (inspectionCall
+            ? <EquipmentInspection key={panel.callId} call={panelCall} result={panelResult} owned={owned}
                 onAction={action => dispatch({ type: 'INSPECT', callId: panel.callId, action })}
                 onComplete={result => dispatch({ type: 'COMPLETE_CALL', result })} onClose={() => setPanel(null)} />
             : <CallPanel key={panel.callId} call={panelCall} fault={panelFault} node={panelNode} owned={owned}
@@ -360,11 +371,11 @@ export default function ColdCallPage() {
 
         {view === 'shift' && state.status === 'over' && (
           <ShiftReport
-            assignedCalls={assignedCalls(state)} levelName={state.practice ? 'F1 field practice' : level.name} map={level.map} character={state.character}
+            assignedCalls={assignedCalls(state)} levelName={state.practice ? (state.practiceCall === 'f2' ? 'M1 field practice' : 'F1 field practice') : level.name} map={level.map} character={state.character}
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
             promoted={shiftOutcome?.promoted ?? null} hours={shiftOutcome?.hours ?? 0} hoursTotal={progress.hours}
-            onAgain={() => startLevel(level, state.practice)}
+            onAgain={() => startLevel(level, state.practice, state.practiceCall)}
             onHub={() => { dispatch({ type: 'RESET' }); setView('town') }}
           />
         )}

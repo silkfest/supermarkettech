@@ -1,11 +1,28 @@
 import type { ActiveCall } from '../types'
-import { F1_FAULT, MEASUREMENTS } from './f1'
+import { INSPECTION_DEFS } from './defs'
+import { F1_FAULT } from './f1'
+import {
+  diagnoseChecklistF2,
+  diagnosisIsCorrectF2,
+  guidanceF2,
+  measureF2,
+  observeF2,
+  replaceF2,
+  tickF2,
+  verifyChecklistF2,
+  F2_PARTS
+} from './f2'
 import type {
   ComponentId,
   EvidenceItem,
   InspectionAction,
   InspectionState
 } from './types'
+
+/** Which work order this is. Everything below keeps the original defrost call
+ *  as its default path and hands the evaporator-fan call to its own module,
+ *  rather than threading two stories through one set of branches. */
+const isF2 = (s: InspectionState) => s.definition === 'f2-evap-fan'
 
 export function recorded(
   s: InspectionState,
@@ -23,6 +40,7 @@ export interface Step {
   done: boolean
 }
 export function diagnoseChecklist(s: InspectionState): Step[] {
+  if (isF2(s)) return diagnoseChecklistF2(s, recorded)
   return [
     {
       label: 'Run a defrost and note which section stays iced',
@@ -39,6 +57,7 @@ export function diagnoseChecklist(s: InspectionState): Step[] {
   ]
 }
 export function verifyChecklist(s: InspectionState): Step[] {
+  if (isF2(s)) return verifyChecklistF2(s, recorded)
   return [
     { label: 'Repair installed', done: s.repaired },
     {
@@ -91,6 +110,7 @@ export interface Guidance {
   hints: string[]
 }
 export function guidance(s: InspectionState): Guidance {
+  if (isF2(s)) return guidanceF2(s, recorded, canDiagnose, verifyChecklist)
   if (s.verified)
     return {
       text: 'Write up the work order on the Report page and close the call.',
@@ -253,6 +273,7 @@ export function tickInspection(
   now: number,
   dt: number
 ): InspectionState {
+  if (isF2(s)) return tickF2(s, now, dt)
   const active = s.defrostStarted !== null && !s.isolated
   let frost = [...s.frost]
   let defrostStarted = s.defrostStarted
@@ -346,6 +367,10 @@ export function interact(
       minutes = Math.min(15, Math.max(1, action.minutes))
       break
     case 'observe': {
+      if (isF2(s)) {
+        minutes = observeF2(s, action.component, action.tool, evidence, fail)
+        break
+      }
       const needs =
         action.component === 'controller' ? 'controller' : 'flashlight'
       if (action.tool !== needs) {
@@ -491,8 +516,9 @@ export function interact(
       else {
         s.coverOpen = true
         minutes = 2
-        s.feedback =
-          'Service cover removed; labelled feeder and test points accessible.'
+        s.feedback = isF2(s)
+          ? 'Fan compartment cover removed; motor terminal block and circuit conductor accessible.'
+          : 'Service cover removed; labelled feeder and test points accessible.'
       }
       break
     case 'close-cover':
@@ -506,30 +532,37 @@ export function interact(
       break
     case 'isolate':
       if (action.tool !== 'hands')
-        fail('Select hand tools to operate and secure the heater disconnect.')
+        fail(
+          `Select hand tools to operate and secure the ${isF2(s) ? 'fan' : 'heater'} disconnect.`
+        )
       else {
         s.isolated = true
         s.provedDead = false
         s.defrostStarted = null
         minutes = 2
-        s.feedback =
-          'Heater disconnect secured OFF. Prove the load side dead with the voltage meter.'
+        s.feedback = `${isF2(s) ? 'Fan' : 'Heater'} disconnect secured OFF. Prove the load side dead with the voltage meter.`
       }
       break
     case 'disconnect':
       if (action.tool !== 'hands')
-        fail('Select hand tools to disconnect one lead on each element.')
+        fail(
+          isF2(s)
+            ? 'Select hand tools to separate the motor leads at the terminal block.'
+            : 'Select hand tools to disconnect one lead on each element.'
+        )
       else if (!s.isolated || !s.provedDead)
         fail(
-          'Isolate and prove the heater circuit dead before disconnecting leads.',
+          `Isolate and prove the ${isF2(s) ? 'fan' : 'heater'} circuit dead before disconnecting leads.`,
           true
         )
-      else if (!s.coverOpen) fail('Open the heater service cover first.')
+      else if (!s.coverOpen)
+        fail(`Open the ${isF2(s) ? 'fan compartment' : 'heater service'} cover first.`)
       else {
         s.leadsDisconnected = true
         minutes = 3
-        s.feedback =
-          'One lead removed from each heater, eliminating parallel paths for resistance tests.'
+        s.feedback = isF2(s)
+          ? 'Motor leads separated at the terminal block, so each winding reads on its own.'
+          : 'One lead removed from each heater, eliminating parallel paths for resistance tests.'
       }
       break
     case 'restore':
@@ -541,12 +574,13 @@ export function interact(
         s.provedDead = false
         s.coverOpen = false
         minutes = 3
-        s.feedback =
-          'Leads reconnected, covers secured, heater circuit restored.'
+        s.feedback = `Leads reconnected, covers secured, ${isF2(s) ? 'fan' : 'heater'} circuit restored.`
       }
       break
     case 'measure': {
-      const m = MEASUREMENTS.find((m) => m.id === action.measurement)
+      const m = INSPECTION_DEFS[s.definition].measurements.find(
+        (m) => m.id === action.measurement
+      )
       if (!m || m.tool !== action.tool || (m.mode && m.mode !== action.mode)) {
         fail('Select the appropriate instrument and meter function.')
         break
@@ -556,6 +590,11 @@ export function interact(
         !m.terminals.every((t) => action.terminals.includes(t))
       ) {
         fail('Place the probes / clamp at the labelled test points.')
+        break
+      }
+      if (isF2(s)) {
+        const spent = measureF2(s, m, evidence, fail, random)
+        if (spent >= 0) minutes = spent
         break
       }
       if (m.id !== 'product' && !s.coverOpen) {
@@ -627,11 +666,25 @@ export function interact(
     case 'diagnose':
       if (!canDiagnose(s)) {
         fail(
-          'Record a defrost pattern, energised heater current and all three individual element readings to support a diagnosis.'
+          isF2(s)
+            ? 'Find the stopped fan, clamp the live fan circuit and ohm all three motor windings to support a diagnosis.'
+            : 'Record a defrost pattern, energised heater current and all three individual element readings to support a diagnosis.'
         )
         break
       }
       next.causeAttempts++
+      if (isF2(s)) {
+        if (diagnosisIsCorrectF2(action)) {
+          s.diagnosis = 'Electrical \u2192 Evaporator fans \u2192 Motor #3 open winding'
+          s.feedback =
+            'Diagnosis supported by the stopped fan, the missing motor load and the open winding.'
+        } else {
+          s.feedback =
+            'That diagnosis does not explain a circuit two motors short with one open winding.'
+          minutes = 5
+        }
+        break
+      }
       if (
         action.system === 'Defrost' &&
         action.component === 'Electric heaters' &&
@@ -653,7 +706,9 @@ export function interact(
       }
       if (!s.isolated || !s.provedDead || !s.leadsDisconnected) {
         fail(
-          'Isolate, prove dead and disconnect before replacing a heater.',
+          isF2(s)
+            ? 'Isolate, prove dead and disconnect before changing a fan motor.'
+            : 'Isolate, prove dead and disconnect before replacing a heater.',
           true
         )
         break
@@ -667,6 +722,20 @@ export function interact(
         break
       }
       next.fixAttempts++
+      if (isF2(s)) {
+        if (replaceF2(s, action.part)) {
+          minutes = 25
+          s.feedback =
+            'Replacement motor fitted. Restore the circuit, then verify full fan current, even discharge air and pull-down.'
+        } else {
+          next.partsWasted += F2_PARTS[action.part]?.cost ?? 95
+          s.repairs = [...s.repairs, `Unnecessary replacement: ${action.part}`]
+          minutes = 15
+          s.feedback =
+            'That part was serviceable. The fan with the open winding is still in the case.'
+        }
+        break
+      }
       if (action.part === 'H3') {
         s.repaired = true
         s.repairs = [...s.repairs, 'Replaced Heater #3 ($140)']
@@ -684,7 +753,9 @@ export function interact(
     case 'verify':
       if (!canVerify(s))
         fail(
-          'Verification needs recorded full defrost current, a clear coil, temperature termination a product reading at or below −8 °F after pull-down, and secured service covers.'
+          isF2(s)
+            ? 'Verification needs full fan-circuit current, even discharge air, a coil that has shed its ice, a product reading at or below 34 \u00b0F and the circuit put back together.'
+            : 'Verification needs recorded full defrost current, a clear coil, temperature termination a product reading at or below \u22128 \u00b0F after pull-down, and secured service covers.'
         )
       else {
         s.verified = true
