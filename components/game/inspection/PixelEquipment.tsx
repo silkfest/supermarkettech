@@ -6,12 +6,25 @@ import type { VisualFaultState } from '@/lib/game/inspection/types'
 const ink = '#263845',
   steel = '#a8bbc0',
   light = '#e1ebe8'
-export function PixelFan({ x, y }: { x: number; y: number }) {
+/** A stopped fan reads as a dead pilot light and a blade sat still, so the one
+ *  that is not turning is visible at a glance the way it is in the case. */
+export function PixelFan({
+  x,
+  y,
+  stopped = false
+}: {
+  x: number
+  y: number
+  stopped?: boolean
+}) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <rect width="12" height="12" fill={ink} />
-      <path d="M4 1h4v3h3v4H8v3H4V8H1V4h3z" fill={steel} />
-      <rect x="5" y="5" width="2" height="2" fill="#f4e0a5" />
+      <path
+        d={stopped ? 'M1 4h10v4H1z' : 'M4 1h4v3h3v4H8v3H4V8H1V4h3z'}
+        fill={stopped ? '#6b6f72' : steel}
+      />
+      <rect x="5" y="5" width="2" height="2" fill={stopped ? '#8c3b32' : '#f4e0a5'} />
     </g>
   )
 }

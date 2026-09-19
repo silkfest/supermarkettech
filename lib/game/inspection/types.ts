@@ -33,8 +33,9 @@ export interface VisualFaultState {
   repaired: boolean
   pullingDown: boolean
 }
+export type InspectionDefId = 'f1-defrost' | 'f2-evap-fan'
 export interface InspectionState {
-  definition: 'f1-defrost'
+  definition: InspectionDefId
   evidence: EvidenceItem[]
   isolated: boolean
   provedDead: boolean
@@ -45,6 +46,10 @@ export interface InspectionState {
   terminatedAt: number | null
   cycle: number
   frost: number[]
+  /** Per-section state the evaporator-fan call needs, absent on older saves
+   *  and on calls that have no fan story to tell. */
+  fans?: boolean[]
+  airTempF?: number[]
   productTemp: number
   diagnosis: string | null
   verified: boolean

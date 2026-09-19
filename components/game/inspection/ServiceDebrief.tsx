@@ -1,8 +1,10 @@
 import type { CallResult } from '@/lib/game/types'
-import { EFFICIENT_PATH } from '@/lib/game/inspection/f1'
+import { defOf } from '@/lib/game/inspection/defs'
 export default function ServiceDebrief({ result }: { result: CallResult }) {
   const s = result.inspection
   if (!s) return null
+  const def = defOf(s)
+  const fanCall = def.id === 'f2-evap-fan'
   return (
     <section className="space-y-3 text-xs">
       <h3 className="font-bold text-base">
@@ -12,9 +14,11 @@ export default function ServiceDebrief({ result }: { result: CallResult }) {
       <p>{s.repairs.join('; ')}</p>
       <p>
         Verification:{' '}
-        {s.verified
-          ? 'Full current, clear coil, normal temperature termination and frozen product pull-down confirmed.'
-          : 'Incomplete'}
+        {!s.verified
+          ? 'Incomplete'
+          : fanCall
+            ? 'Full fan-circuit current, even discharge air the length of the case, the heavy frost gone and product pull-down confirmed.'
+            : 'Full current, clear coil, normal temperature termination and frozen product pull-down confirmed.'}
       </p>
       <dl className="grid grid-cols-2 gap-2">
         <dt>Total elapsed time</dt>
@@ -47,12 +51,11 @@ export default function ServiceDebrief({ result }: { result: CallResult }) {
       </details>
       <p className="whitespace-pre-wrap">{result.note}</p>
       <h4 className="font-bold">Efficient professional path</h4>
-      <p>{EFFICIENT_PATH}</p>
+      <p>{def.efficientPath}</p>
       <p>
-        The pattern localises the loss of heat. Two-thirds of expected current
-        points to one missing load; individual isolated resistance tests
-        identify which element. Verifying the whole cycle avoids replacing a
-        healthy termination control because an iced coil reached the failsafe.
+        {fanCall
+          ? 'Uneven discharge air localises the loss of airflow. A circuit pulling two motors\u2019 worth against a three-motor nameplate says one is not running, and ohming each winding on a dead circuit says which. Changing the one open motor avoids billing for three, and the heavy frost proves to be the symptom rather than a defrost fault.'
+          : 'The pattern localises the loss of heat. Two-thirds of expected current points to one missing load; individual isolated resistance tests identify which element. Verifying the whole cycle avoids replacing a healthy termination control because an iced coil reached the failsafe.'}
       </p>
     </section>
   )

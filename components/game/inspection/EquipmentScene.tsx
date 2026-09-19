@@ -4,7 +4,7 @@ import {
   FrostPixels,
   PixelPanel
 } from './PixelEquipment'
-import { COMPONENTS } from '@/lib/game/inspection/f1'
+import { defOf } from '@/lib/game/inspection/defs'
 import type { ComponentId, InspectionState } from '@/lib/game/inspection/types'
 export default function EquipmentScene({
   state,
@@ -15,13 +15,24 @@ export default function EquipmentScene({
   selected: ComponentId
   onSelect: (id: ComponentId) => void
 }) {
+  const def = defOf(state)
+  const fanCall = def.id === 'f2-evap-fan'
   const internal = ['coil', 'fans', 'heaters', 'electrical'].includes(selected)
+  // On the defrost call the glow means "this element is heating"; on the fan
+  // call there is no defrost running, so the strip stays cold throughout.
+  const heating = (i: number) =>
+    !fanCall && state.defrostStarted !== null && (i !== 2 || state.repaired)
+  const stopped = (i: number) => fanCall && !(state.fans ?? [])[i]
   return (
     <div className="rounded-xl bg-[#d6d3bb] p-2">
       <svg
         viewBox="0 0 180 130"
         role="img"
-        aria-label="F1 frozen case: three sections with uneven frost"
+        aria-label={
+          fanCall
+            ? 'Meat multideck: three fan sections, one fan stopped'
+            : 'F1 frozen case: three sections with uneven frost'
+        }
         shapeRendering="crispEdges"
         className="w-full max-h-64"
       >
@@ -60,11 +71,7 @@ export default function EquipmentScene({
                   y="67"
                   width="36"
                   height="3"
-                  fill={
-                    state.defrostStarted !== null && (i !== 2 || state.repaired)
-                      ? '#e6a15c'
-                      : '#7a7970'
-                  }
+                  fill={heating(i) ? '#e6a15c' : '#7a7970'}
                 />
                 <rect x="2" y="70" width="3" height="3" fill="#d5c8a1" />
                 <rect x="35" y="70" width="3" height="3" fill="#d5c8a1" />
@@ -74,23 +81,17 @@ export default function EquipmentScene({
                 <FrozenSection
                   index={i}
                   frost={state.frost[i]}
-                  heating={
-                    state.defrostStarted !== null && (i !== 2 || state.repaired)
-                  }
+                  heating={heating(i)}
                 />
               </g>
             )}
-            <PixelFan x={14} y={77} />
+            <PixelFan x={14} y={77} stopped={stopped(i)} />
             <rect
               x="3"
               y="92"
               width="36"
               height="3"
-              fill={
-                state.defrostStarted !== null && (i !== 2 || state.repaired)
-                  ? '#ea9b48'
-                  : '#5c6f6d'
-              }
+              fill={heating(i) ? '#ea9b48' : '#5c6f6d'}
             />
             <text
               x="21"
@@ -119,7 +120,7 @@ export default function EquipmentScene({
         className="grid grid-cols-3 gap-1"
         aria-label="Equipment interaction areas"
       >
-        {COMPONENTS.map((c) => (
+        {def.components.map((c) => (
           <button
             key={c.id}
             aria-pressed={selected === c.id}

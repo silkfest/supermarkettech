@@ -57,7 +57,7 @@ Corner Gas Station and Full Supermarket end on a **work list** rather than a clo
 
 ## Deliberate limits
 
-- This is one physical fault workflow. The reusable UI/state contracts are ready for another definition; the F1 transition rules and diagnosis vocabulary are still fault-specific.
+- This is now two physical fault workflows, F1 defrost and M1 evaporator fan. What differs between them — ticket, report, work areas, measurements, parts, diagnosis vocabulary, look-at labels and the efficient path — lives in `lib/game/inspection/defs.ts`, so the panel, the scene, the diagnosis tree and the debrief no longer know which work order they are showing. What they *do* differs enough that each keeps its own module (`f1.ts`, `f2.ts`) for its physics, findings, checklists and guidance; the engine delegates to it on `InspectionState.definition`. Shared mechanics (waiting, covers, isolation, prove-dead, lead separation, restore, evidence recording, scoring) stay in one place.
 - Thermal response, accumulated product-at-risk dollars and elapsed actions are teaching approximations, not a refrigeration or food-disposition model. Exposure is softened to one quarter of the original fault's shrink rate for this slice.
 - Original reference element resistances and aggregate current are retained. They are not a validated voltage/topology model; do not infer supply voltage from these training values. Frame OL is a DMM continuity screen, not an insulation certification.
 - A manual defrost runs until the technician ends it, so a long set of readings is never cut short. The one thing that ends it by itself is the termination thermostat seeing a clear coil, which only happens once the dead element is replaced — so before repair it waits for you, and after repair it terminates on temperature. Ending one by hand is never treated as a temperature termination. That behavior does not imply the termination device failed.
@@ -65,7 +65,17 @@ Corner Gas Station and Full Supermarket end on a **work list** rather than a clo
 - Active shifts automatically checkpoint in the same browser, scoped to the signed-in account (or local play). Reload restores calls, evidence, repair state, draft reports and the clock; no time passes while away. The map returns to its spawn and instrument panels reopen from the work order. Career progress still syncs to the account; active shifts do not sync between devices. Ending a shift clears its checkpoint.
 - Customers/employees and directional player animation are not part of this first equipment interaction slice.
 
-Next conversion: `evap_fan_motor`, reusing three-section visuals, airflow observations, feeder current, isolated motor tests and post-repair verification.
+## The evaporator-fan call (M1)
+
+The meat multideck runs warm at one end. Three fans, one motor open: the air curtain dies over the last third, the coil under it ices heavily because nothing is pulling heat through it, and the fan circuit clamps at 0.8 A against a 1.2 A three-motor nameplate. Ohming the windings on a dead, separated circuit reads 182 Ω, 179 Ω and OL. The repair is that one motor; verification is full circuit current, even discharge air the length of the case, the heavy frost gone and the product back at or below 34 °F.
+
+The traps are the ones that cost money in the field: clamping the circuit while it is locked out reads zero and proves nothing (filed separately so it cannot stand in for the real reading), a visual TXV check is logged as an unnecessary check, and fitting all three motors instead of the one that failed bills $285 against a $95 job. Resistance on a live circuit is refused and logged as a safety mistake, as on the defrost call.
+
+There is no defrost in this call, so the controller offers no manual defrost and the coil strip never glows; the stopped fan is drawn stopped instead. Air recovers fastest after the repair, then the coil sheds its slab, then the product — about three ten-minute waits in total.
+
+`M1 field practice` on the store header opens it directly; on a full supermarket shift it is the second work order dispatched, after F1.
+
+Next conversion: a fault whose discriminating evidence is a pressure/temperature pair rather than a current reading, to exercise the parts of the panel neither of these two calls reaches.
 
 ## Progression and practice corrections
 

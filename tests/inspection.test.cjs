@@ -404,3 +404,137 @@ test('a second defrost on a cleared coil still runs long enough to clamp', () =>
   f.wait(12).observe('coil').observe('controller').wait(15).wait(15).sample('product').hands('close-cover')
   assert.equal(canVerify(f.call.inspection), true)
 })
+
+// ── The evaporator-fan call (M1) ─────────────────────────────────────────────
+const { initialInspectionF2, F2_MEASUREMENTS, F2_FAULT } = require('../lib/game/inspection/f2.ts')
+const { diagnoseChecklist, verifyChecklist, guidance } = require('../lib/game/inspection/engine.ts')
+
+/** Same driver as the F1 fixture, pointed at the second hands-on work order. */
+function fanFixture() {
+  let state = shiftReducer(shiftReducer(INITIAL_STATE, { type: 'START', levelId: 'supermarket', character: { name: 'Test tech', color: '#2563eb', role: 'apprentice' }, maxDifficulty: 2, practice: true, practiceCall: 'f2' }), { type: 'TICK', dtMin: 0.1 })
+  const id = state.calls[0].id
+  return {
+    get state() { return state },
+    get call() { return state.calls.find(c => c.id === id) },
+    get s() { return this.call.inspection },
+    act(action) { state = shiftReducer(state, { type: 'INSPECT', callId: id, action }); return this },
+    sample(mid) { const m = F2_MEASUREMENTS.find(m => m.id === mid); return this.act({ type: 'measure', measurement: mid, tool: m.tool, mode: m.mode || '', terminals: m.terminals || [] }) },
+    observe(component) { return this.act({ type: 'observe', component, tool: component === 'controller' ? 'controller' : 'flashlight' }) },
+    hands(type) { return this.act({ type, tool: 'hands' }) },
+    wait(minutes) { return this.act({ type: 'wait', minutes }) }
+  }
+}
+
+test('practice dispatches the evaporator-fan call on M1 without naming the cause', () => {
+  const f = fanFixture()
+  assert.equal(f.call.equipmentId, 'M1')
+  assert.equal(f.call.faultId, 'evap_fan_motor')
+  assert.equal(f.s.definition, 'f2-evap-fan')
+  assert.deepEqual(f.s.evidence, [])
+  assert.match(f.state.toasts[0].text, /WO #38614/)
+  assert.doesNotMatch(f.state.toasts[0].text, /motor|fan|open/i)
+})
+
+test('the supermarket board opens with both hands-on work orders', () => {
+  let s = start()
+  assert.equal(s.calls[0].equipmentId, 'F1')
+  // Dispatch is paced, so run the clock past the gap for the second call.
+  s = shiftReducer(s, { type: 'TICK', dtMin: 30 })
+  const second = s.calls.find(c => c.equipmentId === 'M1')
+  assert.ok(second, 'expected the meat-case call to be dispatched')
+  assert.equal(second.inspection.definition, 'f2-evap-fan')
+})
+
+test('a winding cannot be ohmed on a live circuit, and the attempt is logged as unsafe', () => {
+  const f = fanFixture().hands('open-cover').sample('m3')
+  assert.equal(f.s.safetyMistakes.length, 1)
+  assert.ok(!f.s.evidence.some(e => e.id === 'm3'))
+})
+
+test('clamping the fan circuit reads two motors worth against a three-motor nameplate', () => {
+  const f = fanFixture().hands('open-cover').sample('circuit')
+  const reading = f.s.evidence.find(e => e.id === 'circuit')
+  assert.match(reading.value, /^0\.8 A against 1\.2 A nameplate$/)
+  // Locked out it reads zero, and that zero must not stand in for the real one.
+  f.hands('isolate').sample('circuit')
+  assert.ok(f.s.evidence.some(e => e.id === 'circuit-off'))
+  assert.equal(f.s.evidence.filter(e => e.id === 'circuit').length, 1)
+})
+
+test('only the stopped fan ohms open, and the diagnosis needs all three', () => {
+  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
+    .hands('isolate').sample('dead').hands('disconnect')
+  f.sample('m1').sample('m2')
+  assert.equal(canDiagnose(f.s), false, 'two windings is not three')
+  f.sample('m3')
+  assert.equal(f.s.evidence.find(e => e.id === 'm1').value, '182 Ω')
+  assert.match(f.s.evidence.find(e => e.id === 'm3').value, /OL/)
+  assert.equal(canDiagnose(f.s), true)
+})
+
+test('a wrong call, and a wrong part, both cost you', () => {
+  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
+    .hands('isolate').sample('dead').hands('disconnect').sample('m1').sample('m2').sample('m3')
+  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'TXV', failure: 'Failed open' })
+  assert.equal(f.s.diagnosis, null)
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+  assert.match(f.s.diagnosis, /Motor #3 open winding/)
+  assert.equal(f.call.causeAttempts, 2)
+  f.act({ type: 'replace', part: 'all-motors', tool: 'hands' })
+  assert.equal(f.call.partsWasted, 285)
+  assert.equal(f.s.repaired, false)
+})
+
+test('the fan call runs end to end to a verified repair', () => {
+  const f = fanFixture()
+  f.observe('product').observe('fans').observe('coil')
+  f.hands('open-cover').sample('circuit').sample('leads')
+  f.hands('isolate').sample('dead').hands('disconnect')
+  f.sample('m1').sample('m2').sample('m3')
+  assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+  f.act({ type: 'replace', part: 'M3', tool: 'hands' })
+  assert.equal(f.s.repaired, true)
+  assert.deepEqual(f.s.fans, [true, true, true])
+  f.hands('restore')
+  // Air, coil and product all recover once the third fan is turning again.
+  for (let i = 0; i < 6; i++) f.wait(10)
+  f.hands('open-cover').sample('circuit')
+  assert.match(f.s.evidence.filter(e => e.id === 'circuit').pop().value, /^1\.2 A/)
+  f.sample('air3').observe('coil').sample('product')
+  f.hands('restore')
+  const left = verifyChecklist(f.s).filter(x => !x.done).map(x => x.label)
+  assert.deepEqual(left, [], `outstanding: ${left.join('; ')}`)
+  f.act({ type: 'verify' })
+  assert.equal(f.s.verified, true)
+  const result = scoreCall(f.call, F2_FAULT, 'Replaced open evaporator fan motor #3.')
+  assert.ok(result.points > 0)
+})
+
+test('guidance on the fan call always names an action, never just the goal', () => {
+  const f = fanFixture()
+  const seen = new Set()
+  for (let i = 0; i < 40 && !f.s.verified; i++) {
+    const g = guidance(f.s)
+    assert.ok(g.text.length > 0)
+    assert.ok(g.hints.length >= 3, g.text)
+    if (seen.has(g.text)) break
+    seen.add(g.text)
+    // Step the call forward along its intended path.
+    if (!f.s.evidence.some(e => e.id === 'stopped')) f.observe('fans')
+    else if (!f.s.evidence.some(e => e.id === 'circuit')) { f.hands('open-cover'); f.sample('circuit') }
+    else if (!f.s.evidence.some(e => e.id === 'm3')) { f.hands('isolate'); f.sample('dead'); f.hands('disconnect'); f.sample('m1'); f.sample('m2'); f.sample('m3') }
+    else if (!f.s.diagnosis) f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+    else if (!f.s.repaired) f.act({ type: 'replace', part: 'M3', tool: 'hands' })
+    else break
+  }
+  assert.ok(seen.size >= 4, `expected the ladder to advance, saw ${seen.size} steps`)
+})
+
+test('the fan call leaves the defrost call untouched', () => {
+  const f1 = fixture().observe('coil')
+  assert.equal(f1.call.inspection.definition, 'f1-defrost')
+  assert.equal(f1.call.inspection.fans, undefined)
+  const g = guidance(f1.call.inspection)
+  assert.match(g.text, /defrost/i)
+})

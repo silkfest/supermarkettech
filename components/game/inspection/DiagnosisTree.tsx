@@ -3,27 +3,23 @@ import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { Step } from '@/lib/game/inspection/engine'
 
-const SYSTEMS = ['Refrigeration', 'Defrost']
-const COMPONENTS: Record<string, string[]> = {
-  Defrost: ['Electric heaters', 'Termination control', 'Schedule'],
-  Refrigeration: ['TXV', 'Liquid solenoid', 'Evaporator fans']
+/** The branches come from the work order, so a second call does not need a
+ *  second copy of this screen. */
+export interface DiagnosisOptions {
+  systems: string[]
+  components: Record<string, string[]>
+  failures: Record<string, string[]>
+  defaultFailures: string[]
 }
-const FAILURES: Record<string, string[]> = {
-  'Electric heaters': [
-    'Heater #1 open',
-    'Heater #2 open',
-    'Heater #3 open',
-    'Grounded element'
-  ]
-}
-const DEFAULT_FAILURES = ['Failed open', 'Incorrect adjustment']
 
 /** Three taps, not three dropdowns — the call is long enough already. */
 export default function DiagnosisTree({
+  tree,
   enabled,
   checklist,
   onDiagnose
 }: {
+  tree: DiagnosisOptions
   enabled: boolean
   checklist: Step[]
   onDiagnose: (system: string, component: string, failure: string) => void
@@ -52,7 +48,7 @@ export default function DiagnosisTree({
       <fieldset disabled={!enabled} className="space-y-3 disabled:opacity-50">
         <Row
           legend="System"
-          options={SYSTEMS}
+          options={tree.systems}
           value={system}
           onPick={(v) => {
             setSystem(v)
@@ -63,7 +59,7 @@ export default function DiagnosisTree({
         {system && (
           <Row
             legend="Component"
-            options={COMPONENTS[system]}
+            options={tree.components[system] ?? []}
             value={component}
             onPick={(v) => {
               setComponent(v)
@@ -74,7 +70,7 @@ export default function DiagnosisTree({
         {component && (
           <Row
             legend="Failure"
-            options={FAILURES[component] ?? DEFAULT_FAILURES}
+            options={tree.failures[component] ?? tree.defaultFailures}
             value={failure}
             onPick={setFailure}
           />
