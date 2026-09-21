@@ -82,9 +82,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Merge and deduplicate all four sources
+    // 5. Manual catalog rows directly cataloged against this equipment (manual_components.equipment_id)
+    const { data: cataloguedComps } = await supabase
+      .from('manual_components')
+      .select('document_id')
+      .eq('equipment_id', equipmentId)
+
+    const cataloguedDocIds: string[] = (cataloguedComps ?? [])
+      .map(c => c.document_id as string)
+      .filter(Boolean)
+
+    // Merge and deduplicate all sources
     const directIds = (directDocs ?? []).map(d => d.id as string)
-    docIds = [...new Set([...directIds, ...manufacturerDocIds, ...linkedDocIds, ...titleMatchIds])]
+    docIds = [...new Set([...directIds, ...manufacturerDocIds, ...linkedDocIds, ...titleMatchIds, ...cataloguedDocIds])]
   }
 
   let query = supabase.from('documents').select('*').order('created_at', { ascending: false })

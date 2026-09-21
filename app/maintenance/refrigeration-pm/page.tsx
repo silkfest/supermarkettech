@@ -176,6 +176,14 @@ const createConventional = (systemIdentifier: string): UnitData => ({
 
 interface EquipmentSpec { label: string; value: string }
 
+interface ManualComponentInfo {
+  type: string | null
+  manufacturer: string | null
+  model: string | null
+  document_id: string | null
+  documents?: { title: string | null } | { title: string | null }[] | null
+}
+
 interface RackEquipmentInfo {
   id: string
   name: string
@@ -183,6 +191,7 @@ interface RackEquipmentInfo {
   model: string | null
   refrigerant: string | null
   specs: EquipmentSpec[] | null
+  manual_components?: ManualComponentInfo[] | null
 }
 
 const RACK_REFRIGERANTS: RefrigerantType[] = ['R-404A', 'R-448A', 'R-449A', 'R-507', 'R-407A', 'R-407C', 'R-22', 'R-134a', 'R-744']
@@ -260,11 +269,31 @@ function findCompressorDetails(specs: EquipmentSpec[] | null): { models: string[
   return { models, serials }
 }
 
+/** For each compressor model, finds a "Compressor" manual catalog entry whose `model` field
+ *  contains it (manuals often cover multiple models, e.g. "4FE-28-5PU / 4GE-23-5PU") and
+ *  returns the linked document id/title, sized for createArr8(). */
+function findCompressorManuals(models: string[], components: ManualComponentInfo[] | null | undefined): { ids: string[]; titles: string[] } {
+  const ids = createArr8()
+  const titles = createArr8()
+  if (!components) return { ids, titles }
+  const compressorComponents = components.filter(c => (c.type ?? '').toLowerCase() === 'compressor' && c.document_id)
+  models.forEach((model, i) => {
+    if (!model) return
+    const match = compressorComponents.find(c => (c.model ?? '').toLowerCase().includes(model.toLowerCase()))
+    if (!match) return
+    ids[i] = match.document_id ?? ''
+    const docs = match.documents
+    titles[i] = (Array.isArray(docs) ? docs[0]?.title : docs?.title) ?? ''
+  })
+  return { ids, titles }
+}
+
 /** Best-effort pre-fill of a rack tab from a linked equipment record — fields left blank when the spec sheet doesn't have a confident match (tech fills those in on site) */
 function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
   const base = createRack()
   const specs = e.specs
   const { models, serials } = findCompressorDetails(specs)
+  const { ids: manualIds, titles: manualTitles } = findCompressorManuals(models, e.manual_components)
   return {
     ...base,
     tabDisplayName: e.name,
@@ -272,6 +301,8 @@ function buildRackUnitFromEquipment(e: RackEquipmentInfo): UnitData {
     compressorManufacturer: findCompressorManufacturer(specs),
     compressorModels: models,
     compressorSerials: serials,
+    compressorManualIds: manualIds,
+    compressorManualTitles: manualTitles,
     refrigerant: normaliseRefrigerant(e.refrigerant),
     rackType: findRackType(specs),
     compressorCount: findCompressorCount(specs) ?? base.compressorCount,
