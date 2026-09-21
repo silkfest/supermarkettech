@@ -95,6 +95,17 @@ The manifold is the panel's third instrument. Its mode buttons are the two ports
 
 Safety has the same shape as the electrical calls with different words: isolate → prove it is safe → open it up becomes front-seat and pump down → confirm 0 psig → change the cores. That gate covers only the work that breaks into the liquid line — weighing in refrigerant does not need it, which is how this rack got two top-ups it did not need.
 
+### Dew vs bubble
+
+The call reads suction against the dew point and liquid against the bubble point, which on a glide refrigerant is the difference between a right answer and one that is out by the whole glide. That was implicit in the code and invisible to the player, so it is now taught in two places from one source:
+
+- `lib/game/glide-slides.ts` holds the content; `components/game/PtGlideSlides.tsx` pages it. The deck opens from the rack call itself, beside the gauge, and again at the classroom PT station.
+- The classroom `pt` lesson gained two sections and two quiz questions, and lost a line that said R-448A simply tracks R-404A — true on pressure, misleading on saturation temperature, and exactly the habit the material exists to break.
+
+R-448A glides 11.2 °F at 38 psig and 9.3 °F at 224 psig, both computed rather than recalled. Read a 43 °F suction line against bubble instead of dew and 28 °F of superheat reads as 39.5 °F; read an 83 °F liquid line against dew instead of bubble and 11 °F of subcooling reads as 20 °F. Both errors are the size of the glide and point opposite ways, which is how a rack collects top-ups it does not need. A test pins the slide numbers to the values `saturationF()` actually returns, so the teaching and the gameplay cannot drift apart.
+
+Quiz pass marks became proportional (three quarters, rounded up, minimum one) when the PT lesson went from four questions to six. Every existing four-question station still needs 3, and a hands-on station's empty quiz stays unpassable through the quiz path.
+
 `Rack field practice` on the store header opens it directly; on a full supermarket shift it is the third hands-on work order.
 
 Next conversion: nothing is blocked. The three calls between them now cover a visual find, an electrical measurement and a P/T calculation, so the next one is a question of which fault teaches something the other three do not.

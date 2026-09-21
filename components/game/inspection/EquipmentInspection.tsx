@@ -19,6 +19,7 @@ import type {
 import type { ActiveCall, CallResult } from '@/lib/game/types'
 import type { ToolId } from '@/lib/game/tools'
 import { MeasurementInstrument } from '../InstrumentPanel'
+import PtGlideSlides from '../PtGlideSlides'
 import EquipmentScene from './EquipmentScene'
 import EvidenceNotebook from './EvidenceNotebook'
 import DiagnosisTree from './DiagnosisTree'
@@ -72,6 +73,9 @@ export default function EquipmentInspection({
   // Tied to the step it was asked about, so the ladder resets itself when the
   // call moves on without any render-time state juggling.
   const [hint, setHint] = useState({ step: '', level: 0 })
+  // The gauge readings on a glide refrigerant mean nothing without knowing
+  // which saturation column they came from, so the deck lives beside them.
+  const [glide, setGlide] = useState(false)
   const s = call?.inspection
   const def = s ? defOf(s) : null
   const measurement = def?.measurements.find((m) => m.id === measurementId)
@@ -196,6 +200,18 @@ export default function EquipmentInspection({
                     </section>
                   )
                 })}
+                {def?.id === 'f3-liquid-drier' && (
+                  glide ? (
+                    <PtGlideSlides dark onClose={() => setGlide(false)} />
+                  ) : (
+                    <button
+                      onClick={() => setGlide(true)}
+                      className="w-full min-h-11 rounded-lg border border-amber-700 bg-amber-950 text-[11px] text-amber-200 px-3"
+                    >
+                      This rack is on R-448A — dew vs bubble, and why it matters
+                    </button>
+                  )
+                )}
                 {measurement && (
                   <MeasurementInstrument
                     key={measurement.id}

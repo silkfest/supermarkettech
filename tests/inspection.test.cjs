@@ -664,3 +664,50 @@ test('the rack call leaves the earlier two untouched', () => {
   assert.equal(fixture().observe('coil').call.inspection.definition, 'f1-defrost')
   assert.equal(fanFixture().observe('fans').s.definition, 'f2-evap-fan')
 })
+
+// ── Dew vs bubble teaching material ─────────────────────────────────────────
+const { GLIDE_SLIDES } = require('../lib/game/glide-slides.ts')
+const { LESSONS, lessonPass } = require('../lib/game/lessons.ts')
+
+test('the pass mark scales with a lesson, so adding questions never makes it easier', () => {
+  // Every existing four-question station keeps its 3-of-4.
+  for (const l of LESSONS.filter(l => l.quiz.length === 4))
+    assert.equal(lessonPass(l.quiz.length), 3, l.id)
+  assert.equal(lessonPass(6), 5)
+  for (const l of LESSONS.filter(l => l.quiz.length))
+    assert.ok(lessonPass(l.quiz.length) / l.quiz.length >= 0.75, `${l.id} pass mark slipped below 75%`)
+  // Hands-on stations carry no quiz and pass on trainer rounds; the quiz path
+  // must stay unpassable for them rather than trivially satisfied.
+  assert.equal(lessonPass(0), 1)
+})
+
+test('the glide slides agree with the numbers the rack call actually reads', () => {
+  const flat = JSON.stringify(GLIDE_SLIDES)
+  // The rule itself, in the direction that matters.
+  assert.match(flat, /Superheat is measured against the DEW point/)
+  assert.match(flat, /Subcooling is measured against the BUBBLE point/)
+  // The two saturation temperatures the call quotes are the ones the deck
+  // names as the correct column, so slides and gameplay cannot drift apart.
+  const suction = saturationF('low', 38)
+  const liquid = saturationF('high', 224)
+  assert.equal(suction, 15)
+  assert.equal(liquid, 94)
+  assert.ok(flat.includes(`Against dew (${suction} °F) that is 28 °F of superheat`))
+  assert.ok(flat.includes(`Against bubble (${liquid} °F) that is 11 °F of subcooling`))
+  // And the wrong-column answers, which are the whole point.
+  assert.match(flat, /reads 39\.5 °F/)
+  assert.match(flat, /reads 20 °F/)
+})
+
+test('the classroom PT station teaches the glide and checks it', () => {
+  const pt = LESSONS.find(l => l.id === 'pt')
+  const sections = JSON.stringify(pt.sections)
+  assert.match(sections, /Bubble point/)
+  assert.match(sections, /Dew point/)
+  assert.match(sections, /11\.2 °F of glide|11\.2 °F/)
+  // The old line claimed R-448A simply tracks R-404A, which is the habit this
+  // material exists to break.
+  assert.doesNotMatch(sections, /run within a few psi of R-404A across that range/)
+  assert.ok(pt.quiz.some(q => /dew point/i.test(q.options[q.answer])),
+    'a question must have the dew point as its correct answer')
+})

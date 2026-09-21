@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, BookOpen, CheckCircle2, XCircle, ArrowRight, Clock, Trophy, RotateCcw } from 'lucide-react'
-import { LESSON_PASS, type Lesson } from '@/lib/game/lessons'
+import { lessonPass, type Lesson } from '@/lib/game/lessons'
+import PtGlideSlides from './PtGlideSlides'
 import { LESSON_COLOR } from './StoreMap'
 
 interface Props {
@@ -21,8 +22,9 @@ export default function LessonPanel({ lesson, alreadyPassed, onFinish, onClose }
 
   const q = lesson.quiz[qi]
   const total = lesson.quiz.length
+  const needed = lessonPass(total)
   const pct = Math.round((correct / total) * 100)
-  const passed = correct >= LESSON_PASS
+  const passed = correct >= needed
 
   function answer(i: number) {
     if (picked !== null) return
@@ -73,6 +75,7 @@ export default function LessonPanel({ lesson, alreadyPassed, onFinish, onClose }
                 )}
               </section>
             ))}
+            {lesson.id === 'pt' && <PtGlideSlides />}
             {(lesson.knowledge?.length ?? 0) > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10} /> Go deeper:</span>
@@ -86,7 +89,7 @@ export default function LessonPanel({ lesson, alreadyPassed, onFinish, onClose }
             )}
             <button onClick={() => setMode('quiz')}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold">
-              Take the check — {total} questions, {LESSON_PASS} to pass <ArrowRight size={13} />
+              Take the check — {total} questions, {needed} to pass <ArrowRight size={13} />
             </button>
           </div>
         )}
@@ -138,7 +141,7 @@ export default function LessonPanel({ lesson, alreadyPassed, onFinish, onClose }
               <Trophy size={16} className={passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} />
               <span className="text-lg font-bold text-slate-900 dark:text-white">{correct}/{total}</span>
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${passed ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}>
-                {passed ? 'Station passed' : `Need ${LESSON_PASS} to pass`}
+                {passed ? 'Station passed' : `Need ${needed} to pass`}
               </span>
             </div>
             <p className="text-[12.5px] text-slate-600 dark:text-slate-400">
