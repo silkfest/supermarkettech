@@ -57,7 +57,7 @@ Corner Gas Station and Full Supermarket end on a **work list** rather than a clo
 
 ## Deliberate limits
 
-- This is now two physical fault workflows, F1 defrost and M1 evaporator fan. What differs between them — ticket, report, work areas, measurements, parts, diagnosis vocabulary, look-at labels and the efficient path — lives in `lib/game/inspection/defs.ts`, so the panel, the scene, the diagnosis tree and the debrief no longer know which work order they are showing. What they *do* differs enough that each keeps its own module (`f1.ts`, `f2.ts`) for its physics, findings, checklists and guidance; the engine delegates to it on `InspectionState.definition`. Shared mechanics (waiting, covers, isolation, prove-dead, lead separation, restore, evidence recording, scoring) stay in one place.
+- This is now three physical fault workflows: F1 defrost, M1 evaporator fan and the Rack A liquid line drier. What differs between them — ticket, report, work areas, measurements, parts, diagnosis vocabulary, look-at labels and the efficient path — lives in `lib/game/inspection/defs.ts`, so the panel, the scene, the diagnosis tree and the debrief no longer know which work order they are showing. What they *do* differs enough that each keeps its own module (`f1.ts`, `f2.ts`) for its physics, findings, checklists and guidance; the engine delegates to it on `InspectionState.definition`. Shared mechanics (waiting, covers, isolation, prove-dead, lead separation, restore, evidence recording, scoring) stay in one place.
 - Thermal response, accumulated product-at-risk dollars and elapsed actions are teaching approximations, not a refrigeration or food-disposition model. Exposure is softened to one quarter of the original fault's shrink rate for this slice.
 - Original reference element resistances and aggregate current are retained. They are not a validated voltage/topology model; do not infer supply voltage from these training values. Frame OL is a DMM continuity screen, not an insulation certification.
 - A manual defrost runs until the technician ends it, so a long set of readings is never cut short. The one thing that ends it by itself is the termination thermostat seeing a clear coil, which only happens once the dead element is replaced — so before repair it waits for you, and after repair it terminates on temperature. Ending one by hand is never treated as a temperature termination. That behavior does not imply the termination device failed.
@@ -75,7 +75,29 @@ There is no defrost in this call, so the controller offers no manual defrost and
 
 `M1 field practice` on the store header opens it directly; on a full supermarket shift it is the second work order dispatched, after F1.
 
-Next conversion: a fault whose discriminating evidence is a pressure/temperature pair rather than a current reading, to exercise the parts of the panel neither of these two calls reaches.
+## The liquid line drier call (Rack A)
+
+The first call worked at the machine room rather than a case, and the first whose discriminating evidence is a pressure/temperature pair rather than a current reading. Medium-temp cases are drifting warm and the tech before you added refrigerant twice.
+
+The reasoning the call is built around:
+
+| Reading | Says |
+|---|---|
+| 224 psig liquid, 83 °F line → **11 °F subcooling** | The rack is *not* short of refrigerant. This is what rules out a third top-up. |
+| 83 °F in, 66 °F out → **17 °F across the drier** | Pressure being lost in the core. A drier should show almost none. |
+| 38 psig suction, 43 °F line → **28 °F superheat** | Every valve downstream is being fed flash gas. |
+
+Fit the cores and the same three readings come back 11 °F, 1 °F and 9 °F.
+
+**Pressure/temperature pairs are ground truth here, not flavour.** Every pairing the call quotes was computed from an equation of state (CoolProp, R-448A by mass fraction) and cross-checked against the verified table in CLAUDE.md before use. `saturationF()` holds only checked pairs and returns `null` for anything else rather than interpolating, so no reading can quote a pairing nobody verified; a reducer test pins the pairs and asserts the refusal.
+
+The manifold is the panel's third instrument. Its mode buttons are the two ports rather than meter functions, because on a gauge set that is the decision that matters. A gauge reading returns the pressure *and* its saturation temperature, since that is what a set with a PT chart is for; the technician still pairs it with a line temperature to get subcooling or superheat.
+
+Safety has the same shape as the electrical calls with different words: isolate → prove it is safe → open it up becomes front-seat and pump down → confirm 0 psig → change the cores. That gate covers only the work that breaks into the liquid line — weighing in refrigerant does not need it, which is how this rack got two top-ups it did not need.
+
+`Rack field practice` on the store header opens it directly; on a full supermarket shift it is the third hands-on work order.
+
+Next conversion: nothing is blocked. The three calls between them now cover a visual find, an electrical measurement and a P/T calculation, so the next one is a question of which fault teaches something the other three do not.
 
 ## Progression and practice corrections
 

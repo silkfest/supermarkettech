@@ -12,6 +12,17 @@ import {
   verifyChecklistF2,
   F2_PARTS
 } from './f2'
+import {
+  diagnoseChecklistF3,
+  diagnosisIsCorrectF3,
+  guidanceF3,
+  measureF3,
+  observeF3,
+  replaceF3,
+  tickF3,
+  verifyChecklistF3,
+  F3_PARTS
+} from './f3'
 import type {
   ComponentId,
   EvidenceItem,
@@ -23,6 +34,7 @@ import type {
  *  as its default path and hands the evaporator-fan call to its own module,
  *  rather than threading two stories through one set of branches. */
 const isF2 = (s: InspectionState) => s.definition === 'f2-evap-fan'
+const isF3 = (s: InspectionState) => s.definition === 'f3-liquid-drier'
 
 export function recorded(
   s: InspectionState,
@@ -41,6 +53,7 @@ export interface Step {
 }
 export function diagnoseChecklist(s: InspectionState): Step[] {
   if (isF2(s)) return diagnoseChecklistF2(s, recorded)
+  if (isF3(s)) return diagnoseChecklistF3(s, recorded)
   return [
     {
       label: 'Run a defrost and note which section stays iced',
@@ -58,6 +71,7 @@ export function diagnoseChecklist(s: InspectionState): Step[] {
 }
 export function verifyChecklist(s: InspectionState): Step[] {
   if (isF2(s)) return verifyChecklistF2(s, recorded)
+  if (isF3(s)) return verifyChecklistF3(s, recorded)
   return [
     { label: 'Repair installed', done: s.repaired },
     {
@@ -111,6 +125,7 @@ export interface Guidance {
 }
 export function guidance(s: InspectionState): Guidance {
   if (isF2(s)) return guidanceF2(s, recorded, canDiagnose, verifyChecklist)
+  if (isF3(s)) return guidanceF3(s, recorded, canDiagnose, verifyChecklist)
   if (s.verified)
     return {
       text: 'Write up the work order on the Report page and close the call.',
@@ -274,6 +289,7 @@ export function tickInspection(
   dt: number
 ): InspectionState {
   if (isF2(s)) return tickF2(s, now, dt)
+  if (isF3(s)) return tickF3(s, now, dt)
   const active = s.defrostStarted !== null && !s.isolated
   let frost = [...s.frost]
   let defrostStarted = s.defrostStarted
@@ -369,6 +385,10 @@ export function interact(
     case 'observe': {
       if (isF2(s)) {
         minutes = observeF2(s, action.component, action.tool, evidence, fail)
+        break
+      }
+      if (isF3(s)) {
+        minutes = observeF3(s, action.component, action.tool, evidence, fail)
         break
       }
       const needs =
@@ -533,14 +553,18 @@ export function interact(
     case 'isolate':
       if (action.tool !== 'hands')
         fail(
-          `Select hand tools to operate and secure the ${isF2(s) ? 'fan' : 'heater'} disconnect.`
+          isF3(s)
+            ? 'Select hand tools to front-seat the receiver outlet and pump the section down.'
+            : `Select hand tools to operate and secure the ${isF2(s) ? 'fan' : 'heater'} disconnect.`
         )
       else {
         s.isolated = true
         s.provedDead = false
         s.defrostStarted = null
         minutes = 2
-        s.feedback = `${isF2(s) ? 'Fan' : 'Heater'} disconnect secured OFF. Prove the load side dead with the voltage meter.`
+        s.feedback = isF3(s)
+          ? 'Receiver outlet front-seated and the section pumped down and recovered. Put a gauge on the shell to confirm 0 psig.'
+          : `${isF2(s) ? 'Fan' : 'Heater'} disconnect secured OFF. Prove the load side dead with the voltage meter.`
       }
       break
     case 'disconnect':
@@ -574,7 +598,9 @@ export function interact(
         s.provedDead = false
         s.coverOpen = false
         minutes = 3
-        s.feedback = `Leads reconnected, covers secured, ${isF2(s) ? 'fan' : 'heater'} circuit restored.`
+        s.feedback = isF3(s)
+          ? 'Valves back-seated, the section is open to the rack and in service again.'
+          : `Leads reconnected, covers secured, ${isF2(s) ? 'fan' : 'heater'} circuit restored.`
       }
       break
     case 'measure': {
@@ -594,6 +620,11 @@ export function interact(
       }
       if (isF2(s)) {
         const spent = measureF2(s, m, evidence, fail, random)
+        if (spent >= 0) minutes = spent
+        break
+      }
+      if (isF3(s)) {
+        const spent = measureF3(s, m, evidence, fail, random)
         if (spent >= 0) minutes = spent
         break
       }
@@ -673,6 +704,19 @@ export function interact(
         break
       }
       next.causeAttempts++
+      if (isF3(s)) {
+        if (diagnosisIsCorrectF3(action)) {
+          s.diagnosis =
+            'Refrigeration \u2192 Liquid line drier \u2192 Restricted, flashing across it'
+          s.feedback =
+            'Diagnosis supported by healthy subcooling into the drier and the pressure lost across it.'
+        } else {
+          s.feedback =
+            'That diagnosis does not explain 11 \u00b0F of subcooling going into the drier and 17 \u00b0F lost across it.'
+          minutes = 5
+        }
+        break
+      }
       if (isF2(s)) {
         if (diagnosisIsCorrectF2(action)) {
           s.diagnosis = 'Electrical \u2192 Evaporator fans \u2192 Motor #3 open winding'
@@ -704,11 +748,19 @@ export function interact(
         fail('Select hand tools to replace a component.')
         break
       }
-      if (!s.isolated || !s.provedDead || !s.leadsDisconnected) {
+      // Only the work that breaks into the liquid line needs the section
+      // pumped down. Weighing in refrigerant does not — which is exactly how
+      // this rack got two top-ups it did not need.
+      const opened = isF3(s)
+        ? action.part !== 'cores' || (s.isolated && s.provedDead)
+        : s.isolated && s.provedDead && s.leadsDisconnected
+      if (!opened) {
         fail(
-          isF2(s)
-            ? 'Isolate, prove dead and disconnect before changing a fan motor.'
-            : 'Isolate, prove dead and disconnect before replacing a heater.',
+          isF3(s)
+            ? 'Front-seat the receiver outlet, pump the section down and confirm 0 psig before you open the shell.'
+            : isF2(s)
+              ? 'Isolate, prove dead and disconnect before changing a fan motor.'
+              : 'Isolate, prove dead and disconnect before replacing a heater.',
           true
         )
         break
@@ -722,6 +774,20 @@ export function interact(
         break
       }
       next.fixAttempts++
+      if (isF3(s)) {
+        if (replaceF3(s, action.part)) {
+          minutes = 45
+          s.feedback =
+            'Fresh cores in and the shell evacuated. Open the valves and put the section back in service, then prove it.'
+        } else {
+          next.partsWasted += F3_PARTS[action.part]?.cost ?? 190
+          s.repairs = [...s.repairs, `Unnecessary replacement: ${action.part}`]
+          minutes = 30
+          s.feedback =
+            'That did not touch the restriction. The drier is still flashing and every valve downstream is still starved.'
+        }
+        break
+      }
       if (isF2(s)) {
         if (replaceF2(s, action.part)) {
           minutes = 25
@@ -753,7 +819,9 @@ export function interact(
     case 'verify':
       if (!canVerify(s))
         fail(
-          isF2(s)
+          isF3(s)
+            ? 'Verification needs the section back in service, a flat drier, a clear sight glass, case superheat back in range and a product reading at or below 38 \u00b0F.'
+            : isF2(s)
             ? 'Verification needs full fan-circuit current, even discharge air, a coil that has shed its ice, a product reading at or below 34 \u00b0F and the circuit put back together.'
             : 'Verification needs recorded full defrost current, a clear coil, temperature termination a product reading at or below \u22128 \u00b0F after pull-down, and secured service covers.'
         )

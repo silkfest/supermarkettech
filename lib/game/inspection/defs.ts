@@ -15,6 +15,15 @@ import {
   F2_REPORT,
   F2_TICKET
 } from './f2'
+import {
+  F3_COMPONENTS,
+  F3_DIAGNOSIS,
+  F3_FAULT,
+  F3_MEASUREMENTS,
+  F3_PARTS,
+  F3_REPORT,
+  F3_TICKET
+} from './f3'
 import type { FaultDef } from '../types'
 import type {
   ComponentId,
@@ -105,6 +114,32 @@ export const INSPECTION_DEFS: Record<InspectionDefId, InspectionDef> = {
     },
     efficientPath:
       'Feel the air curtain → pull the grille and find the stopped fan → clamp the fan circuit and compare 0.8 A with the 1.2 A nameplate → isolate and prove dead → disconnect and ohm each motor → replace only motor #3 → restore → verify full current, even discharge air, a coil that sheds its ice and product pull-down.'
+  }
+  ,
+  'f3-liquid-drier': {
+    id: 'f3-liquid-drier',
+    fault: F3_FAULT,
+    ticket: F3_TICKET,
+    report: F3_REPORT,
+    components: F3_COMPONENTS,
+    measurements: F3_MEASUREMENTS,
+    lookLabels: {
+      receiver: 'Inspect the receiver and sight glass',
+      drier: 'Inspect the liquid line drier',
+      coil: 'Inspect a case on the header',
+      compressors: 'Inspect the compressor group',
+      condenser: 'Inspect the condenser'
+    },
+    readingAliases: {},
+    parts: F3_PARTS,
+    diagnosis: {
+      systems: F3_DIAGNOSIS.systems,
+      components: F3_DIAGNOSIS.components,
+      failures: F3_DIAGNOSIS.failures,
+      defaultFailures: ['Failed open', 'Out of adjustment']
+    },
+    efficientPath:
+      'Subcooling at the receiver first \u2014 11 \u00b0F says the rack is not short \u2192 line temperature either side of the drier, 17 \u00b0F of drop across a device that should show none \u2192 superheat at a case, 28 \u00b0F, starved by the flash that drop creates \u2192 front-seat, pump down, prove 0 psig \u2192 change the cores \u2192 restore \u2192 verify a flat drier, a clear glass, superheat back in range and product pull-down.'
   }
 }
 
