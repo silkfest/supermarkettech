@@ -37,7 +37,19 @@ const Schema = z.object({
     mediaType: z.enum(['image/jpeg','image/png','image/gif','image/webp']),
     data:      z.string().max(MAX_IMAGE_BASE64_CHARS),
   })).max(3).optional(),
-  history:     z.array(z.object({ role: z.enum(['user','assistant']), content: z.string() })).max(40),
+  // Past turns carry their photos too. Without this the model only ever saw an
+  // image on the turn it was attached, so any follow-up question about it got
+  // an honest "I can't view images" — the picture really was gone from the
+  // conversation. The client bounds how many it sends back so the request body
+  // stays under the size limit.
+  history:     z.array(z.object({
+    role:    z.enum(['user','assistant']),
+    content: z.string(),
+    images:  z.array(z.object({
+      mediaType: z.enum(['image/jpeg','image/png','image/gif','image/webp']),
+      data:      z.string().max(MAX_IMAGE_BASE64_CHARS),
+    })).max(3).optional(),
+  })).max(40),
 })
 
 // Finds the real ### heading in a topic's content matching the model's cited heading text
@@ -165,7 +177,20 @@ export async function POST(req: NextRequest) {
         userContent.push({ type: 'text', text: message })
 
         const messages: Anthropic.MessageParam[] = [
-          ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+          ...history.map(m => {
+            // Rebuild past user turns as image blocks + text so photos stay
+            // visible to the model on later turns. Assistant turns never
+            // carry images.
+            if (m.role === 'user' && m.images?.length) {
+              const blocks: Anthropic.ContentBlockParam[] = m.images.map(img => ({
+                type: 'image' as const,
+                source: { type: 'base64' as const, media_type: img.mediaType, data: img.data },
+              }))
+              blocks.push({ type: 'text', text: m.content })
+              return { role: 'user' as const, content: blocks }
+            }
+            return { role: m.role as 'user' | 'assistant', content: m.content }
+          }),
           { role: 'user', content: userContent },
         ]
 

@@ -7379,6 +7379,16 @@ RESPONSE FORMAT:
 - Never pad responses with generic disclaimers — if something is safe and routine, just explain it
 `
 
+const PHOTO_INPUT_INSTRUCTIONS = `
+PHOTOS:
+Technicians can attach photos to a message — nameplates, controller screens, gauge sets,
+wiring, a failed component. When a photo is attached, read it directly: decode the nameplate,
+read the fault code off the screen, note what the gauges say. Photos from earlier in the
+conversation stay visible to you, so a follow-up question can refer back to one.
+If a technician refers to a photo you cannot actually see in this conversation, say so plainly
+and ask them to re-attach it — do not claim you are unable to read photos at all.
+`
+
 const MANUAL_SEARCH_TOOL_INSTRUCTIONS = `
 MANUAL SEARCH TOOL:
 You have a \`search_manuals\` tool that searches this company's uploaded equipment manuals and
@@ -10512,6 +10522,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
     BIG_PICTURE_METHODOLOGY,
     FORMAT_INSTRUCTIONS,
     MANUAL_SEARCH_TOOL_INSTRUCTIONS,
+    PHOTO_INPUT_INSTRUCTIONS,
     KB_CITATION_INSTRUCTIONS_HVAC,
   ] : [
     EXPERT_IDENTITY,
@@ -10538,6 +10549,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
     BIG_PICTURE_METHODOLOGY,
     FORMAT_INSTRUCTIONS,
     MANUAL_SEARCH_TOOL_INSTRUCTIONS,
+    PHOTO_INPUT_INSTRUCTIONS,
     KB_CITATION_INSTRUCTIONS_REFRIGERATION,
   ]).join('\n\n')
 
