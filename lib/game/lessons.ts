@@ -18,8 +18,13 @@ export interface Lesson {
   knowledge?: { slug: string; label: string }[]
 }
 
-/** Correct answers needed (out of 4) to pass a reading station. */
-export const LESSON_PASS = 3
+/** Correct answers needed to pass a reading station: three quarters of its
+ *  questions, rounded up. Every four-question station still needs 3, so adding
+ *  questions to a lesson makes it longer without quietly making it easier.
+ *  Never zero: a hands-on station carries an empty quiz and passes on its
+ *  trainer rounds, and must not become passable through the quiz path. */
+export const lessonPass = (quizLength: number) =>
+  Math.max(1, Math.ceil(quizLength * 0.75))
 
 export const LESSONS: Lesson[] = [
   {
@@ -103,14 +108,14 @@ export const LESSONS: Lesson[] = [
     id: 'pt',
     stationId: 'RIG',
     title: 'PT charts, superheat and subcooling',
-    minutes: 6,
+    minutes: 9,
     kind: 'read',
     sections: [
       {
         heading: 'Pressure tells you temperature',
         body: [
           'For a given refrigerant, saturation pressure and saturation temperature are locked together. Read the suction pressure, look it up on the PT chart, and you know the temperature the refrigerant is boiling at in the coil. Read the liquid pressure and you know the temperature it is condensing at.',
-          'Two numbers worth keeping in your head for R-404A: 20 °F boils at about 57 psig, and 90 °F condenses at about 205 psig. R-448A and R-449A run within a few psi of R-404A across that range.',
+          'Two numbers worth keeping in your head for R-404A: 20 °F boils at about 57 psig, and 90 °F condenses at about 205 psig. R-448A and R-449A sit within a few psi of R-404A at the same temperature — but on those blends one pressure gives you two saturation temperatures, not one. That is the next section, and it is where most of the wrong superheats in this trade come from.',
         ],
       },
       {
@@ -131,6 +136,28 @@ export const LESSONS: Lesson[] = [
         ],
       },
       {
+        heading: 'Blends boil over a range: dew and bubble',
+        body: [
+          'R-404A is near-azeotropic — for a given pressure it boils at essentially one temperature, and a chart can hand you a single number. R-448A, R-449A and R-407C are zeotropic blends: their components boil off at different temperatures, so the refrigerant changes state across a range. At one pressure you get two saturation temperatures, and the spread between them is the glide.',
+          'Each end has a name, and each belongs to a different measurement. Get this the wrong way round and your number is out by the whole glide.',
+        ],
+        bullets: [
+          'Bubble point — the first bubble of vapor appears. The liquid end of the change.',
+          'Dew point — the last drop of liquid disappears. The vapor end.',
+          'Superheat is measured against the DEW point, because superheat starts where the boiling finished.',
+          'Subcooling is measured against the BUBBLE point, because subcooling starts where the condensing finished.',
+        ],
+      },
+      {
+        heading: 'What the glide costs you — R-448A',
+        body: [
+          'At 38 psig, R-448A has a bubble point of 3.5 °F and a dew point of 14.7 °F: 11.2 °F of glide. At 224 psig it is 94.1 °F bubble and 103.4 °F dew, 9.3 °F of glide. R-404A at the same pressures glides about 1 °F, which is why nobody ever had to choose a column before.',
+          'Take a suction line at 43 °F on 38 psig. Against dew it is 28 °F of superheat — a starved coil, and that is the truth. Against bubble it reads 39.5 °F.',
+          'Take a liquid line at 83 °F on 224 psig. Against bubble it is 11 °F of subcooling — healthy. Against dew it reads 20 °F, and 20 °F of subcooling reads as overcharged.',
+          'Both errors are the size of the glide and they point opposite ways. "Starving badly" plus "looks overcharged" fits no real fault, and a tech who trusts it starts adding refrigerant to a rack that does not need any. Before you trust a number, check which column your chart or app gave you — most show both and they do not always label which is which.',
+        ],
+      },
+      {
         heading: 'Worked example — R-404A medium temp case',
         body: [
           'Suction gauge reads 57 psig → the PT chart says 20 °F saturated. The suction line at the coil outlet measures 30 °F. Superheat = 30 − 20 = 10 °F. That coil is fed correctly.',
@@ -143,6 +170,8 @@ export const LESSONS: Lesson[] = [
       { q: 'A case shows 28 °F superheat with a clean coil and strong fans. The coil is most likely…', options: ['Flooding', 'Starved', 'Iced', 'Overcharged'], answer: 1, why: 'High superheat means the coil ran out of liquid early — it is starved.' },
       { q: 'Superheat of 1 °F with a frosted suction line back to the compressor means…', options: ['Perfect operation', 'Low charge', 'Liquid is leaving the evaporator (flooding)', 'The condenser is dirty'], answer: 2, why: 'Near-zero superheat means the vapor never finished boiling — liquid is getting past the coil.' },
       { q: 'Subcooling is calculated as…', options: ['Liquid line temp − suction line temp', 'Condensing temp (from liquid pressure) − liquid line temp', 'Suction line temp − evaporating temp', 'Discharge temp − ambient temp'], answer: 1, why: 'Subcooling measures how far the liquid has cooled below its condensing temperature.' },
+      { q: 'On R-448A, which saturation temperature do you use to work out superheat?', options: ['Bubble point', 'Dew point', 'Either — they are the same', 'The average of the two'], answer: 1, why: 'Superheat begins where boiling finished, and boiling finishes at the dew point. Using bubble on R-448A puts you about 11 °F out.' },
+      { q: 'A tech reads 39.5 °F superheat and 20 °F subcooling on an R-448A rack, using the same column for both. What has most likely happened?', options: ['The rack is genuinely starved and overcharged', 'They used bubble for superheat and dew for subcooling — both wrong by the glide', 'The gauges need calibrating', 'The TXVs have all failed'], answer: 1, why: 'Starved and overcharged together fits no real fault. Both readings are out by the glide because each was taken against the wrong end of the range.' },
     ],
     knowledge: [{ slug: 'sporlan', label: 'Sporlan TXVs' }, { slug: 'system-diagnostics', label: 'System Diagnostics' }],
   },

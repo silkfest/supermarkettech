@@ -19,6 +19,7 @@ import type {
 import type { ActiveCall, CallResult } from '@/lib/game/types'
 import type { ToolId } from '@/lib/game/tools'
 import { MeasurementInstrument } from '../InstrumentPanel'
+import PtGlideSlides from '../PtGlideSlides'
 import EquipmentScene from './EquipmentScene'
 import EvidenceNotebook from './EvidenceNotebook'
 import DiagnosisTree from './DiagnosisTree'
@@ -32,7 +33,9 @@ const TOOL_LABEL: Partial<Record<InspectionTool, string>> = {
   clamp: 'Clamp meter',
   thermometer: 'Temp probe',
   controller: 'Controller',
-  hands: 'Hand tools'
+  hands: 'Hand tools',
+  gauges: 'Gauges',
+  thermocouples: 'Thermocouple'
 }
 type Group = 'look' | 'measure' | 'circuit' | 'repair'
 const GROUPS: { id: Group; title: string }[] = [
@@ -70,6 +73,9 @@ export default function EquipmentInspection({
   // Tied to the step it was asked about, so the ladder resets itself when the
   // call moves on without any render-time state juggling.
   const [hint, setHint] = useState({ step: '', level: 0 })
+  // The gauge readings on a glide refrigerant mean nothing without knowing
+  // which saturation column they came from, so the deck lives beside them.
+  const [glide, setGlide] = useState(false)
   const s = call?.inspection
   const def = s ? defOf(s) : null
   const measurement = def?.measurements.find((m) => m.id === measurementId)
@@ -77,7 +83,15 @@ export default function EquipmentInspection({
   // has not unlocked them yet. No permanent rank/tool/save changes are made.
   const loaned = useMemo(
     () =>
-      (['multimeter', 'clamp', 'thermometer', 'controller', 'hands'] as const)
+      ([
+        'multimeter',
+        'clamp',
+        'thermometer',
+        'gauges',
+        'thermocouples',
+        'controller',
+        'hands'
+      ] as const)
         .filter((t) => !owned.has(t as ToolId))
         .map((t) => TOOL_LABEL[t]),
     [owned]
@@ -186,6 +200,18 @@ export default function EquipmentInspection({
                     </section>
                   )
                 })}
+                {def?.id === 'f3-liquid-drier' && (
+                  glide ? (
+                    <PtGlideSlides dark onClose={() => setGlide(false)} />
+                  ) : (
+                    <button
+                      onClick={() => setGlide(true)}
+                      className="w-full min-h-11 rounded-lg border border-amber-700 bg-amber-950 text-[11px] text-amber-200 px-3"
+                    >
+                      This rack is on R-448A — dew vs bubble, and why it matters
+                    </button>
+                  )
+                )}
                 {measurement && (
                   <MeasurementInstrument
                     key={measurement.id}
@@ -344,6 +370,18 @@ function StatusLine({
   state: InspectionState
   def: InspectionDef
 }) {
+  if (def.id === 'f3-liquid-drier')
+    return (
+      <p className="text-xs text-slate-300">
+        {s.repaired ? 'Fresh cores fitted' : 'Rack running, cases starved'}{' '}
+        &middot;{' '}
+        {s.isolated
+          ? s.provedDead
+            ? 'Section pumped down, 0 psig confirmed'
+            : 'Section front-seated; confirm 0 psig'
+          : 'Liquid line in service'}
+      </p>
+    )
   const circuit = def.id === 'f2-evap-fan' ? 'Fan' : 'Heater'
   const mode =
     def.id === 'f2-evap-fan'
@@ -414,6 +452,37 @@ function buildActions(
       meter('product')
     )
 
+  if (def.id === 'f3-liquid-drier') {
+    if (selected === 'receiver') {
+      add('pliq', 'measure', 'Liquid pressure at the receiver outlet', 'gauges', meter('pliq'))
+      add('tliq', 'measure', 'Liquid line temperature at the drier inlet', 'thermocouples', meter('tliq'))
+    }
+    if (selected === 'drier') {
+      add('tliq2', 'measure', 'Liquid line temperature at the drier inlet', 'thermocouples', meter('tliq'))
+      add('tdout', 'measure', 'Liquid line temperature at the drier outlet', 'thermocouples', meter('tdout'))
+      add('pdout', 'measure', 'Liquid pressure downstream of the drier', 'gauges', meter('pdout'))
+      if (!s.isolated)
+        add('isolate', 'circuit', 'Front-seat and pump the section down', 'hands', act({ type: 'isolate', tool: 'hands' }))
+      else add('zero', 'measure', 'Confirm the section is at 0 psig', 'gauges', meter('zero'))
+      if (s.isolated)
+        add('restore', 'circuit', 'Open the valves and restore the section', 'hands', act({ type: 'restore', tool: 'hands' }))
+      if (s.diagnosis && !s.repaired) {
+        add('rep-cores', 'repair', 'Change the drier cores · $190', 'hands', act({ type: 'replace', part: 'cores', tool: 'hands' }))
+        add('rep-bypass', 'repair', 'Valve around the drier · $40', 'hands', act({ type: 'replace', part: 'bypass', tool: 'hands' }))
+      }
+    }
+    if (selected === 'coil') {
+      add('psuct', 'measure', 'Suction pressure at the rack', 'gauges', meter('psuct'))
+      add('tsuct', 'measure', 'Suction line temperature at the case', 'thermocouples', meter('tsuct'))
+      add('probe', 'measure', 'Probe product in a warm case', 'thermometer', meter('product'))
+      if (s.diagnosis && !s.repaired)
+        add('rep-txv', 'repair', 'Start replacing TXVs · $660', 'hands', act({ type: 'replace', part: 'txv', tool: 'hands' }))
+    }
+    if (selected === 'compressors' && s.diagnosis && !s.repaired)
+      add('rep-charge', 'repair', 'Add refrigerant · $340', 'hands', act({ type: 'replace', part: 'charge', tool: 'hands' }))
+    return out
+  }
+
   if (def.id === 'f2-evap-fan') {
     if (selected === 'product')
       for (const [i, where] of ['supply', 'centre', 'return'].entries())
@@ -479,7 +548,11 @@ const LOOK_LABEL: Record<ComponentId, string> = {
   txv: 'TXV',
   solenoid: 'liquid solenoid',
   drain: 'drain and pan',
-  electrical: 'defrost circuit'
+  electrical: 'defrost circuit',
+  receiver: 'receiver and sight glass',
+  drier: 'liquid line drier',
+  compressors: 'compressor group',
+  condenser: 'condenser'
 }
 
 /** The written report is the one place the notebook still has to be turned into

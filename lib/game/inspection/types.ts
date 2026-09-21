@@ -11,6 +11,11 @@ export type ComponentId =
   | 'solenoid'
   | 'drain'
   | 'electrical'
+  // Rack-side places, for calls worked at the machine room rather than a case.
+  | 'receiver'
+  | 'drier'
+  | 'compressors'
+  | 'condenser'
 export interface EvidenceItem {
   id: string
   label: string
@@ -24,7 +29,8 @@ export interface Measurement {
   id: string
   label: string
   tool: InspectionTool
-  mode?: 'ohms' | 'volts' | 'amps'
+  /** Meter function, or — for a manifold set — which port the hose goes on. */
+  mode?: 'ohms' | 'volts' | 'amps' | 'low' | 'high'
   terminals?: readonly [string, string]
 }
 export interface VisualFaultState {
@@ -33,7 +39,7 @@ export interface VisualFaultState {
   repaired: boolean
   pullingDown: boolean
 }
-export type InspectionDefId = 'f1-defrost' | 'f2-evap-fan'
+export type InspectionDefId = 'f1-defrost' | 'f2-evap-fan' | 'f3-liquid-drier'
 export interface InspectionState {
   definition: InspectionDefId
   evidence: EvidenceItem[]

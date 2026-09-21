@@ -538,3 +538,176 @@ test('the fan call leaves the defrost call untouched', () => {
   const g = guidance(f1.call.inspection)
   assert.match(g.text, /defrost/i)
 })
+
+// ── The plugged liquid line drier (rack) ─────────────────────────────────────
+const {
+  initialInspectionF3, F3_MEASUREMENTS, F3_FAULT,
+  saturationF, subcoolingF, superheatF, drierDropF
+} = require('../lib/game/inspection/f3.ts')
+
+function rackFixture() {
+  let state = shiftReducer(shiftReducer(INITIAL_STATE, { type: 'START', levelId: 'supermarket', character: { name: 'Test tech', color: '#2563eb', role: 'apprentice' }, maxDifficulty: 2, practice: true, practiceCall: 'f3' }), { type: 'TICK', dtMin: 0.1 })
+  const id = state.calls[0].id
+  return {
+    get state() { return state },
+    get call() { return state.calls.find(c => c.id === id) },
+    get s() { return this.call.inspection },
+    act(action) { state = shiftReducer(state, { type: 'INSPECT', callId: id, action }); return this },
+    sample(mid) { const m = F3_MEASUREMENTS.find(m => m.id === mid); return this.act({ type: 'measure', measurement: mid, tool: m.tool, mode: m.mode || '', terminals: m.terminals || [] }) },
+    observe(component) { return this.act({ type: 'observe', component, tool: component === 'controller' ? 'controller' : 'flashlight' }) },
+    hands(type) { return this.act({ type, tool: 'hands' }) },
+    wait(minutes) { return this.act({ type: 'wait', minutes }) },
+    value(id) { const e = [...this.s.evidence].reverse().find(e => e.id === id); return e && e.value }
+  }
+}
+
+test('practice dispatches the rack drier call without naming the cause', () => {
+  const f = rackFixture()
+  assert.equal(f.call.equipmentId, 'RK')
+  assert.equal(f.call.faultId, 'liquid_drier_plugged')
+  assert.equal(f.s.definition, 'f3-liquid-drier')
+  assert.match(f.state.toasts[0].text, /WO #38702/)
+  assert.doesNotMatch(f.state.toasts[0].text, /drier|restrict|charge/i)
+})
+
+test('the PT chart refuses a pressure nobody verified rather than interpolating', () => {
+  // Every pairing the call quotes is a checked one; anything else reads null so
+  // no reading can invent a saturation temperature.
+  assert.equal(saturationF('high', 224), 94)
+  assert.equal(saturationF('high', 145), 66)
+  assert.equal(saturationF('low', 38), 15)
+  assert.equal(saturationF('low', 44.6), 21)
+  assert.equal(saturationF('high', 199), null)
+  assert.equal(saturationF('low', 12), null)
+})
+
+test('a gauge reading carries its saturation temperature, which is the point of the tool', () => {
+  const f = rackFixture().sample('pliq')
+  assert.match(f.value('pliq'), /psig — 94 °F saturated \(R-448A\)/)
+  f.sample('psuct')
+  assert.match(f.value('psuct'), /psig — 15 °F saturated/)
+})
+
+test('subcooling clears the charge, and the drop across the drier convicts it', () => {
+  const s = initialInspectionF3()
+  // 224 psig is 94 °F saturated; the liquid line is 83 °F.
+  assert.equal(subcoolingF(s), 11)
+  assert.equal(drierDropF(s), 17)
+  // 38 psig is 15 °F saturated; the suction line at the case is 43 °F.
+  assert.equal(superheatF(s), 28)
+  const fixed = { ...s, repaired: true }
+  assert.equal(drierDropF(fixed), 1)
+  assert.equal(superheatF(fixed), 9)
+  // Subcooling was healthy all along — it is what rules out a third top-up.
+  assert.equal(subcoolingF(fixed), 11)
+})
+
+test('the shell cannot be opened until the section is pumped down and proved empty', () => {
+  const f = rackFixture()
+  f.observe('receiver').sample('pliq').sample('tliq').sample('tdout').sample('psuct').sample('tsuct')
+  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'Liquid line drier', failure: 'Restricted — flashing across it' })
+  assert.match(f.s.diagnosis, /Restricted/)
+  // Straight to the cores with the line still at pressure.
+  f.act({ type: 'replace', part: 'cores', tool: 'hands' })
+  assert.equal(f.s.repaired, false)
+  assert.equal(f.s.safetyMistakes.length, 1)
+  // Gauging the shell before front-seating is the same mistake.
+  f.sample('zero')
+  assert.equal(f.s.safetyMistakes.length, 2)
+  assert.equal(f.s.provedDead, false)
+  f.hands('isolate').sample('zero')
+  assert.equal(f.s.provedDead, true)
+  f.act({ type: 'replace', part: 'cores', tool: 'hands' })
+  assert.equal(f.s.repaired, true)
+})
+
+test('the third top-up costs $340 and changes nothing', () => {
+  const f = rackFixture()
+  f.sample('pliq').sample('tliq').sample('tdout').sample('psuct').sample('tsuct')
+  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'Charge level', failure: 'Undercharged' })
+  assert.equal(f.s.diagnosis, null, 'good subcooling does not support an undercharge')
+  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'Liquid line drier', failure: 'Restricted — flashing across it' })
+  f.act({ type: 'replace', part: 'charge', tool: 'hands' })
+  assert.equal(f.call.partsWasted, 340)
+  assert.equal(f.s.repaired, false)
+  assert.equal(drierDropF(f.s), 17, 'the restriction is untouched')
+})
+
+test('the rack call runs end to end to a verified repair', () => {
+  const f = rackFixture()
+  f.observe('receiver').observe('drier').observe('coil')
+  f.sample('pliq').sample('tliq').sample('tdout').sample('psuct').sample('tsuct')
+  assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
+  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'Liquid line drier', failure: 'Restricted — flashing across it' })
+  f.hands('isolate').sample('zero')
+  f.act({ type: 'replace', part: 'cores', tool: 'hands' })
+  assert.equal(f.s.repaired, true)
+  f.hands('restore')
+  for (let i = 0; i < 4; i++) f.wait(10)
+  f.sample('tliq').sample('tdout').observe('receiver')
+  f.sample('psuct').sample('tsuct').sample('product')
+  const left = verifyChecklist(f.s).filter(x => !x.done).map(x => x.label)
+  assert.deepEqual(left, [], `outstanding: ${left.join('; ')}`)
+  f.act({ type: 'verify' })
+  assert.equal(f.s.verified, true)
+  const result = scoreCall(f.call, F3_FAULT, 'Changed restricted liquid line drier cores.')
+  assert.ok(result.points > 0)
+})
+
+test('nothing reads on a section that is pumped down', () => {
+  const f = rackFixture().hands('isolate').sample('pliq')
+  assert.ok(!f.s.evidence.some(e => e.id === 'pliq'))
+  assert.match(f.s.feedback, /pumped down/)
+})
+
+test('the rack call leaves the earlier two untouched', () => {
+  assert.equal(fixture().observe('coil').call.inspection.definition, 'f1-defrost')
+  assert.equal(fanFixture().observe('fans').s.definition, 'f2-evap-fan')
+})
+
+// ── Dew vs bubble teaching material ─────────────────────────────────────────
+const { GLIDE_SLIDES } = require('../lib/game/glide-slides.ts')
+const { LESSONS, lessonPass } = require('../lib/game/lessons.ts')
+
+test('the pass mark scales with a lesson, so adding questions never makes it easier', () => {
+  // Every existing four-question station keeps its 3-of-4.
+  for (const l of LESSONS.filter(l => l.quiz.length === 4))
+    assert.equal(lessonPass(l.quiz.length), 3, l.id)
+  assert.equal(lessonPass(6), 5)
+  for (const l of LESSONS.filter(l => l.quiz.length))
+    assert.ok(lessonPass(l.quiz.length) / l.quiz.length >= 0.75, `${l.id} pass mark slipped below 75%`)
+  // Hands-on stations carry no quiz and pass on trainer rounds; the quiz path
+  // must stay unpassable for them rather than trivially satisfied.
+  assert.equal(lessonPass(0), 1)
+})
+
+test('the glide slides agree with the numbers the rack call actually reads', () => {
+  const flat = JSON.stringify(GLIDE_SLIDES)
+  // The rule itself, in the direction that matters.
+  assert.match(flat, /Superheat is measured against the DEW point/)
+  assert.match(flat, /Subcooling is measured against the BUBBLE point/)
+  // The two saturation temperatures the call quotes are the ones the deck
+  // names as the correct column, so slides and gameplay cannot drift apart.
+  const suction = saturationF('low', 38)
+  const liquid = saturationF('high', 224)
+  assert.equal(suction, 15)
+  assert.equal(liquid, 94)
+  assert.ok(flat.includes(`Against dew (${suction} °F) that is 28 °F of superheat`))
+  assert.ok(flat.includes(`Against bubble (${liquid} °F) that is 11 °F of subcooling`))
+  // And the wrong-column answers, which are the whole point.
+  assert.match(flat, /reads 39\.5 °F/)
+  assert.match(flat, /reads 20 °F/)
+})
+
+test('the classroom PT station teaches the glide and checks it', () => {
+  const pt = LESSONS.find(l => l.id === 'pt')
+  const sections = JSON.stringify(pt.sections)
+  assert.match(sections, /Bubble point/)
+  assert.match(sections, /Dew point/)
+  assert.match(sections, /11\.2 °F of glide|11\.2 °F/)
+  // The old line claimed R-448A simply tracks R-404A, which is the habit this
+  // material exists to break.
+  assert.doesNotMatch(sections, /run within a few psi of R-404A across that range/)
+  assert.ok(pt.quiz.some(q => /dew point/i.test(q.options[q.answer])),
+    'a question must have the dew point as its correct answer')
+})

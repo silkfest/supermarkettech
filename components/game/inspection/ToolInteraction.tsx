@@ -2,10 +2,16 @@
 import { useState } from 'react'
 import type { Measurement } from '@/lib/game/inspection/types'
 
-const FUNCTIONS = [
+const METER_FUNCTIONS = [
   { mode: 'volts', glyph: 'V', label: 'Voltage' },
   { mode: 'ohms', glyph: 'Ω', label: 'Resistance' },
   { mode: 'amps', glyph: 'A~', label: 'Clamp current' }
+] as const
+/** On a manifold set the choice is which port the hose goes on, and putting a
+ * liquid line on the low side is the mistake that ruins the gauge. */
+const GAUGE_FUNCTIONS = [
+  { mode: 'low', glyph: 'LO', label: 'Low side' },
+  { mode: 'high', glyph: 'HI', label: 'High side' }
 ] as const
 
 /** InstrumentPanel's shared measurement surface. Choosing the function is the
@@ -24,6 +30,8 @@ export default function ToolInteraction({
   const [mode, setMode] = useState('')
   const needsMode = !!measurement.mode
   const terminals = measurement.terminals ? [...measurement.terminals] : []
+  const gauge = measurement.tool === 'gauges'
+  const functions = gauge ? GAUGE_FUNCTIONS : METER_FUNCTIONS
   const clamp = mode === 'amps'
   const ready = !needsMode || !!mode
   return (
@@ -36,8 +44,12 @@ export default function ToolInteraction({
       </output>
       <p className="text-xs font-semibold">{measurement.label}</p>
       {needsMode && (
-        <div role="radiogroup" aria-label="Instrument function" className="grid grid-cols-3 gap-2">
-          {FUNCTIONS.map((f) => (
+        <div
+          role="radiogroup"
+          aria-label={gauge ? 'Manifold port' : 'Instrument function'}
+          className={`grid gap-2 ${gauge ? 'grid-cols-2' : 'grid-cols-3'}`}
+        >
+          {functions.map((f) => (
             <button
               key={f.mode}
               role="radio"
@@ -55,11 +67,15 @@ export default function ToolInteraction({
       {!!terminals.length && (
         <p className={`text-[11px] rounded border p-2 ${ready ? 'border-emerald-500 bg-emerald-950 text-emerald-200' : 'border-slate-600 text-slate-400'}`}>
           {ready ? (
-            clamp ? (
+            gauge ? (
+              <>Hose on the <b>{terminals[0]}</b>, {mode === 'high' ? 'red' : 'blue'} side of the set.</>
+            ) : clamp ? (
               <>Jaw around <b>{terminals[0]}</b>, closed on <b>{terminals[1]}</b>.</>
             ) : (
               <>Red lead on <b>{terminals[0]}</b>, black on <b>{terminals[1]}</b>.</>
             )
+          ) : gauge ? (
+            'Choose the port and the hose goes on the labelled service valve.'
           ) : (
             'Choose the instrument function and the leads go to the labelled test points.'
           )}

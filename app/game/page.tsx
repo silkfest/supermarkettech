@@ -35,6 +35,9 @@ interface Panel { callId: string; faultId: string; equipmentId: string }
  *  until their gas coolers, flash tanks and skids have sprites of their own. */
 const PIXEL_LEVELS = new Set<LevelId>(['supermarket', 'gas-station'])
 
+/** What each hands-on practice work order is called on screen. */
+const PRACTICE_LABEL = { f1: 'F1', f2: 'M1', f3: 'Rack' } as const
+
 export default function ColdCallPage() {
   const [save, setSave] = useState<SavedGame | null>(null)
   const [view, setView] = useState<View>('town')
@@ -110,7 +113,7 @@ export default function ColdCallPage() {
   function startLevel(
     level: LevelDef,
     practice = false,
-    practiceCall: 'f1' | 'f2' = 'f1'
+    practiceCall: 'f1' | 'f2' | 'f3' = 'f1'
   ) {
     if (!save?.character) { setView('setup'); return }
     setPanel(null); setLesson(null); setNearId(null); setWalkTo(null); setStop(null)
@@ -216,6 +219,7 @@ export default function ColdCallPage() {
             <div className="flex gap-2">
             <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true, 'f1')} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">F1 field practice</button>
             <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true, 'f2')} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">M1 field practice</button>
+            <button onClick={() => startLevel(LEVEL_BY_ID.supermarket, true, 'f3')} className="text-xs px-3 py-2 rounded-lg bg-blue-600 text-white">Rack field practice</button>
             <button onClick={() => setView('hub')}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
               <LayoutGrid size={13} /> Job list
@@ -271,7 +275,7 @@ export default function ColdCallPage() {
   // ── Play screen (classroom or running shift) ──
   if (playing) {
     const map = view === 'classroom' ? LEVEL_BY_ID.classroom.map : level.map
-    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : state.practice ? `Full Supermarket · ${state.practiceCall === 'f2' ? 'M1' : 'F1'} practice` : level.name
+    const title = view === 'classroom' ? LEVEL_BY_ID.classroom.name : state.practice ? `Full Supermarket · ${PRACTICE_LABEL[state.practiceCall]} practice` : level.name
     const sidePanel = view === 'classroom'
       ? (lesson && lesson.kind === 'read' && (
           <LessonPanel key={lesson.id} lesson={lesson} alreadyPassed={!!progress.lessons[lesson.id]?.passed}
@@ -371,7 +375,7 @@ export default function ColdCallPage() {
 
         {view === 'shift' && state.status === 'over' && (
           <ShiftReport
-            assignedCalls={assignedCalls(state)} levelName={state.practice ? (state.practiceCall === 'f2' ? 'M1 field practice' : 'F1 field practice') : level.name} map={level.map} character={state.character}
+            assignedCalls={assignedCalls(state)} levelName={state.practice ? `${PRACTICE_LABEL[state.practiceCall]} field practice` : level.name} map={level.map} character={state.character}
             results={state.results} unfinished={state.calls} shrink={state.shrink} complaints={state.complaints}
             isBest={shiftOutcome?.isBest ?? false} unlocked={shiftOutcome?.unlocked ?? null}
             promoted={shiftOutcome?.promoted ?? null} hours={shiftOutcome?.hours ?? 0} hoursTotal={progress.hours}

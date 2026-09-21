@@ -1,6 +1,7 @@
 import { INSPECTION_DEFS } from './inspection/defs'
 import { initialInspection } from './inspection/f1'
 import { initialInspectionF2 } from './inspection/f2'
+import { initialInspectionF3 } from './inspection/f3'
 import type { InspectionState } from './inspection/types'
 import { interact, tickInspection, canVerify } from './inspection/engine'
 import type { InspectionAction } from './inspection/types'
@@ -20,7 +21,7 @@ export interface ShiftState {
   status: 'idle' | 'running' | 'over'
   practice: boolean
   /** Which hands-on work order practice mode runs. */
-  practiceCall: 'f1' | 'f2'
+  practiceCall: 'f1' | 'f2' | 'f3'
   levelId: LevelId
   character: Character
   elapsedMin: number
@@ -40,7 +41,7 @@ export interface ShiftState {
 
 export type ShiftAction =
   | { type: 'RESTORE'; state: ShiftState }
-  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean; practiceCall?: 'f1' | 'f2' }
+  | { type: 'START'; character: Character; levelId: LevelId; maxDifficulty: 1 | 2 | 3; practice?: boolean; practiceCall?: 'f1' | 'f2' | 'f3' }
   | { type: 'TICK'; dtMin: number }
   | { type: 'INSPECT'; callId: string; action: InspectionAction }
   | { type: 'UPDATE_CALL'; callId: string; patch: Partial<ActiveCall> }
@@ -72,6 +73,7 @@ export function effectiveDifficulty(f: FaultDef): number {
 const HANDS_ON: { equipmentId: string; faultId: string; start: () => InspectionState }[] = [
   { equipmentId: 'F1', faultId: 'defrost_heater_open', start: initialInspection },
   { equipmentId: 'M1', faultId: 'evap_fan_motor', start: initialInspectionF2 },
+  { equipmentId: 'RK', faultId: 'liquid_drier_plugged', start: initialInspectionF3 },
 ]
 function inspectionFor(levelId: LevelId, equipmentId: string, faultId: string) {
   if (levelId !== 'supermarket') return undefined
@@ -84,7 +86,7 @@ function chooseFault(state: ShiftState, level: LevelDef): { fault: FaultDef; equ
   if (state.levelId === 'supermarket') {
     const forced = state.practice
       ? state.spawnIdx === 0
-        ? HANDS_ON[state.practiceCall === 'f2' ? 1 : 0]
+        ? HANDS_ON[{ f1: 0, f2: 1, f3: 2 }[state.practiceCall]]
         : undefined
       : HANDS_ON[state.spawnIdx]
     if (forced)
