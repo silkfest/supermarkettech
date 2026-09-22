@@ -20,6 +20,7 @@ import type { ActiveCall, CallResult } from '@/lib/game/types'
 import type { ToolId } from '@/lib/game/tools'
 import { MeasurementInstrument } from '../InstrumentPanel'
 import PtGlideSlides from '../PtGlideSlides'
+import RlWiringDiagram from '../RlWiringDiagram'
 import EquipmentScene from './EquipmentScene'
 import EvidenceNotebook from './EvidenceNotebook'
 import DiagnosisTree from './DiagnosisTree'
@@ -76,6 +77,9 @@ export default function EquipmentInspection({
   // The gauge readings on a glide refrigerant mean nothing without knowing
   // which saturation column they came from, so the deck lives beside them.
   const [glide, setGlide] = useState(false)
+  // A fan that will not run is a wiring question before it is a motor
+  // question, so the case sheet is one tap away rather than back in class.
+  const [sheet, setSheet] = useState(false)
   const s = call?.inspection
   const def = s ? defOf(s) : null
   const measurement = def?.measurements.find((m) => m.id === measurementId)
@@ -200,6 +204,18 @@ export default function EquipmentInspection({
                     </section>
                   )
                 })}
+                {def?.id === 'f2-evap-fan' && (
+                  sheet ? (
+                    <RlWiringDiagram dark onClose={() => setSheet(false)} />
+                  ) : (
+                    <button
+                      onClick={() => setSheet(true)}
+                      className="w-full min-h-11 rounded-lg border border-amber-700 bg-amber-950 text-[11px] text-amber-200 px-3"
+                    >
+                      Case wiring diagram — what has to close before a fan turns
+                    </button>
+                  )
+                )}
                 {def?.id === 'f3-liquid-drier' && (
                   glide ? (
                     <PtGlideSlides dark onClose={() => setGlide(false)} />

@@ -1,4 +1,5 @@
 import { COMMON_FAULTS } from '../faults-common'
+import { RL_FAN_AMPS_EE } from '../rl-wiring'
 import type {
   ComponentId,
   EvidenceItem,
@@ -238,7 +239,7 @@ export function observeF2(
       evidence(
         'controller',
         'Controller / history',
-        'Defrosts running on schedule and terminating on temperature. Case setpoint 30 °F. Nameplate on the door jamb: three fan motors, 0.4 A each, 1.2 A total.'
+        'Defrosts running on schedule and terminating on temperature. Case setpoint 30 °F. Nameplate on the door jamb: three 12 W Hussmann energy-efficient fan assemblies, 0.30 A each, 0.90 A total.'
       )
       return 2
     case 'electrical':
@@ -319,13 +320,13 @@ export function measureF2(
   }
   if (m.id === 'circuit') {
     const live = !s.isolated
-    const value = live ? (fansOf(s).filter(Boolean).length * 0.4) : 0
+    const value = live ? fansOf(s).filter(Boolean).length * RL_FAN_AMPS_EE : 0
     evidence(
       live ? 'circuit' : 'circuit-off',
       'Fan circuit clamp',
       live
-        ? `${(value + (random() - 0.5) * 0.04).toFixed(1)} A against 1.2 A nameplate`
-        : '0.0 A — the fan circuit is isolated',
+        ? `${(value + (random() - 0.5) * 0.04).toFixed(2)} A against 0.90 A nameplate`
+        : '0.00 A — the fan circuit is isolated',
       'measurement'
     )
     return 1
@@ -486,7 +487,7 @@ export function guidanceF2(
         }
       case 'Fan circuit back to nameplate current':
         return {
-          text: 'With the fans running again, clamp the fan circuit — it should pull the full 1.2 A now.',
+          text: 'With the fans running again, clamp the fan circuit — it should pull the full 0.90 A now.',
           area: 'electrical',
           hints: [
             'The before-and-after current is what proves the third motor is back.',

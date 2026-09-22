@@ -78,13 +78,13 @@ export const COMMON_FAULTS: FaultDef[] = [
     readings: [
       { key: 'near', label: 'Discharge air, near end', value: 30, unit: '°F', jitter: 0.5, status: 'ok', expect: '28–30 °F' },
       { key: 'far', label: 'Discharge air, far end', value: 42, unit: '°F', jitter: 0.6, wander: 0.8, status: 'crit', expect: '28–30 °F', after: 30 },
-      { key: 'fanA', label: 'Fan circuit current', value: 0.8, unit: 'A', decimals: 1, jitter: 0.05, status: 'warn', expect: '1.2 A (3 × 0.4 A)', after: 1.2 },
+      { key: 'fanA', label: 'Fan circuit current', value: 0.6, unit: 'A', decimals: 2, jitter: 0.03, status: 'warn', expect: '0.90 A (3 × 0.30 A)', after: 0.9 },
       { key: 'sh', label: 'Superheat at the coil outlet', value: 4, unit: '°F', jitter: 0.4, status: 'warn', expect: '8–10 °F', after: 9 },
     ],
     checks: [
       LOTO_CHECK,
       { id: 'look', label: 'Pull the discharge grille and look at each fan', tool: 'Eyes / flashlight', minutes: 6, key: true, finding: 'Two of the three fans are turning. The one over the warm end is stopped, and the blade spins freely by hand with no drag or noise from the bearing.' },
-      { id: 'clamp', label: 'Clamp the fan circuit', tool: 'Amp clamp', minutes: 5, key: true, finding: '0.8 A on a circuit that should pull 1.2 A. Two motors worth, not three.' },
+      { id: 'clamp', label: 'Clamp the fan circuit', tool: 'Amp clamp', minutes: 5, key: true, finding: '0.60 A on a circuit that should pull 0.90 A. Two motors worth, not three — the published figure for these 12 W assemblies is 0.30 A a fan.' },
       { id: 'plug', label: 'Unplug the stopped fan and read its plug for voltage', tool: 'Multimeter', minutes: 6, key: true, finding: '118 V on the supply half of the plug. The case is offering that fan everything it needs and it still will not turn, so the fault is on the motor side of the plug. Each fan has its own plug behind the discharge grille, so only the bottom shelf has to be cleared.' },
       { id: 'coil', label: 'Look at the frost pattern along the coil', tool: 'Eyes', minutes: 4, finding: 'Heavy even frost under the dead fan and normal light frost everywhere else. Nothing is pulling heat through that section.' },
       { id: 'drain', label: 'Check the drain and the pan', tool: 'Eyes', minutes: 4, finding: 'Clear and empty. Not a drainage problem.' },
@@ -96,7 +96,7 @@ export const COMMON_FAULTS: FaultDef[] = [
       { id: 'txv', label: 'TXV underfeeding the coil', why: 'Superheat is 4 °F, which is low, not high. The coil is well fed and not being asked to do anything because no air is crossing that section.' },
     ],
     fixes: [
-      { id: 'motor', label: 'Replace the fan motor, verify 1.2 A on the circuit and 30 °F across the whole discharge', correct: true, cost: 95, why: 'Full airflow the length of the case, the heavy frost clears on the next defrost and superheat comes back to 9 °F once the coil is loaded properly again.' },
+      { id: 'motor', label: 'Replace the fan motor, verify 0.90 A on the circuit and 30 °F across the whole discharge', correct: true, cost: 95, why: 'Full airflow the length of the case, the heavy frost clears on the next defrost and superheat comes back to 9 °F once the coil is loaded properly again.' },
       { id: 'all', label: 'Replace all three fan motors', cost: 285, why: 'Two of them are running at nameplate. It is a fair PM if you are in there anyway, but it is not this call and it is not this customer’s money.' },
       { id: 'defrost', label: 'Add a defrost to clear the frost', why: 'The frost comes back tomorrow. It builds there because nothing is moving air across that section.' },
       { id: 'txv', label: 'Adjust the TXV to raise superheat', cost: 0, why: 'You would be starving a coil to compensate for an airflow problem, and the far end would get warmer still.' },

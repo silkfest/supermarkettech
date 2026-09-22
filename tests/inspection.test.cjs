@@ -502,7 +502,8 @@ test('the fan call runs end to end to a verified repair', () => {
   assert.equal(f.s.coverOpen, true, 'plugging back in must not refit the grille')
   for (let i = 0; i < 6; i++) f.wait(10)
   f.sample('circuit')
-  assert.match(f.s.evidence.filter(e => e.id === 'circuit').pop().value, /^1\.2 A/)
+  const backUp = Number(f.s.evidence.filter(e => e.id === 'circuit').pop().value.split(' ')[0])
+  assert.ok(Math.abs(backUp - 0.9) < 0.05, `three fans should clamp about 0.90 A, read ${backUp}`)
   f.sample('air3').observe('coil').sample('product')
   f.hands('close-cover')
   const left = verifyChecklist(f.s).filter(x => !x.done).map(x => x.label)
@@ -712,4 +713,120 @@ test('the classroom PT station teaches the glide and checks it', () => {
   assert.doesNotMatch(sections, /run within a few psi of R-404A across that range/)
   assert.ok(pt.quiz.some(q => /dew point/i.test(q.options[q.answer])),
     'a question must have the dew point as its correct answer')
+})
+
+// ── Hussmann RL wiring diagram ──────────────────────────────────────────────
+const {
+  RL_CIRCUITS, RL_COMPONENTS, RL_DOOR_COUNTS, RL_FAN_AMPS_EE,
+  RL_LOADS, RL_SEQUENCE, RL_WIRE_COLOURS
+} = require('../lib/game/rl-wiring.ts')
+
+test('every component the defrost sequence energises is one the diagram actually has', () => {
+  const known = new Set(RL_COMPONENTS.map(c => c.id))
+  for (const step of RL_SEQUENCE)
+    for (const id of step.live)
+      assert.ok(known.has(id), `step ${step.n} lights unknown component "${id}"`)
+  // And every component sits on one of the two real circuits, with markers
+  // that exist in the legend — a typo here draws a wire in no colour at all.
+  for (const c of RL_COMPONENTS) {
+    assert.ok(RL_CIRCUITS[c.circuit], `${c.id} is on no circuit`)
+    for (const w of c.wires ?? [])
+      assert.ok(RL_WIRE_COLOURS.some(k => k.code === w), `${c.id} carries unknown marker "${w}"`)
+  }
+})
+
+test('the fan-delay window is the whole lesson: fans out from defrost until 20 °F', () => {
+  assert.deepEqual(RL_SEQUENCE.map(s => s.fans), [
+    'running', 'off', 'off', 'off', 'off', 'running'
+  ])
+  // Termination (step 5) stops the heat but must NOT restart the fans — that
+  // is exactly the window in which a good motor gets condemned.
+  const terminate = RL_SEQUENCE.find(s => s.n === 5)
+  assert.equal(terminate.fans, 'off')
+  assert.ok(!terminate.live.includes('fans'))
+  assert.ok(terminate.live.includes('asrelay'), 'the anti-sweat relay is what is still holding them out')
+  // Fans are listed live exactly when the step says they run.
+  for (const s of RL_SEQUENCE)
+    assert.equal(s.live.includes('fans'), s.fans === 'running', `step ${s.n}`)
+  // Defrost heat and the fans never coexist: that is the fan relay's job.
+  for (const s of RL_SEQUENCE)
+    assert.ok(!(s.live.includes('heaters') && s.live.includes('fans')), `step ${s.n} melts and blows at once`)
+})
+
+test('a thermostat that has just opened is never drawn as energised', () => {
+  const known = new Set(RL_COMPONENTS.map(c => c.id))
+  for (const step of RL_SEQUENCE) {
+    if (!step.actor) continue
+    assert.ok(known.has(step.actor), `step ${step.n} acts through unknown "${step.actor}"`)
+  }
+  // The two steps a device ends something: it is the actor, and it is NOT in
+  // the live list, or the diagram would show a closed contact at the exact
+  // step the text says it let go.
+  const limit = RL_SEQUENCE.find(s => s.n === 4)
+  assert.equal(limit.actor, 'dlt')
+  assert.ok(!limit.live.includes('dlt'))
+  assert.ok(!limit.live.includes('heaters'), 'the limit stat took the heaters out')
+  const terminate = RL_SEQUENCE.find(s => s.n === 5)
+  assert.equal(terminate.actor, 'dtt')
+  assert.ok(!terminate.live.includes('dtt'))
+  // Termination drops the contactor, so the fan relay coil goes with it.
+  assert.ok(!terminate.live.includes('contactor'))
+  assert.ok(!terminate.live.includes('fanrelay'))
+  // But the contactor is still in at the limit step — defrost is still
+  // commanded, the limit has only taken the heat out.
+  assert.ok(limit.live.includes('contactor'))
+  assert.ok(limit.live.includes('fanrelay'), 'the fans are still held out by the 208 V coil')
+})
+
+test('the published load table is complete and rises with the door count', () => {
+  for (const row of RL_LOADS) {
+    assert.equal(row.amps.length, RL_DOOR_COUNTS.length, row.load)
+    assert.equal(row.watts.length, RL_DOOR_COUNTS.length, row.load)
+    for (let i = 1; i < row.amps.length; i++) {
+      assert.ok(row.amps[i] > row.amps[i - 1], `${row.load} amps do not rise at ${RL_DOOR_COUNTS[i]} door`)
+      assert.ok(row.watts[i] > row.watts[i - 1], `${row.load} watts do not rise at ${RL_DOOR_COUNTS[i]} door`)
+    }
+    assert.ok(row.volts === 120 || row.volts === 208, row.load)
+  }
+})
+
+test('the per-fan figure is the published row divided by doors, not a guess', () => {
+  const ee = RL_LOADS.find(r => /energy efficient/i.test(r.load))
+  assert.ok(ee, 'the energy-efficient fan row is what the fan call quotes')
+  // 0.30 A a fan has to fall out of every column, or the nameplate the call
+  // prints and the table the classroom shows would disagree.
+  RL_DOOR_COUNTS.forEach((doors, i) => {
+    assert.ok(Math.abs(ee.amps[i] / doors - RL_FAN_AMPS_EE) < 0.005,
+      `${doors} door: ${ee.amps[i]} A is not ${doors} × ${RL_FAN_AMPS_EE} A`)
+  })
+  // 18 W a fan, which is the 12 W assembly and its losses — and notably not
+  // 0.30 A × 120 V, because the table's amps are apparent and its watts real.
+  RL_DOOR_COUNTS.forEach((doors, i) => {
+    assert.ok(Math.abs(ee.watts[i] / doors - 18) < 0.5, `${doors} door: ${ee.watts[i]} W is not ${doors} × 18 W`)
+  })
+})
+
+test('the fan call clamps the published numbers, not invented ones', () => {
+  const f = fanFixture().observe('fans').hands('open-cover')
+  const three = f.sample('circuit').value('circuit')
+  // Three fans at 0.30 A, one of them dead: two motors' worth against a
+  // nameplate of three. Compare the number, not its spelling — the reading
+  // carries sensor jitter and 0.59 is as correct as 0.61.
+  assert.match(three, / A against 0\.90 A nameplate$/)
+  const dead = Number(three.split(' ')[0])
+  assert.ok(Math.abs(dead - 0.6) < 0.05, `two live fans should clamp about 0.60 A, read ${dead}`)
+  assert.equal(Number((RL_FAN_AMPS_EE * 3).toFixed(2)), 0.9)
+  assert.equal(Number((RL_FAN_AMPS_EE * 2).toFixed(2)), 0.6)
+})
+
+test('the classroom teaches the RL sequence it draws', () => {
+  const defrost = LESSONS.find(l => l.id === 'defrost')
+  const flat = JSON.stringify(defrost)
+  // The two thresholds that decide whether a fan is faulty or just waiting.
+  assert.match(flat, /35 °F/)
+  assert.match(flat, /20 °F/)
+  assert.match(flat, /90 °F/)
+  // And a question on the one that catches people.
+  assert.ok(defrost.quiz.some(q => /closes the fan circuit again/.test(q.q)),
+    'no question on what restarts the fans')
 })

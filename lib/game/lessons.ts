@@ -463,6 +463,21 @@ export const LESSONS: Lesson[] = [
         ],
       },
       {
+        heading: 'Read it on a real sheet — the Hussmann RL',
+        body: [
+          'The RL is the frozen-food door case most of these stores actually have, and its data sheet carries the diagram worth knowing by heart. Two circuits land in the case: 120 V for fans, lamps, anti-sweat and pan heaters, and 208 V for the defrost heaters coming off the defrost contactor. Everything else on the sheet is four thermostats and two relays deciding which of those loads is made.',
+          'The part that catches people is that the fans are held out by temperature, not by a timer. Step the sequence below and watch which rungs light up.',
+        ],
+        bullets: [
+          'Defrost starts — the contactor energises the defrost heaters AND the 208 V fan relay coil together, so the heaters coming on is what drops the fans out.',
+          'Coil passes about 35 °F — the relay control thermostat energises the 120 V anti-sweat relay coil, which opens the fan, door heater and frame heater circuits and energises the drain pan, bottom and plenum heaters.',
+          'Above 90 °F internal air the defrost limit thermostat opens. That is protection, not the normal ending.',
+          'The termination thermostat opens and the contactor drops out both the heaters and the fan relay coil.',
+          'Coil falls back to about 20 °F — the relay control thermostat opens, the anti-sweat relay drops out, and its contacts close the fan circuit again. The fans restart here and not before.',
+          'So between termination and 20 °F, no voltage at a fan motor is correct. Condemn a motor in that window and you will change a good one.',
+        ],
+      },
+      {
         heading: 'How a defrost ends — and what goes wrong',
         body: [
           'A timer or controller starts defrost on a schedule. It should END on temperature: a defrost termination (DT) switch on the coil opens around 50–55 °F and tells the controller the ice is gone. A fail-safe timer ends it if temperature never arrives.',
@@ -480,6 +495,7 @@ export const LESSONS: Lesson[] = [
       { q: 'The controller log shows defrost starting every 6 hours and ending after 30 seconds. Most likely cause:', options: ['Low charge', 'DT switch failed open', 'Heater contactor welded', 'Fan motor dead'], answer: 1, why: 'An open DT tells the controller "already warm" the instant defrost starts.' },
       { q: 'Two 4.2 A heater elements should show about 8.4 A in defrost. You read 4.2 A. That means…', options: ['Normal', 'One element is open', 'Voltage is too high', 'The DT is stuck closed'], answer: 1, why: 'Half the expected current means half the elements — one is open.' },
       { q: 'The coil is cold and clear, the fans are good, but there is no voltage at the fan motors after defrost. Check the…', options: ['Compressor contactor', 'Fan delay klixon', 'TXV bulb', 'Liquid line solenoid'], answer: 1, why: 'A stuck-open fan delay keeps fans off even after the coil is cold.' },
+      { q: 'On a Hussmann RL, what actually closes the fan circuit again after a defrost?', options: ['The defrost contactor picking up', 'The relay control thermostat opening at about 20 °F', 'The defrost limit thermostat at 90 °F', 'The termination thermostat opening'], answer: 1, why: 'Termination stops the heat, but the anti-sweat relay is still holding the fans out. The fans come back when the coil falls to about 20 °F and the relay control thermostat opens that coil.' },
     ],
     knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
   },

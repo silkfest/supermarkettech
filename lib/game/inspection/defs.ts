@@ -113,7 +113,7 @@ export const INSPECTION_DEFS: Record<InspectionDefId, InspectionDef> = {
       defaultFailures: ['Failed open', 'Incorrect adjustment']
     },
     efficientPath:
-      'Feel the air curtain → pull the grille and find the stopped fan → clamp the fan circuit and compare 0.8 A with the 1.2 A nameplate → isolate and prove dead → disconnect and ohm each motor → replace only motor #3 → restore → verify full current, even discharge air, a coil that sheds its ice and product pull-down.'
+      'Feel the air curtain → pull the grille and find the stopped fan → unplug it and read 118 V at its plug, which puts the fault on the motor side → clamp the fan circuit and compare 0.60 A with the 0.90 A nameplate → swap that one motor on its plug → restore power with the panel still open → verify full current, even discharge air, a coil that sheds its ice and product pull-down → secure the cover last.'
   }
   ,
   'f3-liquid-drier': {

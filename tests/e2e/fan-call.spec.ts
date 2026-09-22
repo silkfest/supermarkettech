@@ -54,7 +54,7 @@ test('M1 evaporator-fan call plays through to a verified repair', async ({
   await act('Clamp the fan circuit conductor').click()
   await read('Clamp current')
   await expect(
-    page.getByText('0.8 A against 1.2 A nameplate').first()
+    page.getByText(/0\.(5[89]|6[012]) A against 0\.90 A nameplate/).first()
   ).toBeVisible()
 
   // Unplugging that one fan is what makes it safe to work on and what turns
@@ -80,7 +80,7 @@ test('M1 evaporator-fan call plays through to a verified repair', async ({
   await act('Clamp the fan circuit conductor').click()
   await read('Clamp current')
   await expect(
-    page.getByText(/1\.2 A against 1\.2 A nameplate/).first()
+    page.getByText(/0\.(8[89]|9[012]) A against 0\.90 A nameplate/).first()
   ).toBeVisible()
 
   await area('Product / air curtain')
