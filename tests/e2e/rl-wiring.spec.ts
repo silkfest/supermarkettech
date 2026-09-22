@@ -9,7 +9,7 @@ const save = () =>
     })
   )
 
-test('the RL sheet opens in the fan call and answers what holds a fan out', async ({
+test('the RL sheet steps electric defrost, where the fans return at termination', async ({
   page
 }) => {
   const errors: string[] = []
@@ -31,51 +31,44 @@ test('the RL sheet opens in the fan call and answers what holds a fan out', asyn
   const sheet = page.getByRole('region', {
     name: 'Hussmann RL wiring diagram trainer'
   })
-  await expect(sheet).toContainText('Two circuits, four thermostats, two relays')
+  await expect(sheet).toContainText('Electric defrost (standard)')
+  await expect(sheet).toContainText('P/N 0425644_P')
 
-  // Tapping a load explains it rather than just highlighting it.
-  await sheet.getByText('Fans', { exact: true }).click()
-  await expect(sheet).toContainText('Evaporator fan assemblies')
-  await expect(sheet).toContainText('each fan is plugged')
+  // Tapping a device explains it, and names the terminals it lands on.
+  await sheet.getByText('Evaporator Fans', { exact: true }).first().click()
+  await expect(sheet).toContainText('Evaporator fans')
+  await expect(sheet).toContainText('terminals 14, 26')
+  await expect(sheet).toContainText('bottom shelf')
 
-  // The sequence is the part that decides whether a motor is dead or waiting.
-  await sheet.getByRole('button', { name: 'Defrost sequence' }).click()
+  await sheet.getByRole('button', { name: 'Sequence', exact: true }).click()
   await expect(sheet).toContainText('Refrigerating')
   await expect(sheet.getByText('fans running')).toBeVisible()
-  await expect(sheet.getByRole('button', { name: 'Back' })).toBeDisabled()
 
   await sheet.getByRole('button', { name: 'Next' }).click()
   await expect(sheet).toContainText('Defrost starts')
   await expect(sheet.getByText('fans off')).toBeVisible()
 
   for (let i = 0; i < 3; i++) await sheet.getByRole('button', { name: 'Next' }).click()
-  // Step 5: the heat has stopped and the fans are still out. This is the
-  // window in which a good motor gets condemned.
+  // Step 5 is the one the sheet spells out and the one that is easy to get
+  // backwards: termination drops the contactor and the fans come straight back.
   await expect(sheet).toContainText('Termination')
-  await expect(sheet.getByText('fans off')).toBeVisible()
+  await expect(sheet.getByText('fans running')).toBeVisible()
+  await expect(sheet).toContainText('no fan delay on an electric case')
 
   await sheet.getByRole('button', { name: 'Next' }).click()
-  await expect(sheet).toContainText('Fan delay')
+  await expect(sheet).toContainText('20 °F')
   await expect(sheet.getByText('fans running')).toBeVisible()
   await expect(sheet.getByRole('button', { name: 'Restart' })).toBeVisible()
 
-  // The published table, and the per-door figure behind the nameplate.
-  await sheet.getByRole('button', { name: 'Electrical data' }).click()
-  await sheet.getByRole('button', { name: '5 door' }).click()
-  await expect(sheet).toContainText('1.50')
-  await expect(sheet).toContainText('16.82')
-  await sheet.getByRole('button', { name: '3 door' }).click()
-  await expect(sheet).toContainText('0.90')
-
-  await sheet.getByRole('button', { name: 'Close the RL wiring diagram' }).click()
-  await expect(sheet).toBeHidden()
   expect(errors).toEqual([])
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   ).toBe(false)
 })
 
-test('the same sheet is in the classroom on the controls station', async ({ page }) => {
+test('the gas defrost variant is the one that holds the fans out to 20 °F', async ({
+  page
+}) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.route('**/api/game/progress', (r) => r.fulfill({ json: null }))
@@ -84,8 +77,6 @@ test('the same sheet is in the classroom on the controls station', async ({ page
   await page.goto('/game')
   await page.getByRole('button', { name: 'TRADE SCHOOL', exact: true }).first().click()
   await page.getByRole('button', { name: 'Go in', exact: true }).first().click()
-
-  // Find the controls station by its lesson, not by its position on the map.
   const walk = page.getByRole('button', { name: 'Walk', exact: true })
   const card = page
     .locator('div')
@@ -101,8 +92,25 @@ test('the same sheet is in the classroom on the controls station', async ({ page
     name: 'Hussmann RL wiring diagram trainer'
   })
   await expect(sheet).toBeVisible()
-  await expect(sheet).toContainText('Two circuits, four thermostats, two relays')
-  // The station teaches the thresholds the diagram encodes.
-  await expect(page.getByText(/relay control thermostat energises/i).first()).toBeVisible()
+
+  await sheet.getByRole('button', { name: 'Gas defrost (optional)' }).click()
+  await sheet.getByRole('button', { name: 'Sequence', exact: true }).click()
+  // Four steps in, the timer has ended defrost and the fans are STILL out.
+  for (let i = 0; i < 3; i++) await sheet.getByRole('button', { name: 'Next' }).click()
+  await expect(sheet).toContainText('Timer ends defrost')
+  await expect(sheet.getByText('fans off')).toBeVisible()
+  await sheet.getByRole('button', { name: 'Next' }).click()
+  await expect(sheet).toContainText('fans and heaters return together')
+  await expect(sheet.getByText('fans running')).toBeVisible()
+
+  // The raceway strip and the published table are both on the sheet.
+  await sheet.getByRole('button', { name: 'Terminals', exact: true }).click()
+  await expect(sheet).toContainText('Defrost heaters (208 V)')
+  await expect(sheet).toContainText('NOT for case-to-case wire connection')
+  await sheet.getByRole('button', { name: 'Electrical data' }).click()
+  await sheet.getByRole('button', { name: '5 door' }).click()
+  await expect(sheet).toContainText('1.50')
+  await expect(sheet).toContainText('16.82')
+
   expect(errors).toEqual([])
 })

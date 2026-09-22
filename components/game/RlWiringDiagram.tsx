@@ -1,67 +1,45 @@
 'use client'
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, Zap, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, RotateCcw } from 'lucide-react'
 import {
-  RL_CIRCUITS,
+  RL_CAUTION,
   RL_COMPONENTS,
-  RL_DIAGRAM_NOTES,
   RL_DOOR_COUNTS,
+  RL_JUMPER_NOTES,
+  RL_LEGEND_NOTES,
+  RL_LIGHTING_NOTE,
   RL_LOADS,
-  RL_SEQUENCE,
-  RL_SOURCES,
+  RL_MARKER_HEX,
+  RL_PARTS,
+  RL_ROWS,
+  RL_SEQUENCES,
+  RL_SHEET,
+  RL_TERMINAL_GROUPS,
+  RL_TERMINALS,
+  RL_VARIANTS,
   RL_WIRE_COLOURS,
-  RL_WIRE_COLOUR_NOTE
+  type RlRow,
+  type RlVariant
 } from '@/lib/game/rl-wiring'
 
-/** The RL sheet as a ladder you can poke at.
+/** The RL sheet drawn the way it is drawn in the case: numbered terminals at
+ *  each end of every rung, circled parts-list items over the devices, the
+ *  marker letter on each leg, and the raceway terminal strip along the bottom.
  *
- *  Drawn as a ladder rather than as a picture of the case because that is the
- *  shape the questions come in: what closes this contact, and what is holding
- *  this load out right now. Stepping the defrost sequence lights the rungs
- *  that are actually made, so "no voltage at the fan" stops being a mystery
- *  and starts being a step number. */
+ *  Stepping the sequence lights the rungs that are actually made. That is the
+ *  one thing the paper cannot do, and it is what separates a fan that is dead
+ *  from a fan that is only waiting. */
 
-type Tab = 'diagram' | 'sequence' | 'data'
+type Tab = 'diagram' | 'sequence' | 'terminals' | 'data'
 
 const byId = (id: string) => RL_COMPONENTS.find((c) => c.id === id)
 
-/** Rungs, in ladder order. `x` positions are the load box; the contacts in
- *  front of it are drawn from `gates`. */
-const RUNGS: {
-  id: string
-  y: number
-  rail: 'c120' | 'c208'
-  gates: { id: string; label: string; kind: 'nc' | 'no' | 'stat' }[]
-}[] = [
-  { id: 'asrelay', y: 56, rail: 'c120', gates: [{ id: 'rct', label: 'RCT', kind: 'stat' }] },
-  {
-    id: 'fans',
-    y: 92,
-    rail: 'c120',
-    gates: [
-      { id: 'asrelay', label: 'AS', kind: 'nc' },
-      { id: 'fanrelay', label: 'FR', kind: 'nc' }
-    ]
-  },
-  { id: 'doorash', y: 124, rail: 'c120', gates: [{ id: 'asrelay', label: 'AS', kind: 'nc' }] },
-  { id: 'frameash', y: 156, rail: 'c120', gates: [{ id: 'asrelay', label: 'AS', kind: 'nc' }] },
-  { id: 'pan', y: 188, rail: 'c120', gates: [{ id: 'asrelay', label: 'AS', kind: 'no' }] },
-  { id: 'lights', y: 220, rail: 'c120', gates: [] },
-  {
-    id: 'heaters',
-    y: 306,
-    rail: 'c208',
-    gates: [
-      { id: 'dlt', label: 'DLT', kind: 'stat' },
-      { id: 'dtt', label: 'DTT', kind: 'stat' }
-    ]
-  },
-  { id: 'fanrelay', y: 342, rail: 'c208', gates: [] }
-]
-
-const LEFT = 34
-const RIGHT = 330
-const LOAD_X = 236
+const W = 380
+const T_L = 20 // left terminal column
+const T_R = 344 // right terminal column
+const DEV_L = 62
+const DEV_R = 330
+const ROW_H = 30
 
 export default function RlWiringDiagram({
   dark = false,
@@ -71,13 +49,16 @@ export default function RlWiringDiagram({
   onClose?: () => void
 }) {
   const [tab, setTab] = useState<Tab>('diagram')
+  const [variant, setVariant] = useState<RlVariant>('electric')
   const [picked, setPicked] = useState<string | null>(null)
   const [step, setStep] = useState(0)
-  const [doors, setDoors] = useState(2) // index into RL_DOOR_COUNTS
+  const [doors, setDoors] = useState(2)
 
-  const seq = RL_SEQUENCE[step]
-  const live = new Set(seq.live)
+  const seq = RL_SEQUENCES[variant]
+  const cur = seq[Math.min(step, seq.length - 1)]
+  const live = new Set(cur.live)
   const detail = picked ? byId(picked) : null
+  const rows = RL_ROWS.filter((r) => r.variant.includes(variant))
 
   const shell = dark
     ? 'bg-slate-900 border-slate-600 text-slate-100'
@@ -87,32 +68,39 @@ export default function RlWiringDiagram({
   const chip = dark
     ? 'border-slate-600 bg-slate-800'
     : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900'
-  const board = dark ? '#0f172a' : '#f8fafc'
-  const ink = dark ? '#cbd5e1' : '#334155'
-  const dim = dark ? '#475569' : '#cbd5e1'
+  const board = dark ? '#0f172a' : '#ffffff'
+  const ink = dark ? '#cbd5e1' : '#1e293b'
+  const dim = dark ? '#475569' : '#b8c2cf'
 
-  /** On the diagram tab every rung is drawn at full strength; on the sequence
-   *  tab only what the sequence says is made. */
-  const energised = (id: string) => tab !== 'sequence' || live.has(id)
-  /** The component doing the switching this step — usually the one that just
-   *  opened, which is why it gets its own mark instead of the live colour. */
-  const acting = (id: string) => tab === 'sequence' && seq.actor === id
+  const acting = (id: string) => tab === 'sequence' && cur.actor === id
+  const rowLive = (r: RlRow) =>
+    tab !== 'sequence' || r.section === 'field' || (r.load ? live.has(r.load) : true)
 
-  function tabBtn(id: Tab, label: string) {
-    return (
-      <button
-        key={id}
-        onClick={() => setTab(id)}
-        className={`min-h-9 px-2.5 rounded-lg border text-[11px] font-semibold ${
-          tab === id
-            ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-            : `${chip} ${muted}`
-        }`}
-      >
-        {label}
-      </button>
-    )
+  function pill(active: boolean) {
+    return active
+      ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+      : `${chip} ${muted}`
   }
+
+  // ── layout: stack the sections the sheet uses ──────────────────────────
+  const s208 = rows.filter((r) => r.section === '208')
+  const s120 = rows.filter((r) => r.section === '120')
+  const sLight = rows.filter((r) => r.section === 'lights')
+  const sField = rows.filter((r) => r.section === 'field')
+  const blocks: { title: string; rail: [string, string]; rows: RlRow[] }[] = []
+  if (s208.length) blocks.push({ title: '', rail: ['208 V', '208 V'], rows: s208 })
+  blocks.push({ title: '', rail: ['120 V Power', 'Neutral'], rows: s120 })
+  blocks.push({ title: '', rail: ['120 V Power', 'Neutral'], rows: sLight })
+  blocks.push({ title: 'Field wired', rail: ['', ''], rows: sField })
+
+  let y = 18
+  const placed = blocks.map((b) => {
+    const top = y
+    y += 16 + b.rows.length * ROW_H + 8
+    return { ...b, top, rows: b.rows.map((r, i) => ({ r, y: top + 16 + i * ROW_H })) }
+  })
+  const stripTop = y + 6
+  const H = stripTop + 74
 
   return (
     <section
@@ -122,10 +110,10 @@ export default function RlWiringDiagram({
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
-            Hussmann RL &middot; reach-in wiring diagram
+            Hussmann RL &middot; {RL_SHEET.part}
           </p>
           <h3 className="font-bold text-[13px] leading-tight mt-0.5">
-            Two circuits, four thermostats, two relays
+            Fan and Heater Circuits &mdash; {RL_VARIANTS[variant].label}, Low Temperature
           </h3>
         </div>
         {onClose && (
@@ -140,29 +128,60 @@ export default function RlWiringDiagram({
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">
-        {tabBtn('diagram', 'Diagram')}
-        {tabBtn('sequence', 'Defrost sequence')}
-        {tabBtn('data', 'Electrical data')}
+        {(
+          [
+            ['diagram', 'Diagram'],
+            ['sequence', 'Sequence'],
+            ['terminals', 'Terminals'],
+            ['data', 'Electrical data']
+          ] as [Tab, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`min-h-9 px-2.5 rounded-lg border text-[11px] font-semibold ${pill(tab === id)}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {tab !== 'data' && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[10px] ${faint}`}>Defrost:</span>
+          {(Object.keys(RL_VARIANTS) as RlVariant[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => {
+                setVariant(v)
+                setStep(0)
+              }}
+              className={`min-h-9 px-2.5 rounded-lg border text-[11px] font-semibold ${pill(variant === v)}`}
+            >
+              {RL_VARIANTS[v].label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'sequence' && (
         <div className={`rounded-lg border p-2.5 space-y-2 ${chip}`}>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white">
-              STEP {seq.n} / {RL_SEQUENCE.length}
+              STEP {cur.n} / {seq.length}
             </span>
-            <span className="text-[12px] font-bold flex-1 min-w-0 truncate">{seq.title}</span>
+            <span className="text-[12px] font-bold flex-1 min-w-0">{cur.title}</span>
             <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
-                seq.fans === 'running'
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border flex-shrink-0 ${
+                cur.fans === 'running'
                   ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
                   : 'text-red-600 dark:text-red-400 border-red-500/40'
               }`}
             >
-              fans {seq.fans}
+              fans {cur.fans}
             </span>
           </div>
-          <p className={`text-[12px] leading-relaxed ${muted}`}>{seq.body}</p>
+          <p className={`text-[12px] leading-relaxed ${muted}`}>{cur.body}</p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStep((v) => Math.max(0, v - 1))}
@@ -172,16 +191,14 @@ export default function RlWiringDiagram({
               <ChevronLeft size={12} /> Back
             </button>
             <div className="flex-1 flex justify-center gap-1.5" aria-hidden>
-              {RL_SEQUENCE.map((_, n) => (
+              {seq.map((_, n) => (
                 <span
                   key={n}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    n === step ? 'bg-amber-500' : 'bg-slate-400/40'
-                  }`}
+                  className={`w-1.5 h-1.5 rounded-full ${n === step ? 'bg-amber-500' : 'bg-slate-400/40'}`}
                 />
               ))}
             </div>
-            {step === RL_SEQUENCE.length - 1 ? (
+            {step >= seq.length - 1 ? (
               <button
                 onClick={() => setStep(0)}
                 className={`min-h-9 px-2.5 rounded-lg border text-[11px] flex items-center gap-1 ${chip}`}
@@ -190,7 +207,7 @@ export default function RlWiringDiagram({
               </button>
             ) : (
               <button
-                onClick={() => setStep((v) => Math.min(RL_SEQUENCE.length - 1, v + 1))}
+                onClick={() => setStep((v) => Math.min(seq.length - 1, v + 1))}
                 className={`min-h-9 px-2.5 rounded-lg border text-[11px] flex items-center gap-1 ${chip}`}
               >
                 Next <ChevronRight size={12} />
@@ -200,7 +217,7 @@ export default function RlWiringDiagram({
         </div>
       )}
 
-      {tab === 'data' ? (
+      {tab === 'data' && (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`text-[11px] ${faint}`}>Case size:</span>
@@ -208,11 +225,7 @@ export default function RlWiringDiagram({
               <button
                 key={d}
                 onClick={() => setDoors(i)}
-                className={`min-h-9 px-2.5 rounded-lg border text-[11px] font-semibold ${
-                  doors === i
-                    ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                    : `${chip} ${muted}`
-                }`}
+                className={`min-h-9 px-2.5 rounded-lg border text-[11px] font-semibold ${pill(doors === i)}`}
               >
                 {d} door
               </button>
@@ -246,212 +259,252 @@ export default function RlWiringDiagram({
             </table>
           </div>
           <p className={`text-[11px] leading-relaxed ${faint}`}>
-            Per-case figures from the published RL data sheets. Divide by the door count for a
-            per-fan or per-door number before you compare it with a clamp.
+            Per-case figures. Divide by the door count for a per-fan or per-door number before you
+            compare it with a clamp.
           </p>
         </div>
-      ) : (
+      )}
+
+      {tab === 'terminals' && (
+        <div className="space-y-2">
+          {(Object.keys(RL_TERMINAL_GROUPS) as (keyof typeof RL_TERMINAL_GROUPS)[]).map((g) => {
+            const list = RL_TERMINALS.filter((t) => t.group === g)
+            if (!list.length) return null
+            return (
+              <div key={g} className={`rounded-lg border p-2.5 ${chip}`}>
+                <p className="text-[11px] font-semibold mb-1.5">{RL_TERMINAL_GROUPS[g]}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {list.map((t) => (
+                    <span
+                      key={t.n}
+                      className="text-[10px] px-1.5 py-0.5 rounded border border-slate-500/40 flex items-center gap-1"
+                    >
+                      <span className="font-bold tabular-nums">{t.n}</span>
+                      <span
+                        className="w-2 h-2 rounded-full border border-slate-500/40"
+                        style={{ background: RL_MARKER_HEX[t.marker] }}
+                      />
+                      <span className={faint}>{t.marker}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          <ul className="space-y-1.5">
+            {RL_JUMPER_NOTES.map((n, i) => (
+              <li key={i} className={`text-[11px] leading-relaxed pl-4 relative ${muted}`}>
+                <span className="absolute left-0 top-[6px] w-1.5 h-1.5 rounded-full bg-amber-500" />
+                {n}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+            {RL_CAUTION}
+          </p>
+        </div>
+      )}
+
+      {(tab === 'diagram' || tab === 'sequence') && (
         <div className={`rounded-lg border overflow-hidden ${chip}`}>
           <svg
-            viewBox="0 0 364 392"
+            viewBox={`0 0 ${W} ${H}`}
             className="w-full h-auto"
             style={{ background: board }}
             role="img"
-            aria-label="Ladder diagram of the RL 120 volt case circuit and 208 volt defrost circuit"
+            aria-label={`Wiring diagram, ${RL_VARIANTS[variant].label}`}
           >
-            {/* ---- 120 V rails ---- */}
-            <text x={LEFT - 12} y={36} fontSize="9" fill={RL_CIRCUITS.c120.colour} fontWeight="700">
-              120 V case circuit
-            </text>
-            <line
-              x1={LEFT} y1={44} x2={LEFT} y2={236}
-              stroke={RL_CIRCUITS.c120.colour} strokeWidth={2.5}
-            />
-            <line
-              x1={RIGHT} y1={44} x2={RIGHT} y2={236}
-              stroke={RL_CIRCUITS.c120.colour} strokeWidth={2.5}
-            />
-            <text x={LEFT - 10} y={250} fontSize="8" fill={ink}>L1</text>
-            <text x={RIGHT - 4} y={250} fontSize="8" fill={ink}>N</text>
-
-            {/* ---- 208 V rails ---- */}
-            <text x={LEFT - 12} y={286} fontSize="9" fill={RL_CIRCUITS.c208.colour} fontWeight="700">
-              208 V defrost circuit &mdash; from the defrost contactor
-            </text>
-            {/* The 208 V rails are only alive while the contactor is in;
-                the 120 V case circuit is fed all the time. */}
-            <line
-              x1={LEFT} y1={294} x2={LEFT} y2={358}
-              stroke={energised('contactor') ? RL_CIRCUITS.c208.colour : dim}
-              strokeWidth={2.5}
-            />
-            <line
-              x1={RIGHT} y1={294} x2={RIGHT} y2={358}
-              stroke={energised('contactor') ? RL_CIRCUITS.c208.colour : dim}
-              strokeWidth={2.5}
-            />
-            <text x={LEFT - 10} y={372} fontSize="8" fill={ink}>L1</text>
-            <text x={RIGHT - 4} y={372} fontSize="8" fill={ink}>L2</text>
-
-            {/* ---- terminal block ---- */}
-            <g
-              onClick={() => setPicked(picked === 'tb' ? null : 'tb')}
-              style={{ cursor: 'pointer' }}
-            >
-              <rect
-                x={LEFT - 16} y={262} width={64} height={16} rx={3}
-                fill={energised('tb') ? RL_CIRCUITS.c120.colour : dim}
-                opacity={energised('tb') ? 0.25 : 0.4}
-                stroke={picked === 'tb' ? '#f59e0b' : 'transparent'}
-                strokeWidth={1.6}
-              />
-              <text x={LEFT - 10} y={273} fontSize="8" fill={energised('tb') ? ink : dim}>terminal block</text>
-            </g>
-
-            {/* ---- rungs ---- */}
-            {RUNGS.map((rung) => {
-              const c = byId(rung.id)!
-              const on = energised(rung.id)
-              const rail = RL_CIRCUITS[rung.rail].colour
-              const stroke = on ? rail : dim
-              const sel = picked === rung.id
-              return (
-                <g key={`${rung.id}-${rung.y}`}>
-                  {/* conductor across to the load */}
-                  <line
-                    x1={LEFT} y1={rung.y} x2={LOAD_X} y2={rung.y}
-                    stroke={stroke} strokeWidth={on ? 2 : 1.2}
-                    strokeDasharray={on ? undefined : '3 3'}
-                  />
-                  <line
-                    x1={LOAD_X + 76} y1={rung.y} x2={RIGHT} y2={rung.y}
-                    stroke={stroke} strokeWidth={on ? 2 : 1.2}
-                    strokeDasharray={on ? undefined : '3 3'}
-                  />
-
-                  {/* contacts / thermostats in front of the load */}
-                  {rung.gates.map((g, i) => {
-                    const gx = LEFT + 34 + i * 58
-                    const gon = energised(g.id)
-                    return (
-                      <g
-                        key={g.id + i}
-                        onClick={() => setPicked(picked === g.id ? null : g.id)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <rect
-                          x={gx - 14} y={rung.y - 13} width={40} height={26} rx={4}
-                          fill="none"
-                          stroke={
-                            picked === g.id || acting(g.id) ? '#f59e0b' : 'transparent'
-                          }
-                          strokeWidth={1.4}
-                          strokeDasharray={acting(g.id) && picked !== g.id ? '3 2' : undefined}
-                        />
-                        {/* a contact is two pads and a blade; a stat gets a bulb */}
-                        <line x1={gx - 9} y1={rung.y} x2={gx - 4} y2={rung.y} stroke={gon ? ink : dim} strokeWidth={1.6} />
-                        <line x1={gx + 8} y1={rung.y} x2={gx + 13} y2={rung.y} stroke={gon ? ink : dim} strokeWidth={1.6} />
-                        <line
-                          x1={gx - 4}
-                          y1={rung.y}
-                          x2={gx + 8}
-                          y2={g.kind === 'no' ? rung.y : rung.y - 6}
-                          stroke={gon ? RL_CIRCUITS[rung.rail].colour : dim}
-                          strokeWidth={2}
-                        />
-                        {g.kind === 'stat' && (
-                          <circle
-                            cx={gx + 2} cy={rung.y - 11} r={3}
-                            fill="none"
-                            stroke={gon ? ink : dim}
-                            strokeWidth={1.2}
-                          />
-                        )}
-                        <text
-                          x={gx - 4} y={rung.y + 15} fontSize="7"
-                          fill={gon ? ink : dim}
-                          fontWeight={picked === g.id ? '700' : '400'}
-                        >
-                          {g.label}
-                        </text>
-                      </g>
-                    )
-                  })}
-
-                  {/* the load itself */}
-                  <g
-                    onClick={() => setPicked(sel ? null : rung.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {/* Selection is a ring, never a fill: the fill is what
-                        says "energised", and on the sequence tab a selected
-                        load that is OUT is the whole point of looking. */}
-                    {(sel || acting(rung.id)) && (
-                      <rect
-                        x={LOAD_X - 3} y={rung.y - 12} width={82} height={24} rx={5}
-                        fill="none" stroke="#f59e0b" strokeWidth={1.6}
-                        strokeDasharray={acting(rung.id) && !sel ? '3 2' : undefined}
-                      />
-                    )}
-                    <rect
-                      x={LOAD_X} y={rung.y - 9} width={76} height={18} rx={3}
-                      fill={on ? rail : 'transparent'}
-                      opacity={on ? 0.18 : 1}
-                      stroke={on ? rail : dim}
-                      strokeWidth={1.4}
-                      strokeDasharray={on ? undefined : '3 3'}
-                    />
-                    <text
-                      x={LOAD_X + 38} y={rung.y + 3.5}
-                      fontSize="7.5" textAnchor="middle"
-                      fill={on ? ink : dim}
-                      fontWeight={sel ? '700' : '500'}
-                    >
-                      {short(c.label)}
+            {placed.map((b) => (
+              <g key={b.rail.join('-') + b.top}>
+                {b.rail[0] && (
+                  <>
+                    <text x={T_L - 12} y={b.top + 8} fontSize="7" fill={ink} fontWeight="700">
+                      {b.rail[0]}
                     </text>
-                  </g>
+                    <text
+                      x={T_R + 14} y={b.top + 8} fontSize="7" fill={ink}
+                      fontWeight="700" textAnchor="end"
+                    >
+                      {b.rail[1]}
+                    </text>
+                  </>
+                )}
+                {b.title && (
+                  <text x={T_L - 12} y={b.top + 8} fontSize="7" fill={ink} fontWeight="700">
+                    {b.title}
+                  </text>
+                )}
+                {b.rows.map(({ r, y: ry }) => {
+                  const on = rowLive(r)
+                  const stroke = on ? ink : dim
+                  const n = r.devices.length
+                  const span = DEV_R - DEV_L
+                  const at = (i: number) => DEV_L + (span * (i + 0.5)) / n
+                  return (
+                    <g key={r.id}>
+                      {/* conductors */}
+                      <line
+                        x1={T_L + 14} y1={ry} x2={at(0) - 16} y2={ry}
+                        stroke={stroke} strokeWidth={on ? 1.4 : 1}
+                        strokeDasharray={on ? undefined : '3 3'}
+                      />
+                      <line
+                        x1={at(n - 1) + 16} y1={ry} x2={T_R} y2={ry}
+                        stroke={stroke} strokeWidth={on ? 1.4 : 1}
+                        strokeDasharray={on ? undefined : '3 3'}
+                      />
+                      {r.devices.slice(0, -1).map((_, i) => (
+                        <line
+                          key={i}
+                          x1={at(i) + 16} y1={ry} x2={at(i + 1) - 16} y2={ry}
+                          stroke={stroke} strokeWidth={on ? 1.4 : 1}
+                          strokeDasharray={on ? undefined : '3 3'}
+                        />
+                      ))}
+
+                      {/* marker letters, as printed on each leg */}
+                      <Marker x={T_L + 22} y={ry} code={r.markers[0]} ink={on ? ink : dim} />
+                      <Marker x={T_R - 12} y={ry} code={r.markers[1]} ink={on ? ink : dim} />
+
+                      {/* terminals */}
+                      {r.left.terminal !== undefined && (
+                        <Terminal n={r.left.terminal} x={T_L} y={ry} ink={ink} dim={dim} on={on} />
+                      )}
+                      {r.right.terminal !== undefined && (
+                        <Terminal n={r.right.terminal} x={T_R} y={ry} ink={ink} dim={dim} on={on} />
+                      )}
+                      {r.left.rail && (
+                        <text x={T_L - 12} y={ry + 3} fontSize="6" fill={dim}>
+                          {r.left.rail}
+                        </text>
+                      )}
+                      {r.right.rail && (
+                        <text x={T_R + 14} y={ry + 3} fontSize="6" fill={dim} textAnchor="end">
+                          {r.right.rail}
+                        </text>
+                      )}
+
+                      {/* devices */}
+                      {r.devices.map((d, i) => (
+                        <g
+                          key={d.id + i}
+                          onClick={() => setPicked(picked === d.id ? null : d.id)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {(picked === d.id || acting(d.id)) && (
+                            <rect
+                              x={at(i) - 22} y={ry - 15} width={44} height={30} rx={4}
+                              fill="none" stroke="#f59e0b" strokeWidth={1.4}
+                              strokeDasharray={acting(d.id) && picked !== d.id ? '3 2' : undefined}
+                            />
+                          )}
+                          <Device kind={d.kind} x={at(i)} y={ry} on={on} ink={ink} dim={dim} />
+                          <text
+                            x={at(i)} y={ry - 8} fontSize="5.5" textAnchor="middle"
+                            fill={on ? ink : dim}
+                          >
+                            {d.label.length > 30 ? d.label.slice(0, 29) + '…' : d.label}
+                          </text>
+                          {d.item !== undefined && (
+                            <>
+                              {/* The sheet sets the circled item number right
+                                  after the label, so track the label width
+                                  instead of a fixed offset that longer names
+                                  would sit on top of. */}
+                              <circle
+                                cx={at(i) + labelW(d.label) / 2 + 6} cy={ry - 10} r={4.4}
+                                fill="none" stroke={on ? ink : dim} strokeWidth={0.7}
+                              />
+                              <text
+                                x={at(i) + labelW(d.label) / 2 + 6} y={ry - 8.2}
+                                fontSize="5.2" textAnchor="middle"
+                                fill={on ? ink : dim}
+                              >
+                                {d.item}
+                              </text>
+                            </>
+                          )}
+                          {d.mark && (
+                            <text
+                              x={at(i)} y={ry + 12} fontSize="5" textAnchor="middle"
+                              fill={on ? ink : dim}
+                            >
+                              {d.mark}
+                            </text>
+                          )}
+                        </g>
+                      ))}
+                    </g>
+                  )
+                })}
+              </g>
+            ))}
+
+            {/* ── terminal blocks in raceway ── */}
+            <line
+              x1={8} y1={stripTop - 6} x2={W - 8} y2={stripTop - 6}
+              stroke={dim} strokeWidth={0.8} strokeDasharray="4 3"
+            />
+            <text x={W / 2} y={stripTop + 6} fontSize="7" textAnchor="middle" fill={ink} fontWeight="700">
+              Terminal Blocks in Raceway
+            </text>
+            {RL_TERMINALS.map((t, i) => {
+              const bx = 14 + i * 17
+              return (
+                <g key={t.n}>
+                  <text x={bx + 6} y={stripTop + 19} fontSize="5" textAnchor="middle" fill={ink}>
+                    {t.marker}
+                  </text>
+                  <rect
+                    x={bx} y={stripTop + 22} width={12} height={12} rx={1.5}
+                    fill="none" stroke={ink} strokeWidth={0.7}
+                  />
+                  <text x={bx + 6} y={stripTop + 31} fontSize="6" textAnchor="middle" fill={ink}>
+                    {t.n}
+                  </text>
+                  <rect
+                    x={bx + 2} y={stripTop + 36} width={8} height={3}
+                    fill={RL_MARKER_HEX[t.marker]} stroke={dim} strokeWidth={0.3}
+                  />
                 </g>
               )
             })}
-
-            {/* the contactor feeding the 208 V rail */}
-            <g
-              onClick={() => setPicked(picked === 'contactor' ? null : 'contactor')}
-              style={{ cursor: 'pointer' }}
-            >
-              <rect
-                x={LEFT - 16} y={366} width={92} height={16} rx={3}
-                fill={energised('contactor') ? RL_CIRCUITS.c208.colour : dim}
-                opacity={energised('contactor') ? 0.25 : 0.4}
-                stroke={
-                  picked === 'contactor' || acting('contactor') ? '#f59e0b' : 'transparent'
-                }
-                strokeWidth={1.6}
-                strokeDasharray={
-                  acting('contactor') && picked !== 'contactor' ? '3 2' : undefined
-                }
-              />
-              <text x={LEFT - 10} y={377} fontSize="8" fill={energised('contactor') ? ink : dim}>defrost contactor</text>
-            </g>
+            <text x={14} y={stripTop + 52} fontSize="5.5" fill={ink}>
+              1&ndash;8 defrost heaters (208 V)
+            </text>
+            <text x={14} y={stripTop + 61} fontSize="5.5" fill={ink}>
+              10&ndash;16 fans &amp; A.S. (120 V) &middot; 17 lights &middot; 20 lights neutral &middot; 21&ndash;26 fans &amp; A.S. neutral
+            </text>
+            <text x={14} y={stripTop + 70} fontSize="5.5" fill={dim}>
+              Heavy lines inside the blocks are permanent internal jumpers.
+            </text>
           </svg>
         </div>
       )}
 
-      {tab !== 'data' && (
+      {(tab === 'diagram' || tab === 'sequence') && (
         <p className={`text-[11px] ${faint}`}>
-          {tab === 'sequence' && seq.actor
+          {tab === 'sequence'
             ? 'Solid rungs have power through them; dashed ones are out. The dashed amber mark is the device doing the switching at this step — often the one that has just opened. '
             : ''}
-          Tap any contact, thermostat or load to read what it does and how it fails.
+          Tap any device to read what it does and how it fails.
         </p>
       )}
 
       {detail && (
         <div className={`rounded-lg border p-2.5 space-y-1.5 ${chip}`}>
           <div className="flex items-center gap-2">
-            <Zap size={12} className="text-amber-500 flex-shrink-0" />
+            {detail.item !== undefined && (
+              <span className="text-[10px] w-4 h-4 rounded-full border border-amber-500 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                {detail.item}
+              </span>
+            )}
             <span className="text-[12px] font-bold flex-1">{detail.label}</span>
-            <span className={`text-[10px] ${faint}`}>{RL_CIRCUITS[detail.circuit].label}</span>
+            {!!detail.terminals?.length && (
+              <span className={`text-[10px] ${faint}`}>
+                terminals {detail.terminals.join(', ')}
+              </span>
+            )}
           </div>
           <p className={`text-[11.5px] leading-relaxed ${muted}`}>
             <span className="font-semibold">Where: </span>
@@ -471,32 +524,12 @@ export default function RlWiringDiagram({
               {detail.part}
             </p>
           )}
-          {detail.wires && (
-            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              <span className={`text-[10px] ${faint}`}>Markers:</span>
-              {detail.wires.map((w) => {
-                const col = RL_WIRE_COLOURS.find((c) => c.code === w)
-                return (
-                  <span
-                    key={w}
-                    className="text-[10px] px-1.5 py-0.5 rounded-full border border-slate-500/30 flex items-center gap-1"
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full border border-slate-500/40"
-                      style={{ background: col?.hex }}
-                    />
-                    {w}
-                  </span>
-                )
-              })}
-            </div>
-          )}
         </div>
       )}
 
       <details className={`rounded-lg border p-2.5 ${chip}`}>
         <summary className="text-[11.5px] font-semibold cursor-pointer">
-          Wire marker colours and the notes printed on the sheet
+          Legend, parts list and the notes printed on the sheet
         </summary>
         <div className="flex flex-wrap gap-1.5 mt-2">
           {RL_WIRE_COLOURS.map((c) => (
@@ -513,34 +546,124 @@ export default function RlWiringDiagram({
             </span>
           ))}
         </div>
-        <p className={`text-[11px] leading-relaxed mt-2 ${muted}`}>{RL_WIRE_COLOUR_NOTE}</p>
         <ul className="space-y-1.5 mt-2">
-          {RL_DIAGRAM_NOTES.map((n, i) => (
+          {RL_LEGEND_NOTES.map((n, i) => (
             <li key={i} className={`text-[11px] leading-relaxed pl-4 relative ${muted}`}>
               <span className="absolute left-0 top-[6px] w-1.5 h-1.5 rounded-full bg-amber-500" />
               {n}
             </li>
           ))}
         </ul>
+        <p className="text-[11px] font-semibold mt-2.5 mb-1">Parts list</p>
+        <div className="flex flex-wrap gap-1.5">
+          {RL_PARTS.map((p) => (
+            <span
+              key={p.item}
+              className="text-[10px] px-1.5 py-0.5 rounded-full border border-slate-500/30 flex items-center gap-1"
+            >
+              <span className="w-3.5 h-3.5 rounded-full border border-slate-500/50 flex items-center justify-center">
+                {p.item}
+              </span>
+              <span className={faint}>{p.label}</span>
+            </span>
+          ))}
+        </div>
+        <p className={`text-[11px] leading-relaxed mt-2 ${muted}`}>{RL_LIGHTING_NOTE}</p>
         <p className={`text-[10px] leading-relaxed mt-2 ${faint}`}>
-          Drawn from {RL_SOURCES.map((s) => s.doc).join(', ')}.
+          {RL_SHEET.title}, {RL_SHEET.part} &mdash; {RL_SHEET.maker}
         </p>
       </details>
     </section>
   )
 }
 
-/** Labels are written for the detail card; the boxes are 76 px wide. */
-function short(label: string): string {
-  const map: Record<string, string> = {
-    'Anti-sweat control relay': 'AS relay coil',
-    'Evaporator fan assemblies': 'Fans',
-    'Door anti-sweat heaters': 'Door heaters',
-    'Frame anti-sweat heaters': 'Frame heaters',
-    'Drain pan, bottom and plenum heaters': 'Pan heaters',
-    'Door lamps and LED power supply': 'Lamps / LED',
-    'Electric defrost heaters, front and rear': 'Defrost heaters',
-    'Fan control relay': 'Fan relay coil'
-  }
-  return map[label] ?? label
+/** Rough advance width of the 5.5 px label text, for placing the circled
+ *  parts-list number just after it the way the sheet does. */
+function labelW(label: string): number {
+  return Math.min(label.length, 30) * 2.55
+}
+
+function Terminal({
+  n, x, y, ink, dim, on
+}: { n: number; x: number; y: number; ink: string; dim: string; on: boolean }) {
+  return (
+    <g>
+      <rect
+        x={x} y={y - 6} width={14} height={12} rx={1.5}
+        fill="none" stroke={on ? ink : dim} strokeWidth={0.8}
+      />
+      <text x={x + 7} y={y + 3} fontSize="6.5" textAnchor="middle" fill={on ? ink : dim}>
+        {n}
+      </text>
+    </g>
+  )
+}
+
+function Marker({ x, y, code, ink }: { x: number; y: number; code: string; ink: string }) {
+  return (
+    <text x={x} y={y - 3} fontSize="5.5" fill={ink} textAnchor="middle">
+      {code}
+    </text>
+  )
+}
+
+/** Sheet symbols: a coil is a circle marked C, a heater is a resistor, a fan
+ *  is a blade, a contact is a blade across two pads. */
+function Device({
+  kind, x, y, on, ink, dim
+}: {
+  kind: string
+  x: number
+  y: number
+  on: boolean
+  ink: string
+  dim: string
+}) {
+  const c = on ? ink : dim
+  if (kind === 'coil')
+    return (
+      <g>
+        <circle cx={x} cy={y} r={5.5} fill="none" stroke={c} strokeWidth={0.9} />
+        <text x={x} y={y + 2.2} fontSize="5.5" textAnchor="middle" fill={c}>C</text>
+        <circle cx={x - 8} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
+        <circle cx={x + 8} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
+      </g>
+    )
+  if (kind === 'heater')
+    return (
+      <g>
+        <circle cx={x - 12} cy={y} r={1.5} fill="none" stroke={c} strokeWidth={0.7} />
+        <polyline
+          points={`${x - 10},${y} ${x - 8},${y - 4} ${x - 4},${y + 4} ${x},${y - 4} ${x + 4},${y + 4} ${x + 8},${y - 4} ${x + 10},${y}`}
+          fill="none" stroke={c} strokeWidth={0.9}
+        />
+        <circle cx={x + 12} cy={y} r={1.5} fill="none" stroke={c} strokeWidth={0.7} />
+      </g>
+    )
+  if (kind === 'fan')
+    return (
+      <g>
+        <circle cx={x} cy={y} r={3} fill="none" stroke={c} strokeWidth={0.9} />
+        <path d={`M${x - 3},${y - 3} L${x - 10},${y - 6} L${x - 10},${y + 6} Z`} fill="none" stroke={c} strokeWidth={0.8} />
+        <path d={`M${x + 3},${y - 3} L${x + 10},${y - 6} L${x + 10},${y + 6} Z`} fill="none" stroke={c} strokeWidth={0.8} />
+      </g>
+    )
+  if (kind === 'ref')
+    return (
+      <rect
+        x={x - 16} y={y - 5} width={32} height={10} rx={1}
+        fill="none" stroke={dim} strokeWidth={0.7} strokeDasharray="2 2"
+      />
+    )
+  // contact, stat, switch
+  return (
+    <g>
+      <circle cx={x - 7} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
+      <circle cx={x + 7} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
+      <line x1={x - 6} y1={y} x2={x + 6} y2={y - 5} stroke={c} strokeWidth={1.1} />
+      {kind === 'stat' && (
+        <path d={`M${x - 6},${y + 6} q6,-4 12,0`} fill="none" stroke={c} strokeWidth={0.8} />
+      )}
+    </g>
+  )
 }
