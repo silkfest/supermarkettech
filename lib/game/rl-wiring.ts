@@ -90,7 +90,7 @@ export const RL_COMPONENTS: RlComponent[] = [
     id: 'fans',
     label: 'Evaporator fan assemblies',
     circuit: 'c120',
-    where: 'Behind the discharge air grille, above the top shelf. Each fan is on its own plug.',
+    where: 'Low in the case — the coil and its fans sit under the bottom shelf, behind the discharge air grille. Clearing that bottom shelf is all the access you need, and each fan is on its own plug.',
     does: 'Pull case air across the coil. They run only when the fan relay contacts and the anti-sweat relay contacts are both closed.',
     fails:
       'Motor open — power at the plug, nothing turning. Because each fan is plugged, you can unplug one and read its plug without disturbing the rest of the bank.',

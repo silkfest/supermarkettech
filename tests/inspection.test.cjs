@@ -778,6 +778,20 @@ test('a thermostat that has just opened is never drawn as energised', () => {
   assert.ok(limit.live.includes('fanrelay'), 'the fans are still held out by the 208 V coil')
 })
 
+test('the sheet and the call agree on where the fans actually are', () => {
+  // On an RL the coil and its fans are in the BOTTOM of the case, which is
+  // why clearing the bottom shelf is the whole access. An earlier version of
+  // the sheet said "above the top shelf" while the call said bottom, and only
+  // a tech reading both caught it.
+  const fans = RL_COMPONENTS.find(c => c.id === 'fans')
+  assert.match(fans.where, /bottom shelf/i)
+  assert.doesNotMatch(fans.where, /top shelf/i)
+  // And the call's own access guidance has to say the same thing.
+  const f2src = fs.readFileSync('lib/game/inspection/f2.ts', 'utf8')
+  assert.match(f2src, /bottom shelf/i)
+  assert.doesNotMatch(f2src, /top shelf/i)
+})
+
 test('the published load table is complete and rises with the door count', () => {
   for (const row of RL_LOADS) {
     assert.equal(row.amps.length, RL_DOOR_COUNTS.length, row.load)
