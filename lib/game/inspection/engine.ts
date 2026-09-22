@@ -151,7 +151,7 @@ export function guidance(s: InspectionState): Guidance {
           hints: [
             'Nothing can be verified while the circuit is still opened up.',
             'Go to the Defrost circuit.',
-            'Use “Reconnect, secure covers and restore”.'
+            'Use “Reconnect the leads and restore power”, then secure the cover once your readings are done.'
           ]
         }
       case 'Full heater current measured during defrost':
@@ -571,21 +571,27 @@ export function interact(
       if (action.tool !== 'hands')
         fail(
           isF2(s)
-            ? 'Select hand tools to separate the motor leads at the terminal block.'
+            ? 'Select hand tools to unplug the fan.'
             : 'Select hand tools to disconnect one lead on each element.'
         )
-      else if (!s.isolated || !s.provedDead)
+      // Pulling a plug is not the same as separating leads on a live bank:
+      // the plug IS the isolation for that one fan, so it needs access only.
+      else if (!s.coverOpen)
         fail(
-          `Isolate and prove the ${isF2(s) ? 'fan' : 'heater'} circuit dead before disconnecting leads.`,
+          isF2(s)
+            ? 'Clear the bottom shelf and lift the discharge grille to reach the plugs.'
+            : 'Open the heater service cover first.'
+        )
+      else if (!isF2(s) && (!s.isolated || !s.provedDead))
+        fail(
+          'Isolate and prove the heater circuit dead before disconnecting leads.',
           true
         )
-      else if (!s.coverOpen)
-        fail(`Open the ${isF2(s) ? 'fan compartment' : 'heater service'} cover first.`)
       else {
         s.leadsDisconnected = true
         minutes = 3
         s.feedback = isF2(s)
-          ? 'Motor leads separated at the terminal block, so each winding reads on its own.'
+          ? 'That fan is unplugged. The other two keep running, and the motor side of this plug is now dead to work on.'
           : 'One lead removed from each heater, eliminating parallel paths for resistance tests.'
       }
       break
@@ -596,11 +602,10 @@ export function interact(
         s.leadsDisconnected = false
         s.isolated = false
         s.provedDead = false
-        s.coverOpen = false
         minutes = 3
         s.feedback = isF3(s)
           ? 'Valves back-seated, the section is open to the rack and in service again.'
-          : `Leads reconnected, covers secured, ${isF2(s) ? 'fan' : 'heater'} circuit restored.`
+          : `Leads reconnected and the ${isF2(s) ? 'fan' : 'heater'} circuit is live again. The cover is still off, so take your running readings before you button it up.`
       }
       break
     case 'measure': {
@@ -719,12 +724,13 @@ export function interact(
       }
       if (isF2(s)) {
         if (diagnosisIsCorrectF2(action)) {
-          s.diagnosis = 'Electrical \u2192 Evaporator fans \u2192 Motor #3 open winding'
+          s.diagnosis =
+            'Electrical \u2192 Evaporator fans \u2192 Motor open, power present at the plug'
           s.feedback =
-            'Diagnosis supported by the stopped fan, the missing motor load and the open winding.'
+            'Diagnosis supported: the case is offering that plug full voltage and nothing turns, so the fault is on the motor side of it.'
         } else {
           s.feedback =
-            'That diagnosis does not explain a circuit two motors short with one open winding.'
+            'That diagnosis does not explain a fan sitting still with 118 V on its plug.'
           minutes = 5
         }
         break
@@ -751,15 +757,20 @@ export function interact(
       // Only the work that breaks into the liquid line needs the section
       // pumped down. Weighing in refrigerant does not — which is exactly how
       // this rack got two top-ups it did not need.
+      // Each call's own idea of "safe to open". A plug-connected fan is made
+      // safe by unplugging that one fan; the heater bank needs the whole
+      // circuit locked out and the leads separated.
       const opened = isF3(s)
         ? action.part !== 'cores' || (s.isolated && s.provedDead)
-        : s.isolated && s.provedDead && s.leadsDisconnected
+        : isF2(s)
+          ? s.leadsDisconnected
+          : s.isolated && s.provedDead && s.leadsDisconnected
       if (!opened) {
         fail(
           isF3(s)
             ? 'Front-seat the receiver outlet, pump the section down and confirm 0 psig before you open the shell.'
             : isF2(s)
-              ? 'Isolate, prove dead and disconnect before changing a fan motor.'
+              ? 'Unplug that fan before you change the motor.'
               : 'Isolate, prove dead and disconnect before replacing a heater.',
           true
         )
@@ -792,7 +803,7 @@ export function interact(
         if (replaceF2(s, action.part)) {
           minutes = 25
           s.feedback =
-            'Replacement motor fitted. Restore the circuit, then verify full fan current, even discharge air and pull-down.'
+            'Replacement motor fitted and plugged in. Verify full fan current, even discharge air and pull-down, then refit the grille.'
         } else {
           next.partsWasted += F2_PARTS[action.part]?.cost ?? 95
           s.repairs = [...s.repairs, `Unnecessary replacement: ${action.part}`]

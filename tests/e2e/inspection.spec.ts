@@ -89,11 +89,10 @@ test('F1 physical workflow completes without changing practice progression', asy
 
   await area('Defrost heaters')
   await act('Replace heater 3').click()
-  await act('Reconnect, secure covers and restore').click()
+  await act('Reconnect the leads and restore power').click()
   await area('Controller')
   await act('Request a manual defrost').click()
   await area('Defrost circuit')
-  await act('Remove the service cover').click()
   await act('Clamp the heater feeder').click()
   await read('Clamp current')
   await act('Wait 10 min').click()

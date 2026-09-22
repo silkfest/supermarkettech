@@ -85,6 +85,7 @@ export const COMMON_FAULTS: FaultDef[] = [
       LOTO_CHECK,
       { id: 'look', label: 'Pull the discharge grille and look at each fan', tool: 'Eyes / flashlight', minutes: 6, key: true, finding: 'Two of the three fans are turning. The one over the warm end is stopped, and the blade spins freely by hand with no drag or noise from the bearing.' },
       { id: 'clamp', label: 'Clamp the fan circuit', tool: 'Amp clamp', minutes: 5, key: true, finding: '0.8 A on a circuit that should pull 1.2 A. Two motors worth, not three.' },
+      { id: 'plug', label: 'Unplug the stopped fan and read its plug for voltage', tool: 'Multimeter', minutes: 6, key: true, finding: '118 V on the supply half of the plug. The case is offering that fan everything it needs and it still will not turn, so the fault is on the motor side of the plug. Each fan has its own plug behind the discharge grille, so only the bottom shelf has to be cleared.' },
       { id: 'coil', label: 'Look at the frost pattern along the coil', tool: 'Eyes', minutes: 4, finding: 'Heavy even frost under the dead fan and normal light frost everywhere else. Nothing is pulling heat through that section.' },
       { id: 'drain', label: 'Check the drain and the pan', tool: 'Eyes', minutes: 4, finding: 'Clear and empty. Not a drainage problem.' },
     ],

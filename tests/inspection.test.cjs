@@ -421,7 +421,8 @@ function fanFixture() {
     sample(mid) { const m = F2_MEASUREMENTS.find(m => m.id === mid); return this.act({ type: 'measure', measurement: mid, tool: m.tool, mode: m.mode || '', terminals: m.terminals || [] }) },
     observe(component) { return this.act({ type: 'observe', component, tool: component === 'controller' ? 'controller' : 'flashlight' }) },
     hands(type) { return this.act({ type, tool: 'hands' }) },
-    wait(minutes) { return this.act({ type: 'wait', minutes }) }
+    wait(minutes) { return this.act({ type: 'wait', minutes }) },
+    value(id) { const e = [...this.s.evidence].reverse().find(e => e.id === id); return e && e.value }
   }
 }
 
@@ -445,40 +446,40 @@ test('the supermarket board opens with both hands-on work orders', () => {
   assert.equal(second.inspection.definition, 'f2-evap-fan')
 })
 
-test('a winding cannot be ohmed on a live circuit, and the attempt is logged as unsafe', () => {
+test('a fan cannot be ohmed while it is still plugged in', () => {
   const f = fanFixture().hands('open-cover').sample('m3')
   assert.equal(f.s.safetyMistakes.length, 1)
   assert.ok(!f.s.evidence.some(e => e.id === 'm3'))
+  // Unplugging that one fan is what makes it safe — the bank keeps running.
+  f.hands('disconnect').sample('m3')
+  assert.match(f.value('m3'), /OL/)
+  assert.equal(f.s.safetyMistakes.length, 1)
+  assert.equal(f.s.isolated, false, 'no lock-out is needed to work one plug')
 })
 
-test('clamping the fan circuit reads two motors worth against a three-motor nameplate', () => {
-  const f = fanFixture().hands('open-cover').sample('circuit')
-  const reading = f.s.evidence.find(e => e.id === 'circuit')
-  assert.match(reading.value, /^0\.8 A against 1\.2 A nameplate$/)
-  // Locked out it reads zero, and that zero must not stand in for the real one.
-  f.hands('isolate').sample('circuit')
-  assert.ok(f.s.evidence.some(e => e.id === 'circuit-off'))
-  assert.equal(f.s.evidence.filter(e => e.id === 'circuit').length, 1)
+test('the grille has to come off before anything behind it can be reached', () => {
+  const f = fanFixture().sample('circuit')
+  assert.ok(!f.s.evidence.some(e => e.id === 'circuit'))
+  assert.match(f.s.feedback, /bottom shelf|grille/)
 })
 
-test('only the stopped fan ohms open, and the diagnosis needs all three', () => {
-  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
-    .hands('isolate').sample('dead').hands('disconnect')
-  f.sample('m1').sample('m2')
-  assert.equal(canDiagnose(f.s), false, 'two windings is not three')
-  f.sample('m3')
-  assert.equal(f.s.evidence.find(e => e.id === 'm1').value, '182 Ω')
-  assert.match(f.s.evidence.find(e => e.id === 'm3').value, /OL/)
-  assert.equal(canDiagnose(f.s), true)
+test('power at the plug with nothing turning is the whole diagnosis', () => {
+  const f = fanFixture().observe('fans').hands('open-cover')
+  // The plug reading means nothing until the fan is actually out of circuit.
+  f.sample('plug')
+  assert.ok(!f.s.evidence.some(e => e.id === 'plug'))
+  assert.equal(canDiagnose(f.s), false)
+  f.hands('disconnect').sample('plug')
+  assert.match(f.value('plug'), /118 V on the supply half/)
+  assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
 })
 
 test('a wrong call, and a wrong part, both cost you', () => {
-  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
-    .hands('isolate').sample('dead').hands('disconnect').sample('m1').sample('m2').sample('m3')
-  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'TXV', failure: 'Failed open' })
-  assert.equal(f.s.diagnosis, null)
-  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
-  assert.match(f.s.diagnosis, /Motor #3 open winding/)
+  const f = fanFixture().observe('fans').hands('open-cover').hands('disconnect').sample('plug')
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'No power reaching the plug' })
+  assert.equal(f.s.diagnosis, null, '118 V at the plug rules that out')
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
+  assert.match(f.s.diagnosis, /Motor open/)
   assert.equal(f.call.causeAttempts, 2)
   f.act({ type: 'replace', part: 'all-motors', tool: 'hands' })
   assert.equal(f.call.partsWasted, 285)
@@ -488,26 +489,27 @@ test('a wrong call, and a wrong part, both cost you', () => {
 test('the fan call runs end to end to a verified repair', () => {
   const f = fanFixture()
   f.observe('product').observe('fans').observe('coil')
-  f.hands('open-cover').sample('circuit').sample('leads')
-  f.hands('isolate').sample('dead').hands('disconnect')
-  f.sample('m1').sample('m2').sample('m3')
+  f.hands('open-cover').sample('circuit')
+  f.hands('disconnect').sample('plug').sample('m3')
   assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
-  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
   f.act({ type: 'replace', part: 'M3', tool: 'hands' })
   assert.equal(f.s.repaired, true)
   assert.deepEqual(f.s.fans, [true, true, true])
+  // Plugging back in leaves the grille off, so the running readings can be
+  // taken without a refit-then-strip-again round trip.
   f.hands('restore')
-  // Air, coil and product all recover once the third fan is turning again.
+  assert.equal(f.s.coverOpen, true, 'plugging back in must not refit the grille')
   for (let i = 0; i < 6; i++) f.wait(10)
-  f.hands('open-cover').sample('circuit')
+  f.sample('circuit')
   assert.match(f.s.evidence.filter(e => e.id === 'circuit').pop().value, /^1\.2 A/)
   f.sample('air3').observe('coil').sample('product')
-  f.hands('restore')
+  f.hands('close-cover')
   const left = verifyChecklist(f.s).filter(x => !x.done).map(x => x.label)
   assert.deepEqual(left, [], `outstanding: ${left.join('; ')}`)
   f.act({ type: 'verify' })
   assert.equal(f.s.verified, true)
-  const result = scoreCall(f.call, F2_FAULT, 'Replaced open evaporator fan motor #3.')
+  const result = scoreCall(f.call, F2_FAULT, 'Replaced open evaporator fan motor.')
   assert.ok(result.points > 0)
 })
 
@@ -520,15 +522,15 @@ test('guidance on the fan call always names an action, never just the goal', () 
     assert.ok(g.hints.length >= 3, g.text)
     if (seen.has(g.text)) break
     seen.add(g.text)
-    // Step the call forward along its intended path.
     if (!f.s.evidence.some(e => e.id === 'stopped')) f.observe('fans')
-    else if (!f.s.evidence.some(e => e.id === 'circuit')) { f.hands('open-cover'); f.sample('circuit') }
-    else if (!f.s.evidence.some(e => e.id === 'm3')) { f.hands('isolate'); f.sample('dead'); f.hands('disconnect'); f.sample('m1'); f.sample('m2'); f.sample('m3') }
-    else if (!f.s.diagnosis) f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+    else if (!f.s.coverOpen) f.hands('open-cover')
+    else if (!f.s.leadsDisconnected) f.hands('disconnect')
+    else if (!f.s.evidence.some(e => e.id === 'plug')) f.sample('plug')
+    else if (!f.s.diagnosis) f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
     else if (!f.s.repaired) f.act({ type: 'replace', part: 'M3', tool: 'hands' })
     else break
   }
-  assert.ok(seen.size >= 4, `expected the ladder to advance, saw ${seen.size} steps`)
+  assert.ok(seen.size >= 5, `expected the ladder to advance, saw ${seen.size} steps`)
 })
 
 test('the fan call leaves the defrost call untouched', () => {

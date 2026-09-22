@@ -25,7 +25,7 @@ test('M1 evaporator-fan call plays through to a verified repair', async ({
 
   const nav = page.getByRole('navigation', { name: 'Inspection pages' })
   const tab = (name: string) => nav.getByRole('button', { name })
-  const act = (name: string) => page.getByRole('button', { name })
+  const act = (name: string | RegExp) => page.getByRole('button', { name })
   const area = async (name: string) => {
     await tab('Work').click()
     await page.getByRole('button', { name, exact: true }).first().click()
@@ -48,38 +48,35 @@ test('M1 evaporator-fan call plays through to a verified repair', async ({
     page.getByRole('region', { name: 'Service notebook' })
   ).toContainText('return-end fan is stopped')
 
-  await area('Fan circuit')
-  await act('Open the fan compartment cover').click()
+  // Access is a cleared shelf and a grille, not a stripped case.
+  await area('Evaporator fans')
+  await act('Clear the bottom shelf and lift the grille').click()
   await act('Clamp the fan circuit conductor').click()
   await read('Clamp current')
-  // The value shows on the meter face and again on the feedback line.
   await expect(
     page.getByText('0.8 A against 1.2 A nameplate').first()
   ).toBeVisible()
 
-  await act('Secure the fan disconnect OFF').click()
-  await act('Prove the circuit dead').click()
+  // Unplugging that one fan is what makes it safe to work on and what turns
+  // the plug into a place you can read supply voltage.
+  await act('Unplug the stopped fan').click()
+  await act('Voltage at the unplugged fan\u2019s plug').click()
   await read('Voltage')
-  await act('Separate the motor leads').click()
-  await area('Evaporator fans')
-  for (const n of [1, 2, 3]) {
-    await act(`Ohm fan motor ${n} winding`).click()
-    await read('Resistance')
-  }
+  await expect(page.getByText(/118 V on the supply half/).first()).toBeVisible()
+  await act('Ohm the motor across its own plug').click()
+  await read('Resistance')
 
   await tab('Diagnose').click()
   await page.getByRole('radio', { name: 'Electrical', exact: true }).click()
   await page.getByRole('radio', { name: 'Evaporator fans' }).click()
-  await page.getByRole('radio', { name: 'Motor #3 open winding' }).click()
-  await act('Call it: Motor #3 open winding').click()
+  await page.getByRole('radio', { name: /Motor open/ }).click()
+  await act(/Call it: Motor open/).click()
 
   await area('Evaporator fans')
-  await act('Replace fan motor 3 · $95').click()
-  await act('Reconnect, secure covers and restore').click()
+  await act(/Swap the motor and plug it in/).click()
+  await act('Plug the fan back in').click()
   for (let i = 0; i < 6; i++) await act('Wait 10 min').click()
 
-  await area('Fan circuit')
-  await act('Open the fan compartment cover').click()
   await act('Clamp the fan circuit conductor').click()
   await read('Clamp current')
   await expect(
@@ -93,15 +90,15 @@ test('M1 evaporator-fan call plays through to a verified repair', async ({
   await probe()
   await area('Evaporator')
   await act('Inspect the evaporator coil').click()
-  await area('Fan circuit')
-  await act('Reconnect, secure covers and restore').click()
+  await area('Evaporator fans')
+  await act('Refit the grille and restock the shelf').click()
 
   await tab('Report').click()
   await act('Confirm verified operation').click()
   for (const chip of ['+ Found', '+ Measured', '+ Repaired', '+ Verified'])
     await page.getByRole('button', { name: chip, exact: true }).click()
   await expect(page.getByLabel('Service report')).toHaveValue(
-    /Motor #3 open winding[\s\S]*Replaced fan motor #3[\s\S]*Verified/
+    /Motor open[\s\S]*Replaced fan motor #3[\s\S]*Verified/
   )
   await act('Complete report and view debrief').click()
   await expect(page.getByRole('heading', { name: 'Shift over, Ben.' })).toBeVisible()

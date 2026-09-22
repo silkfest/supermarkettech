@@ -487,27 +487,29 @@ function buildActions(
     if (selected === 'product')
       for (const [i, where] of ['supply', 'centre', 'return'].entries())
         add(`air${i + 1}`, 'measure', `Read the discharge air at the ${where} end`, 'thermometer', meter(`air${i + 1}`))
-    if (selected === 'electrical' || selected === 'fans') {
-      add('cover', 'circuit', s.coverOpen ? 'Secure the fan compartment cover' : 'Open the fan compartment cover', 'hands', act({ type: s.coverOpen ? 'close-cover' : 'open-cover', tool: 'hands' }))
+    if (selected === 'fans' || selected === 'electrical') {
+      add(
+        'cover',
+        'circuit',
+        s.coverOpen ? 'Refit the grille and restock the shelf' : 'Clear the bottom shelf and lift the grille',
+        'hands',
+        act({ type: s.coverOpen ? 'close-cover' : 'open-cover', tool: 'hands' })
+      )
       add('clampit', 'measure', 'Clamp the fan circuit conductor', 'clamp', meter('circuit'))
-      if (!s.isolated)
-        add('isolate', 'circuit', 'Secure the fan disconnect OFF', 'hands', act({ type: 'isolate', tool: 'hands' }))
-      add('dead', 'measure', s.isolated ? 'Prove the circuit dead' : 'Check for voltage', 'multimeter', meter('dead'))
-      add('leads', 'measure', 'Check voltage at the stopped motor leads', 'multimeter', meter('leads'))
-      if (s.isolated && !s.leadsDisconnected)
-        add('disconnect', 'circuit', 'Separate the motor leads', 'hands', act({ type: 'disconnect', tool: 'hands' }))
-      if (s.isolated || s.leadsDisconnected || s.coverOpen)
-        add('restore', 'circuit', 'Reconnect, secure covers and restore', 'hands', act({ type: 'restore', tool: 'hands' }))
-    }
-    if (selected === 'fans')
-      for (const n of [1, 2, 3]) {
-        add(`m${n}`, 'measure', `Ohm fan motor ${n} winding`, 'multimeter', meter(`m${n}`))
-        add(`mg${n}`, 'measure', `Ohm fan motor ${n} to the case frame`, 'multimeter', meter(`mg${n}`))
-        if (s.diagnosis && !s.repaired)
-          add(`rep${n}`, 'repair', `Replace fan motor ${n} · $95`, 'hands', act({ type: 'replace', part: `M${n}`, tool: 'hands' }))
+      if (s.coverOpen && !s.leadsDisconnected)
+        add('unplug', 'circuit', 'Unplug the stopped fan', 'hands', act({ type: 'disconnect', tool: 'hands' }))
+      if (s.leadsDisconnected) {
+        add('plug', 'measure', 'Voltage at the unplugged fan\u2019s plug', 'multimeter', meter('plug'))
+        add('m3', 'measure', 'Ohm the motor across its own plug', 'multimeter', meter('m3'))
+        add('mg3', 'measure', 'Ohm the motor to the case frame', 'multimeter', meter('mg3'))
       }
-    if (selected === 'fans' && s.diagnosis && !s.repaired)
-      add('rep-all', 'repair', 'Replace all three fan motors · $285', 'hands', act({ type: 'replace', part: 'all-motors', tool: 'hands' }))
+      if (s.isolated || s.leadsDisconnected)
+        add('restore', 'circuit', 'Plug the fan back in', 'hands', act({ type: 'restore', tool: 'hands' }))
+    }
+    if (selected === 'fans' && s.diagnosis && !s.repaired) {
+      add('rep3', 'repair', 'Swap the motor and plug it in \u00b7 $95', 'hands', act({ type: 'replace', part: 'M3', tool: 'hands' }))
+      add('rep-all', 'repair', 'Replace all three fan motors \u00b7 $285', 'hands', act({ type: 'replace', part: 'all-motors', tool: 'hands' }))
+    }
     return out
   }
 
@@ -526,7 +528,7 @@ function buildActions(
     if (s.isolated && !s.leadsDisconnected)
       add('disconnect', 'circuit', 'Disconnect one lead per element', 'hands', act({ type: 'disconnect', tool: 'hands' }))
     if (s.isolated || s.leadsDisconnected || s.coverOpen)
-      add('restore', 'circuit', 'Reconnect, secure covers and restore', 'hands', act({ type: 'restore', tool: 'hands' }))
+      add('restore', 'circuit', 'Reconnect the leads and restore power', 'hands', act({ type: 'restore', tool: 'hands' }))
   }
 
   if (selected === 'heaters')

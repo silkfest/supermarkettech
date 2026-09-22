@@ -73,6 +73,14 @@ The traps are the ones that cost money in the field: clamping the circuit while 
 
 There is no defrost in this call, so the controller offers no manual defrost and the coil strip never glows; the stopped fan is drawn stopped instead. Air recovers fastest after the repair, then the coil sheds its slab, then the product — about three ten-minute waits in total.
 
+### Worked the way the job is actually worked
+
+The first version of this call put the whole fan bank through a lock-out: secure the disconnect, prove dead, separate the motor leads at the terminal block, ohm all three windings. That is how you would approach a hard-wired bank, and it is not how these cases are built. Each fan is on its own plug behind the discharge grille, so the real job is: clear the bottom shelf (a clerk can do that), lift the grille, unplug the fan that is not turning, and read its plug. Power there with nothing turning puts the fault on the motor side of the plug, and that is the diagnosis.
+
+So the required evidence is now two things — the stopped fan and the voltage at its plug. The clamp and the winding ohm remain available as supporting evidence and still improve the debrief, but neither gates the diagnosis. Unplugging one fan is also what makes it safe to change the motor, so the repair needs no lock-out at all; ohming a fan that is still plugged in is still a live resistance test and is still logged as a safety mistake.
+
+**Restoring power and refitting the panel are now separate actions.** They used to be one, which forced a secure-then-immediately-reopen every single time: you cannot clamp a running circuit through a closed cover. Worse, a technician who followed that guidance found the post-repair clamp silently refused — the reading needs the cover off — so the verification checklist kept an item unticked with no visible reason. Restoring power now leaves the panel open, and securing it is the last step, where it belongs. Both calls that use covers were affected; both are fixed, and a test pins that restoring power does not close anything.
+
 `M1 field practice` on the store header opens it directly; on a full supermarket shift it is the second work order dispatched, after F1.
 
 ## The liquid line drier call (Rack A)
