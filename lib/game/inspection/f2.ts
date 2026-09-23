@@ -1,4 +1,5 @@
 import { COMMON_FAULTS } from '../faults-common'
+import { RL_FAN_AMPS_EE } from '../rl-wiring'
 import type {
   ComponentId,
   EvidenceItem,
@@ -47,33 +48,26 @@ export const F2_MEASUREMENTS: Measurement[] = [
     terminals: ['fan circuit conductor', 'clamp jaw'] as const
   },
   {
-    id: 'dead',
-    label: 'Prove the fan circuit dead (tested meter)',
+    id: 'plug',
+    label: 'Voltage at the unplugged fan\u2019s plug',
     tool: 'multimeter',
     mode: 'volts',
-    terminals: ['fan supply conductors', 'all conductors / ground'] as const
+    terminals: ['supply half of the fan plug', 'neutral'] as const
   },
   {
-    id: 'leads',
-    label: 'Voltage at the stopped motor leads',
+    id: 'm3',
+    label: 'Ohm the motor across its own plug',
     tool: 'multimeter',
-    mode: 'volts',
-    terminals: ['motor lead L', 'motor lead N'] as const
+    mode: 'ohms',
+    terminals: ['motor half of the fan plug', 'the other pin'] as const
   },
-  ...[1, 2, 3].map((n) => ({
-    id: `m${n}`,
-    label: `Fan motor ${n} winding`,
-    tool: 'multimeter' as const,
-    mode: 'ohms' as const,
-    terminals: [`motor ${n} lead L`, `motor ${n} lead N`] as const
-  })),
-  ...[1, 2, 3].map((n) => ({
-    id: `mg${n}`,
-    label: `Fan motor ${n} to frame`,
-    tool: 'multimeter' as const,
-    mode: 'ohms' as const,
-    terminals: [`motor ${n} lead L`, 'case frame'] as const
-  }))
+  {
+    id: 'mg3',
+    label: 'Ohm the motor to the case frame',
+    tool: 'multimeter',
+    mode: 'ohms',
+    terminals: ['motor half of the fan plug', 'case frame'] as const
+  }
 ]
 
 export const F2_DIAGNOSIS = {
@@ -84,16 +78,15 @@ export const F2_DIAGNOSIS = {
   } as Record<string, string[]>,
   failures: {
     'Evaporator fans': [
-      'Motor #1 open winding',
-      'Motor #2 open winding',
-      'Motor #3 open winding',
+      'Motor open \u2014 power at the plug, nothing turning',
+      'No power reaching the plug',
       'Blade loose on the shaft'
     ]
   } as Record<string, string[]>,
   answer: {
     system: 'Electrical',
     component: 'Evaporator fans',
-    failure: 'Motor #3 open winding'
+    failure: 'Motor open \u2014 power at the plug, nothing turning'
   }
 }
 
@@ -199,13 +192,13 @@ export function observeF2(
       )
       return 1
     case 'fans': {
-      // Locked out, every fan is stopped — which tells you nothing about which
-      // one was stopped on its own.
-      if (s.isolated) {
+      // Unplugged, that fan is stopped because you stopped it — which says
+      // nothing about whether it was turning on its own.
+      if (s.leadsDisconnected) {
         evidence(
-          'fans-off',
+          'fans-unplugged',
           'Fan bank',
-          'All three are stopped, but the circuit is locked out. Restore it if you want to see which one does not run on its own.'
+          'The far-end fan is unplugged, so of course it is not turning. The other two are running on their own plugs.'
         )
         return 2
       }
@@ -222,7 +215,7 @@ export function observeF2(
         evidence(
           'stopped',
           'Fan bank',
-          `Two of the three are turning. The ${stopped[0]}-end fan is stopped, and its blade spins freely by hand — no drag, no bearing noise, so it is not seized.`
+          `Two of the three are turning. The ${stopped[0]}-end fan is stopped, and its blade spins freely by hand — no drag, no bearing noise, so it is not seized. Each fan is on its own plug behind the discharge grille, so this one can come out of circuit on its own.`
         )
       }
       return 2
@@ -246,7 +239,7 @@ export function observeF2(
       evidence(
         'controller',
         'Controller / history',
-        'Defrosts running on schedule and terminating on temperature. Case setpoint 30 °F. Nameplate on the door jamb: three fan motors, 0.4 A each, 1.2 A total.'
+        'Defrosts running on schedule and terminating on temperature. Case setpoint 30 °F. Nameplate on the door jamb: three 12 W Hussmann energy-efficient fan assemblies, 0.30 A each, 0.90 A total.'
       )
       return 2
     case 'electrical':
@@ -287,18 +280,23 @@ export function measureF2(
 ): number {
   const air = airOf(s)
   if (m.id !== 'product' && !m.id.startsWith('air') && !s.coverOpen) {
-    fail('Open the fan compartment cover to reach the circuit.')
+    fail(
+      'Get the bottom shelf cleared and the discharge grille off first \u2014 the fan plugs are behind it.'
+    )
     return -1
   }
-  if (m.mode === 'ohms' && (!s.isolated || !s.provedDead)) {
+  // A plug-connected fan is its own isolation: unplug that one and the motor
+  // side is dead without locking out the whole bank. Ohming it while it is
+  // still plugged in is a live resistance test on a running circuit.
+  if (m.mode === 'ohms' && !s.leadsDisconnected) {
     fail(
-      'Resistance requires the fan circuit isolated and proved dead.',
+      'Unplug the fan before you ohm it \u2014 that plug is still live.',
       true
     )
     return -1
   }
-  if (m.mode === 'ohms' && !s.leadsDisconnected) {
-    fail('Disconnect the motor leads so you are reading one winding at a time.')
+  if (m.id === 'plug' && !s.leadsDisconnected) {
+    fail('Unplug the fan first; the reading you want is on the supply half.')
     return -1
   }
   if (m.id === 'product') {
@@ -322,71 +320,45 @@ export function measureF2(
   }
   if (m.id === 'circuit') {
     const live = !s.isolated
-    const value = live ? (fansOf(s).filter(Boolean).length * 0.4) : 0
+    const value = live ? fansOf(s).filter(Boolean).length * RL_FAN_AMPS_EE : 0
     evidence(
       live ? 'circuit' : 'circuit-off',
       'Fan circuit clamp',
       live
-        ? `${(value + (random() - 0.5) * 0.04).toFixed(1)} A against 1.2 A nameplate`
-        : '0.0 A — the fan circuit is isolated',
+        ? `${(value + (random() - 0.5) * 0.04).toFixed(2)} A against 0.90 A nameplate`
+        : '0.00 A — the fan circuit is isolated',
       'measurement'
     )
     return 1
   }
-  if (m.id === 'dead') {
-    if (s.isolated) {
-      s.provedDead = true
-      evidence(
-        'dead',
-        'Absence-of-voltage test',
-        '0 V across the fan supply and to ground; meter checked before and after.',
-        'measurement'
-      )
-    } else
-      evidence(
-        'live',
-        'Voltage test',
-        'Supply present at the fan circuit; it is energised.',
-        'measurement'
-      )
-    return 1
-  }
-  if (m.id === 'leads') {
-    if (s.isolated) {
-      evidence(
-        'leads-dead',
-        'Motor lead voltage',
-        '0 V — the circuit is locked out, so this proves nothing about the motor.',
-        'measurement'
-      )
-      return 1
-    }
+  if (m.id === 'plug') {
     evidence(
-      'leads',
-      'Motor lead voltage',
-      '118 V at the stopped motor. It is being offered supply and is not turning, so the break is in the motor, not upstream of it.',
+      'plug',
+      'Voltage at the fan plug',
+      s.repaired
+        ? '118 V on the supply half, and the replacement runs as soon as it is plugged in.'
+        : '118 V on the supply half of the plug. The case is offering this fan everything it needs, and it still will not turn \u2014 so the fault is on the motor side of that plug.',
       'measurement'
     )
-    return 1
+    return 2
   }
-  if (m.id.startsWith('mg')) {
+  if (m.id === 'mg3') {
     evidence(
-      m.id,
-      `Fan motor ${m.id.slice(2)} to frame`,
-      'OL — no continuity to frame (DMM screening)',
+      'mg3',
+      'Motor to frame',
+      'OL \u2014 no continuity to frame (DMM screening, not an insulation test).',
       'measurement'
     )
-    return 1
+    return 2
   }
-  const n = Number(m.id.slice(1)) - 1
-  const healthy = fansOf(s)[n] || s.repaired
+  // m3: the motor read across its own plug, which is what unplugging gives you.
   evidence(
-    m.id,
-    `Fan motor ${n + 1} winding`,
-    healthy ? `${[182, 179, 181][n]} Ω` : 'OL — the winding is open',
+    'm3',
+    'Motor winding',
+    s.repaired ? '181 \u03a9' : 'OL \u2014 the winding is open',
     'measurement'
   )
-  return 1
+  return 2
 }
 
 export function diagnoseChecklistF2(
@@ -399,12 +371,8 @@ export function diagnoseChecklistF2(
       done: recorded(s, 'stopped', 'before')
     },
     {
-      label: 'Clamp the fan circuit against its nameplate current',
-      done: recorded(s, 'circuit', 'before')
-    },
-    {
-      label: 'Ohm each motor winding on its own — 1, 2 and 3',
-      done: ['m1', 'm2', 'm3'].every((id) => recorded(s, id, 'before'))
+      label: 'Unplug that fan and read its plug for power',
+      done: recorded(s, 'plug', 'before')
     }
   ]
 }
@@ -414,7 +382,7 @@ export function verifyChecklistF2(
   recorded: (s: InspectionState, id: string, phase?: 'before' | 'after') => boolean
 ): Step[] {
   return [
-    { label: 'Replacement motor fitted', done: s.repaired },
+    { label: 'Replacement motor fitted and plugged in', done: s.repaired },
     {
       label: 'Fan circuit back to nameplate current',
       done: recorded(s, 'circuit', 'after')
@@ -442,7 +410,7 @@ export function verifyChecklistF2(
         )
     },
     {
-      label: 'Leads reconnected, disconnect restored, cover secured',
+      label: 'Fan plugged back in, grille refitted, product restocked',
       done: !s.isolated && !s.leadsDisconnected && !s.coverOpen
     }
   ]
@@ -507,23 +475,23 @@ export function guidanceF2(
         ]
       }
     switch (left.label) {
-      case 'Leads reconnected, disconnect restored, cover secured':
+      case 'Fan plugged back in, grille refitted, product restocked':
         return {
           text: 'Put the circuit back: reconnect the leads, restore the disconnect and secure the cover.',
           area: 'electrical',
           hints: [
             'The fans cannot run — and nothing can be verified — while the circuit is locked out.',
             'Go to the Fan circuit.',
-            'Use “Reconnect, secure covers and restore”.'
+            'Use “Reconnect the leads and restore power” — the cover stays off until your readings are done.'
           ]
         }
       case 'Fan circuit back to nameplate current':
         return {
-          text: 'With the fans running again, clamp the fan circuit — it should pull the full 1.2 A now.',
+          text: 'With the fans running again, clamp the fan circuit — it should pull the full 0.90 A now.',
           area: 'electrical',
           hints: [
             'The before-and-after current is what proves the third motor is back.',
-            'Restore the circuit, then open the cover again.',
+            'Reconnect and restore power; the cover is already off.',
             'Fan circuit → “Clamp the fan circuit conductor”, read on A~.'
           ]
         }
@@ -562,12 +530,12 @@ export function guidanceF2(
 
   if (s.diagnosis)
     return {
-      text: 'Isolate, prove dead and disconnect the leads, then change the motor you called.',
+      text: 'The fan is already unplugged — swap the motor and plug the new one in.',
       area: 'fans',
       hints: [
-        'Nothing gets changed out on a live circuit.',
-        'Fan circuit → secure the disconnect, prove dead, disconnect the leads.',
-        'Then Evaporator fans → “Replace fan motor 3”.'
+        'Unplugging that fan is what made it safe to work on; the rest of the bank never had to stop.',
+        'Go to the Evaporator fans.',
+        'Use “Swap the motor and plug it in”.'
       ]
     }
 
@@ -575,7 +543,7 @@ export function guidanceF2(
     return {
       text: 'You have the evidence — open the Diagnose page and call it.',
       hints: [
-        'A stopped fan, a current reading two motors short and three winding readings is enough to name the fault.',
+        'A fan sitting still with full voltage on its plug is the whole case \u2014 the fault has to be on the motor side of it.',
         'Open the Diagnose page.',
         'Pick the system, the component and the failure, then submit.'
       ]
@@ -583,33 +551,44 @@ export function guidanceF2(
 
   if (!recorded(s, 'stopped', 'before'))
     return {
-      text: 'Pull the discharge grille and look at each fan while the case is running.',
+      text: 'Look along the fan bank while the case is running and find the one that is not turning.',
       area: 'fans',
       hints: [
-        'Uneven air along one case usually means a fan, and you can see that in a few seconds.',
+        'Uneven air along one case usually means a fan, and you can see that in a few seconds without tools.',
         'Go to the Evaporator fans.',
         'Press “Look at each fan in the bank”.'
       ]
     }
 
-  if (!recorded(s, 'circuit', 'before'))
+  if (!s.coverOpen)
     return {
-      text: 'Clamp the fan circuit while it is still live and compare it to the 1.2 A nameplate.',
-      area: 'electrical',
+      text: 'Get the bottom shelf cleared and lift the discharge grille — the fan plugs are behind it.',
+      area: 'fans',
       hints: [
-        'Clamped with the circuit locked out it reads zero and proves nothing.',
-        'Take the cover off with the circuit still energised.',
-        'Fan circuit → “Clamp the fan circuit conductor”, read on A~.'
+        'This is the cheap way in. A clerk can pull the product; you do not have to strip the case down.',
+        'Go to the Evaporator fans.',
+        'Use “Clear the bottom shelf and lift the grille”.'
+      ]
+    }
+
+  if (!s.leadsDisconnected)
+    return {
+      text: 'Unplug the fan that is not turning.',
+      area: 'fans',
+      hints: [
+        'Each fan is on its own plug, so one can come out of circuit without stopping the other two.',
+        'Go to the Evaporator fans.',
+        'Use “Unplug the stopped fan”.'
       ]
     }
 
   return {
-    text: 'Isolate, prove dead, disconnect the leads, then ohm motors 1, 2 and 3 on their own.',
+    text: 'Read the supply half of that plug for voltage.',
     area: 'fans',
     hints: [
-      'Resistance only means something on a dead circuit with the motors separated.',
-      'Fan circuit → secure the disconnect, prove dead, disconnect the motor leads.',
-      'Then Evaporator fans → ohm each motor winding.'
+      'Power there with nothing turning puts the fault on the motor side of the plug, and that is the whole diagnosis.',
+      'Go to the Evaporator fans.',
+      'Use “Voltage at the unplugged fan’s plug” on V.'
     ]
   }
 }

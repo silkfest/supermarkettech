@@ -463,6 +463,22 @@ export const LESSONS: Lesson[] = [
         ],
       },
       {
+        heading: 'Read it on a real sheet — the Hussmann RL',
+        body: [
+          'The RL is the frozen-food door case most of these stores actually have, and its data sheet (P/N 0425644) carries the diagram worth knowing by heart. Two circuits land in the case: 120 V for fans, lamps, anti-sweat and the drain heater, and 208 V for the defrost heaters coming off the defrost contactor. Everything else on the sheet is four thermostats and two relays deciding which of those loads is made.',
+          'The sheet is drawn twice — once for electric defrost and once for gas — and the fans behave differently on each. Mixing those two up is how a good motor gets condemned, so know which one you are standing in front of before you condemn anything.',
+        ],
+        bullets: [
+          'ELECTRIC defrost — the fan relay coil is 208 V, fed from the defrost contactor. The heaters coming on is what drops the fans out.',
+          'ELECTRIC — the same relay puts the drain rod heater ON through its N.O. contact, so the drain is warm exactly while the fans are out.',
+          'ELECTRIC — at about 35 °F the relay control thermostat energises the anti-sweat relay, which opens the frame and door heater circuits. It does not touch the fans.',
+          'ELECTRIC — when the termination thermostat ends defrost, the contactor drops the heaters and the fan relay coil together: the drain heater goes off and the fans are ON. There is no fan delay here.',
+          'ELECTRIC — the 20 °F point only puts the frame and door heaters back. The fans have been running since termination.',
+          'GAS defrost — the fan relay coil is 120 V and is switched by the relay control thermostat alongside the anti-sweat coil. There the fans really are held out until the coil falls back to about 20 °F.',
+          'Either way, above 90 °F internal air the limit thermostat opens. That is protection, not the normal ending.',
+        ],
+      },
+      {
         heading: 'How a defrost ends — and what goes wrong',
         body: [
           'A timer or controller starts defrost on a schedule. It should END on temperature: a defrost termination (DT) switch on the coil opens around 50–55 °F and tells the controller the ice is gone. A fail-safe timer ends it if temperature never arrives.',
@@ -480,6 +496,8 @@ export const LESSONS: Lesson[] = [
       { q: 'The controller log shows defrost starting every 6 hours and ending after 30 seconds. Most likely cause:', options: ['Low charge', 'DT switch failed open', 'Heater contactor welded', 'Fan motor dead'], answer: 1, why: 'An open DT tells the controller "already warm" the instant defrost starts.' },
       { q: 'Two 4.2 A heater elements should show about 8.4 A in defrost. You read 4.2 A. That means…', options: ['Normal', 'One element is open', 'Voltage is too high', 'The DT is stuck closed'], answer: 1, why: 'Half the expected current means half the elements — one is open.' },
       { q: 'The coil is cold and clear, the fans are good, but there is no voltage at the fan motors after defrost. Check the…', options: ['Compressor contactor', 'Fan delay klixon', 'TXV bulb', 'Liquid line solenoid'], answer: 1, why: 'A stuck-open fan delay keeps fans off even after the coil is cold.' },
+      { q: 'On an RL with ELECTRIC defrost, what puts the evaporator fans back on after a defrost?', options: ['The relay control thermostat opening at about 20 °F', 'The defrost contactor dropping the 208 V fan relay coil at termination', 'The anti-sweat relay de-energising', 'The defrost limit thermostat at 90 °F'], answer: 1, why: 'On the electric sheet the fan relay coil is 208 V and rides with the heaters, so the fans return the moment termination drops the contactor — the sheet says the drain pan heater goes off and the fans are on. The 20 °F point only closes the frame and door heater circuits. The fan delay to 20 °F belongs to the GAS defrost variant.' },
+      { q: 'Which relay opens the frame and door anti-sweat heater circuits on an RL?', options: ['The fan relay', 'The anti-sweat relay, energised by the relay control thermostat at about 35 °F', 'The defrost contactor', 'The defrost limit thermostat'], answer: 1, why: 'The A.S. relay coil is 120 V on terminal 24, switched by the relay control thermostat. Its contact carries terminal 13 through to 10, which feeds the frame and door heaters — and on an electric case that is all it does.' },
     ],
     knowledge: [{ slug: 'defrost-systems', label: 'Defrost Systems' }],
   },

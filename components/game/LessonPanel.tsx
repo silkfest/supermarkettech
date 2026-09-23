@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { X, BookOpen, CheckCircle2, XCircle, ArrowRight, Clock, Trophy, RotateCcw } from 'lucide-react'
 import { lessonPass, type Lesson } from '@/lib/game/lessons'
 import PtGlideSlides from './PtGlideSlides'
+import RlWiringDiagram from './RlWiringDiagram'
 import { LESSON_COLOR } from './StoreMap'
 
 interface Props {
@@ -76,6 +77,7 @@ export default function LessonPanel({ lesson, alreadyPassed, onFinish, onClose }
               </section>
             ))}
             {lesson.id === 'pt' && <PtGlideSlides />}
+            {lesson.id === 'defrost' && <RlWiringDiagram />}
             {(lesson.knowledge?.length ?? 0) > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10} /> Go deeper:</span>

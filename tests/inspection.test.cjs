@@ -421,7 +421,8 @@ function fanFixture() {
     sample(mid) { const m = F2_MEASUREMENTS.find(m => m.id === mid); return this.act({ type: 'measure', measurement: mid, tool: m.tool, mode: m.mode || '', terminals: m.terminals || [] }) },
     observe(component) { return this.act({ type: 'observe', component, tool: component === 'controller' ? 'controller' : 'flashlight' }) },
     hands(type) { return this.act({ type, tool: 'hands' }) },
-    wait(minutes) { return this.act({ type: 'wait', minutes }) }
+    wait(minutes) { return this.act({ type: 'wait', minutes }) },
+    value(id) { const e = [...this.s.evidence].reverse().find(e => e.id === id); return e && e.value }
   }
 }
 
@@ -445,40 +446,40 @@ test('the supermarket board opens with both hands-on work orders', () => {
   assert.equal(second.inspection.definition, 'f2-evap-fan')
 })
 
-test('a winding cannot be ohmed on a live circuit, and the attempt is logged as unsafe', () => {
+test('a fan cannot be ohmed while it is still plugged in', () => {
   const f = fanFixture().hands('open-cover').sample('m3')
   assert.equal(f.s.safetyMistakes.length, 1)
   assert.ok(!f.s.evidence.some(e => e.id === 'm3'))
+  // Unplugging that one fan is what makes it safe — the bank keeps running.
+  f.hands('disconnect').sample('m3')
+  assert.match(f.value('m3'), /OL/)
+  assert.equal(f.s.safetyMistakes.length, 1)
+  assert.equal(f.s.isolated, false, 'no lock-out is needed to work one plug')
 })
 
-test('clamping the fan circuit reads two motors worth against a three-motor nameplate', () => {
-  const f = fanFixture().hands('open-cover').sample('circuit')
-  const reading = f.s.evidence.find(e => e.id === 'circuit')
-  assert.match(reading.value, /^0\.8 A against 1\.2 A nameplate$/)
-  // Locked out it reads zero, and that zero must not stand in for the real one.
-  f.hands('isolate').sample('circuit')
-  assert.ok(f.s.evidence.some(e => e.id === 'circuit-off'))
-  assert.equal(f.s.evidence.filter(e => e.id === 'circuit').length, 1)
+test('the grille has to come off before anything behind it can be reached', () => {
+  const f = fanFixture().sample('circuit')
+  assert.ok(!f.s.evidence.some(e => e.id === 'circuit'))
+  assert.match(f.s.feedback, /bottom shelf|grille/)
 })
 
-test('only the stopped fan ohms open, and the diagnosis needs all three', () => {
-  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
-    .hands('isolate').sample('dead').hands('disconnect')
-  f.sample('m1').sample('m2')
-  assert.equal(canDiagnose(f.s), false, 'two windings is not three')
-  f.sample('m3')
-  assert.equal(f.s.evidence.find(e => e.id === 'm1').value, '182 Ω')
-  assert.match(f.s.evidence.find(e => e.id === 'm3').value, /OL/)
-  assert.equal(canDiagnose(f.s), true)
+test('power at the plug with nothing turning is the whole diagnosis', () => {
+  const f = fanFixture().observe('fans').hands('open-cover')
+  // The plug reading means nothing until the fan is actually out of circuit.
+  f.sample('plug')
+  assert.ok(!f.s.evidence.some(e => e.id === 'plug'))
+  assert.equal(canDiagnose(f.s), false)
+  f.hands('disconnect').sample('plug')
+  assert.match(f.value('plug'), /118 V on the supply half/)
+  assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
 })
 
 test('a wrong call, and a wrong part, both cost you', () => {
-  const f = fanFixture().observe('fans').hands('open-cover').sample('circuit')
-    .hands('isolate').sample('dead').hands('disconnect').sample('m1').sample('m2').sample('m3')
-  f.act({ type: 'diagnose', system: 'Refrigeration', component: 'TXV', failure: 'Failed open' })
-  assert.equal(f.s.diagnosis, null)
-  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
-  assert.match(f.s.diagnosis, /Motor #3 open winding/)
+  const f = fanFixture().observe('fans').hands('open-cover').hands('disconnect').sample('plug')
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'No power reaching the plug' })
+  assert.equal(f.s.diagnosis, null, '118 V at the plug rules that out')
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
+  assert.match(f.s.diagnosis, /Motor open/)
   assert.equal(f.call.causeAttempts, 2)
   f.act({ type: 'replace', part: 'all-motors', tool: 'hands' })
   assert.equal(f.call.partsWasted, 285)
@@ -488,26 +489,28 @@ test('a wrong call, and a wrong part, both cost you', () => {
 test('the fan call runs end to end to a verified repair', () => {
   const f = fanFixture()
   f.observe('product').observe('fans').observe('coil')
-  f.hands('open-cover').sample('circuit').sample('leads')
-  f.hands('isolate').sample('dead').hands('disconnect')
-  f.sample('m1').sample('m2').sample('m3')
+  f.hands('open-cover').sample('circuit')
+  f.hands('disconnect').sample('plug').sample('m3')
   assert.equal(canDiagnose(f.s), true, diagnoseChecklist(f.s).filter(x => !x.done).map(x => x.label).join('; '))
-  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+  f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
   f.act({ type: 'replace', part: 'M3', tool: 'hands' })
   assert.equal(f.s.repaired, true)
   assert.deepEqual(f.s.fans, [true, true, true])
+  // Plugging back in leaves the grille off, so the running readings can be
+  // taken without a refit-then-strip-again round trip.
   f.hands('restore')
-  // Air, coil and product all recover once the third fan is turning again.
+  assert.equal(f.s.coverOpen, true, 'plugging back in must not refit the grille')
   for (let i = 0; i < 6; i++) f.wait(10)
-  f.hands('open-cover').sample('circuit')
-  assert.match(f.s.evidence.filter(e => e.id === 'circuit').pop().value, /^1\.2 A/)
+  f.sample('circuit')
+  const backUp = Number(f.s.evidence.filter(e => e.id === 'circuit').pop().value.split(' ')[0])
+  assert.ok(Math.abs(backUp - 0.9) < 0.05, `three fans should clamp about 0.90 A, read ${backUp}`)
   f.sample('air3').observe('coil').sample('product')
-  f.hands('restore')
+  f.hands('close-cover')
   const left = verifyChecklist(f.s).filter(x => !x.done).map(x => x.label)
   assert.deepEqual(left, [], `outstanding: ${left.join('; ')}`)
   f.act({ type: 'verify' })
   assert.equal(f.s.verified, true)
-  const result = scoreCall(f.call, F2_FAULT, 'Replaced open evaporator fan motor #3.')
+  const result = scoreCall(f.call, F2_FAULT, 'Replaced open evaporator fan motor.')
   assert.ok(result.points > 0)
 })
 
@@ -520,15 +523,15 @@ test('guidance on the fan call always names an action, never just the goal', () 
     assert.ok(g.hints.length >= 3, g.text)
     if (seen.has(g.text)) break
     seen.add(g.text)
-    // Step the call forward along its intended path.
     if (!f.s.evidence.some(e => e.id === 'stopped')) f.observe('fans')
-    else if (!f.s.evidence.some(e => e.id === 'circuit')) { f.hands('open-cover'); f.sample('circuit') }
-    else if (!f.s.evidence.some(e => e.id === 'm3')) { f.hands('isolate'); f.sample('dead'); f.hands('disconnect'); f.sample('m1'); f.sample('m2'); f.sample('m3') }
-    else if (!f.s.diagnosis) f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor #3 open winding' })
+    else if (!f.s.coverOpen) f.hands('open-cover')
+    else if (!f.s.leadsDisconnected) f.hands('disconnect')
+    else if (!f.s.evidence.some(e => e.id === 'plug')) f.sample('plug')
+    else if (!f.s.diagnosis) f.act({ type: 'diagnose', system: 'Electrical', component: 'Evaporator fans', failure: 'Motor open — power at the plug, nothing turning' })
     else if (!f.s.repaired) f.act({ type: 'replace', part: 'M3', tool: 'hands' })
     else break
   }
-  assert.ok(seen.size >= 4, `expected the ladder to advance, saw ${seen.size} steps`)
+  assert.ok(seen.size >= 5, `expected the ladder to advance, saw ${seen.size} steps`)
 })
 
 test('the fan call leaves the defrost call untouched', () => {
@@ -710,4 +713,171 @@ test('the classroom PT station teaches the glide and checks it', () => {
   assert.doesNotMatch(sections, /run within a few psi of R-404A across that range/)
   assert.ok(pt.quiz.some(q => /dew point/i.test(q.options[q.answer])),
     'a question must have the dew point as its correct answer')
+})
+
+// ── Hussmann RL wiring diagram, P/N 0425644_P ───────────────────────────────
+const {
+  RL_COMPONENTS, RL_DOOR_COUNTS, RL_FAN_AMPS_EE, RL_LOADS, RL_ROWS,
+  RL_SEQUENCES, RL_TERMINALS, RL_MARKER_HEX
+} = require('../lib/game/rl-wiring.ts')
+
+test('every device on the drawing is one the parts catalogue explains', () => {
+  const known = new Set(RL_COMPONENTS.map(c => c.id))
+  for (const r of RL_ROWS)
+    for (const d of r.devices)
+      assert.ok(known.has(d.id), `row ${r.id} draws unknown device "${d.id}"`)
+  // Every rung names the load that decides whether it is made, and every
+  // marker on it is one the legend can colour.
+  for (const r of RL_ROWS) {
+    if (r.section !== 'field') assert.ok(r.load, `row ${r.id} has no load`)
+    if (r.load) assert.ok(known.has(r.load), `row ${r.id} loads unknown "${r.load}"`)
+    for (const m of r.markers)
+      assert.ok(RL_MARKER_HEX[m], `row ${r.id} carries unknown marker "${m}"`)
+  }
+  for (const step of Object.values(RL_SEQUENCES))
+    for (const s of step)
+      for (const id of s.live)
+        assert.ok(known.has(id), `step ${s.n} lights unknown component "${id}"`)
+})
+
+test('the terminal strip matches the sheet, markers and all', () => {
+  assert.equal(RL_TERMINALS.length, 21)
+  // 9, 15, 18, 19 and 23 are not used on this sheet.
+  const nums = RL_TERMINALS.map(t => t.n)
+  for (const gap of [9, 15, 18, 19, 23]) assert.ok(!nums.includes(gap), `${gap} is not on the sheet`)
+  assert.deepEqual(nums, [...nums].sort((a, b) => a - b), 'terminals out of order')
+  const marker = n => RL_TERMINALS.find(t => t.n === n).marker
+  // The legs a tech actually traces, straight off the drawing.
+  assert.equal(marker(26), 'BR')  // evaporator fans
+  assert.equal(marker(25), 'Y')   // rod heater (drain)
+  assert.equal(marker(24), 'W')   // A.S. relay coil
+  assert.equal(marker(22), 'P')   // frame A.S. heaters
+  assert.equal(marker(21), '2P')  // door A.S. heaters
+  assert.equal(marker(17), 'OR')  // lights
+  assert.equal(marker(1), 'R')    // 208 V defrost
+  for (const t of RL_TERMINALS) assert.ok(RL_MARKER_HEX[t.marker], `terminal ${t.n}`)
+})
+
+test('ELECTRIC defrost: the fans come back at termination, not at 20 degrees', () => {
+  const seq = RL_SEQUENCES.electric
+  // This is the step the sheet spells out and the one that is easy to get
+  // backwards: "The Drain Pan Heater goes off and fans are on."
+  const term = seq.find(s => s.n === 5)
+  assert.equal(term.actor, 'dtt')
+  assert.equal(term.fans, 'running')
+  assert.ok(term.live.includes('fans'))
+  assert.ok(!term.live.includes('pan'), 'the drain pan heater goes off with them')
+  // And the 20 degree step that follows changes the heaters, NOT the fans.
+  const twenty = seq.find(s => s.n === 6)
+  assert.equal(twenty.fans, 'running')
+  assert.ok(twenty.live.includes('doorash') && twenty.live.includes('frameash'))
+  assert.ok(!term.live.includes('doorash'), 'anti-sweat is still out one step earlier')
+  assert.deepEqual(seq.map(s => s.fans), [
+    'running', 'off', 'off', 'off', 'running', 'running'
+  ])
+})
+
+test('GAS defrost is the variant where the fans wait for 20 degrees', () => {
+  const seq = RL_SEQUENCES.gas
+  assert.deepEqual(seq.map(s => s.fans), ['running', 'off', 'off', 'off', 'running'])
+  // The timer ending defrost changes nothing electrically — that is the whole
+  // point of the variant, and the difference from the electric sheet.
+  const timer = seq.find(s => s.n === 4)
+  assert.equal(timer.fans, 'off')
+  assert.ok(timer.live.includes('fanrelay'), 'the coil is still held in by the relay control stat')
+  const back = seq.find(s => s.n === 5)
+  assert.equal(back.actor, 'rct')
+  assert.equal(back.fans, 'running')
+  // Fans and anti-sweat heaters return together here; on electric they do not.
+  assert.ok(back.live.includes('fans') && back.live.includes('doorash'))
+})
+
+test('the fan relay, not the anti-sweat relay, switches the fans', () => {
+  const fanRow = RL_ROWS.find(r => r.id === 'fans')
+  assert.deepEqual(fanRow.devices.map(d => d.id), ['fanrelay', 'fans'])
+  assert.equal(fanRow.devices[0].mark, 'N.C.')
+  assert.equal(fanRow.markers[1], 'BR')
+  assert.equal(fanRow.right.terminal, 26)
+  // Nothing in the fan path belongs to the A.S. relay.
+  assert.ok(!fanRow.devices.some(d => d.id === 'asrelay'))
+  // And the drain heater hangs off the same relay's N.O. contact, so it runs
+  // exactly while the fans are out.
+  const pan = RL_ROWS.find(r => r.id === 'pan')
+  assert.equal(pan.devices[0].id, 'fanrelay')
+  assert.equal(pan.devices[0].mark, 'N.O.')
+  for (const s of RL_SEQUENCES.electric)
+    assert.notEqual(s.live.includes('fans'), s.live.includes('pan'),
+      `step ${s.n}: fans and drain heater must be opposites`)
+})
+
+test('a device that has just opened is never drawn as energised', () => {
+  const known = new Set(RL_COMPONENTS.map(c => c.id))
+  for (const [name, seq] of Object.entries(RL_SEQUENCES))
+    for (const s of seq) {
+      if (!s.actor) continue
+      assert.ok(known.has(s.actor), `${name} step ${s.n} acts through unknown "${s.actor}"`)
+    }
+  const limit = RL_SEQUENCES.electric.find(s => s.n === 3)
+  assert.equal(limit.actor, 'dlt')
+  assert.ok(!limit.live.includes('heaters'), 'the limit stat took the heaters out')
+  assert.ok(limit.live.includes('contactor'), 'defrost is still commanded')
+})
+
+test('the sheet and the call agree on where the fans actually are', () => {
+  // On an RL the coil and its fans are in the BOTTOM of the case, which is
+  // why clearing the bottom shelf is the whole access. An earlier version of
+  // the sheet said "above the top shelf" while the call said bottom, and only
+  // a tech reading both caught it.
+  const fans = RL_COMPONENTS.find(c => c.id === 'fans')
+  assert.match(fans.where, /bottom shelf/i)
+  assert.doesNotMatch(fans.where, /top shelf/i)
+  const f2src = fs.readFileSync('lib/game/inspection/f2.ts', 'utf8')
+  assert.match(f2src, /bottom shelf/i)
+  assert.doesNotMatch(f2src, /top shelf/i)
+})
+
+test('the published load table is complete and rises with the door count', () => {
+  for (const row of RL_LOADS) {
+    assert.equal(row.amps.length, RL_DOOR_COUNTS.length, row.load)
+    assert.equal(row.watts.length, RL_DOOR_COUNTS.length, row.load)
+    for (let i = 1; i < row.amps.length; i++) {
+      assert.ok(row.amps[i] > row.amps[i - 1], `${row.load} amps do not rise at ${RL_DOOR_COUNTS[i]} door`)
+      assert.ok(row.watts[i] > row.watts[i - 1], `${row.load} watts do not rise at ${RL_DOOR_COUNTS[i]} door`)
+    }
+    assert.ok(row.volts === 120 || row.volts === 208, row.load)
+  }
+})
+
+test('the per-fan figure is the published row divided by doors, not a guess', () => {
+  const ee = RL_LOADS.find(r => /energy efficient/i.test(r.load))
+  assert.ok(ee, 'the energy-efficient fan row is what the fan call quotes')
+  RL_DOOR_COUNTS.forEach((doors, i) => {
+    assert.ok(Math.abs(ee.amps[i] / doors - RL_FAN_AMPS_EE) < 0.005,
+      `${doors} door: ${ee.amps[i]} A is not ${doors} x ${RL_FAN_AMPS_EE} A`)
+  })
+  // 18 W a fan, which is the 12 W assembly and its losses - and notably not
+  // 0.30 A x 120 V, because the table's amps are apparent and its watts real.
+  RL_DOOR_COUNTS.forEach((doors, i) => {
+    assert.ok(Math.abs(ee.watts[i] / doors - 18) < 0.5, `${doors} door: ${ee.watts[i]} W is not ${doors} x 18 W`)
+  })
+})
+
+test('the fan call clamps the published numbers, not invented ones', () => {
+  const f = fanFixture().observe('fans').hands('open-cover')
+  const three = f.sample('circuit').value('circuit')
+  assert.match(three, / A against 0\.90 A nameplate$/)
+  const dead = Number(three.split(' ')[0])
+  assert.ok(Math.abs(dead - 0.6) < 0.05, `two live fans should clamp about 0.60 A, read ${dead}`)
+})
+
+test('the classroom teaches the sequence the sheet prints', () => {
+  const defrost = LESSONS.find(l => l.id === 'defrost')
+  const flat = JSON.stringify(defrost)
+  assert.match(flat, /35 \u00b0F|35 °F/)
+  assert.match(flat, /20 \u00b0F|20 °F/)
+  assert.match(flat, /90 \u00b0F|90 °F/)
+  // The correction that matters: on electric defrost the fans return at
+  // termination. The station must not teach the gas behaviour as universal.
+  assert.ok(defrost.quiz.some(q => /electric defrost/i.test(q.q)),
+    'no question distinguishing electric from gas defrost')
 })
