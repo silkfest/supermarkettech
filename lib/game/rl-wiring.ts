@@ -679,6 +679,16 @@ export const RL_LOADS: RlLoadRow[] = [
   }
 ]
 
+/** How far the blade of a contact symbol is lifted off its pads, in SVG
+ *  units. Zero means drawn closed.
+ *
+ *  A rung with power through it is a series path, so every contact on it is
+ *  necessarily made. Drawing one open on a live rung reads as "this load is
+ *  off" to anyone who reads a ladder — which is what the diagram had been
+ *  doing on the fans rung while the text beside it said the fans were
+ *  running. The symbol has to agree with the rung. */
+export const contactBladeLift = (made: boolean): number => (made ? 0 : 5)
+
 export const RL_DOOR_COUNTS = [2, 3, 4, 5] as const
 
 /** Per-fan draw on the energy-efficient assembly, derived from the table
