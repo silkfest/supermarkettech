@@ -717,8 +717,8 @@ test('the classroom PT station teaches the glide and checks it', () => {
 
 // ── Hussmann RL wiring diagram, P/N 0425644_P ───────────────────────────────
 const {
-  RL_COMPONENTS, RL_DOOR_COUNTS, RL_FAN_AMPS_EE, RL_LOADS, RL_ROWS,
-  RL_SEQUENCES, RL_TERMINALS, RL_MARKER_HEX
+  contactBladeLift, RL_COMPONENTS, RL_DOOR_COUNTS, RL_FAN_AMPS_EE, RL_LOADS,
+  RL_ROWS, RL_SEQUENCES, RL_TERMINALS, RL_MARKER_HEX
 } = require('../lib/game/rl-wiring.ts')
 
 test('every device on the drawing is one the parts catalogue explains', () => {
@@ -738,6 +738,40 @@ test('every device on the drawing is one the parts catalogue explains', () => {
     for (const s of step)
       for (const id of s.live)
         assert.ok(known.has(id), `step ${s.n} lights unknown component "${id}"`)
+})
+
+test('a contact on a live rung is drawn closed, not open', () => {
+  // The symbol has to agree with the rung. Drawing the blade lifted on an
+  // energised rung says "this load is off" to anyone reading the ladder —
+  // which is exactly how it read on the fans rung while the step beside it
+  // said the fans were running.
+  assert.equal(contactBladeLift(true), 0, 'a made contact is drawn closed')
+  assert.ok(contactBladeLift(false) > 0, 'an open contact has to look open')
+
+  // Walk every step of both variants: anywhere a rung has power through it,
+  // every contact in that series path is drawn closed.
+  for (const [variant, seq] of Object.entries(RL_SEQUENCES)) {
+    for (const step of seq) {
+      const live = new Set(step.live)
+      for (const r of RL_ROWS.filter(r => r.variant.includes(variant))) {
+        if (r.section === 'field' || !r.load) continue
+        const on = live.has(r.load)
+        for (const d of r.devices) {
+          if (!['contact', 'stat', 'switch'].includes(d.kind)) continue
+          if (on) {
+            assert.equal(contactBladeLift(on), 0,
+              `${variant} step ${step.n}: ${d.label} sits on the live ${r.id} rung and must be closed`)
+          }
+        }
+      }
+    }
+  }
+  // And the case that started it: gas step 1, coil below 20 °F, fans running.
+  const first = RL_SEQUENCES.gas[0]
+  assert.equal(first.fans, 'running')
+  assert.ok(first.live.includes('fans'))
+  assert.equal(contactBladeLift(first.live.includes('fans')), 0,
+    'the fan relay contact must be drawn made while the fans are running')
 })
 
 test('the terminal strip matches the sheet, markers and all', () => {

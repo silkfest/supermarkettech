@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, RotateCcw } from 'lucide-react'
 import {
+  contactBladeLift,
   RL_CAUTION,
   RL_COMPONENTS,
   RL_DOOR_COUNTS,
@@ -660,7 +661,10 @@ function Device({
     <g>
       <circle cx={x - 7} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
       <circle cx={x + 7} cy={y} r={1.4} fill="none" stroke={c} strokeWidth={0.7} />
-      <line x1={x - 6} y1={y} x2={x + 6} y2={y - 5} stroke={c} strokeWidth={1.1} />
+      <line
+        x1={x - 6} y1={y} x2={x + 6} y2={y - contactBladeLift(on)}
+        stroke={c} strokeWidth={1.1}
+      />
       {kind === 'stat' && (
         <path d={`M${x - 6},${y + 6} q6,-4 12,0`} fill="none" stroke={c} strokeWidth={0.8} />
       )}
