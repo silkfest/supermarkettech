@@ -250,8 +250,15 @@ export default function LibraryPage() {
           {isAdmin && (
             <div className="flex flex-col items-end gap-1">
               {(() => {
+                // Never-tried documents, plus ones whose indexing failed for a
+                // transient reason (chiefly the embedding rate limit) — those
+                // are retried by the same endpoint and must be counted, or the
+                // button disappears while there is still work to do.
+                const isRetryable = (e: string | null) =>
+                  !!e && /rate limit|429|max retries|no searchable text extracted/i.test(e)
                 const pendingWeb = docs.filter(d =>
-                  d.source_type === 'WEB' && !d.searchable && !d.index_error && d.source_url).length
+                  d.source_type === 'WEB' && !d.searchable && d.source_url &&
+                  (!d.index_error || isRetryable(d.index_error))).length
                 if (pendingWeb === 0 && !webIndexing && !webIndexStatus) return null
                 return (
                   <div className="flex flex-col items-end gap-1">

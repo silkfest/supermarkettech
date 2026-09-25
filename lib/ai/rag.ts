@@ -4,29 +4,95 @@ import type { CitationSource } from '@/types'
 const JINA_EMBED_URL = 'https://api.jina.ai/v1/embeddings'
 const JINA_MODEL = 'jina-embeddings-v3'
 
-async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.passage'): Promise<number[][]> {
-  // Read at call time — module-level process.env is evaluated at build time in Next.js
-  // and would be empty string if JINA_API_KEY is only a runtime env var in Vercel
-  const JINA_API_KEY = process.env.JINA_API_KEY ?? ''
-  const MAX_ATTEMPTS = 3
+// Jina enforces a *per-minute* token budget (100k/min on the current plan).
+// Embedding a whole document in one call blew straight through it — a large
+// manual came to 305k tokens in a single request, which no retry could ever
+// satisfy, and the old 1s/2s backoff was far too short for a per-minute window
+// anyway. So: split into token-bounded requests and pace them against a rolling
+// 60s budget.
+const JINA_TOKEN_LIMIT_PER_MIN = 100_000
+/** Leave headroom — other requests (chat queries) draw on the same budget. */
+const RATE_BUDGET_TOKENS = 80_000
+const RATE_WINDOW_MS = 60_000
+/** Per-request ceiling. Small enough that one request never exceeds the
+ *  per-minute budget on its own, so a retry can actually succeed. */
+const MAX_TOKENS_PER_REQUEST = 20_000
+/** Jina caps inputs per request independently of tokens. */
+const MAX_INPUTS_PER_REQUEST = 96
+/** jina-embeddings-v3 per-input ceiling (~8k tokens). */
+const MAX_CHARS_PER_INPUT = 32_000
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+/** Rough but adequate for budgeting — Jina bills real tokens, we only need to
+ *  stay comfortably under the ceiling. */
+const estimateTokens = (text: string) => Math.ceil(text.length / 4)
+
+let rateLog: Array<{ at: number; tokens: number }> = []
+
+/** Block until `tokens` fit inside the rolling per-minute budget. */
+async function reserveRateBudget(tokens: number): Promise<void> {
+  for (;;) {
+    const now = Date.now()
+    rateLog = rateLog.filter(e => now - e.at < RATE_WINDOW_MS)
+    const used = rateLog.reduce((sum, e) => sum + e.tokens, 0)
+    // The empty-log case also guards against deadlocking on an oversized batch.
+    if (used + tokens <= RATE_BUDGET_TOKENS || rateLog.length === 0) {
+      rateLog.push({ at: now, tokens })
+      return
+    }
+    const waitMs = Math.max(500, RATE_WINDOW_MS - (now - rateLog[0].at) + 250)
+    console.log(`[Jina] pacing: ${used} tokens used this minute, waiting ${waitMs}ms`)
+    await sleep(waitMs)
+  }
+}
+
+/** Split inputs so no single request exceeds the token or input-count ceiling. */
+function batchInputs(texts: string[]): string[][] {
+  const batches: string[][] = []
+  let current: string[] = []
+  let currentTokens = 0
+  for (const text of texts) {
+    const tokens = estimateTokens(text)
+    if (current.length > 0 &&
+        (currentTokens + tokens > MAX_TOKENS_PER_REQUEST || current.length >= MAX_INPUTS_PER_REQUEST)) {
+      batches.push(current)
+      current = []
+      currentTokens = 0
+    }
+    current.push(text)
+    currentTokens += tokens
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
+async function embedBatch(
+  batch: string[],
+  task: 'retrieval.query' | 'retrieval.passage',
+  apiKey: string,
+): Promise<number[][]> {
+  const MAX_ATTEMPTS = 4
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await reserveRateBudget(batch.reduce((sum, t) => sum + estimateTokens(t), 0))
+
     const res = await fetch(JINA_EMBED_URL, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${JINA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input: texts.map(t => t.slice(0, 32000)),
-        model: JINA_MODEL,
-        task,
-      }),
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: batch, model: JINA_MODEL, task }),
     })
 
     if (res.status === 429 && attempt < MAX_ATTEMPTS - 1) {
-      const backoffMs = 1000 * Math.pow(2, attempt)
-      console.warn(`[Jina] rate limited, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})`)
-      await new Promise(r => setTimeout(r, backoffMs))
+      // The budget is per minute, so back off on that scale — a 1–2s retry just
+      // burns an attempt. Honour Retry-After when the API sends one.
+      const retryAfter = Number(res.headers.get('retry-after'))
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, RATE_WINDOW_MS)
+        : RATE_WINDOW_MS
+      console.warn(`[Jina] 429 rate limited, waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})`)
+      // The window is clearly exhausted — drop our own accounting so we don't
+      // double-wait on top of the sleep.
+      rateLog = []
+      await sleep(waitMs)
       continue
     }
 
@@ -39,7 +105,24 @@ async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.p
     return (json.data as Array<{ embedding: number[] }>).map(d => d.embedding)
   }
 
-  throw new Error('Jina AI embed failed after max retries')
+  throw new Error(
+    `Jina AI embed failed after max retries (rate limit is ${JINA_TOKEN_LIMIT_PER_MIN} tokens/min)`,
+  )
+}
+
+async function jinaEmbed(texts: string[], task: 'retrieval.query' | 'retrieval.passage'): Promise<number[][]> {
+  // Read at call time — module-level process.env is evaluated at build time in Next.js
+  // and would be empty string if JINA_API_KEY is only a runtime env var in Vercel
+  const JINA_API_KEY = process.env.JINA_API_KEY ?? ''
+
+  const capped = texts.map(t => t.slice(0, MAX_CHARS_PER_INPUT))
+  const batches = batchInputs(capped)
+
+  const out: number[][] = []
+  for (const batch of batches) {
+    out.push(...await embedBatch(batch, task, JINA_API_KEY))
+  }
+  return out
 }
 
 export async function embedQuery(text: string): Promise<number[]> {
