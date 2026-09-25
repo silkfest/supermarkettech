@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { notifyAdmins } from '@/lib/push/send'
 
 const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   const { data: me } = await supabase
     .from('users')
-    .select('status,notify_requested_at')
+    .select('name,email,status,notify_requested_at')
     .eq('id', user.id)
     .single()
 
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Until now this endpoint only stamped a timestamp for the admin to notice
+  // in-app — the "notify an admin" button didn't actually reach anyone. Push it.
+  notifyAdmins({
+    title: 'Access request reminder',
+    body: `${me.name ?? me.email} is still waiting for approval.`,
+    url: '/admin/users',
+    tag: `access-request-${user.id}`,
+  }).catch(err => console.error('[push] access-request reminder failed', err))
 
   return NextResponse.json({ notifyRequestedAt: now })
 }
