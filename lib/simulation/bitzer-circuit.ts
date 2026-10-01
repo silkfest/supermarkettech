@@ -1,54 +1,105 @@
-/** Educational 120 / 208 V DOL circuit. Oil relay terminals use functional names:
- * the supplied INT280 is a 230 V variant, fed from a separate 230 V supply.
- * Faults are settled diagnostic snapshots, not simulated device trip timers.
+/** Educational 120 / 208 V DOL control circuit, modelled on the real terminals.
+ *
+ *  Both the SE-B3 and the oil monitor carry terminals numbered 11, 12 and 14,
+ *  so every point is prefixed with its device. An unprefixed "14" would be
+ *  ambiguous at exactly the moment a tech is deciding which one to probe.
+ *
+ *  Terminal sets as documented:
+ *    SE-B3        1, 2 (motor PTC in) · L, N (supply) · B1, B2 (lockout link)
+ *                 · 11 common, 12 released/trip, 14 healthy-run
+ *    Delta-PII /  L brown, N blue (supply) · 11 grey common, 12 pink NC,
+ *    OLC-K1       14 orange NO · D1 violet (start signal from the K1 auxiliary)
+ *    INT280       separately supplied 230 V, contact in the chain
+ *    Compressor   M1, M2 — the motor PTC pair on the terminal board
+ *
+ *  Faults are settled diagnostic snapshots, not simulated device trip timers.
  */
 export const BITZER_FAULTS = [
   { id: 'none', name: 'Normal operation', detail: 'The motor protector and both oil safety contacts permit the contactor to energize.' },
   { id: 'fuse', name: 'Control fuse open', detail: 'L1 has full control voltage to the return, but FU-out and the SE-B3 supply have lost their feed. Find the cause before replacing a fuse.' },
   { id: 'hp', name: 'High-pressure cutout open', detail: 'The HP switch interrupts the call while the motor protector remains powered. Investigate the pressure event.' },
-  { id: 'mp-power', name: 'SE-B3 supply wire open', detail: 'The safety chain still feeds terminal 11, but the module supply measures 0 V. Loss of module power releases the relay: 11–14 opens and 11–12 closes.' },
-  { id: 'ptc-hot', name: 'Motor PTC above trip resistance', detail: 'The isolated PTC loop measures 6,000 Ω in this exercise. SE-B3 transfers from 11–14 to 11–12. Investigate overheating; cooling and the specified reset are required.' },
+  { id: 'mp-power', name: 'SE-B3 supply wire open', detail: 'The safety chain still feeds SE-11, but the module supply measures 0 V. Loss of module power releases the relay: 11–14 opens and 11–12 closes.' },
+  { id: 'ptc-hot', name: 'Motor PTC above trip resistance', detail: 'The isolated PTC loop measures 6,000 Ω in this exercise, above the 4,500 Ω trip. SE-B3 transfers from 11–14 to 11–12. Investigate overheating; cooling and the specified reset are required.' },
   { id: 'ptc-open', name: 'Motor PTC lead open', detail: 'An open PTC circuit trips the protector too. Isolate and measure M1–M2: OL distinguishes this exercise from the high but finite hot-PTC resistance.' },
-  { id: 'oil-trip', name: 'Lubrication safety tripped', detail: 'The Delta-PII or OLC-K1 safety relay is open after its fault delay. Delta-PII checks differential oil pressure; OLC-K1 checks oil presence at the bearing. Check lubrication before resetting.' },
-  { id: 'oil-power', name: 'Lubrication monitor supply open', detail: 'The oil monitor supply is absent and its healthy-run contact is open. Verify supply separately from the relay contact.' },
+  { id: 'interconnect', name: 'SE-14 to Oil-11 wire open', detail: 'Both modules are healthy and both relays have pulled in, yet nothing reaches the oil monitor. The grey interconnecting wire between SE-B3 terminal 14 and the oil monitor terminal 11 is open — a crimp off a spade is the usual cause. SE-14 reads full voltage, Oil-11 reads zero.' },
+  { id: 'oil-trip', name: 'Lubrication safety tripped', detail: 'The oil monitor relay has released after its fault delay: 11–14 is open and 11–12 has made. Delta-PII checks differential oil pressure; OLC-K1 checks oil presence at the bearing. Check lubrication before resetting.' },
+  { id: 'oil-power', name: 'Lubrication monitor supply open', detail: 'The oil monitor supply is absent and its healthy-run contact is open. Verify supply (Oil-L to Oil-N) separately from the relay contact.' },
   { id: 'reg-trip', name: 'INT280 oil refill failed / alarm', detail: 'The regulator could not restore oil level and its alarm contact stopped the compressor. Check oil reservoir supply, available differential pressure and the feed path.' },
   { id: 'reg-power', name: 'INT280 supply open', detail: 'The separately supplied 230 V INT280 has no power. Its healthy-run contact interrupts the control circuit.' },
-  { id: 'wire', name: 'Wire from oil controls to coil open', detail: 'Voltage reaches INT280 OUT but not A1. Check the interconnecting wire and terminations.' },
+  { id: 'wire', name: 'Wire from oil controls to coil open', detail: 'Voltage reaches Reg-out but not A1. Check the interconnecting wire and terminations.' },
   { id: 'coil', name: 'Contactor coil open', detail: 'A1–A2 reads full control voltage but the contactor is released. With power off and the coil isolated, A1–A2 reads OL.' },
 ] as const
 export type BitzerFault = typeof BITZER_FAULTS[number]['id']
-export const CHAIN = ['L1', 'FU-out', 'Call-out', 'HP-out', '11', '14', 'Oil-out', 'Reg-out', 'A1', 'N'] as const
-export const DEVICES = ['FU · 2 A', 'Call / enable', 'HP cutout', 'LP cutout', 'SE-B3 · 11–14', 'Oil safety · IN–OUT', 'INT280 · IN–OUT', 'Panel wire', 'M contactor · A1–A2']
-export const POINTS = [...CHAIN, '12', 'SE-L', 'SE-N', 'Oil-L', 'Oil-N', 'Reg-L', 'Reg-N', 'M1', 'M2'] as const
+
+/** The series run, device by device. The wire between SE-14 and Oil-11 is a
+ *  link in its own right, not a device, which is why it can fail on its own. */
+export const CHAIN = ['L1', 'FU-out', 'Call-out', 'HP-out', 'SE-11', 'SE-14', 'Oil-11', 'Oil-14', 'Reg-out', 'A1', 'N'] as const
+export const DEVICES = ['FU · 2 A', 'Call / enable', 'HP cutout', 'LP cutout', 'SE-B3 · 11–14', 'Wire SE-14 → Oil-11', 'Oil safety · 11–14', 'INT280 · IN–OUT', 'Panel wire', 'M contactor · A1–A2']
+
+export const POINTS = [
+  ...CHAIN,
+  'SE-12', 'SE-L', 'SE-N', 'SE-B1', 'SE-B2', 'SE-1', 'SE-2',
+  'Oil-12', 'Oil-L', 'Oil-N', 'Oil-D1',
+  'Reg-L', 'Reg-N',
+  'M1', 'M2',
+] as const
 export type BitzerPoint = typeof POINTS[number]
 export type BitzerVoltage = 120 | 208
+
+/** The two ends of the motor PTC loop: the compressor terminal board and the
+ *  SE-B3 input. Same circuit, so the same isolated resistance test. */
+export const PTC_ENDS: readonly BitzerPoint[] = ['M1', 'M2', 'SE-1', 'SE-2']
+
 // Potentials are relative to the circuit return, not earth. N is the internal
 // return-node ID; the 208 V interface labels it L2 (a live conductor).
 export function bitzerPointLabel(point: BitzerPoint, voltage: BitzerVoltage): string {
   if (voltage === 120) return point === 'N' ? 'N / A2' : point
   return point === 'N' ? 'L2 / A2' : point === 'SE-N' ? 'SE-L2' : point === 'Oil-N' ? 'Oil-L2' : point
 }
+
 export function bitzerState(fault: BitzerFault, power = true, voltage: BitzerVoltage = 120) {
   const mpHealthy = !['mp-power', 'ptc-hot', 'ptc-open', 'fuse'].includes(fault)
-  const breakIndex = fault === 'fuse' ? 0 : fault === 'hp' ? 2 : !mpHealthy ? 4 : ['oil-trip', 'oil-power'].includes(fault) ? 5 : ['reg-trip', 'reg-power'].includes(fault) ? 6 : fault === 'wire' ? 7 : fault === 'coil' ? 8 : -1
+  const oilHealthy = !['oil-trip', 'oil-power'].includes(fault)
+  const breakIndex =
+    fault === 'fuse' ? 0
+    : fault === 'hp' ? 2
+    : !mpHealthy ? 4
+    : fault === 'interconnect' ? 5
+    : !oilHealthy ? 6
+    : ['reg-trip', 'reg-power'].includes(fault) ? 7
+    : fault === 'wire' ? 8
+    : fault === 'coil' ? 9
+    : -1
+  const RETURN = CHAIN.length - 1
   const potentials: Partial<Record<BitzerPoint, number | null>> = {}
-  CHAIN.forEach((p, i) => { potentials[p] = !power ? 0 : i === 9 ? 0 : breakIndex === -1 || i <= breakIndex ? voltage : 0 })
-  potentials['12'] = !power ? 0 : mpHealthy ? null : potentials['11']
+  CHAIN.forEach((p, i) => { potentials[p] = !power ? 0 : i === RETURN ? 0 : breakIndex === -1 || i <= breakIndex ? voltage : 0 })
+  // A released relay transfers to its 12 contact; while healthy, 12 floats.
+  potentials['SE-12'] = !power ? 0 : mpHealthy ? null : potentials['SE-11']
+  potentials['Oil-12'] = !power ? 0 : oilHealthy ? null : potentials['Oil-11']
   potentials['SE-L'] = power && !['fuse', 'mp-power'].includes(fault) ? voltage : 0
   potentials['Oil-L'] = power && !['fuse', 'oil-power'].includes(fault) ? voltage : 0
   potentials['Reg-L'] = power && fault !== 'reg-power' ? 230 : 0
   for (const p of ['SE-N', 'Oil-N', 'Reg-N'] as const) potentials[p] = 0
-  return { potentials, breakIndex, running: power && breakIndex === -1, mpHealthy }
+  return { potentials, breakIndex, running: power && breakIndex === -1, mpHealthy, oilHealthy }
 }
+
 export function bitzerReading(fault: BitzerFault, power: boolean, mode: 'V' | 'Ω', isolated: 'none' | 'ptc' | 'coil', a: BitzerPoint, b: BitzerPoint, voltage: BitzerVoltage = 120): string {
   const pair = (x: string, y: string) => (a === x && b === y) || (a === y && b === x)
+  const bothPtcEnds = PTC_ENDS.includes(a) && PTC_ENDS.includes(b) && a !== b
   if (mode === 'Ω') {
     if (power) return 'Switch power OFF'
-    if (pair('M1', 'M2') && isolated === 'ptc') return fault === 'ptc-open' ? 'OL' : fault === 'ptc-hot' ? '6000 Ω' : '450 Ω'
+    if (bothPtcEnds && isolated === 'ptc') return fault === 'ptc-open' ? 'OL' : fault === 'ptc-hot' ? '6000 Ω' : '450 Ω'
     if (pair('A1', 'N') && isolated === 'coil') return fault === 'coil' ? 'OL' : '180 Ω'
+    // The lockout link is a bridge, so it is a continuity check, not a voltage.
+    if (pair('SE-B1', 'SE-B2')) return 'Lockout link fitted — 0 Ω'
     return 'Isolate PTC or coil; select its two ends'
   }
-  if ([a, b].some(p => p === 'M1' || p === 'M2')) return 'PTC loop: use isolated Ω test'
+  if ([a, b].some(p => PTC_ENDS.includes(p))) return 'PTC loop: use isolated Ω test'
+  if ([a, b].some(p => p === 'SE-B1' || p === 'SE-B2')) return 'B1–B2 is the lockout link; check continuity with power off'
+  // D1 follows the main contactor auxiliary. The exercises do not inject a
+  // fault on it, and asserting a live/dead state we have not confirmed would
+  // teach a guess, so it is named on the drawing and left out of the readings.
+  if ([a, b].some(p => p === 'Oil-D1')) return 'D1 start signal — not modelled in this exercise'
   if ([a, b].some(p => p === 'Reg-L' || p === 'Reg-N') && !pair('Reg-L', 'Reg-N') && a !== b) return 'Use Reg-L to Reg-N for separate supply'
   if (a === b) return '0 V'
   const { potentials } = bitzerState(fault, power, voltage)
@@ -119,58 +170,67 @@ export interface BitzerConductor {
 
 const unknown = (): BitzerConductor => ({ colour: 'UNKNOWN', confirmed: false, source: 'not yet read from the machine' })
 
-/** The six-core cable that serves the oil monitor.
+/** The six-core cable that serves the oil monitor, terminal by terminal.
  *
- *  Confirmed twice over, which is why it is recorded rather than inferred:
- *  BITZER's application manual Fig. 9 ("Delta-PII as an example of integration
- *  into the compressor safety chain") labels each core, and the connection
- *  label inside this compressor's own terminal box lists the same six beside
- *  "Delta-PII or OLC-K1". Same cable, same colours, two independent sources.
+ *  Three sources agree, which is why this is recorded rather than inferred:
+ *  BITZER's application manual Fig. 9 labels each core; the connection label
+ *  inside this compressor's terminal box lists the same six beside "Delta-PII
+ *  or OLC-K1"; and the Delta-PII product documentation gives the terminal each
+ *  colour lands on. Fig. 9's layout corroborates the terminal mapping — its
+ *  upper row is 11, L, D1 and its lower row is 12, 14, N.
  *
- *  Positions are as Fig. 9 draws the device: three cores along the top, three
- *  along the bottom. */
+ *  Note 11 / 12 / 14 here are the OIL MONITOR's terminals. The SE-B3 has its
+ *  own 11 / 12 / 14, which is why every point in this file is prefixed. */
 export const OIL_MONITOR_CABLE = [
-  { core: 'GY' as const, side: 'top' as const, note: 'Safety chain in, from SE-B3 terminal 14' },
-  { core: 'BN' as const, side: 'top' as const, note: 'Shown on the upper row in Fig. 9' },
-  { core: 'VT' as const, side: 'top' as const, note: 'Shown on the upper row in Fig. 9' },
-  { core: 'PK' as const, side: 'bottom' as const, note: 'Shown on the lower row in Fig. 9' },
-  { core: 'OG' as const, side: 'bottom' as const, note: 'Safety chain out, on toward the contactor' },
-  { core: 'BU' as const, side: 'bottom' as const, note: 'Shown on the lower row in Fig. 9' },
+  { terminal: 'L' as const, point: 'Oil-L' as const, core: 'BN' as const, note: 'Supply line' },
+  { terminal: 'N' as const, point: 'Oil-N' as const, core: 'BU' as const, note: 'Supply neutral' },
+  { terminal: '11' as const, point: 'Oil-11' as const, core: 'GY' as const, note: 'Relay common — fed from SE-B3 terminal 14' },
+  { terminal: '14' as const, point: 'Oil-14' as const, core: 'OG' as const, note: 'Relay NO — chain out toward the contactor' },
+  { terminal: '12' as const, point: 'Oil-12' as const, core: 'PK' as const, note: 'Relay NC — made when the monitor has tripped' },
+  { terminal: 'D1' as const, point: 'Oil-D1' as const, core: 'VT' as const, note: 'Start signal, from L via the K1 auxiliary contact' },
 ]
 
 const FIG9 = 'BITZER application manual, Fig. 9 (Delta-PII in the safety chain)'
-const FIG9_LABEL = `${FIG9}; matches the connection label in this compressor's terminal box`
+const CABLE_SRC = `${FIG9}; Delta-PII product documentation; matches the connection label in this compressor's terminal box`
 
 /** Per-terminal conductor colours.
  *
  *  Only entries with `confirmed: true` are claims, and each cites where it was
- *  read. Everything else waits on the terminal-box label, which is the
- *  authoritative source for the rest of this machine. */
+ *  read. Everything else waits on a legible photograph of the terminal-box
+ *  label, which is the authoritative source for the rest of this machine. */
 export const BITZER_CONDUCTORS: Partial<Record<BitzerPoint, BitzerConductor>> = {
   L1: unknown(),
   'FU-out': unknown(),
   'Call-out': unknown(),
   'HP-out': unknown(),
-  '11': unknown(),
-  // Fig. 9 labels the run from SE-B3 terminal 14 into the oil monitor GY.
-  '14': { colour: 'GY', confirmed: true, source: FIG9_LABEL },
-  '12': unknown(),
-  // Fig. 9 carries the chain out of the oil monitor on OG, through the pressure
-  // switches and on to the contactor coil.
-  'Oil-out': { colour: 'OG', confirmed: true, source: FIG9_LABEL },
+  'SE-11': unknown(),
+  // Fig. 9 labels the run out of SE-B3 terminal 14 GY. It is the same
+  // conductor as the oil monitor's terminal 11 lead, which is also GY — one
+  // wire, one colour, landing on a terminal at each end.
+  'SE-14': { colour: 'GY', confirmed: true, source: CABLE_SRC },
+  'SE-12': unknown(),
+  'SE-L': unknown(),
+  'SE-N': unknown(),
+  'SE-B1': unknown(),
+  'SE-B2': unknown(),
+  // The SE-B3 end of the motor PTC pair; Fig. 9 labels both leads OG.
+  'SE-1': { colour: 'OG', confirmed: true, source: FIG9 },
+  'SE-2': { colour: 'OG', confirmed: true, source: FIG9 },
+  // The oil monitor's own six cores, all confirmed together.
+  'Oil-11': { colour: 'GY', confirmed: true, source: CABLE_SRC },
+  'Oil-14': { colour: 'OG', confirmed: true, source: CABLE_SRC },
+  'Oil-12': { colour: 'PK', confirmed: true, source: CABLE_SRC },
+  'Oil-L': { colour: 'BN', confirmed: true, source: CABLE_SRC },
+  'Oil-N': { colour: 'BU', confirmed: true, source: CABLE_SRC },
+  'Oil-D1': { colour: 'VT', confirmed: true, source: CABLE_SRC },
   'Reg-out': unknown(),
   A1: unknown(),
   N: unknown(),
-  'SE-L': unknown(),
-  'SE-N': unknown(),
-  'Oil-L': unknown(),
-  'Oil-N': unknown(),
   'Reg-L': unknown(),
   'Reg-N': unknown(),
-  // Fig. 9 labels BOTH motor PTC leads into the SE-B3 sensor input OG. Note
-  // this is the same colour as the oil monitor's chain-out core above, in a
-  // different cable — which is the whole point about multicore colours naming
-  // a core rather than a function.
+  // Fig. 9 labels BOTH motor PTC leads OG. Note this is the same colour as the
+  // oil monitor's terminal 14 above, in a different cable — which is the point
+  // about multicore colours naming a core rather than a function.
   M1: { colour: 'OG', confirmed: true, source: FIG9 },
   M2: { colour: 'OG', confirmed: true, source: FIG9 },
 }

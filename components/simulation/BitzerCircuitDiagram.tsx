@@ -13,8 +13,12 @@ type Props = {
   selectPoint: (point: BitzerPoint) => void
   wiring?: boolean
 }
-const labels = ['FU · 2 A', 'Call / enable', 'HP', 'LP', 'SE-B3', 'Oil safety', 'INT280', 'Panel wire', 'M']
-const nodes = [[30, 60], [150, 60], [270, 60], [390, 60], [390, 170], [270, 170], [150, 170], [30, 170], [30, 280], [150, 280]]
+// Ten devices for eleven nodes. Index 5 is the SE-14 → Oil-11 interconnect:
+// a wire, not a device, which is exactly why it can fail on its own.
+const labels = ['FU · 2 A', 'Call / enable', 'HP', 'LP', 'SE-B3', 'Wire', 'Oil safety', 'INT280', 'Panel wire', 'M']
+// Serpentine: four across, four back, three across. Must stay CHAIN.length long.
+const nodes = [[30, 60], [150, 60], [270, 60], [390, 60], [390, 170], [270, 170], [150, 170], [30, 170], [30, 280], [150, 280], [270, 280]]
+const FUSE = 0, INTERCONNECT = 5, OIL = 6, PANEL_WIRE = 8, COIL = 9
 
 export default function BitzerCircuitDiagram({ oil, voltage, state, power, reveal, red, black, selectPoint, wiring = false }: Props) {
   const returnLabel = voltage === 208 ? 'L2' : 'N'
@@ -32,9 +36,12 @@ export default function BitzerCircuitDiagram({ oil, voltage, state, power, revea
     const stroke = open ? '#ef4444' : '#64748b'
     return <g transform={`translate(${x},${y})`}>
       <g transform={vertical ? 'rotate(90)' : undefined} stroke={stroke} strokeWidth="2.4" fill="none">
-        {i === 0 ? <><rect x="-16" y="-7" width="32" height="14" rx="7" /><path d="M-16 0 H16" /></> : i === 8 ? <circle r="16" /> : i === 7 ? <path d={open ? 'M-18 0 H-6 M6 0 H18 M-5 -6 L5 6' : 'M-18 0 H18'} /> : <><circle cx="-16" r="2" /><circle cx="16" r="2" /><path d={`M-16 0 L16 ${open ? -13 : 0}`} /></>}
+        {i === FUSE ? <><rect x="-16" y="-7" width="32" height="14" rx="7" /><path d="M-16 0 H16" /></>
+          : i === COIL ? <circle r="16" />
+          : i === PANEL_WIRE || i === INTERCONNECT ? <path d={open ? 'M-18 0 H-6 M6 0 H18 M-5 -6 L5 6' : 'M-18 0 H18'} />
+          : <><circle cx="-16" r="2" /><circle cx="16" r="2" /><path d={`M-16 0 L16 ${open ? -13 : 0}`} /></>}
       </g>
-      {i === 8 && <text y="5" textAnchor="middle" fontSize="13" fontWeight="700" fill={stroke}>M</text>}
+      {i === COIL && <text y="5" textAnchor="middle" fontSize="13" fontWeight="700" fill={stroke}>M</text>}
     </g>
   }
   if (wiring) return <BitzerWiringReference oil={oil} voltage={voltage} red={red} black={black} selectPoint={selectPoint} />
@@ -48,11 +55,11 @@ export default function BitzerCircuitDiagram({ oil, voltage, state, power, revea
           <path d={`M${x} ${y} L${mx-dx} ${my-dy}`} stroke={color(p)} strokeWidth="3" />
           <path d={`M${mx+dx} ${my+dy} L${nx} ${ny}`} stroke={color(CHAIN[i+1])} strokeWidth="3" />
           {symbol(i, mx, my, vertical)}
-          <text x={vertical ? mx + (i === 3 ? -28 : 28) : mx} y={vertical ? my + 4 : my + 32} textAnchor={vertical ? i === 3 ? 'end' : 'start' : 'middle'} fontSize="11" fontWeight="700" fill="currentColor">{i === 5 ? oil : labels[i]}</text>
+          <text x={vertical ? mx + (i === 3 ? -28 : 28) : mx} y={vertical ? my + 4 : my + 32} textAnchor={vertical ? i === 3 ? 'end' : 'start' : 'middle'} fontSize="11" fontWeight="700" fill="currentColor">{i === OIL ? oil : labels[i]}</text>
         </g>
       })}
       {CHAIN.map((p, i) => terminal(p, nodes[i][0], nodes[i][1], bitzerPointLabel(p, voltage)))}
-      <text x="220" y="284" fontSize="11" fill="#64748b">{voltage} V · L1–{returnLabel}</text>
+      <text x="30" y="325" fontSize="11" fill="#64748b">{voltage} V · L1–{returnLabel}</text>
     </svg>
     <p className="text-xs text-slate-500 dark:text-slate-400">{reveal ? `Amber = ${voltage} V to ${returnLabel} · grey = 0 V to ${returnLabel} · red symbol = fault location.` : 'Voltage colours and fault locations are hidden. Use your meter to trace the circuit.'} Module supply and sensor points are available in Wiring diagram and the meter selectors.</p>
   </>

@@ -1170,10 +1170,10 @@ test('no conductor is reported as confirmed unless it names a real source', () =
 test('an unread terminal resolves to the unconfirmed placeholder, never a colour', () => {
   // The failure that matters: a tech trusting a guessed colour and reaching for
   // the wrong wire on a live circuit.
-  const c = conductorAt('Oil-out')
+  const c = conductorAt('Reg-out')
   if (!c.confirmed) {
     assert.equal(c.colour, 'UNKNOWN')
-    assert.equal(colourAt('Oil-out').code, '?')
+    assert.equal(colourAt('Reg-out').code, '?')
   }
 })
 
@@ -1197,30 +1197,66 @@ test('every colour carries a distinct dark-mode value', () => {
   }
 })
 
-test('the terminals confirmed from Fig. 9 carry its colours', () => {
-  // Both PTC leads are labelled OG in Fig. 9; the run out of SE-B3 terminal 14
-  // is GY; the chain leaves the oil monitor on OG.
-  assert.equal(conductorAt('M1').colour, 'OG')
-  assert.equal(conductorAt('M2').colour, 'OG')
-  assert.equal(conductorAt('14').colour, 'GY')
-  assert.equal(conductorAt('Oil-out').colour, 'OG')
-  for (const p of ['M1', 'M2', '14', 'Oil-out']) {
-    assert.equal(conductorAt(p).confirmed, true, p)
-    assert.match(conductorAt(p).source, /Fig\. 9/, `${p} must cite where it was read`)
-  }
-})
-
-test('the oil monitor cable is the six cores both sources agree on', () => {
-  const cores = OIL_MONITOR_CABLE.map(c => c.core).sort()
-  assert.deepEqual(cores, ['BN', 'BU', 'GY', 'OG', 'PK', 'VT'])
-  assert.equal(OIL_MONITOR_CABLE.filter(c => c.side === 'top').length, 3)
-  assert.equal(OIL_MONITOR_CABLE.filter(c => c.side === 'bottom').length, 3)
+test('the oil monitor cable maps each core to its own terminal', () => {
+  const byTerminal = Object.fromEntries(OIL_MONITOR_CABLE.map(c => [c.terminal, c.core]))
+  assert.deepEqual(byTerminal, {
+    L: 'BN', N: 'BU', '11': 'GY', '14': 'OG', '12': 'PK', D1: 'VT'
+  })
+  // Every core distinct, and every one a colour we can actually draw.
+  assert.equal(new Set(OIL_MONITOR_CABLE.map(c => c.core)).size, 6)
   for (const c of OIL_MONITOR_CABLE) assert.ok(BITZER_COLOURS[c.core], `${c.core} must be a known colour`)
 })
 
+test('each cable entry matches the conductor recorded at its point', () => {
+  // The cable list and the per-terminal record must not drift apart.
+  for (const c of OIL_MONITOR_CABLE) {
+    assert.equal(conductorAt(c.point).colour, c.core, c.point)
+    assert.equal(conductorAt(c.point).confirmed, true, c.point)
+  }
+})
+
+test('confirmed terminals cite a source naming where they were read', () => {
+  const confirmed = ['M1', 'M2', 'SE-1', 'SE-2', 'SE-14', 'Oil-11', 'Oil-14', 'Oil-12', 'Oil-L', 'Oil-N', 'Oil-D1']
+  for (const p of confirmed) {
+    assert.equal(conductorAt(p).confirmed, true, p)
+    assert.match(conductorAt(p).source, /Fig\. 9|documentation/, `${p} must cite where it was read`)
+  }
+})
+
+test('one wire carries one colour at both of its ends', () => {
+  // SE-B3 terminal 14 and the oil monitor terminal 11 are the two ends of the
+  // same grey conductor. If one were edited without the other the drawing would
+  // show a wire changing colour in mid-air.
+  assert.equal(conductorAt('SE-14').colour, conductorAt('Oil-11').colour)
+  assert.equal(conductorAt('SE-14').colour, 'GY')
+})
+
 test('the same colour may appear in two different cables', () => {
-  // OG is both PTC leads AND the oil monitor chain-out. That is not a bug: in a
-  // multicore cable the colour names a core, so it carries no meaning across
-  // cables. A model that forced colours to be unique per function would be wrong.
-  assert.equal(conductorAt('M1').colour, conductorAt('Oil-out').colour)
+  // OG is both PTC leads AND the oil monitor's terminal 14. That is not a bug:
+  // in a multicore cable the colour names a core, so it carries no meaning
+  // across cables. A model forcing colours unique per function would be wrong.
+  assert.equal(conductorAt('M1').colour, conductorAt('Oil-14').colour)
+})
+
+test('the chain and its device list stay in step', () => {
+  // A second, hand-maintained copy of the device list in the wiring drawing is
+  // what shifted every label after the SE-B3 by one when the chain grew — it
+  // showed INT280 where the oil safety belongs. One device per gap, always.
+  const { CHAIN, DEVICES } = require('../lib/simulation/bitzer-circuit.ts')
+  assert.equal(DEVICES.length, CHAIN.length - 1)
+})
+
+test('no drawing keeps its own copy of the device list', () => {
+  const fs = require('node:fs')
+  for (const f of ['components/simulation/BitzerWiringReference.tsx', 'components/simulation/BitzerCircuitDiagram.tsx']) {
+    const src = fs.readFileSync(f, 'utf8')
+    // A local array literal naming devices is the drift hazard. The compact
+    // diagram keeps short labels on purpose, so it must at least assert length.
+    if (/const labels = \[/.test(src)) {
+      const n = (src.match(/const labels = \[([^\]]*)\]/) || [])[1].split(',').length
+      const { DEVICES } = require('../lib/simulation/bitzer-circuit.ts')
+      assert.equal(n, DEVICES.length, `${f} label count must track DEVICES`)
+    }
+    assert.ok(!/const DEVICE = \[/.test(src), `${f} must not re-declare the device list`)
+  }
 })

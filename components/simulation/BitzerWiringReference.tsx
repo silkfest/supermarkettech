@@ -1,5 +1,5 @@
 'use client'
-import { CHAIN, BITZER_COLOURS, OIL_MONITOR_CABLE, colourAt, conductorAt, conductorCoverage, bitzerPointLabel, type BitzerColour, type BitzerVoltage, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
+import { CHAIN, DEVICES, BITZER_COLOURS, OIL_MONITOR_CABLE, colourAt, conductorAt, conductorCoverage, bitzerPointLabel, type BitzerColour, type BitzerVoltage, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
 
 /** The wiring reference, drawn to be read on a phone.
  *
@@ -22,8 +22,6 @@ type Props = {
   black: BitzerPoint
   selectPoint: (point: BitzerPoint) => void
 }
-
-const DEVICE = ['FU · 2 A', 'Call / enable', 'HP cutout', 'LP cutout', 'SE-B3 · 11–14', 'Oil safety', 'INT280 · IN–OUT', 'Panel wire', 'M contactor']
 
 /** Light and dark conductor colours as CSS variables, so one element carries
  *  both and the theme picks. Tailwind's `dark` class drives it. */
@@ -102,9 +100,10 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
   function deviceSymbol(i: number, x: number, y: number) {
     // Drawn vertically: the string runs down the page, not across it.
     const s = 'stroke-slate-500 dark:stroke-slate-400'
+    const COIL = DEVICES.length - 1, PANEL_WIRE = COIL - 1, INTERCONNECT = 5
     if (i === 0) return <g className={s} strokeWidth="2.2" fill="none"><rect x={x - 7} y={y - 14} width="14" height="28" rx="6" /><path d={`M${x} ${y - 14} V${y + 14}`} /></g>
-    if (i === 8) return <g className={s} strokeWidth="2.2" fill="none"><circle cx={x} cy={y} r="13" /><text x={x} y={y + 5} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-slate-500 dark:fill-slate-400" stroke="none">M</text></g>
-    if (i === 7) return <g className={s} strokeWidth="2.2" fill="none"><path d={`M${x} ${y - 14} V${y + 14}`} /></g>
+    if (i === COIL) return <g className={s} strokeWidth="2.2" fill="none"><circle cx={x} cy={y} r="13" /><text x={x} y={y + 5} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-slate-500 dark:fill-slate-400" stroke="none">M</text></g>
+    if (i === PANEL_WIRE || i === INTERCONNECT) return <g className={s} strokeWidth="2.2" fill="none"><path d={`M${x} ${y - 14} V${y + 14}`} /></g>
     return (
       <g className={s} strokeWidth="2.2" fill="none">
         <circle cx={x} cy={y - 13} r="1.9" /><circle cx={x} cy={y + 13} r="1.9" />
@@ -116,7 +115,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
   // ---- Block A: the series safety string, drawn down the page ----
   const ROW = 56
   const topY = 34
-  const stringH = topY + 9 * ROW + 30
+  const stringH = topY + (CHAIN.length - 1) * ROW + 30
   const CX = 58
 
   const safetyString = (
@@ -133,7 +132,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
             {deviceSymbol(i, CX, y + ROW / 2)}
             {conductor(CHAIN[i + 1], `M${CX} ${y + ROW / 2 + 15} V${y + ROW - 6}`)}
             <text x={CX + 30} y={y + ROW / 2 + 4} fontSize="11.5" fill="currentColor">
-              {i === 5 ? `${oil} · IN–OUT` : DEVICE[i]}
+              {DEVICES[i].replace('Oil safety', oil)}
             </text>
           </g>
         )
@@ -240,29 +239,22 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
       <div className={card}>
         <h3 className={heading}>{oil} cable &middot; six cores</h3>
         <p className={`${note} mt-1`}>
-          What you will find at the oil monitor when you open the box. Confirmed against both
-          BITZER&apos;s Fig. 9 and the connection label inside this compressor&apos;s terminal box.
+          Terminal by terminal, so you can match the cable to the device before the lid is off.
+          These 11 / 12 / 14 are the <em>oil monitor&apos;s</em> — the SE-B3 has its own set.
         </p>
-        {(['top', 'bottom'] as const).map(side => (
-          <div key={side} className="mt-2">
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {side} row
-            </p>
-            <ul className="mt-1 space-y-1">
-              {OIL_MONITOR_CABLE.filter(c => c.side === side).map(c => (
-                <li key={c.core} className="flex items-start gap-2">
-                  <svg width="22" height="9" className="mt-1 flex-shrink-0" aria-hidden>
-                    <rect width="22" height="9" rx="2" style={wireVars(BITZER_COLOURS[c.core])} className="bz-f" />
-                  </svg>
-                  <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
-                    <strong className="text-slate-800 dark:text-slate-100">{c.core}</strong>
-                    {' '}{BITZER_COLOURS[c.core].name.toLowerCase()} &middot; {c.note}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        <ul className="mt-2 space-y-1">
+          {OIL_MONITOR_CABLE.map(c => (
+            <li key={c.terminal} className="flex items-start gap-2">
+              <svg width="22" height="9" className="mt-1 flex-shrink-0" aria-hidden>
+                <rect width="22" height="9" rx="2" style={wireVars(BITZER_COLOURS[c.core])} className="bz-f" />
+              </svg>
+              <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
+                <strong className="text-slate-800 dark:text-slate-100">{c.terminal}</strong>
+                {' '}&middot; {c.core} {BITZER_COLOURS[c.core].name.toLowerCase()} &middot; {c.note}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className={card}>
