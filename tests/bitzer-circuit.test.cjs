@@ -38,3 +38,24 @@ test('Resistance requires de-energization and isolation, distinguishes open and 
   assert.equal(bitzerReading('coil', false, 'Ω', 'coil', 'N', 'A1'), 'OL')
   assert.equal(bitzerReading('none', false, 'Ω', 'coil', 'N', 'A1'), '180 Ω')
 })
+test('208 V variant uses line-to-line readings across all faults and preserves the separate regulator feed', () => {
+  const read = (fault, a, b, power = true) => bitzerReading(fault, power, 'V', 'none', a, b, 208)
+  for (const fault of BITZER_FAULTS) {
+    const state = bitzerState(fault.id, true, 208)
+    assert.equal(state.running, fault.id === 'none')
+    assert.equal(read(fault.id, 'L1', 'N'), '208 V')
+    assert.equal(read(fault.id, 'Reg-L', 'Reg-N'), fault.id === 'reg-power' ? '0 V' : '230 V')
+    if (state.breakIndex >= 0) {
+      const { CHAIN } = require('../lib/simulation/bitzer-circuit.ts')
+      assert.equal(read(fault.id, CHAIN[state.breakIndex], CHAIN[state.breakIndex + 1]), '208 V', fault.id)
+    }
+    assert.equal(read(fault.id, 'L1', 'N', false), '0 V')
+  }
+  assert.equal(read('none', 'A1', 'N'), '208 V')
+  assert.equal(read('coil', 'A1', 'N'), '208 V')
+  assert.equal(read('hp', 'A1', 'N'), '0 V')
+  assert.equal(read('none', 'SE-L', 'SE-N'), '208 V')
+  assert.equal(read('oil-trip', 'Oil-L', 'Oil-N'), '208 V')
+  assert.equal(read('oil-power', 'Oil-L', 'Oil-N'), '0 V')
+  assert.match(read('none', 'Reg-L', 'N'), /separate supply/)
+})
