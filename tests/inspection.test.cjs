@@ -1150,54 +1150,49 @@ test('the displayed address is NOT stripped - the tech needs the unit to find th
 })
 
 /* ---------- Bitzer conductor colours ---------- */
-const { BITZER_WIRES, returnWire, chainWire } = require('../lib/simulation/bitzer-circuit.ts')
+const { BITZER_COLOURS, BITZER_CONDUCTORS, conductorAt, colourAt, conductorCoverage } = require('../lib/simulation/bitzer-circuit.ts')
 
-test('the return leg is white at 120 V but BLACK at 208 V', () => {
-  // The safety-critical one. At 120 V the return is a grounded neutral and runs
-  // white. At 208 V it is L2 — a second live line conductor — and a white wire
-  // there tells the next tech it is grounded when it is not.
-  assert.equal(returnWire(120).code, 'WH')
-  assert.equal(returnWire(208).code, 'BK')
-  assert.equal(chainWire('N', 120).code, 'WH')
-  assert.equal(chainWire('N', 208).code, 'BK')
-})
+// A photo of the real terminal box shows pink, grey, violet and orange - a
+// European multicore cable, where the colour names a CORE, not a function. So
+// there is no rule to assert here. What the tests have to protect instead is
+// that nothing claims a colour it has not read off the machine.
 
-test('module returns follow the same rule as the main return leg', () => {
-  for (const p of ['SE-N', 'Oil-N']) {
-    assert.equal(chainWire(p, 120).code, 'WH', p)
-    assert.equal(chainWire(p, 208).code, 'BK', p)
+test('no conductor is reported as confirmed unless it names a real source', () => {
+  for (const [point, c] of Object.entries(BITZER_CONDUCTORS)) {
+    if (c.confirmed) {
+      assert.ok(c.source && !/not yet read/.test(c.source),
+        `${point} is marked confirmed but cites no source`)
+      assert.notEqual(c.colour, 'UNKNOWN', `${point} is confirmed but has no colour`)
+    }
   }
 })
 
-test('line ahead of the fuse is black; control after it is red', () => {
-  assert.equal(chainWire('L1', 120).code, 'BK')
-  for (const p of ['FU-out', 'Call-out', 'HP-out', '11', '14', 'Oil-out', 'Reg-out', 'A1', 'SE-L', 'Oil-L']) {
-    assert.equal(chainWire(p, 120).code, 'RD', p)
+test('an unread terminal resolves to the unconfirmed placeholder, never a colour', () => {
+  // The failure that matters: a tech trusting a guessed colour and reaching for
+  // the wrong wire on a live circuit.
+  const c = conductorAt('Oil-out')
+  if (!c.confirmed) {
+    assert.equal(c.colour, 'UNKNOWN')
+    assert.equal(colourAt('Oil-out').code, '?')
   }
 })
 
-test('the separately supplied INT280 is yellow at both control voltages', () => {
-  // Yellow is the one that says "still live with this disconnect open".
-  for (const v of [120, 208]) {
-    assert.equal(chainWire('Reg-L', v).code, 'YE')
-    assert.equal(chainWire('Reg-N', v).code, 'YE')
-  }
+test('an unknown point does not throw and does not invent a colour', () => {
+  assert.equal(conductorAt('not-a-terminal').confirmed, false)
+  assert.equal(colourAt('not-a-terminal').code, '?')
 })
 
-test('the PTC pair is marked as NOT a standard-assigned colour', () => {
-  // It is coloured only to separate it visually. Claiming a standard would
-  // teach a rule that does not exist.
-  assert.equal(chainWire('M1', 120).code, 'VT')
-  assert.equal(chainWire('M2', 120).standard, false)
-  for (const key of ['line', 'control', 'grounded', 'foreign', 'earth']) {
-    assert.equal(BITZER_WIRES[key].standard, true, key)
-  }
+test('coverage counts only confirmed terminals', () => {
+  const { confirmed, total } = conductorCoverage()
+  assert.equal(total, Object.keys(BITZER_CONDUCTORS).length)
+  assert.equal(confirmed, Object.values(BITZER_CONDUCTORS).filter(c => c.confirmed).length)
+  assert.ok(confirmed <= total)
 })
 
-test('every conductor colour carries a separate dark-mode value', () => {
-  for (const [key, w] of Object.entries(BITZER_WIRES)) {
-    assert.ok(/^#[0-9a-f]{6}$/i.test(w.hex), `${key} hex`)
-    assert.ok(/^#[0-9a-f]{6}$/i.test(w.darkHex), `${key} darkHex`)
-    assert.notEqual(w.hex, w.darkHex, `${key} needs a distinct dark value`)
+test('every colour carries a distinct dark-mode value', () => {
+  for (const [key, c] of Object.entries(BITZER_COLOURS)) {
+    assert.ok(/^#[0-9a-f]{6}$/i.test(c.hex), `${key} hex`)
+    assert.ok(/^#[0-9a-f]{6}$/i.test(c.darkHex), `${key} darkHex`)
+    assert.notEqual(c.hex, c.darkHex, `${key} needs a distinct dark value`)
   }
 })
