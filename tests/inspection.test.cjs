@@ -915,3 +915,54 @@ test('the classroom teaches the sequence the sheet prints', () => {
   assert.ok(defrost.quiz.some(q => /electric defrost/i.test(q.q)),
     'no question distinguishing electric from gas defrost')
 })
+
+// ── Chat scroll: stay at the question, don't chase the answer ───────────────
+const { nextScrollAction, pinnedAfter } = require('../lib/chat/scroll.ts')
+
+const q = (id) => ({ id, role: 'user' })
+const a = (id) => ({ id, role: 'assistant' })
+
+test('a new question is pinned to the top of the view', () => {
+  assert.deepEqual(nextScrollAction([q('q1'), a('a1')], null, false), { kind: 'pin', id: 'q1' })
+  // A second question supersedes the first.
+  const msgs = [q('q1'), a('a1'), q('q2'), a('a2')]
+  assert.deepEqual(nextScrollAction(msgs, 'q1', false), { kind: 'pin', id: 'q2' })
+})
+
+test('a streaming answer moves nothing — this is the reported bug', () => {
+  // Every delta re-renders with the same last question. The old code scrolled
+  // to the bottom on each one, dragging the view down while the answer wrote
+  // itself. Each of these passes must be a no-op.
+  const msgs = [q('q1'), a('a1')]
+  for (let chunk = 0; chunk < 25; chunk++)
+    assert.deepEqual(nextScrollAction(msgs, 'q1', false), { kind: 'none' },
+      `delta ${chunk} moved the view`)
+  // And the pin does not drift as the chunks land.
+  let pinned = 'q1'
+  for (let chunk = 0; chunk < 25; chunk++)
+    pinned = pinnedAfter(nextScrollAction(msgs, pinned, false), msgs, pinned)
+  assert.equal(pinned, 'q1')
+})
+
+test('an empty chat and an assistant-only chat scroll nowhere', () => {
+  assert.deepEqual(nextScrollAction([], null, false), { kind: 'none' })
+  assert.deepEqual(nextScrollAction([a('a1')], null, false), { kind: 'none' })
+})
+
+test('a restored conversation lands at the end, then stays put', () => {
+  const msgs = [q('q1'), a('a1'), q('q2'), a('a2')]
+  const first = nextScrollAction(msgs, null, true)
+  assert.deepEqual(first, { kind: 'end' })
+  // Restoring adopts the question that is already there, so the very next
+  // pass does not yank the view back up to it.
+  const pinned = pinnedAfter(first, msgs, null)
+  assert.equal(pinned, 'q2')
+  assert.deepEqual(nextScrollAction(msgs, pinned, false), { kind: 'none' })
+})
+
+test('asking again after a restore still pins the new question', () => {
+  const restored = [q('q1'), a('a1')]
+  const pinned = pinnedAfter(nextScrollAction(restored, null, true), restored, null)
+  const asked = [...restored, q('q2'), a('a2')]
+  assert.deepEqual(nextScrollAction(asked, pinned, false), { kind: 'pin', id: 'q2' })
+})

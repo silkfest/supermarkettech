@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { nextScrollAction, pinnedAfter } from '@/lib/chat/scroll'
 import { Send, Loader2, Upload, MessageSquare, MessageSquarePlus, BookOpen, AlertTriangle, Check, X, Wrench, ExternalLink, History, ArrowLeft, Zap, Snowflake, Wind, ImagePlus, Mic, Copy, ThumbsUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -236,7 +237,10 @@ function MessageBubble({ msg, onOpenPdf, onMarkHelpful }: {
   const sources = msg.sources
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-5`}>
+    <div
+      data-msg-id={msg.id}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-5`}
+    >
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[86%]`}>
         {/* Avatar row for assistant */}
         {!isUser && (
@@ -430,7 +434,9 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   // null = not yet resolved (draft restore/save must wait — see below)
   const [authUserId, setAuthUserId] = useState<string | null>(null)
 
-  const bottomRef        = useRef<HTMLDivElement>(null)
+  const scrollerRef      = useRef<HTMLDivElement>(null)
+  const pinnedQuestionRef = useRef<string | null>(null)
+  const jumpToEndRef     = useRef(false)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const imageInputRef    = useRef<HTMLInputElement>(null)
   const recognitionRef   = useRef<SpeechRecognitionLike | null>(null)
@@ -516,6 +522,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       if (raw) {
         const draft = JSON.parse(raw) as Partial<ChatDraft>
         if (draft.messages?.length) {
+          jumpToEndRef.current = true
           setMessages(draft.messages)
           setSessionId(draft.sessionId ?? null)
           setChatSaved(!!draft.chatSaved)
@@ -533,6 +540,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
   useEffect(() => {
     if (!initialSession || appliedSessionRef.current === initialSession.id) return
     appliedSessionRef.current = initialSession.id
+    jumpToEndRef.current = true
     setMessages(initialSession.messages)
     setSessionId(initialSession.id)
     setChatSaved(true)
@@ -559,9 +567,32 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
     return () => clearTimeout(t)
   }, [messages, sessionId, chatSaved, equipment?.id, authUserId])
 
-  // Scroll to bottom whenever messages update
+  // Put the newest question at the top of the view and leave it there. The
+  // decision itself lives in lib/chat/scroll so it can be tested without a
+  // browser; this effect only carries it out.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const scroller = scrollerRef.current
+    if (!scroller) return
+
+    const action = nextScrollAction(messages, pinnedQuestionRef.current, jumpToEndRef.current)
+    jumpToEndRef.current = false
+    pinnedQuestionRef.current = pinnedAfter(action, messages, pinnedQuestionRef.current)
+
+    if (action.kind === 'end') {
+      scroller.scrollTop = scroller.scrollHeight
+      return
+    }
+    if (action.kind !== 'pin') return
+
+    const el = scroller.querySelector<HTMLElement>(
+      `[data-msg-id="${CSS.escape(action.id)}"]`
+    )
+    if (!el) return
+    const top =
+      el.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop
+    scroller.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' })
   }, [messages])
 
   // Auto-resize textarea
@@ -1034,7 +1065,7 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
       )}
 
       {/* ── Message list ── */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
+      <div ref={scrollerRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
         {!hasMessages ? (
           <EmptyState
             mode={mode}
@@ -1075,7 +1106,6 @@ export default function ChatPanel({ equipment, mode, onUpload, initialSession }:
               </div>
             )}
 
-            <div ref={bottomRef} />
           </div>
         )}
       </div>
