@@ -1148,3 +1148,56 @@ test('the displayed address is NOT stripped - the tech needs the unit to find th
   const branch = { address: '655 Finley Ave, Unit 4', city: 'Ajax', province: 'ON', lat: null, lng: null }
   assert.match(decodeURIComponent(directionsUrl(branch)), /Unit 4/)
 })
+
+/* ---------- Bitzer conductor colours ---------- */
+const { BITZER_WIRES, returnWire, chainWire } = require('../lib/simulation/bitzer-circuit.ts')
+
+test('the return leg is white at 120 V but BLACK at 208 V', () => {
+  // The safety-critical one. At 120 V the return is a grounded neutral and runs
+  // white. At 208 V it is L2 — a second live line conductor — and a white wire
+  // there tells the next tech it is grounded when it is not.
+  assert.equal(returnWire(120).code, 'WH')
+  assert.equal(returnWire(208).code, 'BK')
+  assert.equal(chainWire('N', 120).code, 'WH')
+  assert.equal(chainWire('N', 208).code, 'BK')
+})
+
+test('module returns follow the same rule as the main return leg', () => {
+  for (const p of ['SE-N', 'Oil-N']) {
+    assert.equal(chainWire(p, 120).code, 'WH', p)
+    assert.equal(chainWire(p, 208).code, 'BK', p)
+  }
+})
+
+test('line ahead of the fuse is black; control after it is red', () => {
+  assert.equal(chainWire('L1', 120).code, 'BK')
+  for (const p of ['FU-out', 'Call-out', 'HP-out', '11', '14', 'Oil-out', 'Reg-out', 'A1', 'SE-L', 'Oil-L']) {
+    assert.equal(chainWire(p, 120).code, 'RD', p)
+  }
+})
+
+test('the separately supplied INT280 is yellow at both control voltages', () => {
+  // Yellow is the one that says "still live with this disconnect open".
+  for (const v of [120, 208]) {
+    assert.equal(chainWire('Reg-L', v).code, 'YE')
+    assert.equal(chainWire('Reg-N', v).code, 'YE')
+  }
+})
+
+test('the PTC pair is marked as NOT a standard-assigned colour', () => {
+  // It is coloured only to separate it visually. Claiming a standard would
+  // teach a rule that does not exist.
+  assert.equal(chainWire('M1', 120).code, 'VT')
+  assert.equal(chainWire('M2', 120).standard, false)
+  for (const key of ['line', 'control', 'grounded', 'foreign', 'earth']) {
+    assert.equal(BITZER_WIRES[key].standard, true, key)
+  }
+})
+
+test('every conductor colour carries a separate dark-mode value', () => {
+  for (const [key, w] of Object.entries(BITZER_WIRES)) {
+    assert.ok(/^#[0-9a-f]{6}$/i.test(w.hex), `${key} hex`)
+    assert.ok(/^#[0-9a-f]{6}$/i.test(w.darkHex), `${key} darkHex`)
+    assert.notEqual(w.hex, w.darkHex, `${key} needs a distinct dark value`)
+  }
+})

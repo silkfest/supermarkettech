@@ -56,3 +56,82 @@ export function bitzerReading(fault: BitzerFault, power: boolean, mode: 'V' | '�
   if (av == null || bv == null) return 'Floating contact — indeterminate'
   return `${Math.abs(av - bv)} V`
 }
+
+/* ------------------------------------------------------------------ *
+ *  Conductor colours
+ * ------------------------------------------------------------------ */
+
+/** A conductor colour as it would be run and tagged in the panel.
+ *
+ *  `standard: true` means NFPA 79 assigns this colour to this purpose, so it
+ *  is worth learning. `false` means we picked it to keep the drawing readable
+ *  and the tech should take the colour from the device sheet instead — the
+ *  distinction matters, because a colour memorised as a rule and then found
+ *  to be arbitrary is worse than no colour at all.
+ *
+ *  The 120 V / 208 V supply is what tells us this is a North-American-built
+ *  panel: a Bitzer OEM sheet from Germany would show 230 V L–N to IEC 60204-1
+ *  colours, where the grounded conductor is light blue and the always-live
+ *  foreign supply is orange rather than yellow. */
+export interface BitzerWire {
+  code: string
+  name: string
+  hex: string
+  /** Same conductor, lightened so it still reads on a dark card. */
+  darkHex: string
+  use: string
+  standard: boolean
+}
+
+export const BITZER_WIRES = {
+  line: {
+    code: 'BK', name: 'Black', hex: '#1e293b', darkHex: '#cbd5e1',
+    use: 'Line conductor at supply voltage, ahead of the control fuse', standard: true,
+  },
+  control: {
+    code: 'RD', name: 'Red', hex: '#dc2626', darkHex: '#f87171',
+    use: 'AC control circuit fed from this panel, killed by its disconnect', standard: true,
+  },
+  grounded: {
+    code: 'WH', name: 'White', hex: '#94a3b8', darkHex: '#e2e8f0',
+    use: 'Grounded (neutral) conductor of the control circuit', standard: true,
+  },
+  foreign: {
+    code: 'YE', name: 'Yellow', hex: '#ca8a04', darkHex: '#facc15',
+    use: 'Live with this disconnect OPEN — fed from a separate supply', standard: true,
+  },
+  earth: {
+    code: 'GNYE', name: 'Green/yellow', hex: '#16a34a', darkHex: '#4ade80',
+    use: 'Equipment grounding conductor', standard: true,
+  },
+  sensor: {
+    code: 'VT', name: 'Violet (shown for clarity)', hex: '#7c3aed', darkHex: '#c4b5fd',
+    use: 'PTC sensor pair — run separately from control wiring; no colour is assigned by standard',
+    standard: false,
+  },
+} as const satisfies Record<string, BitzerWire>
+
+export type BitzerWireKey = keyof typeof BITZER_WIRES
+
+/** The return leg is NOT the same conductor in both variants.
+ *
+ *  At 120 V it is a grounded neutral and runs white. At 208 V it is L2, a
+ *  second live line conductor, and runs black — a white wire there would be a
+ *  real code violation and a real shock hazard, because white tells the next
+ *  tech it is grounded. This is the single most important colour on the sheet. */
+export function returnWire(voltage: BitzerVoltage): BitzerWire {
+  return voltage === 208 ? BITZER_WIRES.line : BITZER_WIRES.grounded
+}
+
+/** Colour for a point in the series safety string.
+ *
+ *  Everything downstream of the fuse is control wiring; L1 ahead of it is
+ *  still line. The INT280's own supply is foreign and handled separately. */
+export function chainWire(point: BitzerPoint, voltage: BitzerVoltage): BitzerWire {
+  if (point === 'N') return returnWire(voltage)
+  if (point === 'L1') return BITZER_WIRES.line
+  if (point === 'Reg-L' || point === 'Reg-N') return BITZER_WIRES.foreign
+  if (point === 'M1' || point === 'M2') return BITZER_WIRES.sensor
+  if (point === 'SE-N' || point === 'Oil-N') return returnWire(voltage)
+  return BITZER_WIRES.control
+}
