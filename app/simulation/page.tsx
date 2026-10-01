@@ -62,6 +62,17 @@ const RACKS = [
     source: 'Modeled on a Hussmann-style 8 ft single-deck bunker',
   },
   {
+    href: '/simulation/bitzer-control',
+    rackKey: 'safety-circuit',
+    icon: Zap,
+    accent: 'emerald',
+    name: 'Bitzer Control Wiring',
+    refrigerant: 'SE-B3 · INT280 · Delta-PII / OLC-K1',
+    description: 'Trace module power, relay contacts and the motor PTC loop. Diagnose motor protection, oil regulation and lubrication-safety faults with a two-probe meter.',
+    stats: ['11 fault conditions', 'Volts + isolated resistance tests', 'Practice and hidden faults', 'Selectable oil safety'],
+    source: 'Bitzer DOL training circuit · 120 V control / 230 V regulator supply',
+  },
+  {
     href: '/simulation/safety-circuit',
     rackKey: 'safety-circuit',
     icon: Zap,
