@@ -971,7 +971,7 @@ test('asking again after a restore still pins the new question', () => {
 const {
   haversineKm, eligibleSuppliers, rankBranches, formatKm
 } = require('../lib/suppliers/distance.ts')
-const { destinationText, directionsUrl, telHref } = require('../lib/suppliers/maps.ts')
+const { destinationText, directionsUrl, telHref, geocodableAddress, geocodeQuery } = require('../lib/suppliers/maps.ts')
 
 const HAMILTON = { lat: 43.2557, lng: -79.8711 }
 const TORONTO  = { lat: 43.6532, lng: -79.3832 }
@@ -1088,4 +1088,63 @@ test('phone numbers dial as written on the list', () => {
   assert.equal(telHref('905 643 0651'), 'tel:9056430651')
   assert.equal(telHref('1 289 439 7549'), 'tel:12894397549')
   assert.equal(telHref(' +1 (905) 643-0651 '), 'tel:+19056430651')
+})
+
+/* ---------- geocoding addresses that carry a unit number ---------- */
+
+// The first live run placed 32 of 67 and stalled with 35 left. Every one of the
+// 35 had a unit, suite or building number; every one that placed was a plain
+// street address. A geocoder has no point for "unit 4" and fails the whole parse
+// rather than ignoring it.
+test('a unit, suite or building fragment is dropped from a geocoder query', () => {
+  const cases = [
+    ['655 Finley Ave, Unit 4', '655 Finley Ave'],
+    ['351 Nash Rd N, Unit 5&6', '351 Nash Rd N'],
+    ['2010 Ellesmere Rd, Units 13&14', '2010 Ellesmere Rd'],
+    ['400 Parkdale Ave N, Building 1, Unit B', '400 Parkdale Ave N'],
+    ['919 Fraser Dr, #1&2', '919 Fraser Dr'],
+    ['41 Horner Ave, Unit #4', '41 Horner Ave'],
+    ['56 Bramsteele Rd, Unit 2A', '56 Bramsteele Rd'],
+    ['1890 Brampton St, Unit A', '1890 Brampton St'],
+    ['100 Sunrise Ave, Unit 132', '100 Sunrise Ave']
+  ]
+  for (const [raw, want] of cases) assert.equal(geocodableAddress(raw), want, raw)
+})
+
+test('a unit written before the street is dropped too, keeping the street', () => {
+  // Independent Supply's St. Catharines row is written this way round.
+  assert.equal(geocodableAddress('Units 4-6, 27 Seapark Drive'), '27 Seapark Drive')
+})
+
+test('a street name that begins with a unit keyword is not mistaken for a unit', () => {
+  // The trap, and the reason the keywords need a word boundary after them: a
+  // segment carrying no house number is matched from its first letter, so
+  // "Steeles", "Unity", "Stevenson" and "Flamborough" all begin with a keyword.
+  // Dropping one of these silently relocates the branch to the city centre.
+  // (A segment that starts with a house number is already safe by anchoring --
+  // these are the cases that actually exercise the boundary.)
+  assert.equal(geocodableAddress('Steeles Ave W'), 'Steeles Ave W')
+  assert.equal(geocodableAddress('Unity Rd'), 'Unity Rd')
+  assert.equal(geocodableAddress('Stevenson Rd S'), 'Stevenson Rd S')
+  assert.equal(geocodableAddress('Flamborough Rd'), 'Flamborough Rd')
+  assert.equal(geocodableAddress('Deptford Ave'), 'Deptford Ave')
+  // And with a house number, for good measure.
+  assert.equal(geocodableAddress('313 Steeles Ave'), '313 Steeles Ave')
+})
+
+test('addresses that already geocoded are passed through untouched', () => {
+  for (const a of ['1 Hillside Ave', '3600 Laird Rd', '520 Fourth Line', '1100 Courtneypark Dr E']) {
+    assert.equal(geocodableAddress(a), a)
+  }
+})
+
+test('the geocoder query keeps city and province but loses the unit', () => {
+  const q = geocodeQuery({ address: '5040 Mainway, Unit 8', city: 'Burlington', province: 'ON' })
+  assert.equal(q, '5040 Mainway, Burlington, ON, Canada')
+  assert.doesNotMatch(q, /unit/i)
+})
+
+test('the displayed address is NOT stripped - the tech needs the unit to find the counter', () => {
+  const branch = { address: '655 Finley Ave, Unit 4', city: 'Ajax', province: 'ON', lat: null, lng: null }
+  assert.match(decodeURIComponent(directionsUrl(branch)), /Unit 4/)
 })

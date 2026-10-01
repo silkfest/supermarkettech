@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
-import { destinationText } from '@/lib/suppliers/maps'
+import { geocodeQuery, structuredGeocodeParams } from '@/lib/suppliers/maps'
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search'
 
@@ -10,7 +10,19 @@ const USER_AGENT = 'ColdIQ/1.0 (HVACR training portal; supplier directory)'
 /** Give one lookup room to be slow without taking the request down with it. */
 const LOOKUP_TIMEOUT_MS = 8000
 
+/** Nominatim's policy is one request a second, counted absolutely — so the two
+ *  attempts this route can make have to be spaced, not just the route's calls. */
+const POLICY_GAP_MS = 1100
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 export const maxDuration = 30
+
+/** Carries a non-OK HTTP status out of a lookup, so a rate limit reads as a
+ *  rate limit rather than as a bad address. */
+class HttpStatus extends Error {
+  constructor(readonly status: number) { super(`HTTP ${status}`) }
+}
 
 interface Row {
   id: string
@@ -31,6 +43,9 @@ interface Row {
  *  invocation keeps each request short, and the client spaces its calls out to
  *  stay inside the one-request-a-second policy. The client can also see
  *  progress between calls, which a server-side batch loop never let it do.
+ *
+ *  One address, but up to two lookups: free-form, then structured if that found
+ *  nothing. Two is still short enough to finish well inside maxDuration.
  *
  *  Only rows where lat is null are touched, so re-running is safe and a
  *  hand-corrected coordinate is never overwritten.
@@ -75,7 +90,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ done: true, geocoded: 0, remaining: await remainingCount() })
   }
 
-  const query = destinationText(row)
+  const query = geocodeQuery(row)
   const fail = async (reason: string) =>
     NextResponse.json({
       done: false,
@@ -85,40 +100,51 @@ export async function POST(req: NextRequest) {
       remaining: await remainingCount(),
     })
 
-  try {
-    const res = await fetch(
-      `${NOMINATIM}?format=json&limit=1&countrycodes=ca&q=${encodeURIComponent(query)}`,
-      {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
-      }
-    )
-    // A 429 or 403 here is the rate limit or a block, and saying so is the
-    // difference between "try again later" and "this address is wrong".
-    if (!res.ok) return await fail(`OpenStreetMap returned ${res.status}`)
-
+  /** One Nominatim call. Returns coordinates, or null for "no match here". */
+  const lookup = async (params: Record<string, string>) => {
+    const qs = new URLSearchParams({ format: 'json', limit: '1', countrycodes: 'ca', ...params })
+    const res = await fetch(`${NOMINATIM}?${qs}`, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    })
+    // A 429 or 403 is the rate limit or a block, not a bad address, and the
+    // difference decides whether to wait or to go and fix the data.
+    if (!res.ok) throw new HttpStatus(res.status)
     const hits = (await res.json()) as { lat?: string; lon?: string }[]
     const hit = hits?.[0]
     const lat = Number(hit?.lat)
     const lng = Number(hit?.lon)
-    if (!hit || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return await fail('No match for that address')
+    if (!hit || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
+  }
+
+  try {
+    // Free-form first, then the structured form. The structured call splits
+    // street from city instead of guessing at a comma layout, which rescues a
+    // few addresses the free-form parser reads wrongly; it costs a second
+    // request only for rows that would otherwise have been written off.
+    let found = await lookup({ q: query })
+    if (!found) {
+      await pause(POLICY_GAP_MS)
+      found = await lookup(structuredGeocodeParams(row))
     }
+    if (!found) return await fail('No match for that address')
 
     const { error: upErr } = await supabase
       .from('supplier_branches')
-      .update({ lat, lng, geocoded_at: new Date().toISOString() })
+      .update({ lat: found.lat, lng: found.lng, geocoded_at: new Date().toISOString() })
       .eq('id', row.id)
     if (upErr) return await fail(upErr.message)
 
     return NextResponse.json({
       done: false,
       geocoded: 1,
-      branch: { id: row.id, label: row.label, lat, lng },
+      branch: { id: row.id, label: row.label, lat: found.lat, lng: found.lng },
       remaining: await remainingCount(),
       attribution: 'Geocoding © OpenStreetMap contributors',
     })
   } catch (e) {
+    if (e instanceof HttpStatus) return await fail(`OpenStreetMap returned ${e.status}`)
     return await fail(e instanceof Error && e.name === 'TimeoutError'
       ? 'OpenStreetMap did not answer in time'
       : 'Could not reach OpenStreetMap')
