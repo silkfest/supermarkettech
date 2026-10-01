@@ -52,6 +52,8 @@ export default function SupplierDirectory({ isAdmin = false }: { isAdmin?: boole
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState('')
   const [geocoding, setGeocoding] = useState(false)
+  const [geoProgress, setGeoProgress] = useState<{ placed: number; remaining: number } | null>(null)
+  const [geoNote, setGeoNote] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -87,22 +89,68 @@ export default function SupplierDirectory({ isAdmin = false }: { isAdmin?: boole
 
   async function geocodeRemaining() {
     setGeocoding(true)
+    setGeoNote('')
+    const failures: string[] = []
+    const skip: string[] = []
+    let placed = 0
     const { data: { session } } = await getSupabaseBrowser().auth.getSession()
-    // One request per second server-side, so this comes back for the rest
-    // rather than holding a serverless function open for a minute.
-    for (let pass = 0; pass < 30; pass++) {
-      const res = await fetch('/api/suppliers/geocode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ batch: 5 }),
-      })
-      if (!res.ok) break
-      const out = await res.json()
-      if (!out.remaining) break
+
+    // One address per request, paced here rather than on the server. A single
+    // OpenStreetMap lookup can take the better part of ten seconds, so a
+    // server-side batch ran past the function time limit and died halfway —
+    // this way each request is short and the waiting is ours to do.
+    for (let n = 0; n < 200; n++) {
+      if (n > 0) await new Promise(r => setTimeout(r, 1100))
+      let out: {
+        done?: boolean; geocoded?: number; remaining?: number
+        failed?: { label: string; reason: string }
+      }
+      try {
+        const res = await fetch('/api/suppliers/geocode', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({ skip }),
+        })
+        if (!res.ok) {
+          // Never stop without saying why — the old version broke out of the
+          // loop here in silence and just left the count where it was.
+          setGeoNote(`Stopped: the server returned ${res.status}. ${placed} located.`)
+          break
+        }
+        out = await res.json()
+      } catch {
+        setGeoNote(`Stopped: lost contact with the server. ${placed} located.`)
+        break
+      }
+
+      if (out.failed) {
+        // Park the ones that cannot be resolved so they do not come back
+        // round and wedge the run.
+        failures.push(`${out.failed.label} — ${out.failed.reason}`)
+        const id = (out.failed as { id?: string }).id
+        if (id) skip.push(id)
+      }
+      if (out.geocoded) placed++
+      setGeoProgress({ placed, remaining: out.remaining ?? 0 })
+      if (out.done || (out.remaining ?? 0) === 0) break
+      // Every row left is one we have already failed on: stop rather than
+      // spin. This is the case that previously looked like a frozen button.
+      if (skip.length >= (out.remaining ?? 0)) {
+        setGeoNote(`${placed} located. ${failures.length} could not be matched.`)
+        break
+      }
     }
+
+    if (failures.length) {
+      setGeoNote(prev =>
+        (prev ? prev + ' ' : `${placed} located. `) + `Unmatched: ${failures.join('; ')}`)
+    } else if (placed) {
+      setGeoNote(`${placed} located.`)
+    }
+    setGeoProgress(null)
     setGeocoding(false)
     void load()
   }
@@ -175,9 +223,17 @@ export default function SupplierDirectory({ isAdmin = false }: { isAdmin?: boole
             disabled={geocoding}
             className="flex-shrink-0 text-[11px] font-semibold underline disabled:opacity-50"
           >
-            {geocoding ? 'Locating…' : 'Locate them'}
+            {geocoding
+              ? geoProgress
+                ? `Locating… ${geoProgress.placed} done, ${geoProgress.remaining} to go`
+                : 'Locating…'
+              : 'Locate them'}
           </button>
         </div>
+      )}
+
+      {geoNote && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400">{geoNote}</p>
       )}
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
