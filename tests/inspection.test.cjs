@@ -966,3 +966,126 @@ test('asking again after a restore still pins the new question', () => {
   const asked = [...restored, q('q2'), a('a2')]
   assert.deepEqual(nextScrollAction(asked, pinned, false), { kind: 'pin', id: 'q2' })
 })
+
+// ── Supplier ranking: preference first, distance second ─────────────────────
+const {
+  haversineKm, eligibleSuppliers, rankBranches, formatKm
+} = require('../lib/suppliers/distance.ts')
+const { destinationText, directionsUrl, telHref } = require('../lib/suppliers/maps.ts')
+
+const HAMILTON = { lat: 43.2557, lng: -79.8711 }
+const TORONTO  = { lat: 43.6532, lng: -79.3832 }
+
+const SUPPLIERS = [
+  { id: 'united', categories: ['refrigeration'], brands: [] },
+  { id: 'master', categories: ['refrigeration', 'hvac'], brands: [] },
+  { id: 'gerrie', categories: ['electrical'], brands: [] },
+  { id: 'carrier', categories: ['hvac'], brands: ['Carrier'] },
+]
+// refrigeration preference: United first, Master second.
+const PREF = { united: 1, master: 2 }
+
+const br = (id, supplierId, lat, lng) => ({ id, supplierId, lat, lng })
+
+test('haversine matches a known separation', () => {
+  // Hamilton to Toronto is about 58 km as the crow flies.
+  const km = haversineKm(HAMILTON, TORONTO)
+  assert.ok(km > 50 && km < 65, `expected ~58 km, got ${km.toFixed(1)}`)
+  assert.equal(Math.round(haversineKm(HAMILTON, HAMILTON)), 0)
+  // Symmetric, or the ordering would depend on which way you asked.
+  assert.equal(haversineKm(HAMILTON, TORONTO), haversineKm(TORONTO, HAMILTON))
+})
+
+test('a single-brand chain wins outright, however far away', () => {
+  // The Carrier branch is in Toronto; a refrigeration house is next door.
+  const branches = [br('near', 'united', 43.2558, -79.8712), br('far', 'carrier', 43.6532, -79.3832)]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON, { brand: 'Carrier' })
+  assert.deepEqual(out.map(r => r.branch.id), ['far'],
+    'a Carrier part does not become available at United by being nearer')
+  // Case-insensitive, because nobody types brands consistently.
+  assert.equal(rankBranches(branches, SUPPLIERS, HAMILTON, { brand: 'carrier' }).length, 1)
+})
+
+test('category filters out chains that do not sell it', () => {
+  const branches = [br('g', 'gerrie', 43.25, -79.87), br('u', 'united', 43.9, -79.9)]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON, { category: 'refrigeration' })
+  assert.deepEqual(out.map(r => r.branch.id), ['u'],
+    'the electrical house is nearer but does not stock refrigeration')
+  assert.deepEqual(
+    eligibleSuppliers(SUPPLIERS, { category: 'electrical' }).map(s => s.id), ['gerrie'])
+})
+
+test('preference beats distance — the whole point of the feature', () => {
+  // Master is right here; United is 20 km away but is first choice.
+  const branches = [
+    br('master-close', 'master', 43.2558, -79.8712),
+    br('united-far',   'united', 43.43,   -79.87),
+  ]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON,
+    { category: 'refrigeration', preference: PREF })
+  assert.deepEqual(out.map(r => r.branch.id), ['united-far', 'master-close'])
+  // Without a preference list it is pure distance again.
+  const noPref = rankBranches(branches, SUPPLIERS, HAMILTON, { category: 'refrigeration' })
+  assert.deepEqual(noPref.map(r => r.branch.id), ['master-close', 'united-far'])
+})
+
+test('distance only separates branches of equally preferred chains', () => {
+  const branches = [
+    br('far',  'united', 43.43,   -79.87),
+    br('near', 'united', 43.2558, -79.8712),
+  ]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON,
+    { category: 'refrigeration', preference: PREF })
+  assert.deepEqual(out.map(r => r.branch.id), ['near', 'far'])
+  assert.ok(out[0].km < out[1].km)
+})
+
+test('an un-geocoded branch is kept but sorts last', () => {
+  // A branch with no coordinates is still a phone number worth having.
+  const branches = [br('nocoords', 'united', null, null), br('placed', 'united', 43.26, -79.87)]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON, { category: 'refrigeration' })
+  assert.deepEqual(out.map(r => r.branch.id), ['placed', 'nocoords'])
+  assert.equal(out[1].km, null)
+  // With no origin at all nothing is dropped either.
+  assert.equal(rankBranches(branches, SUPPLIERS, null, {}).length, 2)
+})
+
+test('limit trims after ranking, not before', () => {
+  const branches = [
+    br('master-close', 'master', 43.2558, -79.8712),
+    br('united-far',   'united', 43.43,   -79.87),
+  ]
+  const out = rankBranches(branches, SUPPLIERS, HAMILTON,
+    { category: 'refrigeration', preference: PREF, limit: 1 })
+  assert.deepEqual(out.map(r => r.branch.id), ['united-far'],
+    'trimming before ranking would have kept the wrong one')
+})
+
+test('distances read the way a person would say them', () => {
+  assert.equal(formatKm(null), '')
+  assert.equal(formatKm(3.14159), '3.1 km')
+  assert.equal(formatKm(42.6), '43 km')
+})
+
+test('the maps link carries no API key and starts from where you are', () => {
+  const place = { address: '560 Arvin Ave, Unit 6', city: 'Stoney Creek', province: 'ON' }
+  const url = directionsUrl(place)
+  assert.ok(url.startsWith('https://www.google.com/maps/dir/?api=1'))
+  assert.ok(url.includes('travelmode=driving'))
+  // No origin: Maps uses the phone's own position, so we ask for no permission.
+  assert.ok(!url.includes('origin='))
+  assert.ok(!/key=/i.test(url), 'a Maps URL must never carry a key')
+  assert.match(destinationText(place), /560 Arvin Ave, Unit 6, Stoney Creek, ON, Canada/)
+
+  // Coordinates win over the address when we have them — an address can
+  // resolve to the wrong unit in a business park, a lat/lng cannot.
+  const placed = directionsUrl({ ...place, lat: 43.21, lng: -79.74 })
+  assert.ok(placed.includes(encodeURIComponent('43.21,-79.74')))
+  assert.ok(!placed.includes('Arvin'))
+})
+
+test('phone numbers dial as written on the list', () => {
+  assert.equal(telHref('905 643 0651'), 'tel:9056430651')
+  assert.equal(telHref('1 289 439 7549'), 'tel:12894397549')
+  assert.equal(telHref(' +1 (905) 643-0651 '), 'tel:+19056430651')
+})

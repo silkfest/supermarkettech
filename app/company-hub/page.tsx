@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import PageShell from '@/components/layout/PageShell'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
+import SupplierDirectory from '@/components/suppliers/SupplierDirectory'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { Skeleton } from '@/components/Skeleton'
 
@@ -385,13 +386,17 @@ function ContactModal({ sectionId, initial, onSave, onClose }: {
 function SortableSection({
   section, editMode, isManager, collapsed, deletingId,
   onToggleCollapse, onEditSection, onDeleteSection,
-  onAddContact, onEditContact, onDeleteContact,
+  onAddContact, onEditContact, onDeleteContact, extraBody,
 }: {
   section: ContactSection; editMode: boolean; isManager: boolean
   collapsed: boolean; deletingId: string | null
   onToggleCollapse: (id: string) => void; onEditSection: (s: ContactSection) => void
   onDeleteSection: (id: string) => void; onAddContact: (sectionId: string) => void
   onEditContact: (c: DirectoryContact) => void; onDeleteContact: (sectionId: string, contactId: string) => void
+  /** Rendered above the contact list — the Suppliers section uses it for the
+   *  branch directory, which needs addresses and distance that a plain
+   *  contact row has nowhere to put. */
+  extraBody?: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
@@ -436,7 +441,8 @@ function SortableSection({
       </div>
       {!collapsed && (
         <div className="p-3">
-          {section.directory_contacts.length === 0 ? (
+          {extraBody}
+          {extraBody && section.directory_contacts.length === 0 ? null : section.directory_contacts.length === 0 ? (
             <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">
               No contacts in this section yet.{editMode && ' Click "+ Contact" above to add one.'}
             </p>
@@ -1166,6 +1172,11 @@ export default function CompanyHubPage() {
                       onAddContact={openAddContact}
                       onEditContact={openEditContact}
                       onDeleteContact={deleteContact}
+                      extraBody={
+                        section.title.trim().toLowerCase() === 'suppliers'
+                          ? <SupplierDirectory isAdmin={isAdmin} />
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
