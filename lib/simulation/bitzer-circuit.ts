@@ -119,20 +119,45 @@ export interface BitzerConductor {
 
 const unknown = (): BitzerConductor => ({ colour: 'UNKNOWN', confirmed: false, source: 'not yet read from the machine' })
 
+/** The six-core cable that serves the oil monitor.
+ *
+ *  Confirmed twice over, which is why it is recorded rather than inferred:
+ *  BITZER's application manual Fig. 9 ("Delta-PII as an example of integration
+ *  into the compressor safety chain") labels each core, and the connection
+ *  label inside this compressor's own terminal box lists the same six beside
+ *  "Delta-PII or OLC-K1". Same cable, same colours, two independent sources.
+ *
+ *  Positions are as Fig. 9 draws the device: three cores along the top, three
+ *  along the bottom. */
+export const OIL_MONITOR_CABLE = [
+  { core: 'GY' as const, side: 'top' as const, note: 'Safety chain in, from SE-B3 terminal 14' },
+  { core: 'BN' as const, side: 'top' as const, note: 'Shown on the upper row in Fig. 9' },
+  { core: 'VT' as const, side: 'top' as const, note: 'Shown on the upper row in Fig. 9' },
+  { core: 'PK' as const, side: 'bottom' as const, note: 'Shown on the lower row in Fig. 9' },
+  { core: 'OG' as const, side: 'bottom' as const, note: 'Safety chain out, on toward the contactor' },
+  { core: 'BU' as const, side: 'bottom' as const, note: 'Shown on the lower row in Fig. 9' },
+]
+
+const FIG9 = 'BITZER application manual, Fig. 9 (Delta-PII in the safety chain)'
+const FIG9_LABEL = `${FIG9}; matches the connection label in this compressor's terminal box`
+
 /** Per-terminal conductor colours.
  *
- *  Only the entries marked confirmed are claims. Everything else is a
- *  placeholder waiting on the connection label inside the terminal box, which
- *  is the authoritative source for this machine. */
+ *  Only entries with `confirmed: true` are claims, and each cites where it was
+ *  read. Everything else waits on the terminal-box label, which is the
+ *  authoritative source for the rest of this machine. */
 export const BITZER_CONDUCTORS: Partial<Record<BitzerPoint, BitzerConductor>> = {
   L1: unknown(),
   'FU-out': unknown(),
   'Call-out': unknown(),
   'HP-out': unknown(),
   '11': unknown(),
-  '14': unknown(),
+  // Fig. 9 labels the run from SE-B3 terminal 14 into the oil monitor GY.
+  '14': { colour: 'GY', confirmed: true, source: FIG9_LABEL },
   '12': unknown(),
-  'Oil-out': unknown(),
+  // Fig. 9 carries the chain out of the oil monitor on OG, through the pressure
+  // switches and on to the contactor coil.
+  'Oil-out': { colour: 'OG', confirmed: true, source: FIG9_LABEL },
   'Reg-out': unknown(),
   A1: unknown(),
   N: unknown(),
@@ -142,8 +167,12 @@ export const BITZER_CONDUCTORS: Partial<Record<BitzerPoint, BitzerConductor>> = 
   'Oil-N': unknown(),
   'Reg-L': unknown(),
   'Reg-N': unknown(),
-  M1: unknown(),
-  M2: unknown(),
+  // Fig. 9 labels BOTH motor PTC leads into the SE-B3 sensor input OG. Note
+  // this is the same colour as the oil monitor's chain-out core above, in a
+  // different cable — which is the whole point about multicore colours naming
+  // a core rather than a function.
+  M1: { colour: 'OG', confirmed: true, source: FIG9 },
+  M2: { colour: 'OG', confirmed: true, source: FIG9 },
 }
 
 /** The conductor at a point, falling back to "unconfirmed" rather than a guess. */

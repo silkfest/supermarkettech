@@ -1150,7 +1150,7 @@ test('the displayed address is NOT stripped - the tech needs the unit to find th
 })
 
 /* ---------- Bitzer conductor colours ---------- */
-const { BITZER_COLOURS, BITZER_CONDUCTORS, conductorAt, colourAt, conductorCoverage } = require('../lib/simulation/bitzer-circuit.ts')
+const { BITZER_COLOURS, BITZER_CONDUCTORS, OIL_MONITOR_CABLE, conductorAt, colourAt, conductorCoverage } = require('../lib/simulation/bitzer-circuit.ts')
 
 // A photo of the real terminal box shows pink, grey, violet and orange - a
 // European multicore cable, where the colour names a CORE, not a function. So
@@ -1195,4 +1195,32 @@ test('every colour carries a distinct dark-mode value', () => {
     assert.ok(/^#[0-9a-f]{6}$/i.test(c.darkHex), `${key} darkHex`)
     assert.notEqual(c.hex, c.darkHex, `${key} needs a distinct dark value`)
   }
+})
+
+test('the terminals confirmed from Fig. 9 carry its colours', () => {
+  // Both PTC leads are labelled OG in Fig. 9; the run out of SE-B3 terminal 14
+  // is GY; the chain leaves the oil monitor on OG.
+  assert.equal(conductorAt('M1').colour, 'OG')
+  assert.equal(conductorAt('M2').colour, 'OG')
+  assert.equal(conductorAt('14').colour, 'GY')
+  assert.equal(conductorAt('Oil-out').colour, 'OG')
+  for (const p of ['M1', 'M2', '14', 'Oil-out']) {
+    assert.equal(conductorAt(p).confirmed, true, p)
+    assert.match(conductorAt(p).source, /Fig\. 9/, `${p} must cite where it was read`)
+  }
+})
+
+test('the oil monitor cable is the six cores both sources agree on', () => {
+  const cores = OIL_MONITOR_CABLE.map(c => c.core).sort()
+  assert.deepEqual(cores, ['BN', 'BU', 'GY', 'OG', 'PK', 'VT'])
+  assert.equal(OIL_MONITOR_CABLE.filter(c => c.side === 'top').length, 3)
+  assert.equal(OIL_MONITOR_CABLE.filter(c => c.side === 'bottom').length, 3)
+  for (const c of OIL_MONITOR_CABLE) assert.ok(BITZER_COLOURS[c.core], `${c.core} must be a known colour`)
+})
+
+test('the same colour may appear in two different cables', () => {
+  // OG is both PTC leads AND the oil monitor chain-out. That is not a bug: in a
+  // multicore cable the colour names a core, so it carries no meaning across
+  // cables. A model that forced colours to be unique per function would be wrong.
+  assert.equal(conductorAt('M1').colour, conductorAt('Oil-out').colour)
 })

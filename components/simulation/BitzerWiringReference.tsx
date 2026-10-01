@@ -1,5 +1,5 @@
 'use client'
-import { CHAIN, BITZER_COLOURS, colourAt, conductorAt, conductorCoverage, bitzerPointLabel, type BitzerColour, type BitzerVoltage, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
+import { CHAIN, BITZER_COLOURS, OIL_MONITOR_CABLE, colourAt, conductorAt, conductorCoverage, bitzerPointLabel, type BitzerColour, type BitzerVoltage, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
 
 /** The wiring reference, drawn to be read on a phone.
  *
@@ -235,6 +235,34 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
         <div className={card}>{supplies}</div>
         <div className={card}>{ptc}</div>
         <div className={`${card} lg:col-start-2`}>{foreign}</div>
+      </div>
+
+      <div className={card}>
+        <h3 className={heading}>{oil} cable &middot; six cores</h3>
+        <p className={`${note} mt-1`}>
+          What you will find at the oil monitor when you open the box. Confirmed against both
+          BITZER&apos;s Fig. 9 and the connection label inside this compressor&apos;s terminal box.
+        </p>
+        {(['top', 'bottom'] as const).map(side => (
+          <div key={side} className="mt-2">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {side} row
+            </p>
+            <ul className="mt-1 space-y-1">
+              {OIL_MONITOR_CABLE.filter(c => c.side === side).map(c => (
+                <li key={c.core} className="flex items-start gap-2">
+                  <svg width="22" height="9" className="mt-1 flex-shrink-0" aria-hidden>
+                    <rect width="22" height="9" rx="2" style={wireVars(BITZER_COLOURS[c.core])} className="bz-f" />
+                  </svg>
+                  <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
+                    <strong className="text-slate-800 dark:text-slate-100">{c.core}</strong>
+                    {' '}{BITZER_COLOURS[c.core].name.toLowerCase()} &middot; {c.note}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
       <div className={card}>
