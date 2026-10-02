@@ -12,18 +12,22 @@ test('All injected faults release contactor; healthy coil still measures line vo
 })
 test('SE-B3 supply loss differs from hot PTC while both transfer the relay', () => {
   for (const f of ['mp-power', 'ptc-hot', 'ptc-open']) {
-    assert.equal(volts(f, '11', '14'), '120 V')
-    assert.equal(volts(f, '11', '12'), '0 V')
+    assert.equal(volts(f, 'SE-11', 'SE-14'), '120 V')
+    assert.equal(volts(f, 'SE-11', 'SE-12'), '0 V')
   }
   assert.equal(volts('mp-power', 'SE-L', 'SE-N'), '0 V')
   assert.equal(volts('ptc-hot', 'SE-L', 'SE-N'), '120 V')
-  assert.match(volts('none', '12', 'N'), /Floating/)
+  assert.match(volts('none', 'SE-12', 'N'), /Floating/)
 })
 test('Oil contacts and separately fed INT280 supply are independently diagnosable', () => {
-  assert.equal(volts('oil-trip', '14', 'Oil-out'), '120 V')
+  // Across the oil monitor's own 11-14 contact, which is where it opens.
+  assert.equal(volts('oil-trip', 'Oil-11', 'Oil-14'), '120 V')
+  // And its 11-12 makes when released, mirroring the SE-B3.
+  assert.equal(volts('oil-trip', 'Oil-11', 'Oil-12'), '0 V')
+  assert.match(volts('none', 'Oil-12', 'N'), /Floating/)
   assert.equal(volts('oil-trip', 'Oil-L', 'Oil-N'), '120 V')
   assert.equal(volts('oil-power', 'Oil-L', 'Oil-N'), '0 V')
-  assert.equal(volts('reg-trip', 'Oil-out', 'Reg-out'), '120 V')
+  assert.equal(volts('reg-trip', 'Oil-14', 'Reg-out'), '120 V')
   assert.equal(volts('reg-trip', 'Reg-L', 'Reg-N'), '230 V')
   assert.equal(volts('reg-power', 'Reg-L', 'Reg-N'), '0 V')
   assert.equal(volts('fuse', 'Reg-L', 'Reg-N'), '230 V')
@@ -58,4 +62,43 @@ test('208 V variant uses line-to-line readings across all faults and preserves t
   assert.equal(read('oil-trip', 'Oil-L', 'Oil-N'), '208 V')
   assert.equal(read('oil-power', 'Oil-L', 'Oil-N'), '0 V')
   assert.match(read('none', 'Reg-L', 'N'), /separate supply/)
+})
+
+test('the SE-14 to Oil-11 interconnect fails on its own, with both modules healthy', () => {
+  // The fault the six-terminal model made expressible: a crimp off the oil
+  // monitor's terminal 11. Both relays have pulled in, so every module test
+  // passes, and only the wire itself reads open.
+  const s = bitzerState('interconnect')
+  assert.equal(s.running, false)
+  assert.equal(s.mpHealthy, true, 'the SE-B3 is fine')
+  assert.equal(s.oilHealthy, true, 'the oil monitor is fine too')
+  assert.equal(volts('interconnect', 'SE-11', 'SE-14'), '0 V', 'SE-B3 contact is made')
+  assert.equal(volts('interconnect', 'SE-14', 'Oil-11'), '120 V', 'the open is the wire')
+  assert.equal(volts('interconnect', 'Oil-L', 'Oil-N'), '120 V', 'oil monitor still powered')
+})
+
+test('the two devices numbered 11/12/14 stay distinguishable', () => {
+  // oil-trip must not look like an SE-B3 trip, and vice versa.
+  assert.equal(volts('oil-trip', 'SE-11', 'SE-14'), '0 V')
+  assert.equal(volts('mp-power', 'Oil-11', 'Oil-14'), '0 V')
+  assert.equal(volts('mp-power', 'SE-11', 'SE-14'), '120 V')
+  assert.equal(volts('oil-trip', 'Oil-11', 'Oil-14'), '120 V')
+})
+
+test('the PTC reads the same from the SE-B3 end as from the terminal board', () => {
+  // SE-1/SE-2 and M1/M2 are the two ends of one loop.
+  for (const [a, b] of [['M1', 'M2'], ['SE-1', 'SE-2'], ['M1', 'SE-2']]) {
+    assert.equal(bitzerReading('none', false, 'Ω', 'ptc', a, b), '450 Ω', `${a}-${b}`)
+    assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', a, b), 'OL', `${a}-${b}`)
+  }
+  assert.match(bitzerReading('none', true, 'V', 'none', 'SE-1', 'N'), /isolated/i)
+})
+
+test('B1-B2 is a link, so it is a continuity check and never a voltage claim', () => {
+  assert.match(bitzerReading('none', true, 'V', 'none', 'SE-B1', 'SE-B2'), /continuity/i)
+  assert.match(bitzerReading('none', false, 'Ω', 'none', 'SE-B1', 'SE-B2'), /0 Ω/)
+})
+
+test('D1 is named but its state is not invented', () => {
+  assert.match(bitzerReading('none', true, 'V', 'none', 'Oil-D1', 'Oil-N'), /not modelled/i)
 })

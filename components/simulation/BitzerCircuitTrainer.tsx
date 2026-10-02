@@ -58,13 +58,13 @@ export default function BitzerCircuitTrainer() {
           {([['trainer', 'Circuit trainer'], ['ladder', 'Control ladder'], ['wiring', 'Wiring diagram']] as const).map(([id, label]) => <button key={id} aria-pressed={view === id} onClick={() => setView(id)} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold ${view === id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300'}`}>{label}</button>)}
         </div>
         {view !== 'ladder' && <BitzerCircuitDiagram oil={oil} voltage={voltage} state={state} power={power} reveal={reveal} red={red} black={black} selectPoint={selectPoint} wiring={view === 'wiring'} />}
-        {view === 'ladder' && <svg viewBox="0 0 350 610" className="w-full max-w-sm mx-auto" role="img" aria-label="Series safety chain with selectable meter terminals">
+        {view === 'ladder' && <svg viewBox="0 0 350 700" className="w-full max-w-sm mx-auto" role="img" aria-label="Series safety chain with selectable meter terminals">
           {CHAIN.map((point, i) => {
             const y = 28 + i * 62
             const hot = power && state.potentials[point] === voltage
             const color = reveal ? hot ? '#d97706' : '#94a3b8' : '#64748b'
             return <g key={point}>
-              {i < 9 && <><line x1="58" y1={y + 10} x2="58" y2={y + 52} stroke={color} strokeWidth="3" />
+              {i < DEVICES.length && <><line x1="58" y1={y + 10} x2="58" y2={y + 52} stroke={color} strokeWidth="3" />
                 <rect x="43" y={y + 23} width="30" height="18" rx={i === 8 ? 9 : 2} fill="currentColor" className="text-white dark:text-slate-800" stroke={reveal && power && state.breakIndex === i ? '#dc2626' : '#64748b'} strokeWidth="2" />
                 {reveal && power && state.breakIndex === i && <path d={`M48 ${y+37} l20 -12`} stroke="#dc2626" strokeWidth="2" />}
                 <text x="91" y={y + 37} fontSize="12" fill="currentColor">{DEVICES[i].replace('Oil safety', oil)}</text></>}
@@ -94,7 +94,7 @@ export default function BitzerCircuitTrainer() {
           {measurements.length > 0 && <ul className="text-xs font-mono mt-3 space-y-1">{measurements.map((m, i) => <li key={i}>{m}</li>)}</ul>}
         </section>
         <section className={`${box} text-sm space-y-3`}><h2 className="font-bold">Module connections</h2>
-          <p><strong>SE-B3:</strong> {voltage === 208 ? 'L1–L2' : 'L–N'} powers the selected voltage-rated module. M1–M2 is the separate PTC loop. Terminal 11 is common, 14 is the healthy-run contact, and 12 is the released/trip contact. Supply loss also releases this relay.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Both modules have terminals numbered 11, 12 and 14, so every point is prefixed: <strong>SE-11</strong> is the motor protector&apos;s common, <strong>Oil-11</strong> is the oil monitor&apos;s. The grey wire between SE-14 and Oil-11 is what joins them.</p><p><strong>SE-B3:</strong> {voltage === 208 ? 'L1–L2' : 'L–N'} powers the selected voltage-rated module. M1–M2 is the separate PTC loop. Terminal 11 is common, 14 is the healthy-run contact, and 12 is the released/trip contact. Supply loss also releases this relay.</p><p><strong>{oil} terminals:</strong> L brown and N blue are its supply; 11 grey is the relay common fed from SE-14; 14 orange is the healthy-run contact that carries the chain on; 12 pink makes when it has tripped; D1 violet is the start signal from the contactor auxiliary.</p>
           <p><strong>{oil}:</strong> {oil === 'Delta-PII' ? 'Measures oil-pump differential pressure.' : 'Optically detects oil at the bearing oil pocket.'} Its safety contact is separate from its power supply.</p>
           <p><strong>INT280-60 Diagnose:</strong> senses and replenishes crankcase oil. Its alarm contact joins the safety chain if replenishment fails.</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">SE and oil-monitor supply: fused {voltage} V, using modules rated for the selected voltage. Reg-L/N: separate 230 V supply, matching your pictured INT280. Oil contact labels IN/OUT are functional labels; use the exact model diagram for field wire colours and terminal identification.</p>
