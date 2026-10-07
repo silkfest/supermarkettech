@@ -84,3 +84,22 @@ Motor terminals are inspection-only and never feed 575 V into the control meter.
 Control and sensor terminals reuse existing meter points. Wire tracing layers
 and enlargement support inspection. The optional heater remains omitted pending
 its fitted voltage/control arrangement. INT280 pin numbering remains unverified.
+
+## Mounting detection and visual polish
+
+SG-0012-09 printed pp.64–65 documents a five-second lockout with flashing red
+LED for incorrect electronic-head mounting OR low supply voltage on Delta-PII
+and OLC-K1. Added a settled mounting-fault exercise with normal supply, released
+11–14 contact and made 11–12 contact; LED inspection is an observable clue in
+both Practice and Find the Fault. Low voltage is explained but is not a separate
+simulated fault. LED off alone does not establish powered/healthy operation.
+
+The coworker's seating-switch observation prompted this addition. A sticking
+mounting-detection mechanism remains a reported field possibility, not verified
+internal microswitch geometry. The drawing marks the mounting interface without
+inventing another electrical terminal. Diagnose supply and installation first;
+correct the cause before the documented supply interruption of at least 5 seconds.
+
+Updated both component and terminal-box presentation with clearer headers,
+metal terminal details and shaded housings. Rounded wire corners retain the
+existing route endpoints and electrical model. Motor links remain 1–7/2–8/3–9.
