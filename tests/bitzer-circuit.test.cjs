@@ -38,7 +38,8 @@ test('Resistance requires de-energization and isolation, distinguishes open and 
   assert.match(bitzerReading('none', false, 'Ω', 'none', 'M1', 'M2'), /Isolate/)
   assert.equal(bitzerReading('none', false, 'Ω', 'ptc', 'M1', 'M2'), '450 Ω')
   assert.equal(bitzerReading('ptc-hot', false, 'Ω', 'ptc', 'M1', 'M2'), '6000 Ω')
-  assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', 'M1', 'M2'), 'OL')
+  assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', 'M1', 'M2'), '450 Ω')
+  assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', 'SE-1', 'SE-2'), 'OL')
   assert.equal(bitzerReading('coil', false, 'Ω', 'coil', 'N', 'A1'), 'OL')
   assert.equal(bitzerReading('none', false, 'Ω', 'coil', 'N', 'A1'), '180 Ω')
 })
@@ -89,7 +90,7 @@ test('the PTC reads the same from the SE-B3 end as from the terminal board', () 
   // SE-1/SE-2 and M1/M2 are the two ends of one loop.
   for (const [a, b] of [['M1', 'M2'], ['SE-1', 'SE-2'], ['M1', 'SE-2']]) {
     assert.equal(bitzerReading('none', false, 'Ω', 'ptc', a, b), '450 Ω', `${a}-${b}`)
-    assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', a, b), 'OL', `${a}-${b}`)
+    assert.equal(bitzerReading('ptc-open', false, 'Ω', 'ptc', a, b), a === 'SE-1' ? 'OL' : '450 Ω', `${a}-${b}`)
   }
   assert.match(bitzerReading('none', true, 'V', 'none', 'SE-1', 'N'), /isolated/i)
 })
@@ -99,6 +100,58 @@ test('B1-B2 is a link, so it is a continuity check and never a voltage claim', (
   assert.match(bitzerReading('none', false, 'Ω', 'none', 'SE-B1', 'SE-B2'), /0 Ω/)
 })
 
-test('D1 is named but its state is not invented', () => {
-  assert.match(bitzerReading('none', true, 'V', 'none', 'Oil-D1', 'Oil-N'), /not modelled/i)
+test('D1 follows the NO contactor auxiliary and floats when released', () => {
+  assert.equal(volts('none', 'Oil-D1', 'Oil-N'), '120 V')
+  for (const f of BITZER_FAULTS.filter(f => f.id !== 'none')) assert.match(volts(f.id, 'Oil-D1', 'Oil-N'), /Floating/, f.id)
+  assert.equal(bitzerReading('none', true, 'V', 'none', 'Oil-D1', 'Oil-N', 208), '208 V')
+})
+
+test('PTC readings distinguish sensor resistance from same-wire continuity and a broken lead', () => {
+  const read = (f, a, b) => bitzerReading(f, false, 'Ω', 'ptc', a, b)
+  for (const f of ['none', 'ptc-hot']) {
+    for (const [a,b] of [['M1','SE-1'], ['M2','SE-2'], ['M1','M1']]) assert.equal(read(f, a, b), '0 Ω', `${f}: ${a}-${b}`)
+  }
+  assert.equal(read('ptc-open', 'SE-1', 'M1'), 'OL')
+  assert.equal(read('ptc-open', 'M1', 'M2'), '450 Ω')
+  assert.equal(read('ptc-open', 'SE-1', 'M2'), 'OL')
+  assert.equal(read('ptc-open', 'M2', 'SE-2'), '0 Ω')
+})
+
+test('INT280 separate supply stays on when only control power is opened', () => {
+  const read = (a, b, regPower) => bitzerReading('none', false, 'V', 'none', a, b, 120, regPower)
+  assert.equal(read('L1', 'N', true), '0 V')
+  assert.equal(read('Reg-L', 'Reg-N', true), '230 V')
+  assert.equal(read('Reg-L', 'Reg-N', false), '0 V')
+  assert.match(bitzerReading('none', false, 'Ω', 'none', 'Reg-L', 'Reg-N', 120, true), /INT280 supply OFF/)
+  const s = bitzerState('none', true, 120, false)
+  assert.equal(s.running, false)
+  assert.equal(s.breakIndex, 7)
+})
+
+test('loss of common fuse releases both monitoring relays', () => {
+  assert.equal(bitzerState('fuse').mpHealthy, false)
+  assert.equal(bitzerState('fuse').oilHealthy, false)
+  assert.equal(bitzerState('none', false).mpHealthy, false)
+  assert.equal(bitzerState('none', false).oilHealthy, false)
+})
+
+test('LP fault opens LP while leaving monitoring supplies intact', () => {
+  assert.equal(volts('lp', 'HP-out', 'SE-11'), '120 V')
+  assert.equal(volts('lp', 'SE-L', 'SE-N'), '120 V')
+  assert.equal(volts('lp', 'Oil-L', 'Oil-N'), '120 V')
+})
+
+test('208 V preserves physical terminal N labelling while identifying L2', () => {
+  const { bitzerPointLabel } = require('../lib/simulation/bitzer-circuit.ts')
+  assert.equal(bitzerPointLabel('SE-N', 208), 'SE-N (to L2)')
+  assert.equal(bitzerPointLabel('Oil-N', 208), 'Oil-N (to L2)')
+})
+
+test('a second open caused by the independent regulator supply leaves isolated wiring floating', () => {
+  const read = (a,b) => bitzerReading('mp-power', true, 'V', 'none', a, b, 120, false)
+  assert.match(read('SE-14','N'), /Floating/)
+  assert.match(read('Oil-14','N'), /Floating/)
+  assert.equal(read('SE-14','Oil-14'), '0 V', 'connected floating points are the same potential')
+  assert.equal(read('Reg-out','N'), '0 V', 'intact coil pulls its upstream wire to return')
+  assert.equal(read('SE-11','N'), '120 V')
 })

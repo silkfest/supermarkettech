@@ -107,7 +107,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
     return (
       <g className={s} strokeWidth="2.2" fill="none">
         <circle cx={x} cy={y - 13} r="1.9" /><circle cx={x} cy={y + 13} r="1.9" />
-        <path d={`M${x} ${y - 13} L${x + 13} ${y + 13}`} />
+        <path d={`M${x} ${y - 13} L${i >= 1 && i <= 3 ? x : x + 13} ${y + 13}`} />
       </g>
     )
   }
@@ -164,7 +164,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
           </text>
           {conductor(m.n as BitzerPoint, `M246 ${m.y} H292`, 288, m.y + 15)}
           {terminal(m.l as BitzerPoint, 74, m.y, m.l, 'above')}
-          {terminal(m.n as BitzerPoint, 292, m.y, m.n, 'above')}
+          {terminal(m.n as BitzerPoint, 292, m.y, bitzerPointLabel(m.n as BitzerPoint, voltage), 'above')}
         </g>
       ))}
       <circle cx="28" cy="40" r="3.5" className="fill-slate-600 dark:fill-slate-300" />
@@ -207,7 +207,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
       {terminal('Reg-L', 68, 62, 'Reg-L', 'above')}
       {terminal('Reg-N', 292, 62, 'Reg-N', 'above')}
       <text x="10" y="106" fontSize="10.5" className="fill-amber-700 dark:fill-amber-400" fontWeight="600">
-        Still LIVE with this panel&apos;s disconnect open.
+        Separate feed: use the INT280 supply switch.
       </text>
       <text x="10" y="122" fontSize="10.5" className="fill-slate-500 dark:fill-slate-400">
         Its contact joins the {voltage} V string; its supply does not.
@@ -260,7 +260,7 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
       <div className={card}>
         <h3 className={heading}>Conductor colours</h3>
         <p className={`${note} mt-1`}>
-          {coverage.confirmed} of {coverage.total} terminals confirmed against the machine.
+          {coverage.confirmed} of {coverage.total} connection colours documented for this reference circuit.
           Dashed conductors above are <strong>not yet confirmed</strong> — the colour shown is a
           placeholder, not a reading.
         </p>
@@ -277,11 +277,10 @@ export default function BitzerWiringReference({ oil, voltage, red, black, select
           ))}
         </ul>
         <p className={`${note} mt-3`}>
-          These are the cores of a European multicore control cable, as found in this compressor&apos;s
-          terminal box. Unlike an NFPA 79 panel, the colour identifies a <em>conductor</em>, not a
-          function — orange means core orange, nothing more. So there is no rule to learn here, only
-          what this machine is actually wired as, which is why unconfirmed terminals stay dashed
-          rather than being filled in with a plausible guess.
+          Colours identify the specified manufacturer cable leads. Field wiring may differ;
+          trace the destination and read the device label. Orange is used for both the PTC
+          leads and oil relay output in different cables. Green/yellow is protective earth.
+          Dashed lines have unverified colours.
         </p>
       </div>
     </div>

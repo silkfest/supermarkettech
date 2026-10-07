@@ -22,7 +22,7 @@ const FUSE = 0, INTERCONNECT = 5, OIL = 6, PANEL_WIRE = 8, COIL = 9
 
 export default function BitzerCircuitDiagram({ oil, voltage, state, power, reveal, red, black, selectPoint, wiring = false }: Props) {
   const returnLabel = voltage === 208 ? 'L2' : 'N'
-  const color = (p: BitzerPoint) => !reveal ? '#64748b' : power && state.potentials[p] === voltage ? '#f59e0b' : '#94a3b8'
+  const color = (p: BitzerPoint) => !reveal ? '#64748b' : state.potentials[p] == null ? '#8b5cf6' : power && state.potentials[p] === voltage ? '#f59e0b' : '#94a3b8'
   function terminal(p: BitzerPoint, x: number, y: number, label: string = bitzerPointLabel(p, voltage)) {
     return <g key={p} role="button" tabIndex={0} aria-label={`Probe terminal ${p}`} onClick={() => selectPoint(p)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPoint(p) } }} className="cursor-pointer">
       <rect x={x - 22} y={y - 22} width="44" height="44" rx="8" fill="#ffffff" fillOpacity="0" />
@@ -32,7 +32,7 @@ export default function BitzerCircuitDiagram({ oil, voltage, state, power, revea
     </g>
   }
   function symbol(i: number, x: number, y: number, vertical = false) {
-    const open = reveal && power && state.breakIndex === i
+    const open = reveal && power && state.openLinks[i]
     const stroke = open ? '#ef4444' : '#64748b'
     return <g transform={`translate(${x},${y})`}>
       <g transform={vertical ? 'rotate(90)' : undefined} stroke={stroke} strokeWidth="2.4" fill="none">
@@ -61,6 +61,6 @@ export default function BitzerCircuitDiagram({ oil, voltage, state, power, revea
       {CHAIN.map((p, i) => terminal(p, nodes[i][0], nodes[i][1], bitzerPointLabel(p, voltage)))}
       <text x="30" y="325" fontSize="11" fill="#64748b">{voltage} V · L1–{returnLabel}</text>
     </svg>
-    <p className="text-xs text-slate-500 dark:text-slate-400">{reveal ? `Amber = ${voltage} V to ${returnLabel} · grey = 0 V to ${returnLabel} · red symbol = fault location.` : 'Voltage colours and fault locations are hidden. Use your meter to trace the circuit.'} Module supply and sensor points are available in Wiring diagram and the meter selectors.</p>
+    <p className="text-xs text-slate-500 dark:text-slate-400">{reveal ? `Amber = ${voltage} V to ${returnLabel} · grey = 0 V to ${returnLabel} · violet = floating/indeterminate · red symbol = open circuit.` : 'Voltage colours and fault locations are hidden. Use your meter to trace the circuit.'} Module supply and sensor points are available in Wiring diagram and the meter selectors.</p>
   </>
 }
