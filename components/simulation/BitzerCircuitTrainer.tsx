@@ -3,7 +3,7 @@ import { useState } from 'react'
 import BitzerTerminalBox from './BitzerTerminalBox'
 import BitzerComponentView from './BitzerComponentView'
 import BitzerCircuitDiagram from './BitzerCircuitDiagram'
-import { BITZER_FAULTS, bitzerPointLabel, type BitzerVoltage, CHAIN, DEVICES, POINTS, bitzerState, bitzerReading, type BitzerFault, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
+import { BITZER_FAULTS, bitzerOilLed, bitzerPointLabel, type BitzerVoltage, CHAIN, DEVICES, POINTS, bitzerState, bitzerReading, type BitzerFault, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
 import { saveSimAttempt } from '@/lib/simulation/attempts'
 
 const box = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4'
@@ -53,6 +53,11 @@ export default function BitzerCircuitTrainer() {
       <button aria-pressed={mystery} className={`${button} ${mystery ? '!bg-violet-600 text-white' : ''}`} onClick={() => start(BITZER_FAULTS[1 + Math.floor(Math.random() * (BITZER_FAULTS.length - 1))].id, true)}>Find the Fault</button>
       {!mystery && <label className="grid gap-1 text-xs flex-1 min-w-0">Practice condition<select className={`${input} w-full`} value={fault} onChange={e => start(e.target.value as BitzerFault, false)}>{BITZER_FAULTS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
     </div>
+    <details key={`${fault}-${mystery}`} className={`${box} text-sm`}>
+      <summary className="cursor-pointer py-1 font-semibold">Inspect oil monitor LED</summary>
+      <p className="mt-3" aria-live="polite">Observed LED: <strong>{bitzerOilLed(fault, power)}</strong>.</p>
+      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Flashing red indicates a supply-voltage or installation fault. Measure brown–blue supply and check electronic-head seating. Steady red indicates insufficient lubrication presently. An unlit LED alone does not establish that the device has power. These are settled observations; trip timers are not animated.</p>
+    </details>
     <div className={`grid gap-4 ${view === 'wiring' || view === 'components' || view === 'terminal-box' ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]'}`}>
       <section className={`${box} min-w-0`} aria-label="Wiring schematic">
         <div className="flex justify-between gap-2"><h2 className="font-bold">Bitzer safety circuit</h2><span className={`text-xs font-semibold ${running ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>{running ? 'Contactor pulled in' : 'Contactor released'}</span></div>

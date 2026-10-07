@@ -155,3 +155,20 @@ test('a second open caused by the independent regulator supply leaves isolated w
   assert.equal(read('Reg-out','N'), '0 V', 'intact coil pulls its upstream wire to return')
   assert.equal(read('SE-11','N'), '120 V')
 })
+
+test('Mounting detection trips the oil relay with supply intact at either control voltage', () => {
+  const { bitzerOilLed } = require('../lib/simulation/bitzer-circuit.ts')
+  for (const voltage of [120, 208]) {
+    const read = (a, b) => bitzerReading('oil-mount', true, 'V', 'none', a, b, voltage)
+    assert.equal(read('Oil-L', 'Oil-N'), `${voltage} V`)
+    assert.equal(read('Oil-11', 'Oil-14'), `${voltage} V`)
+    assert.equal(read('Oil-11', 'Oil-12'), '0 V')
+    assert.equal(bitzerState('oil-mount', true, voltage).running, false)
+  }
+  assert.equal(bitzerOilLed('oil-mount'), 'flashing red')
+  assert.equal(bitzerOilLed('oil-mount', false), 'off')
+  assert.equal(bitzerOilLed('oil-power'), 'off')
+  assert.equal(bitzerOilLed('fuse'), 'off')
+  assert.equal(bitzerOilLed('oil-trip'), 'steady red')
+  assert.equal(bitzerOilLed('none'), 'off')
+})

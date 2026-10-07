@@ -24,6 +24,7 @@ export const BITZER_FAULTS = [
   { id: 'ptc-open', name: 'Motor PTC lead open', detail: 'An open PTC circuit trips the protector too. The lead from SE-1 to M1 is open. The isolated sensor at M1–M2 still reads 450 Ω; the disconnected harness at SE-1–SE-2 reads OL. This distinguishes a broken lead from a hot sensor.' },
   { id: 'interconnect', name: 'SE-14 to Oil-11 wire open', detail: 'Both modules are healthy and both relays have pulled in, yet nothing reaches the oil monitor. The grey interconnecting wire between SE-B3 terminal 14 and the oil monitor terminal 11 is open — a crimp off a spade is the usual cause. SE-14 reads full voltage, Oil-11 reads zero.' },
   { id: 'oil-trip', name: 'Lubrication safety tripped', detail: 'The oil monitor relay has released after its fault delay: 11–14 is open and 11–12 has made. Delta-PII checks differential oil pressure; OLC-K1 checks oil presence at the bearing. Check lubrication before resetting.' },
+  { id: 'oil-mount', name: 'Oil monitor head not seated', detail: 'The electronic head is not properly mounted. After 5 seconds the monitor locks out: 11–14 opens, 11–12 closes, and the red LED flashes. Verify brown–blue supply first: low voltage can produce the same indication. Isolate power and check seating/retention using the device instructions. A sticking mounting-detection mechanism is a possible field cause, not proof from the LED alone. Correct the cause before the specified reset.' },
   { id: 'oil-power', name: 'Lubrication monitor supply open', detail: 'The oil monitor supply is absent and its healthy-run contact is open. Verify supply (Oil-L to Oil-N) separately from the relay contact.' },
   { id: 'reg-trip', name: 'INT280 oil refill failed / alarm', detail: 'The regulator could not restore oil level and its alarm contact stopped the compressor. Check oil reservoir supply, available differential pressure and the feed path.' },
   { id: 'reg-power', name: 'INT280 supply open', detail: 'The separately supplied 230 V INT280 has no power. Its healthy-run contact interrupts the control circuit.' },
@@ -60,7 +61,7 @@ export function bitzerPointLabel(point: BitzerPoint, voltage: BitzerVoltage): st
 
 export function bitzerState(fault: BitzerFault, power = true, voltage: BitzerVoltage = 120, regulatorPower = power) {
   const mpHealthy = power && !['mp-power', 'ptc-hot', 'ptc-open', 'fuse'].includes(fault)
-  const oilHealthy = power && !['oil-trip', 'oil-power', 'fuse'].includes(fault)
+  const oilHealthy = power && !['oil-trip', 'oil-mount', 'oil-power', 'fuse'].includes(fault)
   const openLinks = [
     fault === 'fuse', false, fault === 'hp', fault === 'lp', !mpHealthy,
     fault === 'interconnect', !oilHealthy,
@@ -247,4 +248,11 @@ export function colourAt(point: BitzerPoint): BitzerColour {
 export function conductorCoverage(): { confirmed: number; total: number } {
   const all = Object.values(BITZER_CONDUCTORS)
   return { confirmed: all.filter(c => c.confirmed).length, total: all.length }
+}
+
+/** Observable indication in the settled exercise; an unlit LED alone proves nothing. */
+export function bitzerOilLed(fault: BitzerFault, power = true): 'off' | 'steady red' | 'flashing red' {
+  if (!power || fault === 'fuse' || fault === 'oil-power') return 'off'
+  if (fault === 'oil-mount') return 'flashing red'
+  return fault === 'oil-trip' ? 'steady red' : 'off'
 }
