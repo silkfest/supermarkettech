@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import BitzerTerminalBox from './BitzerTerminalBox'
 import BitzerComponentView from './BitzerComponentView'
 import BitzerCircuitDiagram from './BitzerCircuitDiagram'
 import { BITZER_FAULTS, bitzerPointLabel, type BitzerVoltage, CHAIN, DEVICES, POINTS, bitzerState, bitzerReading, type BitzerFault, type BitzerPoint } from '@/lib/simulation/bitzer-circuit'
@@ -12,7 +13,7 @@ export default function BitzerCircuitTrainer() {
   const [voltage, setVoltage] = useState<BitzerVoltage>(120)
   const returnLabel = voltage === 208 ? 'L2' : 'N'
   const pointLabel = (p: BitzerPoint) => bitzerPointLabel(p, voltage)
-  const [view, setView] = useState<'trainer' | 'ladder' | 'wiring' | 'components'>('trainer')
+  const [view, setView] = useState<'trainer' | 'ladder' | 'wiring' | 'components' | 'terminal-box'>('trainer')
   const [oil, setOil] = useState<'Delta-PII' | 'OLC-K1'>('Delta-PII')
   const [fault, setFault] = useState<BitzerFault>('none')
   const [mystery, setMystery] = useState(false)
@@ -47,22 +48,23 @@ export default function BitzerCircuitTrainer() {
       <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">SE-B3 motor protection, INT280 oil regulation and selectable lubrication safety. Use both meter probes to distinguish a lost supply from an open safety contact.</p></div>
     <div className={`${box} flex flex-wrap gap-3 items-end`}>
       <label className="grid gap-1 text-xs">Control voltage<select className={input} value={voltage} onChange={e => { setVoltage(Number(e.target.value) as BitzerVoltage); start('none', false) }}><option value={120}>120 V · L1–N</option><option value={208}>208 V · L1–L2</option></select></label>
-      <label className="grid gap-1 text-xs">Lubrication safety<select className={input} value={oil} onChange={e => { setOil(e.target.value as typeof oil); start('none', false) }}><option>Delta-PII</option><option>OLC-K1</option></select></label>
+      <label className="grid gap-1 text-xs">Lubrication safety<select className={input} value={oil} disabled={view === 'terminal-box'} onChange={e => { setOil(e.target.value as typeof oil); start('none', false) }}><option>Delta-PII</option><option>OLC-K1</option></select></label>
       <button aria-pressed={!mystery} className={`${button} ${!mystery ? '!bg-blue-600 text-white' : ''}`} onClick={() => start('none', false)}>Practice</button>
       <button aria-pressed={mystery} className={`${button} ${mystery ? '!bg-violet-600 text-white' : ''}`} onClick={() => start(BITZER_FAULTS[1 + Math.floor(Math.random() * (BITZER_FAULTS.length - 1))].id, true)}>Find the Fault</button>
       {!mystery && <label className="grid gap-1 text-xs flex-1 min-w-0">Practice condition<select className={`${input} w-full`} value={fault} onChange={e => start(e.target.value as BitzerFault, false)}>{BITZER_FAULTS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
     </div>
-    <div className={`grid gap-4 ${view === 'wiring' || view === 'components' ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]'}`}>
+    <div className={`grid gap-4 ${view === 'wiring' || view === 'components' || view === 'terminal-box' ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]'}`}>
       <section className={`${box} min-w-0`} aria-label="Wiring schematic">
         <div className="flex justify-between gap-2"><h2 className="font-bold">Bitzer safety circuit</h2><span className={`text-xs font-semibold ${running ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>{running ? 'Contactor pulled in' : 'Contactor released'}</span></div>
         <p className="text-xs text-slate-500 dark:text-slate-400 my-2">Tap a terminal to place the {probe} probe. {returnLabel} is also coil A2.</p>
         <div className="flex flex-wrap gap-1 mb-3" role="group" aria-label="Circuit view">
-          {([['trainer', 'Circuit trainer'], ['ladder', 'Control ladder'], ['wiring', 'Wiring diagram'], ['components', 'Actual components']] as const).map(([id, label]) => <button key={id} aria-pressed={view === id} onClick={() => setView(id)} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold ${view === id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300'}`}>{label}</button>)}
+          {([['trainer', 'Circuit trainer'], ['ladder', 'Control ladder'], ['wiring', 'Wiring diagram'], ['components', 'Actual components'], ['terminal-box', 'Inside terminal box']] as const).map(([id, label]) => <button key={id} aria-pressed={view === id} onClick={() => { setView(id); if (id === 'terminal-box' && oil !== 'OLC-K1') { setOil('OLC-K1'); start('none', false) } }} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold ${view === id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300'}`}>{label}</button>)}
         </div>
-        {view === 'components' && <div className="safe-top sticky top-0 z-20 mb-3 rounded-lg bg-slate-950 p-3 text-white shadow-lg">
+        {(view === 'components' || view === 'terminal-box') && <div className="safe-top sticky top-0 z-20 mb-3 rounded-lg bg-slate-950 p-3 text-white shadow-lg">
           <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-emerald-300 text-lg" aria-live="polite">{reading}</span><span className="text-xs text-slate-300">{pointLabel(red)} → {pointLabel(black)}</span></div>
           <div className="flex gap-2 mt-2">{(['red', 'black'] as const).map(p => <button key={p} className={`min-h-11 rounded-lg border px-3 text-xs ${probe === p ? 'border-white bg-slate-700' : 'border-slate-600'}`} aria-pressed={probe === p} onClick={() => setProbe(p)}>Place {p} probe</button>)}</div>
         </div>}
+        {view === 'terminal-box' && <BitzerTerminalBox voltage={voltage} red={red} black={black} selectPoint={selectPoint} />}
         {view === 'components' && <BitzerComponentView oil={oil} voltage={voltage} red={red} black={black} selectPoint={selectPoint} />}
         {(view === 'trainer' || view === 'wiring') && <BitzerCircuitDiagram oil={oil} voltage={voltage} state={state} power={power} reveal={reveal} red={red} black={black} selectPoint={selectPoint} wiring={view === 'wiring'} />}
         {view === 'ladder' && <svg viewBox="0 0 350 700" className="w-full max-w-sm mx-auto" role="img" aria-label="Series safety chain with selectable meter terminals">

@@ -65,3 +65,22 @@ when using a nominal 230 V OLC-K1 on a 208 V control supply.
 - https://www.kriwan.com/en/products/oil-level-regulator
 - User photos IMG_3036.jpeg (INT280 label), IMG_3037.jpeg (Delta-PII),
   IMG_3041.jpeg (terminal-box connection label).
+
+## 4NES-14-5PU terminal-box reference
+
+Added a connected terminal-box view for user-specified model 4NES-14-5PU,
+575 V / three phase / 60 Hz, S/N 2598172095. This identifies the user's unit;
+it is not a serial-specific factory drawing or verification of installed wiring.
+SG-0012-09 p.59 establishes the direct-start terminal layout (1/2/3 above 7/8/9),
+links 1–7, 2–8, 3–9, and contactor T1/T2/T3 feeds to 1/2/3 respectively.
+The same guide p.57 identifies 5PU as 575 V with a part-winding option; this view
+explicitly shows direct starting, not the two-contactor part-winding arrangement.
+
+The reference retains the trainer's SE-B3 and selectable 120/208 V controls,
+separate from motor power, and uses OLC-K1 for the slinger application. Field
+control routing is the educational circuit, not a literal reproduction of the
+p.59 legacy oil-control circuit (which depicts SE-B1/B2 and 230 V control).
+Motor terminals are inspection-only and never feed 575 V into the control meter.
+Control and sensor terminals reuse existing meter points. Wire tracing layers
+and enlargement support inspection. The optional heater remains omitted pending
+its fitted voltage/control arrangement. INT280 pin numbering remains unverified.
