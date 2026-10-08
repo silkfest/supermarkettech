@@ -62,6 +62,17 @@ const RACKS = [
     source: 'Modeled on a Hussmann-style 8 ft single-deck bunker',
   },
   {
+    href: '/simulation/copeland-control',
+    rackKey: 'safety-circuit',
+    icon: Zap,
+    accent: 'blue',
+    name: 'Copeland Demand Cooling + Unloader',
+    refrigerant: 'CoreSense Protection · Discus 4D',
+    description: 'Explore component terminals and connected wiring. Diagnose Demand Cooling, injection-valve and conventional unloader faults with voltage, isolated continuity and operating observations.',
+    stats: ['14 injectable faults', 'Component and compressor views', '120 / 240 V control', 'Practice and hidden faults'],
+    source: 'Copeland AE4-1287, AE8-1367 and AE21-1216 · photo-based reference',
+  },
+  {
     href: '/simulation/bitzer-control',
     rackKey: 'safety-circuit',
     icon: Zap,
