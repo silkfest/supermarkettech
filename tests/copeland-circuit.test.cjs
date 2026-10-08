@@ -48,3 +48,22 @@ test('Sensor opens, floating relay contacts and stopped-coil islands do not yiel
  assert.match(volts({},'TS-1','RET'),/isolated resistance/)
  for(const f of COPELAND_FAULTS){const s=state({...defaults,fault:f.id,power:false});assert.equal(s.running,false);for(const v of Object.values(s.potentials))assert.ok(v===0||v===null)}
 })
+
+test('LP opens independently of HP while CoreSense stays supplied',()=>{
+ for(const voltage of [120,240]){
+  assert.equal(volts({fault:'lp',voltage},'HP-out','RET'),`${voltage} V`)
+  assert.equal(volts({fault:'lp',voltage},'LP-out','RET'),'0 V')
+  assert.equal(volts({fault:'lp',voltage},'HP-out','LP-out'),`${voltage} V`)
+  assert.equal(volts({fault:'lp',voltage},'CS-P','CS-2'),`${voltage} V`)
+  assert.equal(state({...defaults,fault:'lp',voltage}).running,false)
+ }
+})
+test('PTC resistance rises on a motor trip and remains distinct from the Demand Cooling NTC',()=>{
+ const s={...defaults,power:false,fault:'ptc'}
+ assert.match(reading(s,'Ω','ptc','PTC-1','PTC-2'),/15 kΩ/)
+ assert.match(reading({...s,fault:'none'},'Ω','ptc','PTC-2','PTC-1'),/1 kΩ/)
+ assert.match(reading(s,'Ω','sensor','PTC-1','PTC-2'),/Isolate ptc/)
+ assert.match(reading({...s,power:true},'Ω','ptc','PTC-1','PTC-2'),/power off/)
+ assert.match(volts({},'PTC-1','RET'),/isolated resistance/)
+ assert.match(reading(s,'Ω','sensor','TS-1','TS-2'),/2.0 kΩ/)
+})

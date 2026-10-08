@@ -60,3 +60,23 @@ supply/relay faults, open versus mechanical coil faults, guarded resistance,
 NTC open and floating segments. TypeScript and lint checks plus rendered SVG
 inspection supplement the tests. Browser interaction was not tested locally
 because no browser executable is installed.
+
+## Additional hardware review
+
+Added drawings for the differential oil-pressure sensor and harness, motor PTC
+loop, current-sensing toroid, and separate HP/LP controls. Oil sensor and toroid
+connections are inspection-only, without invented connector pin numbers or
+resistance checks. CoreSense already incorporates the oil and motor protection;
+this configuration does not require adding a second Sentronic or INT369R.
+
+Added a separately diagnosable LP cutout fault and HP-out/LP-out test points.
+Added isolated motor PTC tests using explicitly simulated 1 kΩ cool / 15 kΩ hot
+values. AE8-1367 R8 p.7 documents the applicable 13 kΩ trip, 3.2 kΩ recovery and
+five-minute off interval; other motor variants differ. These PTC leads remain
+functional labels, not motor power terminals or assumed connector pin numbers.
+
+Accessory notes distinguish oil-level replenishment from oil-pressure protection
+and identify crankcase heaters/head fans as application-dependent. Actual models,
+ratings and wiring are not inferred. All now 14 injected fault scenarios remain
+settled snapshots. The toroid's run-proof signal is not represented as a spare
+line-voltage output; the existing OEM interlock stays explicitly functional.

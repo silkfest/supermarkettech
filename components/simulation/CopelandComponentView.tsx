@@ -7,7 +7,7 @@ const descriptions:Partial<Record<CPPoint,string>>={
  'CS-P':'CoreSense module supply, marked 120/240 V in the reference. Separate from relay common L.',
  'CS-2':'CoreSense supply return terminal 2.', 'CS-L':'CoreSense relay common L ← Demand Cooling M.', 'CS-M':'CoreSense healthy-run contact M → contactor A1. Opens on a protection trip or loss of module power.', 'CS-A':'CoreSense alarm contact A. Connected to L on fault or power loss; unused here.',
  'DC-L':'Demand Cooling alarm-relay common L ← call and pressure safeties.', 'DC-M':'Demand Cooling run contact M → CoreSense L. Opens on a latched Demand Cooling alarm.', 'DC-A':'Demand Cooling alarm contact A. Unused here; does not power the injection valve.', 'DC-L1':'Demand Cooling supply L1 ← run-proved control feed. Match the module to the supply voltage.', 'DC-L2':'Demand Cooling supply L2 → circuit return (N in the 120 V exercise).', 'DC-S':'Demand Cooling switched output S → injection solenoid only. Do not connect the unloader here.',
- 'IV-1':'Injection solenoid feed ← DC S. Functional lead label, not a manufacturer pin number.', 'IV-2':'Injection solenoid return → DC L2. Functional lead label.', 'U-1':'Conventional unloader coil feed ← rack unload command through run interlock. Energized means unloaded.', 'U-2':'Unloader coil return. Functional lead label.', UC:'Rack unloading contact output. Independent of Demand Cooling S.', RUN:'Run-proved control feed. Functional representation of the OEM interlock; no invented CoreSense output terminal.', 'TS-1':'Unplugged Demand Cooling NTC sensor lead. Sensor resistance falls as temperature rises.', 'TS-2':'Second NTC lead. Sensor connector geometry and pin numbers are not established by the photos.', A1:'Compressor contactor coil A1 ← CoreSense M.',RET:'Circuit return: N at 120 V, L2 at 240 V. Also contactor A2.',L1:'Incoming control supply. Separate from the 575 V compressor motor circuit.',FU:'Control fuse output supplies CoreSense and the control branches.','HP-out':'Call / pressure-safety output feeds Demand Cooling relay common L.'}
+ 'IV-1':'Injection solenoid feed ← DC S. Functional lead label, not a manufacturer pin number.', 'IV-2':'Injection solenoid return → DC L2. Functional lead label.', 'U-1':'Conventional unloader coil feed ← rack unload command through run interlock. Energized means unloaded.', 'U-2':'Unloader coil return. Functional lead label.', UC:'Rack unloading contact output. Independent of Demand Cooling S.', RUN:'Run-proved control feed. Functional representation of the OEM interlock; no invented CoreSense output terminal.', 'TS-1':'Unplugged Demand Cooling NTC sensor lead. Sensor resistance falls as temperature rises.', 'TS-2':'Second NTC lead. Sensor connector geometry and pin numbers are not established by the photos.', A1:'Compressor contactor coil A1 ← CoreSense M.',RET:'Circuit return: N at 120 V, L2 at 240 V. Also contactor A2.',L1:'Incoming control supply. Separate from the 575 V compressor motor circuit.',FU:'Control fuse output supplies CoreSense and the control branches.','HP-out':'High-pressure cutout output → low-pressure cutout input.', 'LP-out':'Low-pressure cutout output → Demand Cooling relay common L.', 'PTC-1':'Isolated motor-temperature PTC loop lead 1 → CoreSense motor-sensor input. Functional label, not a connector pin number.', 'PTC-2':'Motor PTC lead 2. Resistance rises with motor temperature; this is a different sensor from the Demand Cooling NTC.'}
 export default function CopelandComponentView({red,black,selectPoint,voltage,view}:Props){
  const uid=useId().replace(/:/g,'');const [selected,setSelected]=useState<CPPoint>('DC-S');const [zoom,setZoom]=useState(false)
  const paint=(n:string)=>`url(#${uid}-${n})`
@@ -22,9 +22,45 @@ export default function CopelandComponentView({red,black,selectPoint,voltage,vie
  const card=(title:string,note:string,drawing:React.ReactNode)=><section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h3 className="text-sm font-bold">{title}</h3><p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{note}</p><div className="mt-3 overflow-x-auto rounded-xl bg-slate-100"><svg viewBox="0 0 360 300" style={{width:zoom?540:'100%',minWidth:zoom?540:undefined}} fontFamily="Arial, sans-serif" role="group" aria-label={title}>{drawing}</svg></div></section>
  return <div className="space-y-3">
   <svg width="0" height="0" className="absolute" aria-hidden="true"><defs><linearGradient id={`${uid}-body`} x2="0" y2="1"><stop stopColor="#4a5660"/><stop offset="1" stopColor="#17222b"/></linearGradient><linearGradient id={`${uid}-metal`} x2="1" y2="1"><stop stopColor="white"/><stop offset="1" stopColor="#aabac7"/></linearGradient></defs></svg>
+  <details className="rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-900"><summary className="min-h-11 cursor-pointer font-semibold">Protection inputs and installation-dependent accessories</summary><div className="space-y-2 leading-relaxed">
+   <p>Oil sensor → CoreSense oil input; embedded motor PTCs → CoreSense motor input; current toroid → CoreSense run-proof input. These are separate from the Demand Cooling head NTC. The oil sensor and toroid are inspection-only because their connector pinouts are not established by the photos.</p>
+   <p>CoreSense provides the oil-pressure and motor protection shown here. A separate Sentronic / mechanical oil-safety control or INT369R motor protector should not be added as though it were also required in this arrangement.</p>
+   <p>An oil-level regulator or float may replenish crankcase oil, but does not replace net oil-pressure protection. Its make, supply and alarm wiring need the fitted accessory label. A crankcase heater and head fan are also application-dependent; do not assume their voltage or control wiring from the compressor nameplate.</p>
+   <p>The current toroid senses motor current; it is not a contactor auxiliary switch. Part-winding connections require the documented lead routing. The diagram’s OEM run interlock remains a functional interface, not an invented output on the toroid.</p>
+  </div></details>
   <div className="flex items-start justify-between gap-2"><p className="text-xs text-slate-600 dark:text-slate-400">Tap a terminal to place your probe. Drawings show documented terminal functions; spacing and field routing are illustrative.</p><button className="min-h-11 shrink-0 rounded-lg border px-3 text-xs" aria-pressed={zoom} onClick={()=>setZoom(v=>!v)}>{zoom?'Fit drawing':'Enlarge'}</button></div>
   <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sky-950 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100" aria-live="polite"><strong>{CP_LABELS[selected]}</strong><p className="mt-1 text-sm">{descriptions[selected]}</p></div>
   {view==='components'&&<div className="grid gap-4 xl:grid-cols-2">
+   {card('High / low pressure controls','Two independent series switches. Settings and reset types depend on the fitted control and rack design.',<>
+    {body(20,25,145,140,'HP cutout')}{body(195,25,145,140,'LP cutout')}
+    <path d="M92 166 V197 M267 166 V197" stroke="#b47c51" strokeWidth="5"/>
+    <text x="92" y="94" textAnchor="middle" fontSize="11" fill="white">Discharge pressure</text><text x="267" y="94" textAnchor="middle" fontSize="11" fill="white">Suction pressure</text>
+    {terminal('FU',45,250,'Call feed')}{terminal('HP-out',135,250,'HP out')}{terminal('LP-out',225,250,'LP out')}{terminal('DC-L',315,250,'DC L')}
+    <text x="180" y="211" textAnchor="middle" fontSize="10">FU → call → HP → LP → DC L</text>
+    <text x="180" y="291" textAnchor="middle" fontSize="10">Functional field points · exact switch terminals vary</text>
+   </>)}
+   {card('CoreSense differential oil-pressure sensor','At the oil pump: measures net oil pressure, not oil level. Its harness connects to CoreSense.',<>
+    <circle cx="105" cy="139" r="68" fill="#303b43" stroke="#64748b" strokeWidth="5"/>
+    <rect x="137" y="116" width="65" height="43" rx="8" fill="#bda065" stroke="#806738" strokeWidth="3"/>
+    <rect x="196" y="110" width="48" height="55" rx="8" fill={paint('body')}/>{wire('M244 136 H308 V220 H220','#475569',true)}
+    <text x="105" y="140" textAnchor="middle" fontSize="13" fill="white">Oil pump</text><text x="180" y="49" textAnchor="middle" fontSize="14" fontWeight="700">Oil-pressure sensor + harness</text>
+    <rect x="63" y="214" width="158" height="42" rx="6" fill="#dbeafe" stroke="#93c5fd"/><text x="142" y="240" textAnchor="middle" fontSize="12">CoreSense oil input</text>
+    <text x="180" y="287" textAnchor="middle" fontSize="10">Connector inspection only · no invented pinout or ohm test</text>
+   </>)}
+   {card('Motor PTC sensor circuit','Embedded winding sensors connect to CoreSense. Unplug and isolate for a resistance test.',<>
+    <rect x="62" y="30" width="236" height="111" rx="14" fill={paint('body')}/>
+    <text x="180" y="57" textAnchor="middle" fontSize="13" fill="white">Motor winding PTC chain</text>
+    {wire('M83 90 H114 l10 -12 l12 24 l12 -24 l12 24 l12 -24 l12 24 l12 -12 H277','#f97316')}
+    {wire('M83 90 H44 V219','#ea580c')}{wire('M277 90 H316 V219','#ea580c')}
+    {terminal('PTC-1',44,244,'PTC lead 1')}{terminal('PTC-2',316,244,'PTC lead 2')}
+    <text x="180" y="182" textAnchor="middle" fontSize="11">To CoreSense motor-sensor input</text><text x="180" y="281" textAnchor="middle" fontSize="11">Higher temperature → higher resistance</text>
+   </>)}
+   {card('Current-sensing toroid','Compressor run proof for CoreSense. One motor lead passes through the ring for a single-winding connection.',<>
+    <circle cx="145" cy="130" r="68" fill={paint('body')} stroke="#111827" strokeWidth="5"/><circle cx="145" cy="130" r="31" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="4"/>
+    <path d="M35 48 H145 V231 H248" fill="none" stroke="#475569" strokeWidth="9"/>{wire('M207 132 H304 V239','#0ea5e9',true)}
+    <text x="145" y="276" textAnchor="middle" fontSize="11">Motor lead through centre</text><text x="303" y="268" textAnchor="middle" fontSize="10">To CoreSense</text>
+    <text x="180" y="25" textAnchor="middle" fontSize="11">Inspection only · 575 V is outside this meter exercise</text>
+   </>)}
    {card('CoreSense Protection','Motor PTC and oil protection. The supply and L/M/A relay contacts have different jobs.',<>
     {body(25,30,310,235,'CoreSense™ Protection')}<text x="180" y="82" textAnchor="middle" fill="#d4dfe7" fontSize="11">for Copeland Discus compressors</text>
     {terminal('CS-P',90,140,'120/240 V')}{terminal('CS-2',270,140,'2')}{terminal('CS-M',90,235,'M')}{terminal('CS-L',180,235,'L')}{terminal('CS-A',270,235,'A')}
