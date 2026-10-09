@@ -62,6 +62,17 @@ const RACKS = [
     source: 'Modeled on a Hussmann-style 8 ft single-deck bunker',
   },
   {
+    href: '/simulation/micro-thermo-control',
+    rackKey: 'safety-circuit',
+    icon: Zap,
+    accent: 'blue',
+    name: 'Micro Thermo Safety Loop',
+    refrigerant: 'MT-CMP · SLA troubleshooting',
+    description: 'Trace the external safety loop, test individual contacts and distinguish SL, LPS and proof faults on a photo-inspired compressor controller.',
+    stats: ['8 fault scenarios', 'Controller + signal-path views', '120 / 208 V field supply', 'Voltage + isolated continuity'],
+    source: 'Parker C-008 and A-104 · explicit board-revision limits',
+  },
+  {
     href: '/simulation/copeland-control',
     rackKey: 'safety-circuit',
     icon: Zap,

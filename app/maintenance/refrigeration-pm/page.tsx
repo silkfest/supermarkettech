@@ -354,6 +354,17 @@ const labelCls = 'block text-xs font-medium text-slate-700 mb-1'
 const narrowInput = 'w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-center'
 
 
+// Keep this component at module scope so field updates preserve the input DOM and keyboard focus.
+const Section = ({ title, open, toggle, children }: { title: string; open: boolean; toggle: () => void; children: React.ReactNode }) => (
+  <div className="border border-slate-200 rounded-lg overflow-hidden">
+    <button onClick={toggle} className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+      <span className="text-xs font-semibold text-slate-700">{title}</span>
+      <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
+    {open && <div className="p-4">{children}</div>}
+  </div>
+)
+
 function RackForm({ unit, onChange, equipmentId }: {
   unit: UnitData
   onChange: (field: keyof UnitData, value: unknown) => void
@@ -384,16 +395,6 @@ function RackForm({ unit, onChange, equipmentId }: {
     arr[i] = v
     onChange(field, arr)
   }
-
-  const Section = ({ title, open, toggle, children }: { title: string; open: boolean; toggle: () => void; children: React.ReactNode }) => (
-    <div className="border border-slate-200 rounded-lg overflow-hidden">
-      <button onClick={toggle} className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors text-left">
-        <span className="text-xs font-semibold text-slate-700">{title}</span>
-        <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="p-4">{children}</div>}
-    </div>
-  )
 
   return (
     <>
