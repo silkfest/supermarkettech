@@ -396,6 +396,20 @@ function RackForm({ unit, onChange, equipmentId }: {
     onChange(field, arr)
   }
 
+  const safetyFields = ['hpSetPoints', 'lpSetPoints', 'ofcTripTime'] as const
+  const hasSafetyValues = safetyFields.some(field => (unit[field][0] ?? '').trim() !== '')
+  const applySafetyToAll = () => {
+    // One-time copy: preserve unused slots and leave blank source fields alone.
+    // Each array remains independently editable after applying the defaults.
+    for (const field of safetyFields) {
+      const value = unit[field][0] ?? ''
+      if (!value.trim()) continue
+      const values = [...unit[field]]
+      for (let i = 1; i < unit.compressorCount; i++) values[i] = value
+      onChange(field, values)
+    }
+  }
+
   return (
     <>
     <div className="space-y-4">
@@ -581,6 +595,23 @@ function RackForm({ unit, onChange, equipmentId }: {
 
       {/* Safety Controls */}
       <Section title="Safety Controls" open={safetyOpen} toggle={() => setSafetyOpen(o => !o)}>
+        {unit.compressorCount > 1 && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <p className="text-sm font-medium text-slate-800">Same safety values for this rack?</p>
+            <p className="mt-1 text-xs text-slate-600">
+              Enter HP, LP and OFC trip time under Comp 1, then copy to all {unit.compressorCount} compressors.
+              Filled values replace existing entries; blanks are skipped. Edit any compressor afterward.
+            </p>
+            <button
+              type="button"
+              onClick={applySafetyToAll}
+              disabled={!hasSafetyValues}
+              className="mt-3 min-h-11 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply Comp 1 to all compressors
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Array.from({ length: unit.compressorCount }, (_, i) => (
             <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
