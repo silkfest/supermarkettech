@@ -51,6 +51,13 @@ test('a date-only value is not pushed back a day by the time zone', () => {
   assert.equal(formatReportDate('not a date'), 'not a date')
 })
 
+test('the certification is not printed', () => {
+  // Still recorded on the report, just not on the copy that goes to the store.
+  const items = section(buildReportDoc('hvac', HVAC), 'Site & Technician').blocks[0].items
+  assert.deepEqual(items.map(i => i.label), ['Store / Site', 'Address', 'Technician'])
+  assert.ok(!JSON.stringify(items).includes('313D'))
+})
+
 test('the equipment table carries one row per unit, in order', () => {
   const t = block(buildReportDoc('hvac', HVAC), 'Equipment', 'table')
   assert.deepEqual(t.head, ['Unit', 'Brand', 'Model', 'Serial', 'Refrigerant', 'Voltage'])

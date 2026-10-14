@@ -109,7 +109,8 @@ function siteSection(data: Obj): DocSection[] {
     { label: 'Store / Site', value: str(data.store_name) },
     { label: 'Address', value: str(units?.storeAddress) },
     { label: 'Technician', value: str(tech?.name) },
-    { label: 'Certification', value: str(tech?.cert) },
+    // The technician's certification is not printed. It is still recorded on
+    // the report; it just does not belong on the copy that goes to the store.
   ])
   return blocks.length ? [{ title: 'Site & Technician', blocks }] : []
 }
