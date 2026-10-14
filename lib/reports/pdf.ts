@@ -10,6 +10,10 @@
 import type { ReportDoc, DocBlock, DocPhoto } from './doc'
 import { pdfFileName } from './doc'
 
+/** The name at the top of every report. The company's, not the app's: the PDF
+ *  is what goes to the store, and the store deals with the contractor. */
+const BRAND = 'Major Refrigeration'
+
 /* A4 portrait, in millimetres. */
 const PAGE_W = 210
 const PAGE_H = 297
@@ -116,7 +120,7 @@ function drawTitleBlock(pdf: Pdf, doc: ReportDoc): number {
   let y = MARGIN + 4
 
   pdf.setFont('helvetica', 'bold').setFontSize(15).setTextColor(...INK.brand)
-  pdf.text('ColdIQ', MARGIN, y)
+  pdf.text(BRAND, MARGIN, y)
 
   pdf.setFontSize(13).setTextColor(...INK.heading)
   pdf.text(doc.title, MARGIN, y + 7)
