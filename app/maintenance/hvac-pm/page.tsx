@@ -7,7 +7,7 @@ import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Season = 'FALL' | 'WINTER' | 'SPRING' | 'SUMMER' | ''
+type Season = '' | 'Spring' | 'Summer' | 'Fall' | 'Winter'
 type EquipmentType = 'AIR_HANDLER' | 'MAIN_AC' | 'RTU' | 'EXHAUST_FAN' | 'UNIT_HEATER' | ''
 type RefrigerantType = 'R-22' | 'R-410A' | 'R-407C' | 'R-134a' | ''
 type VoltageType = '120/1/60' | '208/1/60' | '208/3/60' | '575/3/60' | ''
@@ -235,7 +235,7 @@ function HvacPMContent() {
   const visibleItems = CHECKLIST_LABELS.map((label, i) => ({
     label,
     key: `item${i + 1}` as keyof CheckItems,
-    hidden: (season === 'WINTER' || season === 'SUMMER') && [1, 3, 5].includes(i),
+    hidden: (season === 'Winter' || season === 'Summer') && [1, 3, 5].includes(i),
   }))
 
   // Deficiency helpers
@@ -372,10 +372,10 @@ function HvacPMContent() {
               <label className={labelCls}>Season</label>
               <select value={season} onChange={e => setSeason(e.target.value as Season)} className={inputCls}>
                 <option value="">Select Season</option>
-                <option value="SPRING">Spring</option>
-                <option value="SUMMER">Summer</option>
-                <option value="FALL">Fall</option>
-                <option value="WINTER">Winter</option>
+                <option value="Spring">Spring</option>
+                <option value="Summer">Summer</option>
+                <option value="Fall">Fall</option>
+                <option value="Winter">Winter</option>
               </select>
             </div>
             <div>
