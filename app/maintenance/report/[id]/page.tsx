@@ -522,14 +522,6 @@ function ReportViewContent() {
           body { background: white !important; font-size: 11pt; }
           .print-page { background: white !important; padding: 0 !important; }
           .print-header { border-bottom: 2px solid #1e40af; padding-bottom: 10px; margin-bottom: 18px; }
-          .print-logo::before {
-            content: "ColdIQ";
-            font-size: 18pt;
-            font-weight: 700;
-            color: #2563eb;
-            display: block;
-            margin-bottom: 2px;
-          }
           /* Cards used to refuse to split, so one that didn't fit in what was
              left of a page jumped to the next and left most of a page blank.
              Only small things that read badly when split are kept whole. */
