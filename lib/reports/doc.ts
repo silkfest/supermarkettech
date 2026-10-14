@@ -53,6 +53,17 @@ const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.is
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 const strs = (v: unknown): string[] => arr(v).map(str)
 
+/** Who did the work.
+ *
+ *  Both PM forms store this as a plain string — it is one "Technician name"
+ *  box. Earlier reports hold an object instead, so both are read here; taking
+ *  only the object shape is what left the name off the report entirely. */
+const technicianName = (v: unknown): string => {
+  if (typeof v === 'string') return v.trim()
+  const o = obj(v)
+  return o ? str(o.name) : ''
+}
+
 const photos = (v: unknown): DocPhoto[] =>
   arr(v)
     .map(p => obj(p))
@@ -104,11 +115,10 @@ export function buildReportDoc(kind: ReportKind, data: Obj): ReportDoc {
 
 function siteSection(data: Obj): DocSection[] {
   const units = obj(data.units)
-  const tech = obj(units?.technician)
   const blocks = fields([
     { label: 'Store / Site', value: str(data.store_name) },
     { label: 'Address', value: str(units?.storeAddress) },
-    { label: 'Technician', value: str(tech?.name) },
+    { label: 'Technician', value: technicianName(units?.technician) },
     // The technician's certification is not printed. It is still recorded on
     // the report; it just does not belong on the copy that goes to the store.
   ])

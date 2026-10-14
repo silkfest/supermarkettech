@@ -51,6 +51,29 @@ test('a date-only value is not pushed back a day by the time zone', () => {
   assert.equal(formatReportDate('not a date'), 'not a date')
 })
 
+test('the technician is named when the form saved a plain string', () => {
+  // This is how both PM forms actually save it — one "Technician name" box.
+  // Reading only the object shape left the technician off the report: the
+  // store got a PM with a site on it and nobody's name.
+  const doc = buildReportDoc('hvac', { store_name: 'Freshco 9690', units: { technician: 'Ben Silk' } })
+  const items = section(doc, 'Site & Technician').blocks[0].items
+  assert.deepEqual(items.find(i => i.label === 'Technician'), { label: 'Technician', value: 'Ben Silk' })
+})
+
+test('the technician is named when an older report holds an object', () => {
+  const doc = buildReportDoc('hvac', { units: { technician: { name: 'B. Silk', cert: '313D' } } })
+  const items = section(doc, 'Site & Technician').blocks[0].items
+  assert.equal(items.find(i => i.label === 'Technician').value, 'B. Silk')
+})
+
+test('no technician at all leaves the field out rather than printing blank', () => {
+  for (const technician of [undefined, '', '   ', 42, {}, { name: '' }]) {
+    const doc = buildReportDoc('hvac', { store_name: 'S', units: { technician } })
+    const items = section(doc, 'Site & Technician').blocks[0].items
+    assert.ok(!items.some(i => i.label === 'Technician'), JSON.stringify(technician))
+  }
+})
+
 test('the certification is not printed', () => {
   // Still recorded on the report, just not on the copy that goes to the store.
   const items = section(buildReportDoc('hvac', HVAC), 'Site & Technician').blocks[0].items
