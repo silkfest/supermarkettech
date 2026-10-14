@@ -3,59 +3,12 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
+import { Printer, Download, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
 import PhotoGallery from '@/components/PhotoGallery'
 import PageHeader from '@/components/PageHeader'
+import { REFRIG_CHECKLIST, HVAC_CHECKLIST } from '@/lib/maintenance/checklists'
 import { type EquipmentType, usesRefrigerant } from '@/lib/maintenance/hvac-equipment'
-
-// ─── Refrigeration checklist labels ───────────────────────────────────────────
-const REFRIG_CHECKLIST: { id: string; label: string }[] = [
-  { id: 'cl_leakCheckStore', label: 'Perform a complete leak check of entire store.' },
-  { id: 'cl_cleanSelfContained', label: 'Clean all self contained condensers.' },
-  { id: 'cl_cleanCondensersPowerWash', label: 'Clean all condensers. (Power Wash)' },
-  { id: 'cl_inspectCheckFans', label: 'Inspect condensers and start and check fans.' },
-  { id: 'cl_testCompressorSafeties', label: "Test compressors oil failures and safety's in all modes." },
-  { id: 'cl_checkCleanOilCoolingFans', label: 'Check and clean oil head cooling fans.' },
-  { id: 'cl_checkRunningOilPressures', label: 'Check running oil pressures on all compressors.' },
-  { id: 'cl_checkOilLevelsUnitsRacks', label: 'Check oil levels of all units and racks.' },
-  { id: 'cl_checkGasChargeSightGlass', label: 'Check gas charge, sight glass and solid liquid column on receivers.' },
-  { id: 'cl_checkReceiverPressureItem', label: 'Check each receiver pressure.' },
-  { id: 'cl_checkRackPressures', label: 'Check rack suction and discharge pressures.' },
-  { id: 'cl_checkPressureDifferentials', label: 'Check pressure differentials across each drier and suction core.' },
-  { id: 'cl_checkDefrostSettings', label: 'Check pressure and settings on hot or cold gas defrosts.' },
-  { id: 'cl_checkElectricalPhase', label: 'Check each electrical phase during compressor operation.' },
-  { id: 'cl_checkReplaceOilFilters', label: 'Check and replace all oil filters as needed.' },
-  { id: 'cl_checkTagEprValves', label: 'Check and tag each EPR valve pressure setting.' },
-  { id: 'cl_checkCaseWalkinAirVelocityDrains', label: 'Check all cases and walk-ins for proper air velocity and drains.' },
-  { id: 'cl_checkAdjustCaseTemps', label: 'Check and adjust display case temperatures.' },
-  { id: 'cl_performOilAcidTests', label: 'Perform oil acid tests on racks. (Record results)' },
-  { id: 'cl_checkComputerAlarms', label: 'Check computer for ongoing alarms and issues.' },
-  { id: 'cl_checkHoneycombs', label: 'Check honeycombs' },
-  { id: 'cl_verifyHeatReclaim', label: 'Verify heat reclaim operation.' },
-  { id: 'cl_calibrateLeakDetector', label: 'Calibrate Leak detector' },
-  { id: 'cl_checkFrozenFoodDoorsGasketsThermo', label: 'Check Frozen Food doors, door gaskets and thermometers' },
-  { id: 'cl_checkWalkinFansCleanEvaps', label: 'Check walk in cooler fans and clean evaporators' },
-  { id: 'cl_checkCaseConditionFloor', label: 'Check overall condition of Refrigeration cases on floor' },
-  { id: 'cl_inspectRefrigerationLines', label: 'Inspect refrigeration lines, Armaflex, Hangers & Cushion Clamps' },
-  { id: 'cl_inspectDefrostSchedulesNoiseVibration', label: 'Inspect Frozen Food defrost schedules, noise or vibration on racks' },
-  { id: 'cl_inspectFanMotorsBrushSweepClear', label: 'Inspect fan motors, brush off compressors, sweep machine room.' },
-  { id: 'cl_cleanMachineRoom', label: 'Clean Machine Room' },
-  { id: 'cl_picturesEmailed', label: 'Pictures of Machine Room emailed to Office' },
-]
-
-const HVAC_CHECKLIST = [
-  'Check all heating and A/C systems.',
-  'Check all heat exchangers and chimney.',
-  'Oil motors and grease fittings on all HVAC.',
-  'Grease all fittings on air handler.',
-  'Replace all filters.',
-  'Check returns. (Visual)',
-  'Check all controls for accuracy and proper operation.',
-  'Check all sensors and thermostats for proper operation.',
-  'Check condition of belts on air handler, HVAC and exhaust and change as needed.',
-  'Check access door seals on all HVAC.',
-  'Check drainpipes and condensation pans.',
-]
+import { buildReportDoc, type ReportKind } from '@/lib/reports/doc'
 
 const RACK_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -487,6 +440,8 @@ function ReportViewContent() {
   const [error, setError] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -496,6 +451,25 @@ function ReportViewContent() {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => { setError('Failed to load report'); setLoading(false) })
   }, [id, type])
+
+  /** The PDF is built here rather than printed from this page: the browser's
+   *  own print output carries a URL and date stamp that cannot be styled away,
+   *  and its page breaks come out of rules written for a screen layout. */
+  async function handleDownloadPdf() {
+    if (!data) return
+    setPdfBusy(true)
+    setPdfError('')
+    try {
+      const kind: ReportKind = type === 'individual' ? 'individual' : reportType === 'hvac' ? 'hvac' : 'refrigeration'
+      // Loaded on demand — the PDF library is far larger than this page.
+      const { downloadReportPdf } = await import('@/lib/reports/pdf')
+      await downloadReportPdf(buildReportDoc(kind, data))
+    } catch {
+      setPdfError('Could not build the PDF. You can still use Print.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -556,8 +530,18 @@ function ReportViewContent() {
             display: block;
             margin-bottom: 2px;
           }
-          section, .bg-white { break-inside: avoid; page-break-inside: avoid; }
-          table { break-inside: avoid; page-break-inside: avoid; width: 100%; font-size: 9pt; }
+          /* Cards used to refuse to split, so one that didn't fit in what was
+             left of a page jumped to the next and left most of a page blank.
+             Only small things that read badly when split are kept whole. */
+          .bg-white { break-inside: auto; page-break-inside: auto; }
+          thead { display: table-header-group; }
+          tr, li { break-inside: avoid; page-break-inside: avoid; }
+          h2 { break-after: avoid; page-break-after: avoid; }
+          /* The horizontal scroller clips to the page width on paper, which is
+             what sliced the last columns off the equipment table. */
+          .overflow-x-auto { overflow: visible !important; }
+          table { width: 100%; font-size: 8.5pt; table-layout: fixed; }
+          td, th { word-break: break-word; overflow-wrap: anywhere; }
           th, td { padding: 4px 8px !important; border: 1px solid #cbd5e1 !important; }
           th { background: #f8fafc !important; font-weight: 600; }
           h2 { font-size: 9pt !important; letter-spacing: 0.08em !important; text-transform: uppercase; color: #475569 !important; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
@@ -565,15 +549,7 @@ function ReportViewContent() {
           .grid { display: grid !important; }
           /* Photos — let them breathe and show in full */
           img { max-width: 100% !important; height: auto !important; object-fit: contain !important; break-inside: avoid; page-break-inside: avoid; }
-          @page {
-            size: A4 portrait;
-            margin: 18mm 15mm 18mm 15mm;
-            @bottom-center {
-              content: "ColdIQ · Page " counter(page) " of " counter(pages);
-              font-size: 8pt;
-              color: #94a3b8;
-            }
-          }
+          @page { size: A4 portrait; margin: 14mm 12mm; }
         }
       `}</style>
 
@@ -585,12 +561,21 @@ function ReportViewContent() {
           actions={
             <>
               <button
+                onClick={handleDownloadPdf}
+                disabled={pdfBusy}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                title="Download this report as a PDF"
+              >
+                {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                <span className="hidden sm:inline">{pdfBusy ? 'Building…' : 'PDF'}</span>
+              </button>
+              <button
                 onClick={() => window.print()}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
-                title="Opens print dialog — choose 'Save as PDF' to download"
+                title="Print this report"
               >
                 <Printer size={14} />
-                <span className="hidden sm:inline">Export PDF</span>
+                <span className="hidden sm:inline">Print</span>
               </button>
               <button
                 onClick={() => router.push(editUrl)}
@@ -631,6 +616,11 @@ function ReportViewContent() {
         />
 
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-5">
+          {pdfError && (
+            <p className="no-print text-xs text-amber-700 dark:text-amber-400 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {pdfError}
+            </p>
+          )}
           {/* Report title block */}
           <div className="print-header">
             <div className="flex items-start justify-between">
