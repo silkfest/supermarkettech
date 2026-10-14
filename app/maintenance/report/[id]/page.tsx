@@ -18,6 +18,13 @@ function importanceBadge(imp: string) {
   return { cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <Info size={12} className="text-emerald-500" /> }
 }
 
+/** Who did the work, from either shape the report may carry. */
+function technicianFrom(raw: unknown): { name: string; cert: string } {
+  if (typeof raw === 'string') return { name: raw, cert: '' }
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, string>
+  return { name: o.name ?? '', cert: o.cert ?? '' }
+}
+
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden print:border-slate-300 print:rounded-none print:shadow-none print:mb-4 print:overflow-visible">
@@ -46,7 +53,8 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
   const notes = data.notes as Array<{ id: string; text: string; importance: string }> | null
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const racks = (units?.racks as unknown[]) ?? []
-  const technician = units?.technician as Record<string, string> | null
+  // Both PM forms save this as a plain string; older reports hold an object.
+  const technician = technicianFrom(units?.technician)
   const storeAddress = units?.storeAddress as string | null
 
   const checkedItems = REFRIG_CHECKLIST.filter(i => checklist?.[i.id])
@@ -61,8 +69,8 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Store / Site" value={data.store_name as string} />
           <Field label="Address" value={storeAddress} />
-          <Field label="Technician" value={technician?.name} />
-          <Field label="Certification" value={technician?.cert} />
+          <Field label="Technician" value={technician.name} />
+          <Field label="Certification" value={technician.cert} />
         </div>
       </SectionCard>
 
@@ -206,7 +214,8 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
   const notes = data.notes as Array<{ id: string; note: string; equipmentIndex: number | null; assetId: string; importance: string }> | null
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const equipment = (units?.equipment as unknown[]) ?? []
-  const technician = units?.technician as Record<string, string> | null
+  // Both PM forms save this as a plain string; older reports hold an object.
+  const technician = technicianFrom(units?.technician)
   const storeAddress = units?.storeAddress as string | null
 
   /** A blank refrigerant on a gas unit heater or an exhaust fan is not missing
@@ -233,8 +242,8 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Store / Site" value={data.store_name as string} />
           <Field label="Address" value={storeAddress} />
-          <Field label="Technician" value={technician?.name} />
-          <Field label="Certification" value={technician?.cert} />
+          <Field label="Technician" value={technician.name} />
+          <Field label="Certification" value={technician.cert} />
         </div>
       </SectionCard>
 
