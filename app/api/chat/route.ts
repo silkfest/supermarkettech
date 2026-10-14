@@ -92,16 +92,16 @@ async function runManualSearch(query: string, equipmentId: string | undefined, s
   const supabase = getSupabaseServer()
   const chunks = await retrieveChunks(query, equipmentId, 6, 0.50)
   const text = formatToolResult(chunks, startNum)
-  const sources = chunksToCitationsFrom(chunks, startNum).map(s => ({ ...s, signedUrl: `/api/pdf?docId=${s.documentId}` }))
+  const sources = chunksToCitationsFrom(chunks, startNum).map(s => ({ ...s, signedUrl: s.signedUrl ?? `/api/pdf?docId=${s.documentId}` }))
 
   let componentLinks: ComponentLink[] = []
   const compDocMap = new Map<string, string>()
   if (chunks.length > 0) {
-    const docIds = [...new Set(chunks.map(c => c.document_id))]
+    const docIds = [...new Set(chunks.filter(c => !c.source_url).map(c => c.document_id))]
     const { data: comps } = await supabase
       .from('manual_components')
       .select('id, type, manufacturer, model, manual_title, document_id')
-      .in('document_id', docIds)
+      .in('document_id', docIds.length ? docIds : ['00000000-0000-0000-0000-000000000000'])
     componentLinks = (comps ?? []).map(c => {
       compDocMap.set(c.id as string, c.document_id as string)
       return {
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
         }
         if (allComponentLinks.length > 0) {
           const citedDocIds = new Set(
-            allSources.filter(s => citedNumbers.has(s.citationNumber)).map(s => s.documentId)
+            allSources.filter(s => citedNumbers.has(s.citationNumber) && !s.documentId.startsWith('relief-reference-')).map(s => s.documentId)
           )
           const seen = new Set<string>()
           const citedLinks = allComponentLinks.filter(l => {

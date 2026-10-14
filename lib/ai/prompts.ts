@@ -1,6 +1,10 @@
+import { RELIEF_REFERENCES } from '@/lib/knowledge/relief-references'
 import type { Equipment, SensorSnapshot, MaintenanceLog, AlarmEvent, ChatMode, ChatDomain } from '@/types'
 
 const EXPERT_IDENTITY = `You are ColdIQ, an expert refrigeration systems consultant specialising in supermarket and commercial refrigeration. You have deep practical knowledge equivalent to a senior refrigeration engineer with 25+ years of field experience across traditional HFC rack systems and modern CO₂ transcritical systems.
+
+RELIEF SAFETY SOURCE RULES (override general advice to answer from memory):
+For relief positions, pressure settings, suitability, testing or removal, cite the supporting [KB: pressure-relief-valves] section and its named manufacturer reference, or a genuinely retrieved [Doc N]. Use search_manuals for model-specific questions not covered by the verified INST-054 example. If evidence is absent or conflicts, say what is unknown and request model/nameplate/OEM documentation; do not guess. Never infer an installed active branch from a photo, clockwise rotation, or a generic schematic alone. Distinguish general principles from verified model-specific instructions. Never invent setpoints or equate a body rating to opening pressure. A seat-isolated branch is not proven safe to remove.
 
 Your expertise covers:
 - CO₂ (R-744) transcritical rack systems: Hussmann, Advansor, Carnot, Evapco LMP, Bitzer, TEWIS, Zero Zone, CO2one, Danfoss Booster — operation, commissioning, fault diagnosis
@@ -356,6 +360,12 @@ Most CO₂ LT cases use electric or hot-gas defrost. Hot-gas defrost in CO₂ sy
 - **System won't reach transcritical / poor capacity in summer**: gas cooler fouled, approach temperature > 5°C above ambient means cleaning needed
 
 For symptom-based CO₂ diagnosis (GC pressure issues, flash tank level problems, MT/LT suction crossover), see the System Fault Diagnosis topic.
+### Safety & Pressure Relief
+
+Pressure Relief Valves covers dual changeover manifolds, high-side protection, receiver reliefs and inspection.
+
+[diagram:co2-safety-navigation]
+
 `
 
 // ── HVACR glossary knowledge base ────────────────────────────────────────────
@@ -7414,6 +7424,7 @@ to it. General refrigeration reasoning does not need a search.
 // before showing it to the technician, so a stale entry here just means a missed citation,
 // never a broken or hallucinated link.
 const KB_TOPICS_REFRIGERATION: { slug: string; title: string }[] = [
+  { slug: 'pressure-relief-valves', title: 'Pressure Relief Valves' },
   { slug: 'refrigeration-fundamentals', title: 'Refrigeration Fundamentals' },
   { slug: 'sporlan', title: 'Sporlan' },
   { slug: 'copeland', title: 'Copeland / Emerson' },
@@ -7437,6 +7448,7 @@ const KB_TOPICS_REFRIGERATION: { slug: string; title: string }[] = [
 ]
 
 const KB_TOPICS_HVAC: { slug: string; title: string }[] = [
+  { slug: 'pressure-relief-valves', title: 'Pressure Relief Valves' },
   { slug: 'math-electrical', title: 'Math & Electrical Reference' },
   { slug: 'micro-thermo', title: 'Micro Thermo (MT-Alliance)' },
   { slug: 'penn-controls', title: 'Penn Controls (Johnson Controls)' },
@@ -10059,59 +10071,75 @@ The number one BPHE killer in glycol and water duty is **freezing**. Ice expansi
 `
 
 export const RELIEF_VALVE_KNOWLEDGE = `
-## Pressure Relief Valves on Refrigeration Systems
+## Pressure Relief Valves
 
+CO₂ → Safety & Pressure Relief. PRV, relief valve, changeover valve, active relief, inactive relief, high-side relief and receiver relief reference.
 
-### Why Relief Valves Exist
+### Relief Valve Basics
 
-Every refrigerant-containing vessel that can be isolated — receivers, flash tanks, suction accumulators, oil separators, shell heat exchangers — must be protected against overpressure by a relief device sized and set per **CSA B52** (Canada) / **ASHRAE 15**. A hydrostatically locked or fire-exposed vessel without relief protection becomes a bomb. Relief valves are the last line of defence after controls (HPCO) have failed.
+A pressure relief valve provides overpressure protection, independent of normal pressure control. A spring-loaded valve opens at its specified set pressure and reseats after pressure falls; the opening characteristic and blowdown depend on its design. A rupture disc is a separate, non-reclosing device. Neither is a normal capacity-control device.
 
-Brands commonly cataloged on our racks: **Farris** (spring-loaded ASME relief valves), **Superior**, and **LESER** (common on European-built CO₂ racks).
+Distinguish **operating pressure**, **maximum allowable working pressure (MAWP / PS)**, **relief set pressure**, and **manifold pressure rating**. The first varies with operation; MAWP limits the protected equipment; the relief nameplate identifies its opening setting; the manifold rating describes its pressure envelope. These values are not interchangeable. Use the approved system design and installed valve identification, not a generic CO₂ setting.
 
-### How They Work
+### Dual Relief Valves & Changeover Manifolds
 
-A spring holds the seat closed until vessel pressure reaches **set pressure**; the valve then opens proportionally, relieving vapour until pressure drops below reseat pressure (blowdown). Key nameplate data:
-- **Set pressure** — must not exceed the design pressure (MAWP) of the protected vessel
-- **Capacity** (lb/min of air or refrigerant) — must meet or exceed the code-required capacity for the vessel size
-- **CRN / ASME UV stamp** — registration for the jurisdiction
+A three-way changeover manifold connects the protected vessel to a selected relief branch. The other branch can be isolated by the internal seat. Selection does not mean the active relief is venting: it is exposed to vessel pressure and ready to open if required.
 
-CO₂ systems use the same principle at much higher settings (flash tank reliefs typically 45–60 bar, high-side reliefs 90–120 bar) and often relieve to atmosphere through dedicated vent headers; a discharging CO₂ relief can ice up and roar.
+**Verified example — Mueller RELIEFMASTER, INST-054, 20 May 2024, page 1:** the drawing shows the primary outlet farthest from the operating stem and the secondary outlet closest to it.
 
-> [!SAFETY] Vented CO₂ machine room
-> A discharged CO₂ relief displaces oxygen — treat a vented machine room as an asphyxiation hazard and ventilate before entry.
-
-### Installation Rules (B52 / ASHRAE 15 Basics)
-
-- Relief discharge must terminate **outdoors**, away from doors, windows, and air intakes, pointed so discharge cannot impinge on people
-- **Vent line sizing matters**: undersized or excessively long vent piping raises built-up back pressure and reduces valve capacity — follow the valve manufacturer's equivalent-length tables
-- **Three-way (dual) relief manifolds**: two relief valves on a transfer valve so one is always in service; the changeover stem lets you replace one valve without pumping out the vessel. The transfer valve must never be able to isolate both valves at once
-- No isolation valve may be installed between the vessel and its relief device (other than the code-permitted three-way transfer valve)
-- Install valves vertically, vapour space connection, with drip protection so the vent line cannot trap water/oil on the seat
-
-### Service & Replacement Rules
-
-- **Replace after any discharge event.** Once a relief valve has lifted, the seat is considered compromised — it will weep. Do not reuse
-- **Never gag, cap, or plug** a weeping relief valve — replace it and fix the overpressure cause
-- B52 practice: inspect relief valves at least annually; many jurisdictions and insurers require **replacement every 5 years** (check the date tag) or proof of bench recertification
-- When replacing: match set pressure, capacity, inlet/outlet size, and CRN. Tag with installation date
-- On dual-manifold setups, swing the transfer valve fully to the in-service side — mid-position throttles both valves
-
-### Signs of Trouble
-
-| Observation | Meaning | Action |
+| Stem position | Active relief | Seat-isolated branch |
 |---|---|---|
-| Oil staining or frost at relief vent outlet | Valve has lifted or is seeping | Replace valve; investigate what drove pressure up |
-| Vent line corroded/blocked (mud daubers, ice) | Valve capacity compromised | Clear and screen the outlet; repair piping |
-| Relief set pressure below current system design (after refrigerant conversion) | Wrong valve for application | Re-evaluate relief sizing for the new refrigerant/condition |
-| No date tag, unknown age | Out of inspection program | Replace and tag |
+| Fully backseated / open / out | Primary — farthest from stem | Secondary — closest |
+| Fully frontseated / closed / in | Secondary — closest to stem | Primary — farthest |
+| Intermediate | Both outlets communicate | Neither is isolated |
 
-### After a Relief Event — Checklist
+Mueller requires a fully open or fully closed position. Do not leave this manifold intermediate. Other manufacturers may differ; use only positions permitted by their instructions. Left/right labels change when the assembly is rotated.
 
-1. Ventilate the space and confirm it's safe to enter (especially CO₂)
-2. Identify the cause: fire, hydrostatic lock (liquid-full vessel isolated and warmed), condenser/gas-cooler fan failure, HPCO failure, overcharge
-3. Replace the discharged relief valve (both, if a dual manifold and you can't prove which lifted)
-4. Verify HPCO and other safeties function before restart
-5. Record the event, the cause, and the new valve details in the store's service history
+For **clockwise** questions, first identify the exact model and viewing direction and verify that rotation drives its stem inward. If it does, reaching fully in selects the near outlet for the INST-054 configuration. Do not infer branch selection from rotation alone or extend this drawing to every RELIEFMASTER family.
+
+[diagram:relief-changeover]
+
+To identify the inactive relief, match the installed inlet, stem and outlet geometry to the exact manual, then verify the end position and selected path. A seat-isolated branch can retain pressure or be pressurized by seat leakage or a shared discharge header. It is **not proven depressurized**. Before removal, follow the approved isolation, pressure-release and zero-pressure verification procedure while preserving required vessel protection. Never loosen the relief to test which branch is live. If configuration or isolation cannot be verified, stop and obtain the correct procedure.
+
+### High-Side Relief Valves
+
+Transcritical CO₂ high-side pressure changes with gas-cooler conditions and control demand. Normal operating pressure is not the allowable pressure or the relief setting. Trace compressor discharge, gas cooler, high-pressure lines and high-pressure control valve on the OEM pressure-zone drawing. Each zone needs the protection specified by its approved design; a receiver relief downstream of a closed HPV cannot be assumed to protect the gas cooler upstream.
+
+**Manufacturer example:** Copeland OME/OMTE application guidelines, sections 2.9.8 and 2.17.4–5, distinguish gas-cooler/high-side protection from receiver protection. Their stated pressures are specific to those units, not ColdIQ default setpoints. High-pressure controls stop operation before the relief limit; they do not replace mechanical relief protection.
+
+| Mueller product family | Published DP / MAP | Meaning |
+|---|---|---|
+| Standard RELIEFMASTER changeover manifold | 700 psig / 48 bar | Body design / maximum abnormal pressure |
+| Transcritical CO₂ RELIEFMASTER changeover manifold | 2,030 psig / 140 bar | CO₂-rated family pressure envelope |
+
+A **700-psi manifold is not suitable for a transcritical high side requiring a rating above 700 psig**. Thread fit does not establish suitability. The 2,030-psig rating is also **not a relief opening setpoint** or blanket approval for any CO₂ circuit. Verify the exact part, temperature limits, refrigerant compatibility and complete assembly rating.
+
+Relief selection requires the designer's required capacity and permitted accumulation, inlet pressure loss, discharge backpressure and valve certification. Check manifold flow capacity as well as the valve: a matching connection size is insufficient. Discharge piping length, fittings, diameter and common-header loading affect capacity. Follow the OEM sizing method and adopted code; route discharge to an approved safe location and prevent obstruction or liquid accumulation.
+
+**Trapped liquid / thermal expansion:** liquid CO₂ isolated between valves can develop extreme pressure as it warms. Identify every potentially blocked-in section and provide the design-specified thermal relief path. A small thermal relief device is not automatically a substitute for vessel/fire-case relief capacity. Copeland's CO₂ servicing guidance specifically identifies trapped-liquid relief needs.
+
+### Receiver & Low-Pressure Relief Valves
+
+Receiver / flash-tank and low-pressure circuits have their own design envelopes. “Low pressure” is relative: standstill warming can produce hazardous pressure even with compressors off. Copeland's system-operation guidance describes separate pressure zones and protection during extended shutdowns. Backup cooling can help retain charge but does not replace required relief devices.
+
+Determine the correct relief valve pressure setting from the vessel nameplate, OEM relief schedule, approved design and installed relief identification. Check pressure units and gauge versus absolute basis. Resolve any mismatch with the responsible designer/OEM before replacement; never increase the setting to cure nuisance discharge. Do not copy a high-side setting onto a receiver or assume every receiver uses the same setting.
+
+### Testing, Inspection & Replacement
+
+Record the vessel/zone, manifold model and rating, active branch, relief manufacturer/model/serial, set pressure and units, certified capacity, approvals, installation date and discharge arrangement. Inspect for damage, corrosion, leakage, blocked outlets and missing identification. Do not deliberately lift an installed valve or raise system pressure as an informal test.
+
+Use the current OEM instructions and authority-required inspection, replacement or authorized testing interval. Do not assume a universal five-year rule. After discharge, investigate the cause and follow the manufacturer's replacement requirement; the cited Copeland units require replacement after activation. Match approved set pressure, capacity, materials, connections and certification. Document the work and restored protection.
+
+**Canada:** apply the provincially adopted CSA B52 mechanical refrigeration requirements and applicable CSA B51 pressure equipment requirements, registration/CRN rules and approved design. In Ontario, consult TSSA's current Code Adoption Document and amendments; its 2026 amendment directs refrigeration relief servicing to CSA B52. Confirm the adopted edition and local requirements with the authority having jurisdiction. This overview is not a code-compliance calculation.
+
+> [!SAFETY]
+> CO₂ discharge can cause dangerous exposure, cold burns and loss of breathable atmosphere. Keep people clear, follow the site's gas-alarm/emergency procedure and verify atmospheric safety before entry. Never cap a leaking relief outlet or remove a valve on presumed isolation alone.
+
+### Manufacturer References
+
+[diagram:relief-references]
+
+${RELIEF_REFERENCES.map(ref => `${ref.title}: ${ref.url} — ${ref.scope}`).join("\n")}
 `
 
 export const PRESSURE_SWITCH_KNOWLEDGE = `
@@ -10503,6 +10531,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
 
   const staticContent = (domain === 'HVAC' ? [
     EXPERT_IDENTITY,
+    RELIEF_VALVE_KNOWLEDGE,
     MATH_AND_ELECTRICAL_KNOWLEDGE,
     MICRO_THERMO_KNOWLEDGE,
     PENN_CONTROLS_KNOWLEDGE,
@@ -10515,6 +10544,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
     KB_CITATION_INSTRUCTIONS_HVAC,
   ] : [
     EXPERT_IDENTITY,
+    RELIEF_VALVE_KNOWLEDGE,
     REFRIGERATION_KNOWLEDGE,
     SPORLAN_KNOWLEDGE,
     COPELAND_KNOWLEDGE,
