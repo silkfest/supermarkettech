@@ -126,7 +126,9 @@ function Citations({ sources, onOpenPdf }: { sources: CitationSource[]; onOpenPd
         return s.signedUrl ? (
           <button
             key={s.chunkId}
-            onClick={() => onOpenPdf(pdfUrl(s.signedUrl!, s.pageNumber), s.title)}
+            onClick={() => s.documentId.startsWith('relief-reference-') && !s.signedUrl!.includes('.pdf')
+              ? window.open(s.signedUrl!, '_blank', 'noopener,noreferrer')
+              : onOpenPdf(pdfUrl(s.signedUrl!, s.pageNumber), s.title)}
             title={`Open ${s.title}${s.pageNumber != null ? `, p.${s.pageNumber}` : ''}`}
             className={`${baseClass} hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer`}
           >

@@ -1,3 +1,4 @@
+import { searchReliefSources } from '@/lib/knowledge/relief-source-index'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import type { CitationSource } from '@/types'
 
@@ -64,6 +65,7 @@ export interface RetrievedChunk {
   content: string
   page_number: number | null
   score: number
+  source_url?: string
 }
 
 export async function retrieveChunks(
@@ -72,7 +74,14 @@ export async function retrieveChunks(
   topK = 8,
   minScore = 0.58
 ): Promise<RetrievedChunk[]> {
-  const embedding = await embedQuery(query)
+  const curated = searchReliefSources(query)
+  let embedding: number[]
+  try {
+    embedding = await embedQuery(query)
+  } catch (error) {
+    if (curated.length) return curated
+    throw error
+  }
   const supabase = getSupabaseServer()
 
   const { data, error } = await supabase.rpc('match_doc_chunks', {
@@ -84,10 +93,10 @@ export async function retrieveChunks(
 
   if (error) {
     console.error(JSON.stringify({ ragRpcError: true, msg: error.message, code: error.code }))
-    return []
+    return curated
   }
 
-  return (data as RetrievedChunk[]) ?? []
+  return [...curated, ...((data as RetrievedChunk[]) ?? [])]
 }
 
 export function formatContext(chunks: RetrievedChunk[], maxChars = 12000): string {
@@ -137,6 +146,7 @@ export function chunksToCitationsFrom(chunks: RetrievedChunk[], startNum: number
     title: c.document_title,
     sourceType: c.source_type,
     relevanceScore: c.score,
+    ...(c.source_url ? { signedUrl: c.source_url } : {}),
   }))
 }
 

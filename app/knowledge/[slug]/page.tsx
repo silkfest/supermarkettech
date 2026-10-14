@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
+import Link from 'next/link'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Skeleton } from '@/components/Skeleton'
 import { useRouter, useParams } from 'next/navigation'
@@ -251,6 +252,7 @@ export default function KnowledgeTopicPage() {
               Knowledge Base
             </button>
             <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
+            {slug === 'pressure-relief-valves' && <Link href="/knowledge/co2-transcritical#safety-pressure-relief" className="text-xs text-blue-600 dark:text-blue-400">CO₂ → Safety &amp; Pressure Relief /</Link>}
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{topic.title}</span>
             <div className="flex items-center gap-1.5 ml-auto flex-wrap">
               {topic.source === 'manual' && (
