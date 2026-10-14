@@ -6,6 +6,7 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Printer, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle, Info, AlertCircle, Loader2 } from 'lucide-react'
 import PhotoGallery from '@/components/PhotoGallery'
 import PageHeader from '@/components/PageHeader'
+import { type EquipmentType, usesRefrigerant } from '@/lib/maintenance/hvac-equipment'
 
 // ─── Refrigeration checklist labels ───────────────────────────────────────────
 const REFRIG_CHECKLIST: { id: string; label: string }[] = [
@@ -255,6 +256,14 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
   const technician = units?.technician as Record<string, string> | null
   const storeAddress = units?.storeAddress as string | null
 
+  /** A blank refrigerant on a gas unit heater or an exhaust fan is not missing
+   *  data — the form never asks for it. Say so, rather than leaving a dash that
+   *  reads like something the tech forgot. */
+  const refrigerantCell = (e: Record<string, string>) => {
+    if (e.refrigerantType) return e.refrigerantType
+    return usesRefrigerant(e.type as EquipmentType) ? '—' : 'N/A'
+  }
+
   const equipLabel = (type: string, area?: string) => {
     const map: Record<string, string> = {
       AIR_HANDLER: 'Air Handler', MAIN_AC: 'Main AC',
@@ -324,7 +333,7 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
                       <td className="px-3 py-2 border border-slate-200 text-slate-600">{e.brand || '—'}</td>
                       <td className="px-3 py-2 border border-slate-200 text-slate-600">{e.modelNumber || '—'}</td>
                       <td className="px-3 py-2 border border-slate-200 text-slate-600">{e.serialNumber || '—'}</td>
-                      <td className="px-3 py-2 border border-slate-200 text-slate-600">{e.refrigerantType || '—'}</td>
+                      <td className="px-3 py-2 border border-slate-200 text-slate-600">{refrigerantCell(e)}</td>
                       <td className="px-3 py-2 border border-slate-200 text-slate-600">{e.voltage || '—'}</td>
                     </tr>
                   )
@@ -332,6 +341,26 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
               </tbody>
             </table>
           </div>
+          {/* Photos kept against individual units, shown per unit rather than
+              folded into the report's own set so it stays clear which one they
+              belong to. */}
+          {equipment.some(eq => ((eq as { photos?: unknown[] }).photos ?? []).length > 0) && (
+            <div className="mt-5 space-y-4 border-t border-slate-100 pt-4">
+              {equipment.map((eq: unknown, i: number) => {
+                const e = eq as Record<string, string> & { photos?: Array<{ url: string; label: string }> }
+                const unitPhotos = e.photos ?? []
+                if (unitPhotos.length === 0) return null
+                return (
+                  <div key={e.id ?? i}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                      {equipLabel(e.type, e.serviceArea)}
+                    </p>
+                    <PhotoGallery photos={unitPhotos} className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-2" />
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </SectionCard>
       )}
 

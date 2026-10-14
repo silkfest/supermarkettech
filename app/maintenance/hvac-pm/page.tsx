@@ -1,11 +1,14 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, type SetStateAction } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, X, ChevronDown, Pencil, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 import { draftKey, readDraft, writeDraft, clearDraft, isWorthSaving, describeDraftAge } from '@/lib/maintenance/draft'
 import { describeSaveError } from '@/lib/maintenance/save-errors'
+import {
+  type EquipmentType, usesRefrigerant, needsServiceArea, equipmentLabel, MAX_UNIT_PHOTOS,
+} from '@/lib/maintenance/hvac-equipment'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,7 +29,6 @@ interface DraftData {
   deficiencies: Deficiency[]
   photos: UploadPhoto[]
 }
-type EquipmentType = 'AIR_HANDLER' | 'MAIN_AC' | 'RTU' | 'EXHAUST_FAN' | 'UNIT_HEATER' | ''
 type RefrigerantType = 'R-22' | 'R-410A' | 'R-407C' | 'R-134a' | ''
 type VoltageType = '120/1/60' | '208/1/60' | '208/3/60' | '575/3/60' | ''
 type Importance = 'CRITICAL' | 'IMPORTANT' | 'ROUTINE'
@@ -40,6 +42,9 @@ interface Equipment {
   serialNumber: string
   refrigerantType: RefrigerantType
   voltage: VoltageType
+  /** Photos of this unit specifically — typically the nameplate and whatever is
+   *  being flagged. Separate from the report's own photo set. */
+  photos: UploadPhoto[]
 }
 
 interface HvacEquipmentInfo {
@@ -80,25 +85,25 @@ const CHECKLIST_LABELS = [
   'Check drainpipes and condensation pans.',
 ]
 
+/** Bring stored equipment up to the current shape.
+ *
+ *  Reports and drafts saved before units had their own photos have no photos
+ *  array at all, and older reports can carry a refrigerant on a unit heater or
+ *  exhaust fan from when the form asked every unit for one. That value is now
+ *  unreachable in the form, so it would sit on the report unchallenged — drop it
+ *  rather than let a gas appliance keep a refrigerant nobody can see to correct.
+ */
+const normaliseEquipment = (rows: Equipment[]): Equipment[] => rows.map(e => ({
+  ...e,
+  photos: Array.isArray(e.photos) ? e.photos : [],
+  refrigerantType: usesRefrigerant(e.type) ? e.refrigerantType : '',
+}))
+
 const defaultCheckItems = (): CheckItems => ({
   item1: false, item2: false, item3: false, item4: false,
   item5: false, item6: false, item7: false, item8: false,
   item9: false, item10: false, item11: false,
 })
-
-const equipmentLabel = (type: EquipmentType, serviceArea?: string) => {
-  switch (type) {
-    case 'AIR_HANDLER': return 'Air Handler'
-    case 'MAIN_AC': return 'Main AC'
-    case 'RTU': return serviceArea ? `RTU ${serviceArea}` : 'RTU'
-    case 'EXHAUST_FAN': return serviceArea ? `EF ${serviceArea}` : 'Exhaust Fan'
-    case 'UNIT_HEATER': return serviceArea ? `UH ${serviceArea}` : 'Unit Heater'
-    default: return ''
-  }
-}
-
-const needsServiceArea = (t: EquipmentType) =>
-  ['RTU', 'EXHAUST_FAN', 'UNIT_HEATER'].includes(t)
 
 const importanceBadge = (imp: Importance) => {
   if (imp === 'CRITICAL') return 'text-red-600 bg-red-50 border-red-200'
@@ -195,7 +200,7 @@ function HvacPMContent() {
       if (d.performedAt) setPerformedAt(d.performedAt)
       if (d.season !== undefined) setSeason(d.season)
       if (d.simproNumber !== undefined) setSimproNumber(d.simproNumber)
-      if (Array.isArray(d.equipment)) setEquipment(d.equipment)
+      if (Array.isArray(d.equipment)) setEquipment(normaliseEquipment(d.equipment))
       if (d.checkItems) setCheckItems({ ...defaultCheckItems(), ...d.checkItems })
       if (Array.isArray(d.deficiencies)) setDeficiencies(d.deficiencies)
       if (Array.isArray(d.photos)) setPhotos(d.photos)
@@ -252,7 +257,7 @@ function HvacPMContent() {
       if (d.units && typeof d.units === 'object' && !Array.isArray(d.units)) {
         setStoreAddress(d.units.storeAddress ?? '')
         setTechnician(d.units.technician ?? '')
-        if (Array.isArray(d.units.equipment)) setEquipment(d.units.equipment)
+        if (Array.isArray(d.units.equipment)) setEquipment(normaliseEquipment(d.units.equipment))
       }
       if (Array.isArray(d.notes)) setDeficiencies(d.notes)
       setPhotos(d.photos ?? [])
@@ -264,12 +269,21 @@ function HvacPMContent() {
     setEquipment(prev => [...prev, {
       id: crypto.randomUUID(), type, serviceArea,
       brand: '', modelNumber: '', serialNumber: '',
-      refrigerantType: '', voltage: ''
+      refrigerantType: '', voltage: '', photos: []
     }])
   }
 
   const updateEquipment = (id: string, field: keyof Equipment, value: string) => {
     setEquipment(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e))
+  }
+
+  /** PhotoUploadGrid hands back an updater, so the unit's list is threaded
+   *  through it rather than replaced wholesale — an upload that lands after a
+   *  label edit must not clobber the edit. */
+  const updateEquipmentPhotos = (id: string, update: SetStateAction<UploadPhoto[]>) => {
+    setEquipment(prev => prev.map(e => e.id === id
+      ? { ...e, photos: typeof update === 'function' ? update(e.photos) : update }
+      : e))
   }
 
   const removeEquipment = (id: string) => {
@@ -624,16 +638,21 @@ function HvacPMContent() {
                           <label className={labelCls}>Serial Number</label>
                           <input value={eq.serialNumber} onChange={e => updateEquipment(eq.id, 'serialNumber', e.target.value)} className={inputCls} placeholder="Serial #" />
                         </div>
-                        <div>
-                          <label className={labelCls}>Refrigerant Type</label>
-                          <select value={eq.refrigerantType} onChange={e => updateEquipment(eq.id, 'refrigerantType', e.target.value)} className={inputCls}>
-                            <option value="">Select</option>
-                            <option>R-22</option>
-                            <option>R-410A</option>
-                            <option>R-407C</option>
-                            <option>R-134a</option>
-                          </select>
-                        </div>
+                        {/* A unit heater burns gas and an exhaust fan just moves air —
+                            neither holds refrigerant, and asking invites a tech to pick
+                            something to clear the field. */}
+                        {usesRefrigerant(eq.type) && (
+                          <div>
+                            <label className={labelCls}>Refrigerant Type</label>
+                            <select value={eq.refrigerantType} onChange={e => updateEquipment(eq.id, 'refrigerantType', e.target.value)} className={inputCls}>
+                              <option value="">Select</option>
+                              <option>R-22</option>
+                              <option>R-410A</option>
+                              <option>R-407C</option>
+                              <option>R-134a</option>
+                            </select>
+                          </div>
+                        )}
                         <div>
                           <label className={labelCls}>Voltage</label>
                           <select value={eq.voltage} onChange={e => updateEquipment(eq.id, 'voltage', e.target.value)} className={inputCls}>
@@ -650,6 +669,16 @@ function HvacPMContent() {
                             <input value={eq.serviceArea} onChange={e => updateEquipment(eq.id, 'serviceArea', e.target.value)} className={inputCls} placeholder="e.g. Bakery" />
                           </div>
                         )}
+                        <div className="md:col-span-2 pt-1 border-t border-slate-100">
+                          <PhotoUploadGrid
+                            photos={eq.photos}
+                            onChange={update => updateEquipmentPhotos(eq.id, update)}
+                            title={`${label} Photos`}
+                            description=""
+                            maxPhotos={MAX_UNIT_PHOTOS}
+                            compact
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
