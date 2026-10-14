@@ -4,10 +4,28 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, X, ChevronDown, Pencil, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
+import { draftKey, readDraft, writeDraft, clearDraft, isWorthSaving, describeDraftAge } from '@/lib/maintenance/draft'
+import { describeSaveError } from '@/lib/maintenance/save-errors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Season = '' | 'Spring' | 'Summer' | 'Fall' | 'Winter'
+
+/** What is kept on the device between visits: the answers the tech typed,
+ *  not transient UI state like which panel is open. */
+interface DraftData {
+  storeName: string
+  storeId: string | null
+  storeAddress: string
+  technician: string
+  performedAt: string
+  season: Season
+  simproNumber: string
+  equipment: Equipment[]
+  checkItems: CheckItems
+  deficiencies: Deficiency[]
+  photos: UploadPhoto[]
+}
 type EquipmentType = 'AIR_HANDLER' | 'MAIN_AC' | 'RTU' | 'EXHAUST_FAN' | 'UNIT_HEATER' | ''
 type RefrigerantType = 'R-22' | 'R-410A' | 'R-407C' | 'R-134a' | ''
 type VoltageType = '120/1/60' | '208/1/60' | '208/3/60' | '575/3/60' | ''
@@ -146,6 +164,46 @@ function HvacPMContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [errorDetail, setErrorDetail] = useState('')
+
+  /* ---- Draft kept on the device ----
+   * A PM is filled in over an hour on a phone. Before this, a refresh, a
+   * reclaimed tab or a flat battery lost the lot. */
+  const DRAFT_KEY = draftKey('hvac-pm', editId)
+  const [restoredFrom, setRestoredFrom] = useState<string>('')
+  // Set as soon as a draft is applied, so the fetch of an existing report does
+  // not overwrite the tech's newer unsaved edits.
+  const restoredRef = useRef(false)
+  // Nothing is written until the form has been loaded, or an empty initial
+  // render would overwrite the very draft we are about to restore.
+  const draftReadyRef = useRef(false)
+  // The form as it looks untouched, captured on the first pass rather than
+  // written out by hand: a new rack carries a random id, so any fixed
+  // baseline would differ from it and store a draft for a form nobody typed in.
+  const untouchedRef = useRef<DraftData | null>(null)
+
+  // Restore a draft before any fetch runs, so nothing can clobber it.
+  useEffect(() => {
+    const draft = readDraft<DraftData>(DRAFT_KEY, Date.now())
+    if (draft) {
+      const d = draft.data
+      restoredRef.current = true
+      if (d.storeName !== undefined) setStoreName(d.storeName)
+      if (d.storeId !== undefined) setStoreId(d.storeId)
+      if (d.storeAddress !== undefined) setStoreAddress(d.storeAddress)
+      if (d.technician !== undefined) setTechnician(d.technician)
+      if (d.performedAt) setPerformedAt(d.performedAt)
+      if (d.season !== undefined) setSeason(d.season)
+      if (d.simproNumber !== undefined) setSimproNumber(d.simproNumber)
+      if (Array.isArray(d.equipment)) setEquipment(d.equipment)
+      if (d.checkItems) setCheckItems({ ...defaultCheckItems(), ...d.checkItems })
+      if (Array.isArray(d.deficiencies)) setDeficiencies(d.deficiencies)
+      if (Array.isArray(d.photos)) setPhotos(d.photos)
+      setRestoredFrom(describeDraftAge(draft.savedAt, Date.now()))
+    }
+    draftReadyRef.current = true
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Fetch sites list for store picker — also pre-fills name/address if storeId came from URL
   useEffect(() => {
@@ -179,6 +237,9 @@ function HvacPMContent() {
   // Load existing report
   useEffect(() => {
     if (!editId) return
+    // A restored draft is the tech's newer unsaved work on this same report;
+    // the saved copy would be a step backwards. "Start fresh" reloads to get it.
+    if (restoredRef.current) return
     fetch(`/api/pm-reports/${editId}`).then(r => r.json()).then(d => {
       setStoreName(d.store_name ?? '')
       setStoreId(d.store_id ?? null)
@@ -267,10 +328,38 @@ function HvacPMContent() {
     setEditingDefId(null)
   }
 
+  // Write the form to the device as it is filled in. Debounced so typing a
+  // store name is one write, not thirty.
+  useEffect(() => {
+    if (!draftReadyRef.current) return
+    const data: DraftData = {
+      storeName, storeId, storeAddress, technician, performedAt, season,
+      simproNumber, equipment, checkItems, deficiencies, photos,
+    }
+    if (untouchedRef.current === null) {
+      // First pass. A restored draft is already worth keeping, so it gets a
+      // baseline nothing matches; an untouched form becomes the baseline itself.
+      untouchedRef.current = restoredRef.current ? ({} as DraftData) : data
+      return
+    }
+    // An untouched form is not a draft; storing one would later tell every tech
+    // who merely opened the page that they have unsaved work.
+    if (!isWorthSaving(data, untouchedRef.current)) return
+    const t = setTimeout(() => writeDraft(DRAFT_KEY, data, Date.now()), 600)
+    return () => clearTimeout(t)
+  }, [DRAFT_KEY, presetStoreId, storeName, storeId, storeAddress, technician, performedAt,
+      season, simproNumber, equipment, checkItems, deficiencies, photos])
+
+  // Throw the draft away and go back to the saved version (or a blank form).
+  const startFresh = () => {
+    clearDraft(DRAFT_KEY)
+    window.location.reload()
+  }
+
   // Save report
   const handleSave = async () => {
     if (!storeName.trim()) { setError('Store name is required'); return }
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setErrorDetail('')
     const payload = {
       equipment_id: equipmentId ?? null,
       report_type: 'hvac',
@@ -289,11 +378,15 @@ function HvacPMContent() {
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     setSaving(false)
     if (res.ok) {
+      // Saved to the server, so the device copy has done its job.
+      clearDraft(DRAFT_KEY)
       setSaved(true)
       setTimeout(() => router.push(`/maintenance?equipmentId=${equipmentId ?? ''}&equipmentName=${equipmentName}`), 1200)
     } else {
-      const d = await res.json()
-      setError(d.error ?? 'Failed to save')
+      const d = await res.json().catch(() => ({}))
+      const friendly = describeSaveError(d?.error, res.status)
+      setError(friendly.message)
+      setErrorDetail(friendly.detail ?? '')
     }
   }
 
@@ -317,7 +410,31 @@ function HvacPMContent() {
       />
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
+        {restoredFrom && (
+          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-500/30 rounded-lg flex items-start gap-3">
+            <span className="flex-1 text-sm text-blue-800 dark:text-blue-200">
+              Picked up your unsaved report from this device, last changed {restoredFrom}.
+            </span>
+            <button
+              type="button"
+              onClick={startFresh}
+              className="min-h-9 shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300 underline"
+            >
+              Start fresh
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className="px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/30 rounded-lg">
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            {errorDetail && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[11px] text-red-600 dark:text-red-400">Technical detail</summary>
+                <p className="mt-1 text-[11px] font-mono break-words text-red-600 dark:text-red-400">{errorDetail}</p>
+              </details>
+            )}
+          </div>
+        )}
 
         {/* ── Store Information ── */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
