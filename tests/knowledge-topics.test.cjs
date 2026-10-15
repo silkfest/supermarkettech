@@ -10,7 +10,7 @@ Module._resolveFilename = function (request, ...args) {
 }
 for (const extension of ['.ts', '.tsx']) require.extensions[extension] = (module, filename) => {
   module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX }
+    compilerOptions: { esModuleInterop: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX }
   }).outputText, filename)
 }
 
@@ -116,11 +116,10 @@ test('the ejector topic covers what a tech standing at the rack needs', () => {
   }
 })
 
-test('the ejector topic says an idle ejector in cold weather is normal', () => {
-  // The most likely false callout: there is not enough motive energy below the
-  // critical point, so the controller runs the high-pressure valve instead.
-  assert.match(ejectors.content, /not a fault|idle/i)
-  assert.match(ejectors.content, /critical point/)
+test('cold-weather diagnosis distinguishes duty and enable conditions', () => {
+  assert.match(ejectors.content, /Cold weather alone is not proof/)
+  assert.match(ejectors.content, /liquid ejectors can operate in cold conditions/)
+  assert.doesNotMatch(ejectors.content, /not enough motive energy|check it in a heat wave|supposed to do nothing/)
 })
 
 test('the ejector topic carries the safety call-out, not a plain note', () => {
@@ -159,7 +158,7 @@ test('the worked example stays inside the verified pairs', () => {
   // rows above; the lift is their difference.
   assert.match(ejectors.content, /520 psig/)
   assert.match(ejectors.content, /420 psig/)
-  assert.match(ejectors.content, /lifting entrained gas 100 psi/)
+  assert.match(ejectors.content, /pressure difference across the entrained-flow path is 100 psi/)
   assert.match(ejectors.content, /> \[!EXAMPLE\]/)
 })
 
@@ -175,10 +174,10 @@ test('its manual keywords match real document titles and nothing wild', () => {
   // ILIKE substring match on document title. 'transcritical' pulls the CO₂
   // training and rack manuals; 'ejector' matches nothing today and is there for
   // when an ejector manual is uploaded.
-  assert.deepEqual(ejectors.manualKeywords, ['ejector', 'transcritical'])
+  assert.deepEqual(ejectors.manualKeywords, ['ejector', 'transcritical', 'carnot'])
   for (const kw of ejectors.manualKeywords) {
     assert.doesNotMatch(kw, /_/, `"${kw}" — underscore is a single-character wildcard in ILIKE`)
-    assert.ok(kw.length >= 7, `"${kw}" is short enough to pull in unrelated manuals`)
+    assert.ok(kw.length >= 6, `"${kw}" is short enough to pull in unrelated manuals`)
   }
 })
 
@@ -193,7 +192,7 @@ const render = (content) => renderToStaticMarkup(React.createElement(MarkdownCon
 test('the ejector topic renders as a page, not as markdown source', () => {
   const html = render(ejectors.content)
   assert.match(html, /<h2[^>]*>CO₂ Ejectors<\/h2>/)
-  assert.equal((html.match(/<h3/g) || []).length, 7, 'seven sections')
+  assert.equal((html.match(/<h3/g) || []).length, 9, 'nine sections')
   assert.equal((html.match(/<table/g) || []).length, 2, 'the saturation table and the fault table')
   // Row count, not just table count: a mangled header row still leaves a table
   // behind, with a line of the page swallowed into it.
@@ -214,4 +213,32 @@ test('every callout in the ejector topic renders as a box', () => {
   for (const colour of ['amber', 'red', 'emerald', 'violet', 'blue']) {
     assert.ok(html.includes(colour), `no ${colour} callout rendered`)
   }
+})
+
+const { buildSystemPromptParts } = require('../lib/ai/prompts.ts')
+const { EJECTOR_REFERENCES } = require('../lib/knowledge/ejector-references.ts')
+test('chat receives the article, citation legend and primary references in both domains', () => {
+  for (const domain of ['REFRIGERATION', 'HVAC']) {
+    const { staticContent } = buildSystemPromptParts({ mode: 'EXPERT', domain })
+    assert.ok(staticContent.includes(ejectors.content))
+    assert.match(staticContent, /co2-ejectors — CO₂ Ejectors/)
+    assert.match(staticContent, /A patent is evidence of an embodiment/)
+    for (const ref of EJECTOR_REFERENCES) assert.ok(staticContent.includes(ref.url))
+  }
+})
+test('Carnot return recovery and Danfoss liquid motive cannot be confused', () => {
+  assert.match(ejectors.content, /defrost return/)
+  assert.match(ejectors.content, /Motive: high-pressure flow from the gas cooler/)
+  assert.match(ejectors.content, /Suction: collected liquid from the suction accumulator/)
+  assert.doesNotMatch(ejectors.content, /Motive: liquid from the receiver|force the output|Cartridges are replaced, not repaired/)
+  const carnot = TOPICS.find(t => t.slug === 'carnot').content
+  assert.doesNotMatch(carnot, /Eliminates the energy penalty|10–42%|why an ejector idles/)
+})
+test('default diagram teaches the Carnot application and references are clickable', () => {
+  const html = render(ejectors.content)
+  assert.match(html, /Defrost return/)
+  assert.match(html, /Via defrost/)
+  assert.match(html, /aria-pressed="true"/)
+  assert.match(html, /viewBox="0 0 360 370"/)
+  for (const ref of EJECTOR_REFERENCES) assert.ok(html.includes(ref.url.replaceAll('&', '&amp;')))
 })
