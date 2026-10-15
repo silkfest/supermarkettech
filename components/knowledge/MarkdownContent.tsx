@@ -27,6 +27,7 @@ const TXVCutaway3D = dynamic(() => import('./diagrams/TXVCutaway3D').then(m => m
 
 const DIAGRAM_REGISTRY: Record<string, (openPdf?: OpenPdfFn) => React.ReactNode> = {
   'co2-safety-navigation': () => <Link href="/knowledge/pressure-relief-valves" className="block my-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-semibold">Pressure Relief Valves →</Link>,
+  'co2-ejector-navigation': () => <Link href="/knowledge/co2-ejectors" className="block my-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-semibold">CO₂ Ejectors →</Link>,
   'relief-changeover': (openPdf) => <ReliefChangeoverDiagram openPdf={openPdf} />,
   'relief-references': (openPdf) => <ReliefReferences openPdf={openPdf} />,
   'rack-style-1': (openPdf) => <RackStyle1Diagram openPdf={openPdf} />,
