@@ -208,8 +208,16 @@ function refrigerationSections(data: Obj): DocSection[] {
   const units = obj(data.units)
   const racks = arr(units?.racks).map(r => obj(r)).filter((r): r is Obj => !!r)
 
+  // Named once, so a note that points at a rack names the section the reader
+  // then goes looking for.
+  const rackTitle = (idx: number): string => {
+    const r = racks[idx]
+    if (!r) return ''
+    return str(r.tabDisplayName) || `Rack ${RACK_LETTERS[idx] ?? idx + 1}`
+  }
+
   const rackSections: DocSection[] = racks.map((r, idx) => {
-    const title = str(r.tabDisplayName) || `Rack ${RACK_LETTERS[idx] ?? idx + 1}`
+    const title = rackTitle(idx)
     const count = typeof r.compressorCount === 'number' ? r.compressorCount : 1
     const col = (v: unknown) => strs(v)
     const models = col(r.compressorModels), serials = col(r.compressorSerials)
@@ -254,7 +262,17 @@ function refrigerationSections(data: Obj): DocSection[] {
     ...siteSection(data),
     ...checklistSection('Checklist', obj(data.checklist), REFRIG_CHECKLIST),
     ...rackSections,
-    ...notesSection('Notes & Deficiencies', data.notes),
+    // The form asks for an asset ID, a rack and a system number against each
+    // deficiency, and all three were being dropped on the way to the report —
+    // leaving a note about a failed contactor with nothing saying which unit.
+    ...notesSection('Notes & Deficiencies', data.notes, n => {
+      const idx = typeof n.rackIndex === 'number' ? n.rackIndex : null
+      const rack = idx !== null ? rackTitle(idx) : ''
+      const asset = str(n.assetId)
+      const system = str(n.systemNumber)
+      return [asset && `Asset: ${asset}`, rack, system && `System: ${system}`]
+        .filter(Boolean).join(' · ')
+    }),
     ...photosSection(data.photos),
   ]
 }

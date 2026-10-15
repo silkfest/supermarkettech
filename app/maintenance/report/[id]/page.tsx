@@ -50,7 +50,10 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function RefrigView({ data }: { data: Record<string, unknown> }) {
   const units = data.units as Record<string, unknown> | null
   const checklist = data.checklist as Record<string, boolean> | null
-  const notes = data.notes as Array<{ id: string; text: string; importance: string }> | null
+  const notes = data.notes as Array<{
+    id: string; text: string; importance: string
+    assetId?: string; rackIndex?: number | null; systemNumber?: string
+  }> | null
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const racks = (units?.racks as unknown[]) ?? []
   // Both PM forms save this as a plain string; older reports hold an object.
@@ -61,6 +64,18 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
   const uncheckedItems = REFRIG_CHECKLIST.filter(i => checklist && checklist[i.id] === false)
 
   const rackLetter = (idx: number) => RACK_LETTERS[idx] ?? String(idx + 1)
+
+  const rackTitle = (idx: number) => {
+    const r = racks[idx] as Record<string, unknown> | undefined
+    if (!r) return ''
+    return (r.tabDisplayName as string) || `Rack ${rackLetter(idx)}`
+  }
+
+  const noteMeta = (n: { assetId?: string; rackIndex?: number | null; systemNumber?: string }) => {
+    const rack = typeof n.rackIndex === 'number' ? rackTitle(n.rackIndex) : ''
+    return [n.assetId && `Asset: ${n.assetId}`, rack, n.systemNumber && `System: ${n.systemNumber}`]
+      .filter(Boolean).join(' · ')
+  }
 
   return (
     <div className="space-y-5">
@@ -186,8 +201,13 @@ function RefrigView({ data }: { data: Record<string, unknown> }) {
               return (
                 <div key={n.id ?? i} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border ${badge.cls}`}>
                   {badge.icon}
-                  <span className="text-sm flex-1">{n.text}</span>
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{n.text}</p>
+                    {/* What the note is against. The form asks for all three; they
+                        were recorded and then never shown on the report. */}
+                    {noteMeta(n) && <p className="text-[11px] mt-0.5 opacity-70">{noteMeta(n)}</p>}
+                  </div>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border flex-shrink-0 ${badge.cls}`}>
                     {n.importance}
                   </span>
                 </div>
