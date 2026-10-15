@@ -1,3 +1,4 @@
+import { EJECTOR_SOURCE_GUIDANCE } from '@/lib/knowledge/ejector-references'
 import { RELIEF_REFERENCES } from '@/lib/knowledge/relief-references'
 import type { Equipment, SensorSnapshot, MaintenanceLog, AlarmEvent, ChatMode, ChatDomain } from '@/types'
 
@@ -2717,21 +2718,11 @@ Carnot supermarket systems follow the standard CO₂ booster configuration:
 
 ### Ejector Technology (Carnot Patent)
 
-Carnot's key differentiator is an integrated ejector for flash gas recovery and defrost:
+Carnot has documented several defrost arrangements. Do not identify the installed circuit from the brand name alone. The CO₂ Ejectors topic describes the defrost-return ejector embodiment in Carnot-associated patent US20190203993A1 (Figures 3–4), separately from gas-ejector efficiency and liquid-recovery applications. A patent describes possible configurations, not the installed rack's service procedure.
 
-**How it works:**
-- High-pressure CO₂ from the gas cooler outlet drives the ejector as the motive fluid
-- Ejector entrains lower-pressure flash gas from the flash tank, boosting it to an intermediate pressure
-- Net effect: flash gas bypass compressor work is partially replaced by ejector work (no moving parts)
-- COP improvement: 10–42% over non-ejector transcritical systems, depending on ambient
+For the documented flow paths, field checks and primary references, see the CO₂ Ejectors topic. Verify the rack drawing, startup sheet and OEM sequence before changing any defrost pressure, timing or valve command. Do not assume that a gas-cooler motive stream feeds the evaporator directly or that ejector defrost eliminates compressor energy use.
 
-**Defrost (ejector-assisted):**
-- Traditional hot gas defrost uses high-pressure discharge gas; Carnot's system routes gas cooler outlet through the ejector circuit to achieve defrost pressure without drawing from compressor discharge
-- Eliminates the energy penalty of compressor-driven defrost
-- Defrost pressure and return pressure setpoints are set per system; verify on startup sheet
-
-> [!WARNING] Ejector field note
-> If flash tank pressure is unstable or the ejector appears to be bypassing (both motive and suction pressures equalizing), suspect a stuck or leaking ejector check valve or a fouled ejector nozzle. Contact M&M Carnot service — do not attempt ejector disassembly in the field without factory guidance.
+[diagram:co2-ejector-navigation]
 
 ---
 
@@ -4365,7 +4356,7 @@ export const TYLER_HILL_PHOENIX_KNOWLEDGE = `
 
 ---
 
-## TYLER (CARRIER COMMERCIAL REFRIGERATION)
+### TYLER (CARRIER COMMERCIAL REFRIGERATION)
 Tyler is a Carrier/Watsco brand. Tyler cases are among the most widely installed open multideck and reach-in cases in North American supermarkets.
 
 ### Tyler Case Families
@@ -4411,7 +4402,7 @@ Tyler is a Carrier/Watsco brand. Tyler cases are among the most widely installed
 
 ---
 
-## HILL PHOENIX (DOVER REFRIGERATION & FOOD EQUIPMENT)
+### HILL PHOENIX (DOVER REFRIGERATION & FOOD EQUIPMENT)
 Hill Phoenix manufactures display cases and the Advansor CO₂ transcritical booster rack system — one of the most widely deployed CO₂ platforms in North American supermarkets.
 
 ### Hill Phoenix Case Families
@@ -7425,6 +7416,7 @@ to it. General refrigeration reasoning does not need a search.
 // never a broken or hallucinated link.
 const KB_TOPICS_REFRIGERATION: { slug: string; title: string }[] = [
   { slug: 'pressure-relief-valves', title: 'Pressure Relief Valves' },
+  { slug: 'co2-ejectors', title: 'CO₂ Ejectors' },
   { slug: 'refrigeration-fundamentals', title: 'Refrigeration Fundamentals' },
   { slug: 'sporlan', title: 'Sporlan' },
   { slug: 'copeland', title: 'Copeland / Emerson' },
@@ -7449,6 +7441,7 @@ const KB_TOPICS_REFRIGERATION: { slug: string; title: string }[] = [
 
 const KB_TOPICS_HVAC: { slug: string; title: string }[] = [
   { slug: 'pressure-relief-valves', title: 'Pressure Relief Valves' },
+  { slug: 'co2-ejectors', title: 'CO₂ Ejectors' },
   { slug: 'math-electrical', title: 'Math & Electrical Reference' },
   { slug: 'micro-thermo', title: 'Micro Thermo (MT-Alliance)' },
   { slug: 'penn-controls', title: 'Penn Controls (Johnson Controls)' },
@@ -10251,6 +10244,136 @@ Key operating points from the Güntner ACS manual:
 - Drain adiabatic water before sustained freezing; verify the dry-mode damper/bypass (if fitted) operates
 `
 
+export const CO2_EJECTOR_KNOWLEDGE = `
+## CO₂ Ejectors
+
+An ejector uses a high-pressure motive stream to entrain lower-pressure refrigerant. Its job depends on the piping: defrost-return recovery, gas lift or liquid recovery. Start with the Carnot defrost application below, then compare the efficiency arrangements. Fixed nozzles have no moving pumping element; complete assemblies and modulating designs can have moving parts.
+
+### Ejector-Assisted Defrost — Carnot Application
+
+**Documented principle, not a universal rack sequence:** Carnot-associated patent US20190203993A1, Figures 3–4 and claims 1–9, describes a defrost-return ejector:
+
+- Receiver refrigerant, including flash gas, supplies the defrosting evaporator and releases heat there.
+- Refrigerant leaving that evaporator enters the ejector suction through the defrost return.
+- Compressed, cooled high-pressure refrigerant feeds the motive nozzle.
+- The mixed discharge returns to the receiver at a raised pressure. Figure 4 also illustrates heating the defrost supply through heat exchange.
+
+Here the ejector assists **return flow from defrost**, unlike the MT gas-lift example below. The patent covers alternatives; it does not identify which embodiment is installed at a particular store.
+
+[diagram:ejector-flow]
+
+Before diagnosing a Carnot defrost complaint, obtain the rack model, piping drawing and startup sheet. Trace motive, defrost supply, defrost return and receiver connections separately. Record controller defrost demand, actual valve commands, pressure and temperature at available approved test points, receiver level and termination sensor readings. Compare supply delivery, return behaviour, termination and recovery with the OEM sequence. Do not invent a valve order, pressure setting, equalization time or fan delay from this schematic.
+
+Carnot's supermarket brochure also distinguishes LT hot-gas defrost from MT accelerated passive defrost. Do not assume either label means this patent embodiment. A site-specific manual is still required to confirm the installed sequence.
+
+### How an Ejector Works
+
+Three streams, one casting:
+
+- **Motive** — the high-pressure stream that drives it. On a CO₂ rack this is CO₂ leaving the gas cooler, the same flow that would otherwise drop across the high-pressure valve.
+- **Suction (entrained)** — the low-pressure stream it pulls in.
+- **Discharge** — the mixed stream leaving it, at a pressure **between** the other two.
+
+Inside, the motive flow accelerates through a nozzle, trading pressure for velocity. The fast, low-pressure jet drags the suction stream into the mixing section, and the diffuser then slows the combined flow back down, trading velocity back for pressure. Whatever pressure the suction stream gains is compression that the compressors did not have to do.
+
+Two numbers describe the result:
+
+- **Lift** (or pressure lift) — discharge pressure minus suction pressure. How far the ejector raised the entrained flow.
+- **Entrainment ratio** — mass of suction flow divided by mass of motive flow. How much it moved for the motive flow spent.
+
+> [!NOTE]
+> An ejector is a jet pump. A fixed nozzle has no moving pumping element, but its assembly can include solenoids and check valves. Fixed-capacity cartridges are staged; variable-geometry products such as CAREL EmJ modulate with an actuator. Follow the exact model instructions for adjustment and service.
+
+### Why Transcritical CO₂ Wants One
+
+During transcritical operation the high side is above the critical pressure; its actual operating target depends on the rack and gas cooler conditions. Expanding it to flash-tank pressure through a valve destroys a large amount of available energy and makes a lot of flash gas, which then has to be compressed again. The warmer the ambient, the worse it gets — which is exactly when the rack is already working hardest.
+
+The ejector puts part of that expansion energy back to work instead of throttling it away. Savings depend on the application, operating envelope, load and comparison baseline. Do not transfer an efficiency percentage from one manufacturer arrangement to another, or confuse COP improvement with electrical energy savings.
+
+> [!TIP]
+> An idle gas ejector can be normal when its enable conditions are not met. Cold weather alone is not proof: liquid ejectors can operate in cold conditions, heat reclaim can enable gas ejectors, and defrost-return ejectors have a different duty. Check the model operating envelope, actual motive conditions, load, controller demand and inhibits now; do not wait for a heat wave.
+
+### Two Arrangements You Will Meet
+
+Racks differ in where the suction side is tapped, and it changes what the ejector is doing for the system. Read the rack's own piping schematic before assuming.
+
+**Gas ejectors — distinguish high-pressure lift (HP) and low-pressure lift (LP)**
+- Motive: gas cooler outlet
+- Suction: MT evaporator vapour in the documented Danfoss HP arrangement
+- Discharge: into the receiver at intermediate pressure
+- Effect: transfers part of the MT load to the receiver / parallel compressor group. Danfoss LP gas ejectors serve a different booster arrangement; LP does not mean liquid ejector.
+
+**Liquid ejector (LE) — controlled liquid recovery**
+- Motive: high-pressure flow from the gas cooler
+- Suction: collected liquid from the suction accumulator downstream of the evaporators
+- Discharge: back into the receiver
+- Effect: supports designed low-superheat operation with suitable case controls and accumulator protection. Do not lower superheat on an ordinary DX system to imitate it. High accumulator level must trigger the specified protective control response.
+
+Many racks carry both, in one block or in separate blocks. Parallel compression is the other common answer to flash gas, and it is not an either/or: a rack can have an ejector lifting gas into the receiver and a parallel compressor pulling flash gas off the receiver straight to discharge.
+
+### Multi-Ejector Blocks
+
+Danfoss Multi Ejector uses staged fixed-capacity elements. CAREL EmJ is a continuously modulating alternative; these are not interchangeable control architectures.
+
+- Capacity is staged by switching cartridges on and off, the way an unloader stages a compressor. Four cartridges of different sizes give a usable set of steps.
+- Confirm the actual block size, cartridge combination and controller configuration rather than assuming four equal steps.
+- The controller stages them on receiver pressure and the high-pressure control, and hands back to the high-pressure valve when conditions no longer suit the ejector.
+- Separate not commanded from commanded but not responding. Check enable conditions, demand, inhibits and alarms before testing the output, wiring or actuator.
+
+> [!WARNING] Protect the nozzles
+> Ejector nozzles are small-bore and unforgiving of debris. After any compressor failure or system opening, verify the strainer ahead of the ejector block is clean and check its pressure drop before returning the rack to ejector operation — particulate from a burnout will foul a nozzle and the block will have to come apart at the factory's direction.
+
+### Pressures a Tech Actually Reads
+
+The three ejector pressures are normally on the controller already, under motive/HP, suction, and receiver. The CO₂ saturation pairs below cover the range those sit in, for converting a receiver or suction reading into a temperature:
+
+| CO₂ saturation | psig | bar(a) |
+|---|---|---|
+| −20°F | 200 | 14.8 |
+| 0°F | 291 | 21.1 |
+| 20°F | 407 | 29.1 |
+| 30°F | 476 | 33.8 |
+| 40°F | 553 | 39.1 |
+| 50°F | 638 | 45.0 |
+| Critical point, 87.8°F | 1,055 | 73.8 |
+
+> [!EXAMPLE] Reading a lift
+> Receiver at 520 psig, MT suction at 420 psig, gas cooler outlet at 1,250 psig. The pressure difference across the entrained-flow path is 100 psi — from about 22°F saturated to about 36°F saturated — using a motive stream 730 psi above the receiver. These readings alone do not prove entrainment or capacity. Compare with the model performance map, controller commands and known-good operation; low lift can coexist with significant entrained flow.
+
+Above 1,055 psig there is no saturation temperature at all: the gas cooler outlet is a temperature, not a condensing temperature, and gauge pressure alone says nothing about the state of the fluid.
+
+### Diagnosing an Ejector
+
+| Symptom | Likely cause | Check |
+|---|---|---|
+| Unexpected pressures or poor performance | Sensor error, wrong valve state, insufficient motive conditions, restriction or leakage | Identify all three ports; verify readings, commands and OEM operating envelope before condemning a nozzle or check valve |
+| One capacity step never responds | Inhibit, no demand, output/wiring fault or stuck actuator | Check command first; use OEM controlled test procedure, isolate electrical power before resistance tests; do not bypass interlocks |
+| MT compressors run harder than expected in hot weather | Ejector not being staged on; HP valve taking all the flow | Check controller mode and staging setpoints; confirm the rack is actually transcritical at the time |
+| Receiver pressure hunting with the ejector active | Staging thrashing between steps; receiver level swinging | Review step changes in the controller log before touching setpoints |
+| Gradual loss of lift over months | Nozzle wear or fouling; strainer loading up | Strainer pressure drop; trend lift at similar ambient against commissioning values |
+| Motive state differs from expectation | Changed pressure/temperature or incorrect line identification | Measure both pressure and temperature; subcritical liquid at the gas cooler outlet is not by itself a piping fault |
+
+Trend motive pressure and temperature, suction and discharge pressures, demand, active steps and receiver/accumulator levels against commissioning data at comparable loads. Ambient and lift alone cannot establish ejector capacity.
+
+> [!SAFETY] Transcritical pressures and dry ice
+> An ejector block sits on the high side of a system that runs past 1,000 psig, and liquid CO₂ vented to atmosphere flashes to dry ice — it will plug a line or a relief path and it will burn skin on contact. Never crack an ejector block, cartridge or strainer until the section is isolated, recovered and verified at zero, and never field-disassemble an ejector against the manufacturer's instructions. Serviceability is model-specific; use the manufacturer's procedure. Never infer zero trapped pressure from a potentially blocked pressure connection.
+
+### Manufacturer References
+
+[diagram:ejector-references]
+
+
+### Terms
+
+- **Motive flow** — the driving high-pressure stream
+- **Suction / entrained flow** — the low-pressure stream the ejector pulls in
+- **Lift** — discharge pressure minus suction pressure
+- **Entrainment ratio** — entrained mass flow divided by motive mass flow
+- **Cartridge** — one fixed-capacity ejector element inside a multi-ejector block
+- **Flash gas** — vapour formed when high-pressure CO₂ expands into the receiver
+- **Parallel compression** — a compressor drawing flash gas from the receiver straight to discharge, often fitted alongside ejectors
+`
+
 export const PRESSURE_REGULATOR_KNOWLEDGE = `
 ## Pressure Regulators & Rack Service Valves
 
@@ -10532,6 +10655,8 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
   const staticContent = (domain === 'HVAC' ? [
     EXPERT_IDENTITY,
     RELIEF_VALVE_KNOWLEDGE,
+    CO2_EJECTOR_KNOWLEDGE,
+    EJECTOR_SOURCE_GUIDANCE,
     MATH_AND_ELECTRICAL_KNOWLEDGE,
     MICRO_THERMO_KNOWLEDGE,
     PENN_CONTROLS_KNOWLEDGE,
@@ -10545,6 +10670,8 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): {
   ] : [
     EXPERT_IDENTITY,
     RELIEF_VALVE_KNOWLEDGE,
+    CO2_EJECTOR_KNOWLEDGE,
+    EJECTOR_SOURCE_GUIDANCE,
     REFRIGERATION_KNOWLEDGE,
     SPORLAN_KNOWLEDGE,
     COPELAND_KNOWLEDGE,
