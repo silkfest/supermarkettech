@@ -76,7 +76,28 @@ function collectPhotos(doc: ReportDoc): DocPhoto[] {
   return out
 }
 
-export async function buildReportPdf(doc: ReportDoc): Promise<Blob> {
+/** Fold text into what a standard PDF font can actually draw.
+ *
+ *  jsPDF's built-in fonts are WinAnsi: a character outside it is dropped, and
+ *  the title "CO₂ PM" came out as "CO , PM" with the subscript missing. NFKC
+ *  maps compatibility characters onto their plain forms — ₂ to 2, ℃ to °C —
+ *  without touching the accents, dashes and middle dots the reports already use.
+ *
+ *  Applied to the whole document in one pass rather than at each draw call, so
+ *  a block added later cannot miss it. */
+export function foldForPdf<T>(value: T): T {
+  if (typeof value === 'string') return value.normalize('NFKC') as unknown as T
+  if (Array.isArray(value)) return value.map(foldForPdf) as unknown as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, foldForPdf(v)])
+    ) as T
+  }
+  return value
+}
+
+export async function buildReportPdf(input: ReportDoc): Promise<Blob> {
+  const doc = foldForPdf(input)
   const [{ jsPDF }, autoTableModule] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),

@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Snowflake, Wind, ClipboardList, Clock, ChevronRight, Filter, AlertTriangle, User } from 'lucide-react'
+import { Snowflake, Wind, ClipboardList, Clock, ChevronRight, Filter, AlertTriangle, User, Atom } from 'lucide-react'
 import { useEffect, useState, Suspense } from 'react'
 import PageShell from '@/components/layout/PageShell'
 import PageHeader from '@/components/PageHeader'
@@ -85,6 +85,13 @@ function MaintenanceHubContent() {
       title: 'Refrigeration PM',
       desc: 'Rack & conventional unit checklist, pressures, oil levels',
       color: 'hover:border-blue-300',
+    },
+    {
+      path: '/maintenance/co2-pm',
+      icon: <Atom size={30} className="text-cyan-500" />,
+      title: 'CO₂ PM',
+      desc: 'R-744 booster rack — L/T, M/T & D/T readings, flashtank, 37-point checklist',
+      color: 'hover:border-cyan-300',
     },
     {
       path: '/maintenance/hvac-pm',
@@ -225,17 +232,25 @@ function MaintenanceHubContent() {
               {mergedRecent.map(r => {
                 const isIndividual = r.kind === 'individual'
                 const isHvac = r.report_type === 'hvac'
+                const isCo2 = r.report_type === 'co2'
                 const icon = isIndividual
                   ? <ClipboardList size={18} className="text-purple-500" />
                   : isHvac
                     ? <Wind size={18} className="text-emerald-500" />
-                    : <Snowflake size={18} className="text-blue-500" />
-                const typeLabel = isIndividual ? 'Individual Report' : isHvac ? 'HVAC PM' : 'Refrigeration PM'
+                    : isCo2
+                      ? <Atom size={18} className="text-cyan-500" />
+                      : <Snowflake size={18} className="text-blue-500" />
+                const typeLabel = isIndividual ? 'Individual Report'
+                  : isHvac ? 'HVAC PM'
+                  : isCo2 ? 'CO₂ PM'
+                  : 'Refrigeration PM'
                 const badgeStyle = isIndividual
                   ? 'bg-purple-50 text-purple-700'
                   : isHvac
                     ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-blue-50 text-blue-700'
+                    : isCo2
+                      ? 'bg-cyan-50 text-cyan-700'
+                      : 'bg-blue-50 text-blue-700'
                 return (
                   <button
                     key={r.id}
