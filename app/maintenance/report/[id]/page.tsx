@@ -394,6 +394,7 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
   }> | null
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
   const rack = (units?.rack ?? null) as Record<string, unknown> | null
+  const bottles = (units?.bottles ?? null) as { full?: string; empty?: string } | null
   const regimes = (units?.regimes ?? null) as Record<string, Record<string, string>> | null
   const technician = technicianFrom(units?.technician)
   const storeAddress = units?.storeAddress as string | null
@@ -406,7 +407,7 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
 
   const checklistItems = [
     ...CO2_MACHINE_ROOM_ITEMS.map(i => ({ id: i.id, label: i.label })),
-    ...CO2_CHECKLIST.map(i => ({ id: i.id, label: `${i.number}. ${i.label}` })),
+    ...CO2_CHECKLIST.map(i => ({ id: i.id, label: i.label })),
   ]
   const doneCount = checklistItems.filter(i => checklist?.[i.id]).length
 
@@ -459,6 +460,12 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
               )
             })}
           </div>
+          {(bottles?.full || bottles?.empty) && (
+            <div className="mt-3 pt-3 border-t border-slate-100 flex gap-6">
+              <Field label="CO₂ Bottles — Full" value={bottles?.full} />
+              <Field label="CO₂ Bottles — Empty" value={bottles?.empty} />
+            </div>
+          )}
           <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100">
             {doneCount} of {checklistItems.length} items completed
           </p>

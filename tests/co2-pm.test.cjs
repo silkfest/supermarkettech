@@ -14,7 +14,7 @@ for (const extension of ['.ts', '.tsx']) require.extensions[extension] = (module
   }).outputText, filename)
 }
 
-const { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, isCo2ItemInSeason } =
+const { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, CO2_BOTTLE_ITEM_ID, isCo2ItemInSeason } =
   require('../lib/maintenance/co2-checklist.ts')
 const { buildReportDoc } = require('../lib/reports/doc.ts')
 
@@ -23,11 +23,21 @@ const block = (doc, title, kind) => section(doc, title)?.blocks.find(b => b.kind
 
 /* ── The checklist, against the paper form ────────────────────────────────── */
 
-test('the checklist carries all 37 numbered items, in the order they are printed', () => {
-  // A tech comparing a printed sheet against the app has to find item 16 in
-  // both; renumbering silently would break that.
+test('the checklist carries all 37 items, in the order they are printed', () => {
+  // The numbers are not shown any more, but the order still matches the paper
+  // so a tech reading down the sheet reads down the app.
   assert.equal(CO2_CHECKLIST.length, 37)
   CO2_CHECKLIST.forEach((item, i) => assert.equal(item.number, i + 1, `item at index ${i}`))
+})
+
+test('nothing renders the item numbers', () => {
+  // They mean nothing once the list is ticked on a phone, and they crowd the
+  // line on a narrow page.
+  for (const file of ['app/maintenance/co2-pm/page.tsx', 'app/maintenance/report/[id]/page.tsx', 'lib/reports/doc.ts']) {
+    const src = fs.readFileSync(file, 'utf8')
+    assert.doesNotMatch(src, /\$\{i\.number\}\./, `${file} prints the number`)
+    assert.doesNotMatch(src, /\{item\.number\}\./, `${file} prints the number`)
+  }
 })
 
 test('every checklist id is unique', () => {
@@ -110,10 +120,40 @@ test('the checklist prints the machine-room items first, then the numbered list'
   assert.equal(c.items.length, 39, 'two machine-room items plus the 37 numbered ones')
   assert.equal(c.items[0].label, 'Clean machine room')
   assert.equal(c.items[0].done, true)
-  assert.equal(c.items[2].label, '1. Perform a complete leak check of entire store.')
+  assert.equal(c.items[2].label, 'Perform a complete leak check of entire store.')
   assert.equal(c.items[2].done, true)
   assert.equal(c.items[3].done, false)
   assert.match(c.summary, /^2 of 39 items completed · 37 outstanding$/)
+})
+
+test('the bottle counts print with the checklist that asks for them', () => {
+  // "report back" on the paper form means a phone call; the counts are recorded
+  // here so the next tech can read them off the last PM.
+  const doc = buildReportDoc('co2', { ...REPORT, units: { ...REPORT.units, bottles: { full: '3', empty: '1' } } })
+  const f = block(doc, 'PM Checklist', 'fields')
+  assert.deepEqual(f.items, [
+    { label: 'CO₂ Bottles — Full', value: '3' },
+    { label: 'CO₂ Bottles — Empty', value: '1' },
+  ])
+})
+
+test('a count of zero is printed, not dropped as a blank', () => {
+  // "0 full" is the answer that matters most — it means the store is out.
+  const doc = buildReportDoc('co2', { ...REPORT, units: { ...REPORT.units, bottles: { full: '0', empty: '4' } } })
+  const f = block(doc, 'PM Checklist', 'fields')
+  assert.equal(f.items[0].value, '0')
+})
+
+test('no bottle count means no bottle line', () => {
+  const doc = buildReportDoc('co2', REPORT)
+  assert.equal(block(doc, 'PM Checklist', 'fields'), undefined)
+})
+
+test('the bottle counts hang off the inventory item in the form', () => {
+  assert.equal(CO2_BOTTLE_ITEM_ID, 'co2_co2BottleInventory')
+  assert.ok(CO2_CHECKLIST.some(i => i.id === CO2_BOTTLE_ITEM_ID), 'the id names a real item')
+  assert.match(FORM, /item\.id === CO2_BOTTLE_ITEM_ID/)
+  assert.match(FORM, /units: \{ technician, storeAddress, rack, regimes, bottles \}/)
 })
 
 test('the rack table prints one row per compressor the rack actually has', () => {
@@ -195,8 +235,13 @@ test('the form saves the report type the database accepts', () => {
 })
 
 test('the form and the report agree on where the rack data lives', () => {
-  // The report page and the PDF both read units.rack and units.regimes.
-  assert.match(FORM, /units: \{ technician, storeAddress, rack, regimes \}/)
+  // The report page and the PDF read units.rack, units.regimes and
+  // units.bottles; renaming one here without the others loses the data.
+  assert.match(FORM, /units: \{ technician, storeAddress, rack, regimes, bottles \}/)
+  const doc = fs.readFileSync('lib/reports/doc.ts', 'utf8')
+  for (const key of ['units?.rack', 'units?.regimes', 'units?.bottles']) {
+    assert.ok(doc.includes(key), `doc.ts does not read ${key}`)
+  }
 })
 
 test('the form reads the checklist from the shared module, not its own copy', () => {

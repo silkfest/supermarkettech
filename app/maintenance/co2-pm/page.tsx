@@ -7,7 +7,7 @@ import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 import { draftKey, readDraft, writeDraft, clearDraft, isWorthSaving, describeDraftAge } from '@/lib/maintenance/draft'
 import { describeSaveError } from '@/lib/maintenance/save-errors'
 import {
-  CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, isCo2ItemInSeason,
+  CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, CO2_BOTTLE_ITEM_ID, isCo2ItemInSeason,
   type Co2RegimeKey,
 } from '@/lib/maintenance/co2-checklist'
 
@@ -44,6 +44,12 @@ interface Co2Rack {
   acidTest: string
   /** "L.L Alarm – Any occurred?" */
   llAlarm: string
+}
+
+/** CO₂ bottles on site, counted against the inventory checklist item. */
+interface Co2Bottles {
+  full: string
+  empty: string
 }
 
 interface Co2Regime {
@@ -83,6 +89,7 @@ interface DraftData {
   simproNumber: string
   rack: Co2Rack
   regimes: Co2Regimes
+  bottles: Co2Bottles
   checklist: ChecklistMap
   notes: NoteItem[]
   photos: UploadPhoto[]
@@ -154,6 +161,7 @@ function Co2PMContent() {
 
   const [rack, setRack] = useState<Co2Rack>(createRack())
   const [regimes, setRegimes] = useState<Co2Regimes>(createRegimes())
+  const [bottles, setBottles] = useState<Co2Bottles>({ full: '', empty: '' })
   const [checklist, setChecklist] = useState<ChecklistMap>(defaultChecklist())
   const [notes, setNotes] = useState<NoteItem[]>([])
   const [photos, setPhotos] = useState<UploadPhoto[]>([])
@@ -201,6 +209,7 @@ function Co2PMContent() {
       if (d.simproNumber !== undefined) setSimproNumber(d.simproNumber)
       if (d.rack) setRack({ ...createRack(), ...d.rack })
       if (d.regimes) setRegimes({ ...createRegimes(), ...d.regimes })
+      if (d.bottles) setBottles({ full: d.bottles.full ?? '', empty: d.bottles.empty ?? '' })
       if (d.checklist) setChecklist({ ...defaultChecklist(), ...d.checklist })
       if (Array.isArray(d.notes)) setNotes(d.notes)
       if (Array.isArray(d.photos)) setPhotos(d.photos)
@@ -214,7 +223,7 @@ function Co2PMContent() {
     if (!draftReadyRef.current) return
     const data: DraftData = {
       storeName, storeId, storeAddress, technician, performedAt, season,
-      simproNumber, rack, regimes, checklist, notes, photos,
+      simproNumber, rack, regimes, bottles, checklist, notes, photos,
     }
     if (untouchedRef.current === null) {
       untouchedRef.current = restoredRef.current ? ({} as DraftData) : data
@@ -224,7 +233,7 @@ function Co2PMContent() {
     const t = setTimeout(() => writeDraft(DRAFT_KEY, data, Date.now()), 600)
     return () => clearTimeout(t)
   }, [DRAFT_KEY, storeName, storeId, storeAddress, technician, performedAt, season,
-      simproNumber, rack, regimes, checklist, notes, photos])
+      simproNumber, rack, regimes, bottles, checklist, notes, photos])
 
   const startFresh = () => {
     clearDraft(DRAFT_KEY)
@@ -260,6 +269,7 @@ function Co2PMContent() {
         setTechnician(typeof d.units.technician === 'string' ? d.units.technician : (d.units.technician?.name ?? ''))
         if (d.units.rack) setRack({ ...createRack(), ...d.units.rack })
         if (d.units.regimes) setRegimes({ ...createRegimes(), ...d.units.regimes })
+        if (d.units.bottles) setBottles({ full: d.units.bottles.full ?? '', empty: d.units.bottles.empty ?? '' })
       }
       if (Array.isArray(d.notes)) setNotes(d.notes)
       setPhotos(d.photos ?? [])
@@ -347,7 +357,7 @@ function Co2PMContent() {
       performed_at: new Date(performedAt + 'T12:00:00').toISOString(),
       simpro_number: simproNumber || null,
       checklist,
-      units: { technician, storeAddress, rack, regimes },
+      units: { technician, storeAddress, rack, regimes, bottles },
       notes,
       photos,
     }
@@ -511,21 +521,48 @@ function Co2PMContent() {
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {visibleChecklist.map(item => (
-                  <label key={item.id} className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 flex-shrink-0"
-                      checked={!!checklist[item.id]}
-                      onChange={() => toggleCheck(item.id)}
-                    />
-                    <span className="text-sm text-slate-700">
-                      <span className="text-slate-400 mr-1">{item.number}.</span>
-                      {item.label}
-                      {item.season && (
-                        <span className="ml-1 text-[10px] text-slate-400">({item.season.join('/')} only)</span>
-                      )}
-                    </span>
-                  </label>
+                  <div key={item.id}>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 flex-shrink-0"
+                        checked={!!checklist[item.id]}
+                        onChange={() => toggleCheck(item.id)}
+                      />
+                      <span className="text-sm text-slate-700">
+                        {item.label}
+                        {item.season && (
+                          <span className="ml-1 text-[10px] text-slate-400">({item.season.join('/')} only)</span>
+                        )}
+                      </span>
+                    </label>
+                    {/* The count belongs with the item that asks for it, not in
+                        a section of its own further down the form. */}
+                    {item.id === CO2_BOTTLE_ITEM_ID && (
+                      <div className="mt-1.5 ml-6 flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[11px] text-slate-500" htmlFor="co2-bottles-full">Full</label>
+                          <input
+                            id="co2-bottles-full"
+                            inputMode="numeric"
+                            value={bottles.full}
+                            onChange={e => setBottles(b => ({ ...b, full: e.target.value }))}
+                            className="w-16 px-2 py-1 text-xs text-center border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[11px] text-slate-500" htmlFor="co2-bottles-empty">Empty</label>
+                          <input
+                            id="co2-bottles-empty"
+                            inputMode="numeric"
+                            value={bottles.empty}
+                            onChange={e => setBottles(b => ({ ...b, empty: e.target.value }))}
+                            className="w-16 px-2 py-1 text-xs text-center border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

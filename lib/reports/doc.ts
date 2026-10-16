@@ -288,6 +288,7 @@ function co2Sections(data: Obj): DocSection[] {
   const units = obj(data.units)
   const rack = obj(units?.rack)
   const regimes = obj(units?.regimes)
+  const bottles = obj(units?.bottles)
   const checklist = obj(data.checklist)
 
   /** Readings are kept in eight slots whatever the rack carries; only the
@@ -362,7 +363,9 @@ function co2Sections(data: Obj): DocSection[] {
   // so they are listed first here too.
   const checklistItems = checklist ? [
     ...CO2_MACHINE_ROOM_ITEMS.map(i => ({ label: i.label, done: checklist[i.id] === true })),
-    ...CO2_CHECKLIST.map(i => ({ label: `${i.number}. ${i.label}`, done: checklist[i.id] === true })),
+    // Unnumbered: the printed numbers mean nothing once the list is ticked on
+    // a phone, and they crowd the line on a narrow page.
+    ...CO2_CHECKLIST.map(i => ({ label: i.label, done: checklist[i.id] === true })),
   ] : []
   const done = checklistItems.filter(i => i.done).length
   const outstanding = checklistItems.length - done
@@ -371,12 +374,20 @@ function co2Sections(data: Obj): DocSection[] {
     ...siteSection(data),
     ...(checklistItems.length ? [{
       title: 'PM Checklist',
-      blocks: [{
-        kind: 'checklist' as const,
-        items: checklistItems,
-        summary: `${done} of ${checklistItems.length} items completed`
-          + (outstanding > 0 ? ` · ${outstanding} outstanding` : ''),
-      }],
+      blocks: [
+        {
+          kind: 'checklist' as const,
+          items: checklistItems,
+          summary: `${done} of ${checklistItems.length} items completed`
+            + (outstanding > 0 ? ` · ${outstanding} outstanding` : ''),
+        },
+        // What was counted for the bottle inventory item, printed with the
+        // checklist it belongs to rather than in a section of its own.
+        ...fields([
+          { label: 'CO₂ Bottles — Full', value: str(bottles?.full) },
+          { label: 'CO₂ Bottles — Empty', value: str(bottles?.empty) },
+        ]),
+      ],
     }] : []),
     ...(rackBlocks.length ? [{ title: 'CO₂ Rack', blocks: rackBlocks }] : []),
     ...regimeSection,
