@@ -67,26 +67,39 @@ export function findCompressorManufacturer(specs: EquipmentSpec[] | null): strin
   return match ? match[1] : ''
 }
 
-/** Per-compressor nameplate reference, one entry per slot, read from the
- *  "Compressor <n> — <model>" specs the cataloging standard writes.
- *
- *  This is what makes a measured amp reading mean something: 40.3 A on a
- *  4DTC-25K is normal, on a 2CSL-6K it is a failure. Shown beside the amps box
- *  on the form rather than stored on the report — the equipment record is where
- *  nameplate data lives, and re-reading it keeps the two from drifting. */
-export function compressorRefs(specs: EquipmentSpec[] | null): string[] {
-  const refs: string[] = Array(CO2_SLOTS).fill('')
-  if (!specs) return refs
+/** Per-compressor nameplate data, one entry per slot, read from the
+ *  "Compressor <n> — <model>" specs the cataloging standard writes. */
+function compressorNameplates(specs: EquipmentSpec[] | null): { model: string; rla: string }[] {
+  const out = Array.from({ length: CO2_SLOTS }, () => ({ model: '', rla: '' }))
+  if (!specs) return out
   for (const s of specs) {
     const labelMatch = s.label.match(/^Compressor\s+(\d+)\s*[—-]\s*(.+)$/i)
     if (!labelMatch) continue
     const idx = parseInt(labelMatch[1], 10) - 1
-    if (idx < 0 || idx >= refs.length) continue
-    const model = labelMatch[2].trim()
-    const rla = s.value.match(/RLA\s*([\d.]+)\s*A/i)
-    refs[idx] = rla ? `${model} · RLA ${rla[1]} A` : model
+    if (idx < 0 || idx >= out.length) continue
+    out[idx] = {
+      model: labelMatch[2].trim(),
+      rla: s.value.match(/RLA\s*([\d.]+)\s*A/i)?.[1] ?? '',
+    }
   }
-  return refs
+  return out
+}
+
+/** Compressor model per slot. These are filled onto the report and saved with
+ *  it, so the PDF can print what was in the rack on the day of the PM even if
+ *  a compressor is swapped and the catalogue moves on afterwards. */
+export function compressorModels(specs: EquipmentSpec[] | null): string[] {
+  return compressorNameplates(specs).map(n => n.model)
+}
+
+/** The running-load amps each compressor is rated for, shown beside the amps
+ *  box on the form. This is what makes a measured reading mean something:
+ *  40.3 A on a 4DTC-25K is normal, on a 2CSL-6K it is a failure.
+ *
+ *  Not stored on the report — a rating is a property of the compressor, so it
+ *  is read back from the equipment record and cannot drift from it. */
+export function compressorRlas(specs: EquipmentSpec[] | null): string[] {
+  return compressorNameplates(specs).map(n => (n.rla ? `RLA ${n.rla} A` : ''))
 }
 
 /** The racks on a saved report.

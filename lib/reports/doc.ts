@@ -314,14 +314,22 @@ function co2Sections(data: Obj): DocSection[] {
       ]),
     ]
     if (count > 0) {
+      const models = col(rack.compressorModels)
       const omc = col(rack.omcLevel), oilPress = col(rack.oilPressReservoir)
       const amps = col(rack.compAmps), volts = col(rack.compVolts)
       const hp = col(rack.hpSetPoints), lp = col(rack.lpSetPoints), ofc = col(rack.ofcTripTime)
+      // Reports filed before models were recorded would otherwise print a
+      // column of dashes, so the column appears only where there is a model.
+      const hasModels = models.slice(0, count).some(m => m !== '')
       blocks.push({
         kind: 'table',
-        head: ['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'],
+        head: [
+          'Comp', ...(hasModels ? ['Model'] : []),
+          'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)',
+        ],
         rows: Array.from({ length: count }, (_, i) => [
           String(i + 1),
+          ...(hasModels ? [dash(models[i] ?? '')] : []),
           dash(omc[i] ?? ''), dash(oilPress[i] ?? ''), dash(amps[i] ?? ''), dash(volts[i] ?? ''),
           dash(hp[i] ?? ''), dash(lp[i] ?? ''), dash(ofc[i] ?? ''),
         ]),
