@@ -160,6 +160,40 @@ test('a refrigeration report gives each rack its own section', () => {
   assert.equal(t.rows[0][3], '12.1')
 })
 
+test('a refrigeration deficiency names the asset, the rack and the system', () => {
+  // The form asks for all three against every note. They were recorded and then
+  // dropped on the way to the report, so a note about a failed contactor
+  // reached the store with nothing saying which unit it was on.
+  const doc = buildReportDoc('refrigeration', {
+    units: { racks: [{ id: 'r1', tabDisplayName: 'Rack A — LT' }, { id: 'r2' }] },
+    notes: [
+      { id: 'n1', text: 'Contactor pitted', importance: 'CRITICAL', assetId: 'C-204', rackIndex: 0, systemNumber: '12' },
+      { id: 'n2', text: 'Oil pot low', importance: 'ROUTINE', assetId: '', rackIndex: 1, systemNumber: '' },
+      { id: 'n3', text: 'Machine room swept', importance: 'ROUTINE', assetId: 'A-9' },
+    ],
+  })
+  const items = block(doc, 'Notes & Deficiencies', 'notes').items
+  assert.equal(items[0].meta, 'Asset: C-204 · Rack A — LT · System: 12')
+  assert.equal(items[1].meta, 'Rack B', 'an unnamed rack still gets its letter')
+  assert.equal(items[2].meta, 'Asset: A-9', 'a note against no rack says only what it has')
+})
+
+test('a deficiency with nothing against it carries no meta line', () => {
+  const doc = buildReportDoc('refrigeration', {
+    notes: [{ id: 'n', text: 'General note', importance: 'ROUTINE', assetId: '', rackIndex: null, systemNumber: '' }],
+  })
+  assert.equal(block(doc, 'Notes & Deficiencies', 'notes').items[0].meta, undefined)
+})
+
+test('a rack index pointing at nothing does not invent a rack', () => {
+  // Deleting a rack after writing a note can leave the index dangling.
+  const doc = buildReportDoc('refrigeration', {
+    units: { racks: [{ id: 'r1', tabDisplayName: 'Rack A' }] },
+    notes: [{ id: 'n', text: 'Note', importance: 'ROUTINE', assetId: 'A-1', rackIndex: 7 }],
+  })
+  assert.equal(block(doc, 'Notes & Deficiencies', 'notes').items[0].meta, 'Asset: A-1')
+})
+
 test('a service report keeps the write-ups as their own sections', () => {
   const doc = buildReportDoc('individual', {
     store_name: 'Sobeys',
