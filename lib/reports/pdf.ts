@@ -301,7 +301,9 @@ function drawChecklist(pdf: Pdf, items: { label: string; done: boolean }[], summ
   pdf.line(MARGIN, y, PAGE_W - MARGIN, y)
   pdf.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...INK.faint)
   pdf.text(summary, MARGIN, y + 4)
-  return y + 7
+  // A little air after the summary line: on the CO₂ report the bottle counts
+  // follow it directly and were sitting on top of it.
+  return y + 9
 }
 
 /** A drawn tick and ring: the standard PDF fonts have no check glyph, and a

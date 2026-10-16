@@ -14,7 +14,7 @@ for (const extension of ['.ts', '.tsx']) require.extensions[extension] = (module
   }).outputText, filename)
 }
 
-const { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, isCo2ItemInSeason } =
+const { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, CO2_BOTTLE_ITEM_ID, isCo2ItemInSeason } =
   require('../lib/maintenance/co2-checklist.ts')
 const { buildReportDoc } = require('../lib/reports/doc.ts')
 
@@ -23,11 +23,21 @@ const block = (doc, title, kind) => section(doc, title)?.blocks.find(b => b.kind
 
 /* ── The checklist, against the paper form ────────────────────────────────── */
 
-test('the checklist carries all 37 numbered items, in the order they are printed', () => {
-  // A tech comparing a printed sheet against the app has to find item 16 in
-  // both; renumbering silently would break that.
+test('the checklist carries all 37 items, in the order they are printed', () => {
+  // The numbers are not shown any more, but the order still matches the paper
+  // so a tech reading down the sheet reads down the app.
   assert.equal(CO2_CHECKLIST.length, 37)
   CO2_CHECKLIST.forEach((item, i) => assert.equal(item.number, i + 1, `item at index ${i}`))
+})
+
+test('nothing renders the item numbers', () => {
+  // They mean nothing once the list is ticked on a phone, and they crowd the
+  // line on a narrow page.
+  for (const file of ['app/maintenance/co2-pm/page.tsx', 'app/maintenance/report/[id]/page.tsx', 'lib/reports/doc.ts']) {
+    const src = fs.readFileSync(file, 'utf8')
+    assert.doesNotMatch(src, /\$\{i\.number\}\./, `${file} prints the number`)
+    assert.doesNotMatch(src, /\{item\.number\}\./, `${file} prints the number`)
+  }
 })
 
 test('every checklist id is unique', () => {
@@ -110,10 +120,40 @@ test('the checklist prints the machine-room items first, then the numbered list'
   assert.equal(c.items.length, 39, 'two machine-room items plus the 37 numbered ones')
   assert.equal(c.items[0].label, 'Clean machine room')
   assert.equal(c.items[0].done, true)
-  assert.equal(c.items[2].label, '1. Perform a complete leak check of entire store.')
+  assert.equal(c.items[2].label, 'Perform a complete leak check of entire store.')
   assert.equal(c.items[2].done, true)
   assert.equal(c.items[3].done, false)
   assert.match(c.summary, /^2 of 39 items completed · 37 outstanding$/)
+})
+
+test('the bottle counts print with the checklist that asks for them', () => {
+  // "report back" on the paper form means a phone call; the counts are recorded
+  // here so the next tech can read them off the last PM.
+  const doc = buildReportDoc('co2', { ...REPORT, units: { ...REPORT.units, bottles: { full: '3', empty: '1' } } })
+  const f = block(doc, 'PM Checklist', 'fields')
+  assert.deepEqual(f.items, [
+    { label: 'CO₂ Bottles — Full', value: '3' },
+    { label: 'CO₂ Bottles — Empty', value: '1' },
+  ])
+})
+
+test('a count of zero is printed, not dropped as a blank', () => {
+  // "0 full" is the answer that matters most — it means the store is out.
+  const doc = buildReportDoc('co2', { ...REPORT, units: { ...REPORT.units, bottles: { full: '0', empty: '4' } } })
+  const f = block(doc, 'PM Checklist', 'fields')
+  assert.equal(f.items[0].value, '0')
+})
+
+test('no bottle count means no bottle line', () => {
+  const doc = buildReportDoc('co2', REPORT)
+  assert.equal(block(doc, 'PM Checklist', 'fields'), undefined)
+})
+
+test('the bottle counts hang off the inventory item in the form', () => {
+  assert.equal(CO2_BOTTLE_ITEM_ID, 'co2_co2BottleInventory')
+  assert.ok(CO2_CHECKLIST.some(i => i.id === CO2_BOTTLE_ITEM_ID), 'the id names a real item')
+  assert.match(FORM, /item\.id === CO2_BOTTLE_ITEM_ID/)
+  assert.match(FORM, /units: \{ technician, storeAddress, racks, regimes, bottles \}/)
 })
 
 test('the rack table prints one row per compressor the rack actually has', () => {
@@ -195,8 +235,18 @@ test('the form saves the report type the database accepts', () => {
 })
 
 test('the form and the report agree on where the rack data lives', () => {
-  // The report page and the PDF both read units.rack and units.regimes.
-  assert.match(FORM, /units: \{ technician, storeAddress, rack, regimes \}/)
+  // The report page and the PDF read the rack list, units.regimes and
+  // units.bottles; renaming one here without the others loses the data.
+  assert.match(FORM, /units: \{ technician, storeAddress, racks, regimes, bottles \}/)
+  const doc = fs.readFileSync('lib/reports/doc.ts', 'utf8')
+  assert.ok(doc.includes('co2RackList(units)'), 'doc.ts does not read the rack list')
+  for (const key of ['units?.regimes', 'units?.bottles']) {
+    assert.ok(doc.includes(key), `doc.ts does not read ${key}`)
+  }
+  // Both readers go through the same normaliser rather than each reaching into
+  // units themselves — that is what keeps a legacy report opening everywhere.
+  const view = fs.readFileSync('app/maintenance/report/[id]/page.tsx', 'utf8')
+  assert.ok(view.includes('co2RackList(units)'), 'the report page does not read the rack list')
 })
 
 test('the form reads the checklist from the shared module, not its own copy', () => {
@@ -219,4 +269,158 @@ test('the edit link and the form agree on the query parameter', () => {
   assert.match(FORM, /searchParams\.get\('id'\)/)
   const report = fs.readFileSync('app/maintenance/report/[id]/page.tsx', 'utf8')
   assert.match(report, /\/maintenance\/co2-pm\?id=\$\{id\}/)
+})
+
+/* ── More than one rack ───────────────────────────────────────────────────── */
+
+const {
+  co2RackList, co2RackTitle, compressorRefs,
+  findCompressorCount, findCompressorManufacturer, findSpec, CO2_SLOTS,
+} = require('../lib/maintenance/co2-racks.ts')
+
+/** Sobeys 4737: a 7-compressor LT/MT booster and a 4-compressor MT rack. */
+const TWO_RACKS = {
+  ...REPORT,
+  units: {
+    ...REPORT.units,
+    rack: undefined,
+    racks: [
+      { ...REPORT.units.rack, id: 'r1', name: 'Stone Church Rack 1' },
+      {
+        ...REPORT.units.rack, id: 'r2', name: 'Stone Church Rack 2',
+        compressorCount: 2, rackManufacturer: 'Systèmes LMP Inc.',
+        compAmps: ['40.1', '39.8', '', '', '', '', '', ''],
+      },
+    ],
+  },
+}
+
+test('every rack on the report gets its own section', () => {
+  // The store runs two racks; printing one of them was the whole problem.
+  const doc = buildReportDoc('co2', TWO_RACKS)
+  const titles = doc.sections.map(s => s.title).filter(t => t.startsWith('CO₂ Rack'))
+  assert.deepEqual(titles, ['CO₂ Rack — Stone Church Rack 1', 'CO₂ Rack — Stone Church Rack 2'])
+})
+
+test('each rack prints its own readings, not the first rack twice', () => {
+  const doc = buildReportDoc('co2', TWO_RACKS)
+  const second = section(doc, 'CO₂ Rack — Stone Church Rack 2')
+  const t = second.blocks.find(b => b.kind === 'table')
+  assert.equal(t.rows.length, 2, 'the second rack has two compressors')
+  assert.equal(t.rows[0][3], '40.1')
+  assert.equal(t.rows[1][3], '39.8')
+  const f = second.blocks.find(b => b.kind === 'fields')
+  assert.equal(f.items.find(i => i.label === 'Rack Manufacturer').value, 'Systèmes LMP Inc.')
+})
+
+test('a report saved before the form held two racks still prints', () => {
+  // Reports already filed carry a single units.rack object, and they keep the
+  // heading they were filed with rather than growing a "— Rack 1" suffix.
+  const doc = buildReportDoc('co2', REPORT)
+  const titles = doc.sections.map(s => s.title).filter(t => t.startsWith('CO₂ Rack'))
+  assert.deepEqual(titles, ['CO₂ Rack'])
+  assert.equal(co2RackList(REPORT.units).length, 1)
+})
+
+test('the rack list ignores anything that is not a rack object', () => {
+  assert.deepEqual(co2RackList(null), [])
+  assert.deepEqual(co2RackList({}), [])
+  assert.deepEqual(co2RackList({ racks: 'nope' }), [])
+  assert.deepEqual(co2RackList({ rack: 'nope' }), [])
+  assert.deepEqual(co2RackList({ racks: [null, 'x', { a: 1 }] }), [{ a: 1 }])
+  // racks wins over a stale single rack, so an edited report is not printed twice.
+  assert.deepEqual(co2RackList({ racks: [{ a: 1 }], rack: { b: 2 } }), [{ a: 1 }])
+})
+
+test('an unnamed rack is still something a tech can point at', () => {
+  assert.equal(co2RackTitle('', 0), 'Rack 1')
+  assert.equal(co2RackTitle('   ', 1), 'Rack 2')
+  assert.equal(co2RackTitle(undefined, 2), 'Rack 3')
+  assert.equal(co2RackTitle('Stone Church Rack 1', 0), 'Stone Church Rack 1')
+})
+
+/* ── Filling a rack tab from its equipment record ─────────────────────────── */
+
+/** The Sobeys 4737 Rack 1 nameplate, catalogued the way CLAUDE.md prescribes. */
+const RACK_1_SPECS = [
+  { label: 'Rack Type', value: 'LT + MT (CO2 transcritical booster)' },
+  { label: 'Voltage', value: '575V / 3Ph / 60Hz' },
+  { label: 'MCA / MOPD', value: '164 A / 200 A' },
+  { label: 'Compressor Manufacturer', value: 'Bitzer' },
+  { label: 'Compressors', value: '7 total — 1× Bitzer 2GSL-3K-5SU (LT) + 3× Bitzer 2CSL-6K-5SU (LT) + 3× Bitzer 4DTC-25K-5PU (MT transcritical)' },
+  { label: 'Compressor 1 — 2GSL-3K-5SU', value: 'LT group, design SST -23°F — RLA 4.8 A, LRA 30 A' },
+  { label: 'Compressor 2 — 2CSL-6K-5SU', value: 'LT group #1, design SST -20°F — RLA 9.2 A, LRA 48 A' },
+  { label: 'Compressor 5 — 4DTC-25K-5PU', value: 'MT group #1, design SST +20°F — RLA 40.3 A, LRA 196 A' },
+]
+
+test('the compressor count comes from the count spec, not an electrical rating', () => {
+  // "Compressor Supply" and "Compressor MCA / MOPD" also say "compressor"; the
+  // first of those would otherwise be read as the number of compressors.
+  assert.equal(findCompressorCount(RACK_1_SPECS), 7)
+  assert.equal(findCompressorCount([{ label: 'Compressor MCA / MOPD', value: '164 A / 200 A' }]), null)
+  assert.equal(findCompressorCount(null), null)
+})
+
+test('a rack with more compressors than the form has slots is clamped', () => {
+  // The paper form prints eight columns; a 10-compressor record must not ask
+  // for readings the form cannot hold.
+  assert.equal(findCompressorCount([{ label: 'Compressors', value: '10 total — ...' }]), CO2_SLOTS)
+  assert.equal(findCompressorCount([{ label: 'Compressors', value: '0 total' }]), 1)
+})
+
+test('the compressor make is read from the summary when there is no dedicated spec', () => {
+  assert.equal(findCompressorManufacturer(RACK_1_SPECS), 'Bitzer')
+  const noDirect = RACK_1_SPECS.filter(s => s.label !== 'Compressor Manufacturer')
+  assert.equal(findCompressorManufacturer(noDirect), 'Bitzer')
+  assert.equal(findCompressorManufacturer([]), '')
+})
+
+test('each compressor carries its nameplate model and RLA', () => {
+  // 40.3 A is normal on a 4DTC-25K and a failure on a 2CSL-6K — the reference
+  // beside the amps box is what makes the reading mean something.
+  const refs = compressorRefs(RACK_1_SPECS)
+  assert.equal(refs.length, CO2_SLOTS)
+  assert.equal(refs[0], '2GSL-3K-5SU · RLA 4.8 A')
+  assert.equal(refs[1], '2CSL-6K-5SU · RLA 9.2 A')
+  assert.equal(refs[4], '4DTC-25K-5PU · RLA 40.3 A')
+  assert.equal(refs[2], '', 'a compressor with no spec gets no reference')
+})
+
+test('a compressor spec with no RLA still names the model', () => {
+  assert.equal(compressorRefs([{ label: 'Compressor 1 — 4DTC-25K-5PU', value: 'MT group' }])[0], '4DTC-25K-5PU')
+})
+
+test('findSpec matches on every keyword, not just one', () => {
+  assert.equal(findSpec(RACK_1_SPECS, 'mca'), '164 A / 200 A')
+  assert.equal(findSpec(RACK_1_SPECS, 'compressor', 'manufacturer'), 'Bitzer')
+  assert.equal(findSpec(RACK_1_SPECS, 'compressor', 'nothing'), null)
+})
+
+test('the form fills a tab per rack record and never overwrites a tech\'s entries', () => {
+  assert.match(FORM, /equipment_type === 'rack'/)
+  assert.match(FORM, /found\.map\(buildRackFromEquipment\)/)
+  // The guard is what stops a site change wiping readings already taken.
+  assert.match(FORM, /const pristine = /)
+  assert.match(FORM, /if \(!pristine\) return prev/)
+  assert.match(FORM, /if \(!found\.length \|\| editId\) return/)
+})
+
+test('the form offers a rack tab per rack, with a way to add and remove one', () => {
+  assert.match(FORM, /const addRack = /)
+  assert.match(FORM, /const removeRack = /)
+  // Deleting the last rack would leave nowhere to write.
+  assert.match(FORM, /if \(prev\.length <= 1\) return prev/)
+  assert.match(FORM, /racks\.map\(\(r, i\) =>/)
+})
+
+test('readings are written to the rack being filled in, not always the first', () => {
+  assert.match(FORM, /r\.id === activeRack\?\.id \? fn\(r\) : r/)
+  assert.doesNotMatch(FORM, /setRack\(/, 'the single-rack setter is gone')
+})
+
+test('a rack with readings on it is not removed on a mis-tap', () => {
+  // Losing an hour of machine-room readings to a stray tap on a phone is the
+  // failure this guards against.
+  assert.match(FORM, /const rackHasEntries = /)
+  assert.match(FORM, /!window\.confirm\(/)
 })

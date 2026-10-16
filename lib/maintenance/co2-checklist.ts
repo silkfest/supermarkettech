@@ -58,6 +58,12 @@ export const CO2_CHECKLIST: Co2ChecklistItem[] = [
   { id: 'co2_co2BottleInventory', number: 37, label: 'CO2 bottle inventory onsite – report back.' },
 ]
 
+/** The inventory item the bottle counts hang off.
+ *
+ *  "report back" on the paper form means a phone call; the counts are recorded
+ *  here instead so the next tech can read them off the last PM. */
+export const CO2_BOTTLE_ITEM_ID = 'co2_co2BottleInventory'
+
 /** The two machine-room items that sit at the top of the paper form rather than
  *  in its numbered list. */
 export const CO2_MACHINE_ROOM_ITEMS = [
