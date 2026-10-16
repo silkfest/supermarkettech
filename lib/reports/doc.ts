@@ -14,6 +14,7 @@
 
 import { REFRIG_CHECKLIST, HVAC_CHECKLIST } from '../maintenance/checklists'
 import { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES } from '../maintenance/co2-checklist'
+import { co2RackList, co2RackTitle } from '../maintenance/co2-racks'
 import { type EquipmentType, usesRefrigerant, equipmentLabel } from '../maintenance/hvac-equipment'
 
 export interface DocPhoto { url: string; label: string }
@@ -286,45 +287,52 @@ function refrigerationSections(data: Obj): DocSection[] {
 
 function co2Sections(data: Obj): DocSection[] {
   const units = obj(data.units)
-  const rack = obj(units?.rack)
+  const racks = co2RackList(units)
   const regimes = obj(units?.regimes)
   const bottles = obj(units?.bottles)
   const checklist = obj(data.checklist)
 
-  /** Readings are kept in eight slots whatever the rack carries; only the
-   *  compressors that exist are printed. */
-  const count = typeof rack?.compressorCount === 'number' ? rack.compressorCount : 8
   const col = (v: unknown) => strs(v)
 
-  const rackBlocks: DocBlock[] = rack ? [
-    ...fields([
-      { label: 'Rack Manufacturer', value: str(rack.rackManufacturer) },
-      { label: 'Compressor Mfr', value: str(rack.compressorManufacturer) },
-      { label: 'Refrigerant', value: 'R-744' },
-      { label: 'Charge — MT', value: str(rack.chargeMT) },
-      { label: 'Charge — LT', value: str(rack.chargeLT) },
-      { label: 'Reservoir %', value: str(rack.reservoirPercent) },
-      { label: 'Oil Level in Reservoir', value: str(rack.oilLevelReservoir) },
-      { label: 'Oil Condition', value: str(rack.oilCondition) },
-      { label: 'Acid Test', value: str(rack.acidTest) },
-      { label: 'L.L Alarm Occurred', value: str(rack.llAlarm) },
-    ]),
-  ] : []
-
-  if (rack && count > 0) {
-    const omc = col(rack.omcLevel), oilPress = col(rack.oilPressReservoir)
-    const amps = col(rack.compAmps), volts = col(rack.compVolts)
-    const hp = col(rack.hpSetPoints), lp = col(rack.lpSetPoints), ofc = col(rack.ofcTripTime)
-    rackBlocks.push({
-      kind: 'table',
-      head: ['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'],
-      rows: Array.from({ length: count }, (_, i) => [
-        String(i + 1),
-        dash(omc[i] ?? ''), dash(oilPress[i] ?? ''), dash(amps[i] ?? ''), dash(volts[i] ?? ''),
-        dash(hp[i] ?? ''), dash(lp[i] ?? ''), dash(ofc[i] ?? ''),
+  /** One section per rack, so a two-rack store prints two of them rather than
+   *  the one the form used to hold. Readings are kept in eight slots whatever
+   *  the rack carries; only the compressors that exist are printed. */
+  const rackSections: DocSection[] = racks.map((rack, idx) => {
+    const count = typeof rack.compressorCount === 'number' ? rack.compressorCount : 8
+    const blocks: DocBlock[] = [
+      ...fields([
+        { label: 'Rack Manufacturer', value: str(rack.rackManufacturer) },
+        { label: 'Compressor Mfr', value: str(rack.compressorManufacturer) },
+        { label: 'Refrigerant', value: 'R-744' },
+        { label: 'Charge — MT', value: str(rack.chargeMT) },
+        { label: 'Charge — LT', value: str(rack.chargeLT) },
+        { label: 'Reservoir %', value: str(rack.reservoirPercent) },
+        { label: 'Oil Level in Reservoir', value: str(rack.oilLevelReservoir) },
+        { label: 'Oil Condition', value: str(rack.oilCondition) },
+        { label: 'Acid Test', value: str(rack.acidTest) },
+        { label: 'L.L Alarm Occurred', value: str(rack.llAlarm) },
       ]),
-    })
-  }
+    ]
+    if (count > 0) {
+      const omc = col(rack.omcLevel), oilPress = col(rack.oilPressReservoir)
+      const amps = col(rack.compAmps), volts = col(rack.compVolts)
+      const hp = col(rack.hpSetPoints), lp = col(rack.lpSetPoints), ofc = col(rack.ofcTripTime)
+      blocks.push({
+        kind: 'table',
+        head: ['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'],
+        rows: Array.from({ length: count }, (_, i) => [
+          String(i + 1),
+          dash(omc[i] ?? ''), dash(oilPress[i] ?? ''), dash(amps[i] ?? ''), dash(volts[i] ?? ''),
+          dash(hp[i] ?? ''), dash(lp[i] ?? ''), dash(ofc[i] ?? ''),
+        ]),
+      })
+    }
+    // A single unnamed rack keeps the heading it has always had.
+    const title = racks.length === 1 && !str(rack.name)
+      ? 'CO₂ Rack'
+      : `CO₂ Rack — ${co2RackTitle(rack.name, idx)}`
+    return { title, blocks }
+  })
 
   /** One column per temperature regime, and a regime with nothing recorded is
    *  left out — a store with no D/T should not print an empty column. */
@@ -389,7 +397,7 @@ function co2Sections(data: Obj): DocSection[] {
         ]),
       ],
     }] : []),
-    ...(rackBlocks.length ? [{ title: 'CO₂ Rack', blocks: rackBlocks }] : []),
+    ...rackSections,
     ...regimeSection,
     ...notesSection('Notes & Deficiencies', data.notes, n => {
       const asset = str(n.assetId)

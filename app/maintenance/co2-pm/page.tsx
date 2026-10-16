@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Pencil, Trash2, ChevronDown, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronDown, Loader2, X } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import PhotoUploadGrid, { type UploadPhoto } from '@/components/PhotoUploadGrid'
 import { draftKey, readDraft, writeDraft, clearDraft, isWorthSaving, describeDraftAge } from '@/lib/maintenance/draft'
@@ -10,6 +10,11 @@ import {
   CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES, CO2_BOTTLE_ITEM_ID, isCo2ItemInSeason,
   type Co2RegimeKey,
 } from '@/lib/maintenance/co2-checklist'
+import {
+  CO2_SLOTS, co2RackList, co2RackTitle, compressorRefs,
+  findCompressorCount, findCompressorManufacturer,
+  type Co2RackEquipment,
+} from '@/lib/maintenance/co2-racks'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -21,10 +26,16 @@ type CondenserCondition = 'Good' | 'CFM out' | 'Dirty Needs Cleaning' | ''
 /** The paper form prints eight compressor columns; racks with fewer leave the
  *  rest blank. The array is kept at full length so shrinking the count and
  *  growing it again does not lose what was typed. */
-const SLOTS = 8
+const SLOTS = CO2_SLOTS
 const createSlots = (): string[] => Array(SLOTS).fill('')
 
 interface Co2Rack {
+  id: string
+  /** Tab label — the equipment record's name when it was filled from one. */
+  name: string
+  /** The equipment record this rack was filled from, so its nameplate can be
+   *  read back for the per-compressor reference on return visits. */
+  equipmentId: string | null
   rackManufacturer: string
   compressorManufacturer: string
   /** R-744 charge, split the way the form splits it. */
@@ -87,7 +98,7 @@ interface DraftData {
   performedAt: string
   season: PMSeason
   simproNumber: string
-  rack: Co2Rack
+  racks: Co2Rack[]
   regimes: Co2Regimes
   bottles: Co2Bottles
   checklist: ChecklistMap
@@ -95,7 +106,10 @@ interface DraftData {
   photos: UploadPhoto[]
 }
 
-const createRack = (): Co2Rack => ({
+const createRack = (name = ''): Co2Rack => ({
+  id: crypto.randomUUID(),
+  name,
+  equipmentId: null,
   rackManufacturer: '', compressorManufacturer: '',
   chargeMT: '', chargeLT: '',
   compressorCount: SLOTS,
@@ -103,6 +117,18 @@ const createRack = (): Co2Rack => ({
   compAmps: createSlots(), compVolts: createSlots(),
   hpSetPoints: createSlots(), lpSetPoints: createSlots(), ofcTripTime: createSlots(),
   reservoirPercent: '', oilLevelReservoir: '', oilCondition: '', acidTest: '', llAlarm: '',
+})
+
+/** First fill of a rack tab from its equipment record.
+ *
+ *  Only the standing facts — who built it, the compressor make, how many.
+ *  Everything else on the tab is a reading taken on site. */
+const buildRackFromEquipment = (e: Co2RackEquipment): Co2Rack => ({
+  ...createRack(e.name),
+  equipmentId: e.id,
+  rackManufacturer: e.manufacturer ?? '',
+  compressorManufacturer: findCompressorManufacturer(e.specs),
+  compressorCount: findCompressorCount(e.specs) ?? SLOTS,
 })
 
 const createRegime = (): Co2Regime => ({
@@ -159,7 +185,9 @@ function Co2PMContent() {
   const [season, setSeason] = useState<PMSeason>('')
   const [simproNumber, setSimproNumber] = useState('')
 
-  const [rack, setRack] = useState<Co2Rack>(createRack())
+  const [racks, setRacks] = useState<Co2Rack[]>(() => [createRack()])
+  const [activeRackId, setActiveRackId] = useState<string | null>(null)
+  const [rackEquipment, setRackEquipment] = useState<Co2RackEquipment[]>([])
   const [regimes, setRegimes] = useState<Co2Regimes>(createRegimes())
   const [bottles, setBottles] = useState<Co2Bottles>({ full: '', empty: '' })
   const [checklist, setChecklist] = useState<ChecklistMap>(defaultChecklist())
@@ -207,7 +235,9 @@ function Co2PMContent() {
       if (d.performedAt) setPerformedAt(d.performedAt)
       if (d.season !== undefined) setSeason(d.season)
       if (d.simproNumber !== undefined) setSimproNumber(d.simproNumber)
-      if (d.rack) setRack({ ...createRack(), ...d.rack })
+      if (Array.isArray(d.racks) && d.racks.length) {
+        setRacks(d.racks.map(r => ({ ...createRack(), ...r })))
+      }
       if (d.regimes) setRegimes({ ...createRegimes(), ...d.regimes })
       if (d.bottles) setBottles({ full: d.bottles.full ?? '', empty: d.bottles.empty ?? '' })
       if (d.checklist) setChecklist({ ...defaultChecklist(), ...d.checklist })
@@ -223,7 +253,7 @@ function Co2PMContent() {
     if (!draftReadyRef.current) return
     const data: DraftData = {
       storeName, storeId, storeAddress, technician, performedAt, season,
-      simproNumber, rack, regimes, bottles, checklist, notes, photos,
+      simproNumber, racks, regimes, bottles, checklist, notes, photos,
     }
     if (untouchedRef.current === null) {
       untouchedRef.current = restoredRef.current ? ({} as DraftData) : data
@@ -233,7 +263,7 @@ function Co2PMContent() {
     const t = setTimeout(() => writeDraft(DRAFT_KEY, data, Date.now()), 600)
     return () => clearTimeout(t)
   }, [DRAFT_KEY, storeName, storeId, storeAddress, technician, performedAt, season,
-      simproNumber, rack, regimes, bottles, checklist, notes, photos])
+      simproNumber, racks, regimes, bottles, checklist, notes, photos])
 
   const startFresh = () => {
     clearDraft(DRAFT_KEY)
@@ -253,6 +283,35 @@ function Co2PMContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Rack records on file for the selected site. They serve two purposes: the
+  // nameplate reference shown beside each compressor's amps box (always), and
+  // a first fill of the rack tabs (only on a fresh report whose racks are still
+  // untouched — a tech's entries are never overwritten). Only equipment_type
+  // 'rack' feeds this; cases and circuits are deliberately excluded.
+  useEffect(() => {
+    if (!storeId) { setRackEquipment([]); return }
+    let cancelled = false
+    fetch(`/api/stores/${storeId}`).then(r => r.ok ? r.json() : null).then(d => {
+      if (cancelled) return
+      const found: Co2RackEquipment[] = (d?.equipment ?? [])
+        .filter((e: { equipment_type: string }) => e.equipment_type === 'rack')
+      setRackEquipment(found)
+      if (!found.length || editId) return
+      setRacks(prev => {
+        const pristine = prev.length === 1 && !prev[0].rackManufacturer
+          && !prev[0].compressorManufacturer && !prev[0].chargeMT && !prev[0].chargeLT
+          && !prev[0].omcLevel.some(Boolean) && !prev[0].compAmps.some(Boolean)
+        if (!pristine) return prev
+        const filled = found.map(buildRackFromEquipment)
+        setActiveRackId(filled[0].id)
+        return filled
+      })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  // autoFill is keyed on the site, not on every render of the rack list
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, editId])
+
   // Load an existing report for editing.
   useEffect(() => {
     if (!editId) return
@@ -267,7 +326,8 @@ function Co2PMContent() {
       if (d.units && typeof d.units === 'object' && !Array.isArray(d.units)) {
         setStoreAddress(d.units.storeAddress ?? '')
         setTechnician(typeof d.units.technician === 'string' ? d.units.technician : (d.units.technician?.name ?? ''))
-        if (d.units.rack) setRack({ ...createRack(), ...d.units.rack })
+        const saved = co2RackList(d.units)
+        if (saved.length) setRacks(saved.map(r => ({ ...createRack(), ...r })))
         if (d.units.regimes) setRegimes({ ...createRegimes(), ...d.units.regimes })
         if (d.units.bottles) setBottles({ full: d.units.bottles.full ?? '', empty: d.units.bottles.empty ?? '' })
       }
@@ -276,17 +336,62 @@ function Co2PMContent() {
     })
   }, [editId])
 
-  /* ---- helpers ---- */
+  /* ---- racks ---- */
+
+  /** The tab being filled in. Falls back to the first rack so the form always
+   *  has somewhere to put a reading, even if a tab was just deleted. */
+  const activeRack = racks.find(r => r.id === activeRackId) ?? racks[0]
+
+  const patchActive = (fn: (r: Co2Rack) => Co2Rack) =>
+    setRacks(prev => prev.map(r => (r.id === activeRack?.id ? fn(r) : r)))
 
   const updateRack = <K extends keyof Co2Rack>(field: K, value: Co2Rack[K]) =>
-    setRack(prev => ({ ...prev, [field]: value }))
+    patchActive(r => ({ ...r, [field]: value }))
 
   const updateSlot = (field: keyof Co2Rack, index: number, value: string) =>
-    setRack(prev => {
-      const arr = [...(prev[field] as string[])]
+    patchActive(r => {
+      const arr = [...(r[field] as string[])]
       arr[index] = value
-      return { ...prev, [field]: arr }
+      return { ...r, [field]: arr }
     })
+
+  const addRack = () => {
+    const fresh = createRack()
+    setRacks(prev => [...prev, fresh])
+    setActiveRackId(fresh.id)
+  }
+
+  /** Whether anything has been typed on a rack — the id, name and slot arrays
+   *  it is born with do not count as work. */
+  const rackHasEntries = (r: Co2Rack) =>
+    [r.rackManufacturer, r.compressorManufacturer, r.chargeMT, r.chargeLT,
+      r.reservoirPercent, r.oilLevelReservoir, r.oilCondition, r.acidTest, r.llAlarm]
+      .some(Boolean)
+    || [r.omcLevel, r.oilPressReservoir, r.compAmps, r.compVolts,
+      r.hpSetPoints, r.lpSetPoints, r.ofcTripTime].some(a => a.some(Boolean))
+
+  /** Removing the last rack would leave the form with nothing to write on, so
+   *  the button is hidden at one rack rather than leaving an empty state. An
+   *  hour of readings should not go on a mis-tap either, so a rack with
+   *  anything on it asks first. */
+  const removeRack = (id: string) => {
+    const target = racks.find(r => r.id === id)
+    if (target && rackHasEntries(target)
+      && !window.confirm(`Remove ${co2RackTitle(target.name, racks.indexOf(target))} and the readings on it?`)) return
+    setRacks(prev => {
+      if (prev.length <= 1) return prev
+      const next = prev.filter(r => r.id !== id)
+      if (id === activeRack?.id) setActiveRackId(next[0].id)
+      return next
+    })
+  }
+
+  /** Nameplate reference for each compressor on the active rack, re-read from
+   *  the equipment record rather than stored on the report. */
+  const activeRefs = (() => {
+    const record = rackEquipment.find(e => e.id === activeRack?.equipmentId)
+    return record ? compressorRefs(record.specs) : []
+  })()
 
   const updateRegime = (key: Co2RegimeKey, field: keyof Co2Regime, value: string) =>
     setRegimes(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))
@@ -294,9 +399,9 @@ function Co2PMContent() {
   /** The safety values are usually identical across a rack's compressors; the
    *  HFC form offers the same shortcut. Blanks are skipped so a half-filled
    *  Comp 1 cannot wipe what is already on the others. */
-  const hasSafetyValues = !!(rack.hpSetPoints[0] || rack.lpSetPoints[0] || rack.ofcTripTime[0])
+  const hasSafetyValues = !!(activeRack.hpSetPoints[0] || activeRack.lpSetPoints[0] || activeRack.ofcTripTime[0])
   const applySafetyToAll = () => {
-    setRack(prev => {
+    patchActive(prev => {
       const spread = (arr: string[]) => {
         const first = arr[0]
         if (!first) return arr
@@ -357,7 +462,7 @@ function Co2PMContent() {
       performed_at: new Date(performedAt + 'T12:00:00').toISOString(),
       simpro_number: simproNumber || null,
       checklist,
-      units: { technician, storeAddress, rack, regimes, bottles },
+      units: { technician, storeAddress, racks, regimes, bottles },
       notes,
       photos,
     }
@@ -572,33 +677,86 @@ function Co2PMContent() {
         {/* ── Rack Data ── */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-800">CO₂ Rack</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              CO₂ Racks{racks.length > 1 ? ` (${racks.length})` : ''}
+            </h2>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">R-744</span>
           </div>
+
+          {/* One tab per rack. A CO₂ store commonly runs a booster alongside a
+              separate MT rack, and each carries its own readings. */}
+          <div className="flex items-stretch gap-1 overflow-x-auto border-b border-slate-200 px-3 pt-3 bg-slate-50">
+            {racks.map((r, i) => {
+              const active = r.id === activeRack?.id
+              return (
+                <div
+                  key={r.id}
+                  className={`group flex items-center gap-1 rounded-t-lg border border-b-0 px-3 py-2 flex-shrink-0 ${
+                    active ? 'bg-white border-slate-200' : 'bg-transparent border-transparent hover:bg-white/60'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveRackId(r.id)}
+                    className={`text-xs font-semibold whitespace-nowrap ${active ? 'text-cyan-700' : 'text-slate-500'}`}
+                  >
+                    {co2RackTitle(r.name, i)}
+                  </button>
+                  {racks.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRack(r.id)}
+                      aria-label={`Remove ${co2RackTitle(r.name, i)}`}
+                      className="p-1 -mr-1 text-slate-400 hover:text-red-600"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            <button
+              type="button"
+              onClick={addRack}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-cyan-700 hover:text-cyan-800 flex-shrink-0"
+            >
+              <Plus size={13} /> Add Rack
+            </button>
+          </div>
+
           <div className="p-4 md:p-6 space-y-4">
 
             <Section title="Rack Description" open={rackOpen} toggle={() => setRackOpen(o => !o)}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <label className={labelCls}>Rack Name</label>
+                  <input
+                    value={activeRack.name}
+                    onChange={e => updateRack('name', e.target.value)}
+                    className={inputCls}
+                    placeholder={co2RackTitle('', racks.indexOf(activeRack))}
+                  />
+                </div>
+                <div>
                   <label className={labelCls}>Rack Manufacturer</label>
-                  <input value={rack.rackManufacturer} onChange={e => updateRack('rackManufacturer', e.target.value)} className={inputCls} placeholder="e.g. Carnot, Advansor, Hussmann" />
+                  <input value={activeRack.rackManufacturer} onChange={e => updateRack('rackManufacturer', e.target.value)} className={inputCls} placeholder="e.g. Carnot, Advansor, Hussmann" />
                 </div>
                 <div>
                   <label className={labelCls}>Compressor Manufacturer</label>
-                  <input value={rack.compressorManufacturer} onChange={e => updateRack('compressorManufacturer', e.target.value)} className={inputCls} placeholder="e.g. Bitzer, Dorin" />
+                  <input value={activeRack.compressorManufacturer} onChange={e => updateRack('compressorManufacturer', e.target.value)} className={inputCls} placeholder="e.g. Bitzer, Dorin" />
                 </div>
                 <div>
                   <label className={labelCls}>R-744 Charge — MT</label>
-                  <input value={rack.chargeMT} onChange={e => updateRack('chargeMT', e.target.value)} className={inputCls} placeholder="e.g. 450 lb" />
+                  <input value={activeRack.chargeMT} onChange={e => updateRack('chargeMT', e.target.value)} className={inputCls} placeholder="e.g. 450 lb" />
                 </div>
                 <div>
                   <label className={labelCls}>R-744 Charge — LT</label>
-                  <input value={rack.chargeLT} onChange={e => updateRack('chargeLT', e.target.value)} className={inputCls} placeholder="e.g. 180 lb" />
+                  <input value={activeRack.chargeLT} onChange={e => updateRack('chargeLT', e.target.value)} className={inputCls} placeholder="e.g. 180 lb" />
                 </div>
                 <div>
                   <label className={labelCls}>Compressors on this rack</label>
                   <select
-                    value={rack.compressorCount}
+                    value={activeRack.compressorCount}
                     onChange={e => updateRack('compressorCount', Number(e.target.value))}
                     className={inputCls}
                   >
@@ -614,15 +772,15 @@ function Co2PMContent() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className={labelCls}>Reservoir %</label>
-                  <input value={rack.reservoirPercent} onChange={e => updateRack('reservoirPercent', e.target.value)} className={inputCls} />
+                  <input value={activeRack.reservoirPercent} onChange={e => updateRack('reservoirPercent', e.target.value)} className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>Oil Level in Reservoir</label>
-                  <input value={rack.oilLevelReservoir} onChange={e => updateRack('oilLevelReservoir', e.target.value)} className={inputCls} />
+                  <input value={activeRack.oilLevelReservoir} onChange={e => updateRack('oilLevelReservoir', e.target.value)} className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>Oil Condition</label>
-                  <select value={rack.oilCondition} onChange={e => updateRack('oilCondition', e.target.value as OilCondition)} className={inputCls}>
+                  <select value={activeRack.oilCondition} onChange={e => updateRack('oilCondition', e.target.value as OilCondition)} className={inputCls}>
                     <option value="">Select</option>
                     <option>Good - No Test Done</option>
                     <option>Good - Acid Test Passed</option>
@@ -631,28 +789,33 @@ function Co2PMContent() {
                 </div>
                 <div>
                   <label className={labelCls}>Acid Test</label>
-                  <input value={rack.acidTest} onChange={e => updateRack('acidTest', e.target.value)} className={inputCls} placeholder="Result" />
+                  <input value={activeRack.acidTest} onChange={e => updateRack('acidTest', e.target.value)} className={inputCls} placeholder="Result" />
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Array.from({ length: rack.compressorCount }, (_, i) => (
+                {Array.from({ length: activeRack.compressorCount }, (_, i) => (
                   <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
-                    <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
+                    <div className="pb-1.5 border-b border-slate-200">
+                      <p className="text-[11px] font-semibold text-slate-700 text-center">Comp {i + 1}</p>
+                      {activeRefs[i] && (
+                        <p className="text-[10px] text-slate-500 text-center leading-tight mt-0.5">{activeRefs[i]}</p>
+                      )}
+                    </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">OMC Level</label>
-                      <input value={rack.omcLevel[i] ?? ''} onChange={e => updateSlot('omcLevel', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.omcLevel[i] ?? ''} onChange={e => updateSlot('omcLevel', i, e.target.value)} className={narrowInput} />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">Oil Press / Reservoir</label>
-                      <input value={rack.oilPressReservoir[i] ?? ''} onChange={e => updateSlot('oilPressReservoir', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.oilPressReservoir[i] ?? ''} onChange={e => updateSlot('oilPressReservoir', i, e.target.value)} className={narrowInput} />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">Comp Amps</label>
-                      <input value={rack.compAmps[i] ?? ''} onChange={e => updateSlot('compAmps', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.compAmps[i] ?? ''} onChange={e => updateSlot('compAmps', i, e.target.value)} className={narrowInput} />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">Comp Volts</label>
-                      <input value={rack.compVolts[i] ?? ''} onChange={e => updateSlot('compVolts', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.compVolts[i] ?? ''} onChange={e => updateSlot('compVolts', i, e.target.value)} className={narrowInput} />
                     </div>
                   </div>
                 ))}
@@ -660,11 +823,11 @@ function Co2PMContent() {
             </Section>
 
             <Section title="Mechanical Safety Controls" open={safetyOpen} toggle={() => setSafetyOpen(o => !o)}>
-              {rack.compressorCount > 1 && (
+              {activeRack.compressorCount > 1 && (
                 <div className="mb-4 rounded-lg border border-cyan-200 bg-cyan-50 p-3">
                   <p className="text-sm font-medium text-slate-800">Same safety values across this rack?</p>
                   <p className="mt-1 text-xs text-slate-600">
-                    Enter HP, LP and OFC trip time under Comp 1, then copy to all {rack.compressorCount} compressors.
+                    Enter HP, LP and OFC trip time under Comp 1, then copy to all {activeRack.compressorCount} compressors.
                     Blanks are skipped, and you can edit any compressor afterward.
                   </p>
                   <button
@@ -678,27 +841,27 @@ function Co2PMContent() {
                 </div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Array.from({ length: rack.compressorCount }, (_, i) => (
+                {Array.from({ length: activeRack.compressorCount }, (_, i) => (
                   <div key={i} className="bg-slate-50 rounded-lg p-3 space-y-2.5">
                     <p className="text-[11px] font-semibold text-slate-700 text-center pb-1.5 border-b border-slate-200">Comp {i + 1}</p>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">H.P. Set Point</label>
-                      <input value={rack.hpSetPoints[i] ?? ''} onChange={e => updateSlot('hpSetPoints', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.hpSetPoints[i] ?? ''} onChange={e => updateSlot('hpSetPoints', i, e.target.value)} className={narrowInput} />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">L.P. Set Point</label>
-                      <input value={rack.lpSetPoints[i] ?? ''} onChange={e => updateSlot('lpSetPoints', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.lpSetPoints[i] ?? ''} onChange={e => updateSlot('lpSetPoints', i, e.target.value)} className={narrowInput} />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">OFC Trip (sec)</label>
-                      <input value={rack.ofcTripTime[i] ?? ''} onChange={e => updateSlot('ofcTripTime', i, e.target.value)} className={narrowInput} />
+                      <input value={activeRack.ofcTripTime[i] ?? ''} onChange={e => updateSlot('ofcTripTime', i, e.target.value)} className={narrowInput} />
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-4">
                 <label className={labelCls}>L.L Alarm — any occurred?</label>
-                <input value={rack.llAlarm} onChange={e => updateRack('llAlarm', e.target.value)} className={inputCls} placeholder="e.g. None, or describe" />
+                <input value={activeRack.llAlarm} onChange={e => updateRack('llAlarm', e.target.value)} className={inputCls} placeholder="e.g. None, or describe" />
               </div>
             </Section>
 

@@ -8,6 +8,7 @@ import PhotoGallery from '@/components/PhotoGallery'
 import PageHeader from '@/components/PageHeader'
 import { REFRIG_CHECKLIST, HVAC_CHECKLIST } from '@/lib/maintenance/checklists'
 import { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES } from '@/lib/maintenance/co2-checklist'
+import { co2RackList, co2RackTitle } from '@/lib/maintenance/co2-racks'
 import { type EquipmentType, usesRefrigerant } from '@/lib/maintenance/hvac-equipment'
 import { buildReportDoc, type ReportKind } from '@/lib/reports/doc'
 
@@ -393,15 +394,14 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
     assetId?: string; regime?: string; systemNumber?: string
   }> | null
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
-  const rack = (units?.rack ?? null) as Record<string, unknown> | null
+  const racks = co2RackList(units)
   const bottles = (units?.bottles ?? null) as { full?: string; empty?: string } | null
   const regimes = (units?.regimes ?? null) as Record<string, Record<string, string>> | null
   const technician = technicianFrom(units?.technician)
   const storeAddress = units?.storeAddress as string | null
 
-  const count = typeof rack?.compressorCount === 'number' ? rack.compressorCount : 8
-  const slot = (field: string, i: number) => {
-    const arr = rack?.[field]
+  const slot = (rack: Record<string, unknown>, field: string, i: number) => {
+    const arr = rack[field]
     return (Array.isArray(arr) ? (arr[i] as string) : '') || '—'
   }
 
@@ -472,8 +472,13 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
         </SectionCard>
       )}
 
-      {rack && (
-        <SectionCard title="CO₂ Rack">
+      {racks.map((rack, idx) => {
+        const count = typeof rack.compressorCount === 'number' ? (rack.compressorCount as number) : 8
+        const title = racks.length === 1 && !(rack.name as string)
+          ? 'CO₂ Rack'
+          : `CO₂ Rack — ${co2RackTitle(rack.name, idx)}`
+        return (
+        <SectionCard key={(rack.id as string) ?? idx} title={title}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <Field label="Rack Manufacturer" value={rack.rackManufacturer as string} />
             <Field label="Compressor Mfr" value={rack.compressorManufacturer as string} />
@@ -498,20 +503,21 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
                 {Array.from({ length: count }, (_, i) => (
                   <tr key={i} className="even:bg-slate-50/50">
                     <td className="px-3 py-2 border border-slate-200 font-medium text-slate-700">{i + 1}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('omcLevel', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('oilPressReservoir', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('compAmps', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('compVolts', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('hpSetPoints', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('lpSetPoints', i)}</td>
-                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('ofcTripTime', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'omcLevel', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'oilPressReservoir', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'compAmps', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'compVolts', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'hpSetPoints', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'lpSetPoints', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'ofcTripTime', i)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </SectionCard>
-      )}
+        )
+      })}
 
       {usedRegimes.length > 0 && (
         <SectionCard title="L/T · M/T · D/T Readings">
