@@ -7,6 +7,7 @@ import { Printer, Download, Pencil, Trash2, CheckCircle2, Circle, AlertTriangle,
 import PhotoGallery from '@/components/PhotoGallery'
 import PageHeader from '@/components/PageHeader'
 import { REFRIG_CHECKLIST, HVAC_CHECKLIST } from '@/lib/maintenance/checklists'
+import { CO2_CHECKLIST, CO2_MACHINE_ROOM_ITEMS, CO2_REGIMES } from '@/lib/maintenance/co2-checklist'
 import { type EquipmentType, usesRefrigerant } from '@/lib/maintenance/hvac-equipment'
 import { buildReportDoc, type ReportKind } from '@/lib/reports/doc'
 
@@ -383,6 +384,188 @@ function HvacView({ data }: { data: Record<string, unknown> }) {
   )
 }
 
+// ─── CO₂ store PM view ────────────────────────────────────────────────────────
+function Co2View({ data }: { data: Record<string, unknown> }) {
+  const units = data.units as Record<string, unknown> | null
+  const checklist = data.checklist as Record<string, boolean> | null
+  const notes = data.notes as Array<{
+    id: string; text: string; importance: string
+    assetId?: string; regime?: string; systemNumber?: string
+  }> | null
+  const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
+  const rack = (units?.rack ?? null) as Record<string, unknown> | null
+  const regimes = (units?.regimes ?? null) as Record<string, Record<string, string>> | null
+  const technician = technicianFrom(units?.technician)
+  const storeAddress = units?.storeAddress as string | null
+
+  const count = typeof rack?.compressorCount === 'number' ? rack.compressorCount : 8
+  const slot = (field: string, i: number) => {
+    const arr = rack?.[field]
+    return (Array.isArray(arr) ? (arr[i] as string) : '') || '—'
+  }
+
+  const checklistItems = [
+    ...CO2_MACHINE_ROOM_ITEMS.map(i => ({ id: i.id, label: i.label })),
+    ...CO2_CHECKLIST.map(i => ({ id: i.id, label: `${i.number}. ${i.label}` })),
+  ]
+  const doneCount = checklistItems.filter(i => checklist?.[i.id]).length
+
+  // A store with no D/T should not get an empty column.
+  const usedRegimes = CO2_REGIMES.filter(r =>
+    Object.values(regimes?.[r.key] ?? {}).some(v => (v ?? '').trim() !== '')
+  )
+  const regimeRows: { label: string; field: string }[] = [
+    { label: 'Condenser Condition', field: 'condenserCondition' },
+    { label: 'Flashtank Level', field: 'flashtankLevel' },
+    { label: 'Flashtank Pressure (psig)', field: 'flashtankPressure' },
+    { label: 'Suction Setpoint', field: 'suctionSetpoint' },
+    { label: 'Suction Actual', field: 'suctionActual' },
+    { label: 'Discharge Setpoint', field: 'dischargeSetpoint' },
+    { label: 'Discharge Actual', field: 'dischargeActual' },
+    { label: 'Defrost Differential', field: 'defrostDifferential' },
+    { label: 'Heat Reclaim', field: 'heatReclaim' },
+    { label: 'Driers Labelled', field: 'driersLabeled' },
+    { label: 'Phase Protector', field: 'phaseProtector' },
+  ]
+
+  const noteMeta = (n: { assetId?: string; regime?: string; systemNumber?: string }) =>
+    [n.assetId && `Asset: ${n.assetId}`, n.regime && `System: ${n.regime}`, n.systemNumber && `System #: ${n.systemNumber}`]
+      .filter(Boolean).join(' · ')
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Site & Technician">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Field label="Store / Site" value={data.store_name as string} />
+          <Field label="Address" value={storeAddress} />
+          <Field label="Technician" value={technician.name} />
+          <Field label="Refrigerant" value="R-744" />
+        </div>
+      </SectionCard>
+
+      {checklist && (
+        <SectionCard title="PM Checklist">
+          <div className="space-y-1.5">
+            {checklistItems.map(item => {
+              const checked = !!checklist[item.id]
+              return (
+                <div key={item.id} className={`flex items-start gap-2.5 py-1 ${!checked ? 'opacity-40' : ''}`}>
+                  {checked
+                    ? <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                    : <Circle size={14} className="text-slate-300 flex-shrink-0 mt-0.5" />
+                  }
+                  <span className="text-sm text-slate-700">{item.label}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100">
+            {doneCount} of {checklistItems.length} items completed
+          </p>
+        </SectionCard>
+      )}
+
+      {rack && (
+        <SectionCard title="CO₂ Rack">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <Field label="Rack Manufacturer" value={rack.rackManufacturer as string} />
+            <Field label="Compressor Mfr" value={rack.compressorManufacturer as string} />
+            <Field label="Charge — MT" value={rack.chargeMT as string} />
+            <Field label="Charge — LT" value={rack.chargeLT as string} />
+            <Field label="Reservoir %" value={rack.reservoirPercent as string} />
+            <Field label="Oil Level in Reservoir" value={rack.oilLevelReservoir as string} />
+            <Field label="Oil Condition" value={rack.oilCondition as string} />
+            <Field label="Acid Test" value={rack.acidTest as string} />
+            <Field label="L.L Alarm Occurred" value={rack.llAlarm as string} />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50">
+                  {['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'].map(h => (
+                    <th key={h} className="text-left px-3 py-2 font-semibold text-slate-500 border border-slate-200">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: count }, (_, i) => (
+                  <tr key={i} className="even:bg-slate-50/50">
+                    <td className="px-3 py-2 border border-slate-200 font-medium text-slate-700">{i + 1}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('omcLevel', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('oilPressReservoir', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('compAmps', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('compVolts', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('hpSetPoints', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('lpSetPoints', i)}</td>
+                    <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot('ofcTripTime', i)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {usedRegimes.length > 0 && (
+        <SectionCard title="L/T · M/T · D/T Readings">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left px-3 py-2 font-semibold text-slate-500 border border-slate-200">Reading</th>
+                  {usedRegimes.map(r => (
+                    <th key={r.key} className="text-left px-3 py-2 font-semibold text-slate-500 border border-slate-200">{r.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {regimeRows.map(row => (
+                  <tr key={row.field} className="even:bg-slate-50/50">
+                    <td className="px-3 py-2 border border-slate-200 font-medium text-slate-700">{row.label}</td>
+                    {usedRegimes.map(r => (
+                      <td key={r.key} className="px-3 py-2 border border-slate-200 text-slate-600">
+                        {regimes?.[r.key]?.[row.field] || '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {notes && notes.length > 0 && (
+        <SectionCard title="Notes & Deficiencies">
+          <div className="space-y-2.5">
+            {notes.map((n, i) => {
+              const badge = importanceBadge(n.importance)
+              return (
+                <div key={n.id ?? i} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border ${badge.cls}`}>
+                  {badge.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{n.text}</p>
+                    {noteMeta(n) && <p className="text-[11px] mt-0.5 opacity-70">{noteMeta(n)}</p>}
+                  </div>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border flex-shrink-0 ${badge.cls}`}>
+                    {n.importance}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {photos.length > 0 && (
+        <SectionCard title="Photos">
+          <PhotoGallery photos={photos} />
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
 // ─── Individual report view ───────────────────────────────────────────────────
 function IndividualView({ data }: { data: Record<string, unknown> }) {
   const photos = (data.photos as Array<{ url: string; label: string }>) ?? []
@@ -489,7 +672,10 @@ function ReportViewContent() {
     setPdfBusy(true)
     setPdfError('')
     try {
-      const kind: ReportKind = type === 'individual' ? 'individual' : reportType === 'hvac' ? 'hvac' : 'refrigeration'
+      const kind: ReportKind = type === 'individual' ? 'individual'
+        : reportType === 'hvac' ? 'hvac'
+        : reportType === 'co2' ? 'co2'
+        : 'refrigeration'
       // Loaded on demand — the PDF library is far larger than this page.
       const { downloadReportPdf } = await import('@/lib/reports/pdf')
       await downloadReportPdf(buildReportDoc(kind, data))
@@ -511,11 +697,15 @@ function ReportViewContent() {
     ? `/maintenance/individual-report?id=${id}`
     : reportType === 'hvac'
       ? `/maintenance/hvac-pm?id=${id}`
-      : `/maintenance/refrigeration-pm?id=${id}`
+      : reportType === 'co2'
+        ? `/maintenance/co2-pm?id=${id}`
+        : `/maintenance/refrigeration-pm?id=${id}`
 
   const typeLabel = type === 'individual'
     ? 'Individual Report'
-    : reportType === 'hvac' ? 'HVAC PM' : 'Refrigeration PM'
+    : reportType === 'hvac' ? 'HVAC PM'
+    : reportType === 'co2' ? 'CO₂ PM'
+    : 'Refrigeration PM'
 
   const dateStr = data?.performed_at
     ? new Date(data.performed_at as string).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -660,7 +850,8 @@ function ReportViewContent() {
           {/* Type-specific content */}
           {type === 'individual' && <IndividualView data={data} />}
           {type === 'pm' && reportType === 'hvac' && <HvacView data={data} />}
-          {type === 'pm' && reportType !== 'hvac' && <RefrigView data={data} />}
+          {type === 'pm' && reportType === 'co2' && <Co2View data={data} />}
+          {type === 'pm' && reportType !== 'hvac' && reportType !== 'co2' && <RefrigView data={data} />}
         </div>
       </div>
     </>

@@ -26,7 +26,7 @@ export interface Draft<T> {
   data: T
 }
 
-export type FormKind = 'hvac-pm' | 'refrigeration-pm'
+export type FormKind = 'hvac-pm' | 'refrigeration-pm' | 'co2-pm'
 
 /** One slot per form, and per report when editing an existing one, so a draft
  *  of report A can never be restored on top of report B. */
