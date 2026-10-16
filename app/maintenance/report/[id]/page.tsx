@@ -477,6 +477,12 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
         const title = racks.length === 1 && !(rack.name as string)
           ? 'CO₂ Rack'
           : `CO₂ Rack — ${co2RackTitle(rack.name, idx)}`
+        const models = Array.isArray(rack.compressorModels) ? (rack.compressorModels as string[]) : []
+        const hasModels = models.slice(0, count).some(m => (m ?? '') !== '')
+        const head = [
+          'Comp', ...(hasModels ? ['Model'] : []),
+          'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)',
+        ]
         return (
         <SectionCard key={(rack.id as string) ?? idx} title={title}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -494,7 +500,7 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50">
-                  {['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'].map(h => (
+                  {head.map(h => (
                     <th key={h} className="text-left px-3 py-2 font-semibold text-slate-500 border border-slate-200">{h}</th>
                   ))}
                 </tr>
@@ -503,6 +509,7 @@ function Co2View({ data }: { data: Record<string, unknown> }) {
                 {Array.from({ length: count }, (_, i) => (
                   <tr key={i} className="even:bg-slate-50/50">
                     <td className="px-3 py-2 border border-slate-200 font-medium text-slate-700">{i + 1}</td>
+                    {hasModels && <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'compressorModels', i)}</td>}
                     <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'omcLevel', i)}</td>
                     <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'oilPressReservoir', i)}</td>
                     <td className="px-3 py-2 border border-slate-200 text-slate-600">{slot(rack, 'compAmps', i)}</td>

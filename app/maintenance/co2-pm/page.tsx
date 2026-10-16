@@ -11,7 +11,7 @@ import {
   type Co2RegimeKey,
 } from '@/lib/maintenance/co2-checklist'
 import {
-  CO2_SLOTS, co2RackList, co2RackTitle, compressorRefs,
+  CO2_SLOTS, co2RackList, co2RackTitle, compressorModels, compressorRlas,
   findCompressorCount, findCompressorManufacturer,
   type Co2RackEquipment,
 } from '@/lib/maintenance/co2-racks'
@@ -42,6 +42,9 @@ interface Co2Rack {
   chargeMT: string
   chargeLT: string
   compressorCount: number
+  /** Model per compressor, saved with the report so the PDF prints what was in
+   *  the rack on the day — a swapped compressor must not rewrite old reports. */
+  compressorModels: string[]
   omcLevel: string[]
   oilPressReservoir: string[]
   compAmps: string[]
@@ -113,6 +116,7 @@ const createRack = (name = ''): Co2Rack => ({
   rackManufacturer: '', compressorManufacturer: '',
   chargeMT: '', chargeLT: '',
   compressorCount: SLOTS,
+  compressorModels: createSlots(),
   omcLevel: createSlots(), oilPressReservoir: createSlots(),
   compAmps: createSlots(), compVolts: createSlots(),
   hpSetPoints: createSlots(), lpSetPoints: createSlots(), ofcTripTime: createSlots(),
@@ -129,6 +133,7 @@ const buildRackFromEquipment = (e: Co2RackEquipment): Co2Rack => ({
   rackManufacturer: e.manufacturer ?? '',
   compressorManufacturer: findCompressorManufacturer(e.specs),
   compressorCount: findCompressorCount(e.specs) ?? SLOTS,
+  compressorModels: compressorModels(e.specs),
 })
 
 const createRegime = (): Co2Regime => ({
@@ -301,6 +306,7 @@ function Co2PMContent() {
         const pristine = prev.length === 1 && !prev[0].rackManufacturer
           && !prev[0].compressorManufacturer && !prev[0].chargeMT && !prev[0].chargeLT
           && !prev[0].omcLevel.some(Boolean) && !prev[0].compAmps.some(Boolean)
+          && !prev[0].compressorModels.some(Boolean)
         if (!pristine) return prev
         const filled = found.map(buildRackFromEquipment)
         setActiveRackId(filled[0].id)
@@ -367,7 +373,7 @@ function Co2PMContent() {
     [r.rackManufacturer, r.compressorManufacturer, r.chargeMT, r.chargeLT,
       r.reservoirPercent, r.oilLevelReservoir, r.oilCondition, r.acidTest, r.llAlarm]
       .some(Boolean)
-    || [r.omcLevel, r.oilPressReservoir, r.compAmps, r.compVolts,
+    || [r.compressorModels, r.omcLevel, r.oilPressReservoir, r.compAmps, r.compVolts,
       r.hpSetPoints, r.lpSetPoints, r.ofcTripTime].some(a => a.some(Boolean))
 
   /** Removing the last rack would leave the form with nothing to write on, so
@@ -386,11 +392,11 @@ function Co2PMContent() {
     })
   }
 
-  /** Nameplate reference for each compressor on the active rack, re-read from
-   *  the equipment record rather than stored on the report. */
+  /** Rated amps for each compressor on the active rack, re-read from the
+   *  equipment record rather than stored on the report. */
   const activeRefs = (() => {
     const record = rackEquipment.find(e => e.id === activeRack?.equipmentId)
-    return record ? compressorRefs(record.specs) : []
+    return record ? compressorRlas(record.specs) : []
   })()
 
   const updateRegime = (key: Co2RegimeKey, field: keyof Co2Regime, value: string) =>
@@ -800,6 +806,15 @@ function Co2PMContent() {
                       {activeRefs[i] && (
                         <p className="text-[10px] text-slate-500 text-center leading-tight mt-0.5">{activeRefs[i]}</p>
                       )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Model</label>
+                      <input
+                        value={activeRack.compressorModels[i] ?? ''}
+                        onChange={e => updateSlot('compressorModels', i, e.target.value)}
+                        className={narrowInput}
+                        placeholder="e.g. 4DTC-25K"
+                      />
                     </div>
                     <div>
                       <label className="block text-[10px] text-slate-500 mb-0.5">OMC Level</label>

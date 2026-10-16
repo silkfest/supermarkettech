@@ -274,7 +274,7 @@ test('the edit link and the form agree on the query parameter', () => {
 /* ── More than one rack ───────────────────────────────────────────────────── */
 
 const {
-  co2RackList, co2RackTitle, compressorRefs,
+  co2RackList, co2RackTitle, compressorModels, compressorRlas,
   findCompressorCount, findCompressorManufacturer, findSpec, CO2_SLOTS,
 } = require('../lib/maintenance/co2-racks.ts')
 
@@ -375,19 +375,30 @@ test('the compressor make is read from the summary when there is no dedicated sp
   assert.equal(findCompressorManufacturer([]), '')
 })
 
-test('each compressor carries its nameplate model and RLA', () => {
-  // 40.3 A is normal on a 4DTC-25K and a failure on a 2CSL-6K — the reference
+test('each compressor carries its nameplate model', () => {
+  const models = compressorModels(RACK_1_SPECS)
+  assert.equal(models.length, CO2_SLOTS)
+  assert.equal(models[0], '2GSL-3K-5SU')
+  assert.equal(models[1], '2CSL-6K-5SU')
+  assert.equal(models[4], '4DTC-25K-5PU')
+  assert.equal(models[2], '', 'a compressor with no spec gets no model')
+})
+
+test('each compressor carries its rated amps', () => {
+  // 40.3 A is normal on a 4DTC-25K and a failure on a 2CSL-6K — the rating
   // beside the amps box is what makes the reading mean something.
-  const refs = compressorRefs(RACK_1_SPECS)
-  assert.equal(refs.length, CO2_SLOTS)
-  assert.equal(refs[0], '2GSL-3K-5SU · RLA 4.8 A')
-  assert.equal(refs[1], '2CSL-6K-5SU · RLA 9.2 A')
-  assert.equal(refs[4], '4DTC-25K-5PU · RLA 40.3 A')
-  assert.equal(refs[2], '', 'a compressor with no spec gets no reference')
+  const rlas = compressorRlas(RACK_1_SPECS)
+  assert.equal(rlas.length, CO2_SLOTS)
+  assert.equal(rlas[0], 'RLA 4.8 A')
+  assert.equal(rlas[1], 'RLA 9.2 A')
+  assert.equal(rlas[4], 'RLA 40.3 A')
+  assert.equal(rlas[2], '')
 })
 
 test('a compressor spec with no RLA still names the model', () => {
-  assert.equal(compressorRefs([{ label: 'Compressor 1 — 4DTC-25K-5PU', value: 'MT group' }])[0], '4DTC-25K-5PU')
+  const specs = [{ label: 'Compressor 1 — 4DTC-25K-5PU', value: 'MT group' }]
+  assert.equal(compressorModels(specs)[0], '4DTC-25K-5PU')
+  assert.equal(compressorRlas(specs)[0], '', 'no rating rather than a bare "RLA"')
 })
 
 test('findSpec matches on every keyword, not just one', () => {
@@ -423,4 +434,59 @@ test('a rack with readings on it is not removed on a mis-tap', () => {
   // failure this guards against.
   assert.match(FORM, /const rackHasEntries = /)
   assert.match(FORM, /!window\.confirm\(/)
+})
+
+/* ── Compressor models on the report ──────────────────────────────────────── */
+
+const WITH_MODELS = {
+  ...REPORT,
+  units: {
+    ...REPORT.units,
+    rack: {
+      ...REPORT.units.rack,
+      compressorModels: ['2GSL-3K-5SU', '2CSL-6K-5SU', '4DTC-25K-5PU', '', '', '', '', ''],
+    },
+  },
+}
+
+test('the PDF prints the compressor model against its readings', () => {
+  const t = block(buildReportDoc('co2', WITH_MODELS), 'CO₂ Rack', 'table')
+  assert.deepEqual(t.head, ['Comp', 'Model', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'])
+  assert.deepEqual(t.rows[0], ['1', '2GSL-3K-5SU', '60', '28', '12.1', '575', '1450', '200', '90'])
+  assert.equal(t.rows[2][1], '4DTC-25K-5PU')
+})
+
+test('a report with no models recorded prints no model column', () => {
+  // Every PM filed before models were recorded would otherwise grow a column
+  // of dashes.
+  const t = block(buildReportDoc('co2', REPORT), 'CO₂ Rack', 'table')
+  assert.deepEqual(t.head, ['Comp', 'OMC Level', 'Oil Press', 'Amps', 'Volts', 'H.P. Set', 'L.P. Set', 'OFC (sec)'])
+  assert.equal(t.rows[0].length, 8)
+})
+
+test('a model past the compressor count does not conjure the column', () => {
+  // Shrinking the count keeps what was typed in the hidden slots; that must
+  // not add a column of dashes to a rack whose own compressors have no models.
+  const stale = {
+    ...REPORT,
+    units: {
+      ...REPORT.units,
+      rack: { ...REPORT.units.rack, compressorModels: ['', '', '', '4DTC-25K-5PU', '', '', '', ''] },
+    },
+  }
+  const t = block(buildReportDoc('co2', stale), 'CO₂ Rack', 'table')
+  assert.equal(t.head.includes('Model'), false)
+})
+
+test('the model is filled from the record and saved with the report', () => {
+  assert.match(FORM, /compressorModels: compressorModels\(e\.specs\)/)
+  assert.match(FORM, /updateSlot\('compressorModels', i, e\.target\.value\)/)
+  // The rating stays read from the equipment record, not stored on the report.
+  assert.match(FORM, /compressorRlas\(record\.specs\)/)
+  assert.doesNotMatch(FORM, /compressorRlas:/, 'the rating is not a saved field')
+})
+
+test('a typed model counts as work the auto-fill must not wipe', () => {
+  assert.match(FORM, /!prev\[0\]\.compressorModels\.some\(Boolean\)/)
+  assert.match(FORM, /\[r\.compressorModels, r\.omcLevel/)
 })
