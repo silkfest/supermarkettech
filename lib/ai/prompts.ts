@@ -9564,9 +9564,9 @@ This is the single most useful thing on a G-Series and most techs never open it.
 
 | Reading | What it tells you |
 |---|---|
-| Cabinet Temp (TC) | Control air temperature — compare against a calibrated thermometer to prove sensor drift |
-| Evaporator Temp | Coil temperature — gives you TD without gauges, and tells you if a defrost actually cleared the coil |
-| Liquid Line Temp | Liquid temperature into the metering device |
+| Cabinet Temp (**TC**) | Control air temperature — compare against a calibrated thermometer to prove sensor drift |
+| Evaporator Temp (**TE**) | Coil temperature — gives you TD without gauges, and tells you if a defrost actually cleared the coil |
+| Liquid Line Temp (**TLi**) | Liquid temperature into the metering device — the only number on the cabinet that reports the high side |
 | Dew Point | What the control uses for Optimize defrost and door heater decisions |
 | Compressor Command | Is the control **asking** for the compressor? |
 | Evaporator Fan Command | Is the control asking for evap fans? |
@@ -9576,6 +9576,35 @@ This is the single most useful thing on a G-Series and most techs never open it.
 | Door Switch Status | Does the control think the door is open? |
 | Aux Device Command | State of the auxiliary output |
 | Light Command | Is the control asking for lights? |
+
+#### What TC, TE and TLi Should Read Through the Cycle
+
+The display abbreviates the three temperature sensors as **TC** (cabinet return air), **TE** (evaporator coil) and **TLi** (liquid line). Knowing what each should read at a given moment is what turns the Sensors submenu from a curiosity into a diagnosis.
+
+| Phase | TC — refrigerator | TE — refrigerator | TC — freezer | TE — freezer |
+|---|---|---|---|---|
+| Running, pulled down | 35–40°F | 20–30°F | -3 to +2°F | -25 to -15°F |
+| Satisfied, compressor off | drifts up to the cut-in, 2°F above setpoint | climbs toward TC — within a few degrees of cabinet air by the end of the off cycle | drifts up to the cut-in, 2°F above setpoint | climbs toward TC |
+| In defrost | rises, by how much depends on how long the defrost runs | climbs steadily to the **45°F** termination | rises | climbs steadily to **45°F** |
+| First minutes after defrost | still falling back toward the band | drops back below cabinet air quickly once the compressor restarts | still falling | drops back quickly |
+
+The refrigerator and freezer TE figures are the setpoint less the **10–20°F TD** from Normal Operating Pressures above — they are the same numbers, read off the control instead of a gauge.
+
+**TLi** behaves differently, because it watches the high side rather than the box. While the compressor runs it settles roughly **10–25°F above room ambient** — condensing temperature less whatever subcooling the cabinet is making. In a 75°F room that is somewhere around 85–100°F. On the off cycle and through a defrost it falls away toward room temperature. Two published thresholds are worth carrying:
+
+| TLi reading | What the control does |
+|---|---|
+| 140°F | Clean-condenser alarm (documented for the R&A series) |
+| 160°F | High-temperature limit — the control cycles the compressor off |
+
+> [!TIP] Three sensors, three different faults
+> **TE too close to TC while running** means the coil is not absorbing — low charge, restriction, or a coil still packed with ice. **TE that never reaches 45°F in a defrost** means the heater, its relay, or the coil sensor itself. **TLi climbing toward 140°F** is a condenser airflow problem — dirty coil, failed condenser fan, or a cabinet pushed against a wall — and it will trip the box off at 160°F long before anyone calls it in as a refrigeration fault.
+
+> [!WARNING] These are targets, not published specifications
+> Traulsen publishes the 45°F defrost termination and the TLi alarm and cutout points. The running TC and TE bands above are worked from the cabinet setpoints and the 10–20°F TD in this topic, not quoted from a Traulsen table — treat them as what a healthy cabinet should look like, and judge an odd reading against the cabinet's own history rather than against a rule.
+
+> [!TIP] Prove a sensor before you believe it
+> Any of the three can drift. Pull the probe and sit it in an ice bath: a good sensor reads **32°F**. Cheaper than condemning a compressor on a lying TC.
 
 > [!TIP] Command versus output splits the job in half in about a minute
 > The Command readings are what the control is **asking for**. If Compressor Command is ON and the compressor is not turning, the fault is downstream — relay, wiring, overload, or the compressor itself. If Compressor Command is OFF and the box is warm, the fault is upstream — setpoint, cabinet sensor, or the control.
