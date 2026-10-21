@@ -684,7 +684,7 @@ export const TOPICS: KnowledgeTopic[] = [
     slug: 'traulsen',
     title: 'Traulsen G-Series Reach-Ins',
     shortTitle: 'Traulsen',
-    description: 'G-Series reach-in and pass-thru refrigerators, freezers and hot food cabinets: serial tag and model decode, R-290 vs R-404A safety, the Next Gen microprocessor control (passwords, live sensor readings, defrost modes and schedule), harness colours, condenser and gasket service, and field fault diagnosis.',
+    description: 'G-Series refrigeration: identify legacy versus Next Gen controls, force a defrost, distinguish off-cycle and electric defrost, diagnose alarms and sensors, and use model-specific manufacturer references.',
     iconName: 'Refrigerator',
     colorClass: 'blue',
     content: TRAULSEN_KNOWLEDGE,
