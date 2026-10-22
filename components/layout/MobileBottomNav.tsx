@@ -1,12 +1,13 @@
 'use client'
 import { useRouter, usePathname } from 'next/navigation'
-import { MessageSquare, WrenchIcon, BookOpen, UserCircle } from 'lucide-react'
+import { MessageSquare, WrenchIcon, BookOpen, UserCircle, Search } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { id: 'expert',      icon: <MessageSquare size={22}/>, label: 'Expert',      href: '/dashboard' },
-  { id: 'maintenance', icon: <WrenchIcon    size={22}/>, label: 'Maintenance', href: '/maintenance' },
-  { id: 'knowledge',   icon: <BookOpen      size={22}/>, label: 'Knowledge',   href: '/knowledge' },
-  { id: 'profile',     icon: <UserCircle    size={22}/>, label: 'Profile',     href: '/profile' },
+  { id: 'field', icon: <Search size={22}/>, label: 'On a call', href: '/field' },
+  { id: 'learn', icon: <BookOpen size={22}/>, label: 'Learn', href: '/learn' },
+  { id: 'expert', icon: <MessageSquare size={22}/>, label: 'Expert', href: '/dashboard' },
+  { id: 'maintenance', icon: <WrenchIcon size={22}/>, label: 'Maintenance', href: '/maintenance' },
+  { id: 'profile', icon: <UserCircle size={22}/>, label: 'Profile', href: '/profile' },
 ] as const
 
 interface Props {
@@ -25,14 +26,15 @@ export default function MobileBottomNav({ onExpert, expertActive }: Props) {
       {NAV_ITEMS.map(item => {
         const isActive = item.id === 'expert' && onExpert
           ? !!expertActive
-          : pathname?.startsWith(item.href)
+          : item.id === 'learn' ? /^\/(learn|knowledge|simulation|game|ask|apprentice\/training)(\/|$)/.test(pathname) : pathname?.startsWith(item.href)
         return (
           <button
             key={item.id}
+            aria-current={isActive ? 'page' : undefined}
             onClick={() => (item.id === 'expert' && onExpert) ? onExpert() : router.push(item.href)}
             className={[
               'relative flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] font-medium transition-colors',
-              isActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500',
+              isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400',
             ].join(' ')}
           >
             {/* Active indicator bar */}

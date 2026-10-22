@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
+import ResourceSearch from '@/components/learning/ResourceSearch'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,24 +14,6 @@ import { TOPICS, type KnowledgeTopic } from '@/lib/knowledge/topics'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
 import PageHeader from '@/components/PageHeader'
-import EmptyState from '@/components/EmptyState'
-import type { ContentMatch } from '@/app/api/knowledge/search/route'
-
-// ── Highlight matched query words within a search excerpt ─────────────────────
-function highlightMatches(text: string, query: string) {
-  const words = query.trim().split(/\s+/).filter(w => w.length > 1)
-  if (words.length === 0) return text
-  const pattern = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
-  // With a single capturing group, String.split alternates [unmatched, matched, unmatched, ...]
-  // so odd indices are always the matched words — no need to re-run the stateful global regex.
-  const parts = text.split(pattern)
-  return parts.map((part, i) =>
-    i % 2 === 1
-      ? <mark key={i} className="bg-amber-200/70 dark:bg-amber-500/30 text-slate-900 dark:text-slate-100 rounded-sm px-0.5">{part}</mark>
-      : part
-  )
-}
-
 // ── Color map — static class names so Tailwind purge can see them ─────────────
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; tag: string }> = {
   sky:     { bg: 'bg-sky-100',     text: 'text-sky-600',     border: 'border-sky-200',    tag: 'bg-sky-50 text-sky-700 border-sky-200' },
@@ -194,9 +177,6 @@ export default function KnowledgePage() {
   const router = useRouter()
   const [manualCounts, setManualCounts] = useState<ManualCount[]>([])
   const [query, setQuery] = useState('')
-  const [docMatchSlugs, setDocMatchSlugs] = useState<string[]>([])
-  const [contentMatches, setContentMatches] = useState<ContentMatch[]>([])
-  const [searchError, setSearchError] = useState(false)
   const [dynamicTopics, setDynamicTopics] = useState<DynamicTopic[]>([])
   const [dynamicLoading, setDynamicLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<string>('all')
@@ -268,68 +248,11 @@ export default function KnowledgePage() {
       .catch(err => { console.error('Failed to load manual counts', err); setManualCounts([]) })
   }, [])
 
-  // Debounced search of document titles + knowledge content
-  useEffect(() => {
-    const q = query.trim()
-    if (q.length < 2) { setDocMatchSlugs([]); setContentMatches([]); setSearchError(false); return }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`)
-        if (res.ok) {
-          const { docSlugs, contentMatches: cm } = await res.json()
-          setDocMatchSlugs(docSlugs ?? [])
-          setContentMatches(cm ?? [])
-          setSearchError(false)
-        } else {
-          setSearchError(true)
-        }
-      } catch (err) {
-        console.error('Knowledge search failed', err)
-        setSearchError(true)
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [query])
-
   function getCount(slug: string) {
     return manualCounts.find(m => m.slug === slug)?.count ?? 0
   }
 
   const q = query.trim().toLowerCase()
-
-  // Build combined topic results with source tracking
-  const filteredTopics: Array<{ topic: KnowledgeTopic; matchSource: SearchMatch }> | null = q
-    ? (() => {
-        const topicHits = new Set(
-          TOPICS.filter(t =>
-            t.title.toLowerCase().includes(q) ||
-            t.description.toLowerCase().includes(q) ||
-            t.tags.some(tag => tag.toLowerCase().includes(q))
-          ).map(t => t.slug)
-        )
-        const docHits = new Set(docMatchSlugs)
-        const contentHits = new Set(contentMatches.map(m => m.topicSlug))
-        const allSlugs = new Set([...topicHits, ...docHits, ...contentHits])
-        return TOPICS
-          .filter(t => allSlugs.has(t.slug))
-          .map(t => ({
-            topic: t,
-            matchSource: (topicHits.has(t.slug)
-              ? (docHits.has(t.slug) ? 'both' : 'topic')
-              : docHits.has(t.slug)
-              ? 'manual'
-              : 'content') as SearchMatch,
-          }))
-      })()
-    : null
-
-  const filteredDynamic: DynamicTopic[] | null = q
-    ? dynamicTopics.filter(t =>
-        t.title.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        (t.tags ?? []).some(tag => tag.toLowerCase().includes(q))
-      )
-    : null
 
   const compressorTopics    = TOPICS.filter(t => t.category === 'compressors')
   const controllerTopics   = TOPICS.filter(t => t.category === 'controllers')
@@ -415,87 +338,8 @@ export default function KnowledgePage() {
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 space-y-8">
 
-        {filteredTopics !== null ? (
-          /* Search results */
-          <>
-            {/* Static topic cards */}
-            <section>
-              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                {filteredTopics.length + (filteredDynamic?.length ?? 0)} topic{filteredTopics.length + (filteredDynamic?.length ?? 0) !== 1 ? 's' : ''} for &ldquo;{query.trim()}&rdquo;
-              </p>
-              {searchError && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
-                  Manual and content search is temporarily unavailable — showing topic matches only.
-                </p>
-              )}
-              {filteredTopics.length === 0 && contentMatches.length === 0 && (filteredDynamic?.length ?? 0) === 0 ? (
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <EmptyState
-                    icon={Search}
-                    title="No results match that search."
-                    action={
-                      <button onClick={() => setQuery('')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                        Clear search
-                      </button>
-                    }
-                  />
-                </div>
-              ) : filteredTopics.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filteredTopics.map(({ topic, matchSource }) => (
-                    <TopicCard
-                      key={topic.slug}
-                      topic={topic}
-                      manualCount={getCount(topic.slug)}
-                      matchSource={matchSource}
-                      onClick={() => router.push(`/knowledge/${topic.slug}`)}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </section>
-
-            {/* Dynamic topic results */}
-            {(filteredDynamic?.length ?? 0) > 0 && (
-              <section>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                  From your manuals
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filteredDynamic!.map(topic => (
-                    <DynamicTopicCard key={topic.slug} topic={topic} onClick={() => router.push(`/knowledge/${topic.slug}`)} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Content excerpts */}
-            {contentMatches.length > 0 && (
-              <section>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                  {contentMatches.length} passage{contentMatches.length !== 1 ? 's' : ''} in knowledge content
-                </p>
-                <div className="space-y-2">
-                  {contentMatches.map((match, i) => (
-                    <button
-                      key={i}
-                      onClick={() => router.push(match.sectionId ? `/knowledge/${match.topicSlug}#${match.sectionId}` : `/knowledge/${match.topicSlug}`)}
-                      className="w-full text-left bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all group"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">{match.topicTitle}</span>
-                        <span className="text-slate-300 dark:text-slate-600 text-[11px]">›</span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{match.sectionTitle}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 group-hover:text-slate-800 dark:group-hover:text-slate-100">
-                        {highlightMatches(match.excerpt, query)}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
+        {q ? (
+          <ResourceSearch query={query} hideInput />
         ) : (
           <>
             {/* Continue reading banner */}

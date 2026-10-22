@@ -20,6 +20,7 @@ import {
   ArrowUp,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
+import EvidencePanel from '@/components/learning/EvidencePanel'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
 import LearningTabBar from '@/components/layout/LearningTabBar'
@@ -433,6 +434,7 @@ export default function KnowledgeTopicPage() {
         {/* Main content */}
         <main className="flex-1 min-w-0">
           <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 md:p-8">
+            <EvidencePanel slug={topic.slug} content={topic.content} />
             <MarkdownContent content={topic.content} />
           </div>
 

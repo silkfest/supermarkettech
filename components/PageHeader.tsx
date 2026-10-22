@@ -36,22 +36,23 @@ export default function PageHeader({ title, home = '/dashboard', back = true, ac
       {home !== false && (
         <button
           onClick={() => router.push(home)}
-          className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-          title="Dashboard"
+          className="min-h-11 min-w-11 flex items-center justify-center -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          title="Dashboard" aria-label="Dashboard"
         >
           <Home size={18} />
         </button>
       )}
       {back !== false && (
         <button
+          aria-label="Go back"
           onClick={() => typeof back === 'string' ? router.push(back) : router.back()}
-          className="p-1.5 -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          className="min-h-11 min-w-11 flex items-center justify-center -ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <ArrowLeft size={18} />
         </button>
       )}
       <div className="flex items-baseline gap-0.5">
-        <span className={cn('text-lg font-bold', isLearning ? 'text-blue-400' : 'text-blue-600')}>Cold</span>
+        <span className={cn('text-lg font-bold', isLearning ? 'text-blue-600 dark:text-blue-400' : 'text-blue-600')}>Cold</span>
         <span className={cn('text-lg font-bold text-slate-800', isLearning ? 'dark:text-white' : 'dark:text-slate-200')}>IQ</span>
       </div>
       <span className="text-slate-300 dark:text-slate-600">/</span>

@@ -375,6 +375,7 @@ export default function CoursePlayerPage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState(false)
+  const [completionError, setCompletionError] = useState('')
   const [stepIdx, setStepIdx] = useState(0)
   const [outlineOpen, setOutlineOpen] = useState(false)
 
@@ -460,18 +461,19 @@ export default function CoursePlayerPage() {
     if (stepIdx > steps.length - 1) setStepIdx(Math.max(0, steps.length - 1))
   }, [steps.length, stepIdx])
 
-  async function markComplete(lesson: Lesson) {
-    if (lessonDone(lesson)) return
-    setMarking(true)
-    const res = await fetch(`/api/apprentice/lessons/${lesson.id}/complete`, { method: 'POST' })
-    if (res.ok) {
+  async function markComplete(lesson: Lesson): Promise<boolean> {
+    if (lessonDone(lesson) && !['simulator', 'field_task'].includes(lesson.lesson_type)) return true
+    setMarking(true); setCompletionError('')
+    try {
+      const res = await fetch(`/api/apprentice/lessons/${lesson.id}/complete`, { method: 'POST' })
       const data = await res.json()
+      if (!res.ok) { setCompletionError(data.error ?? 'Could not save completion. Try again.'); return false }
       setLessons(prev => prev.map(l => l.id === lesson.id ? { ...l, completion: data } : l))
-      // Refresh course completion in case this was the final lesson
       const courseRes = await fetch(`/api/apprentice/courses/${courseId}/lessons`)
       if (courseRes.ok) { const d = await courseRes.json(); setCourse(d.course) }
-    }
-    setMarking(false)
+      return true
+    } catch { setCompletionError('Could not save completion. Check your connection and try again.'); return false }
+    finally { setMarking(false) }
   }
 
   function onQuizCompleted(lessonId: string, completion: LessonCompletion) {
@@ -490,11 +492,10 @@ export default function CoursePlayerPage() {
   async function goNext() {
     const step = steps[stepIdx]
     if (!step) return
-    // Reading lessons (KB last section, external KB link, video, simulator, field task)
-    // auto-complete on advancing — like kb-link, these are self-reported.
+    // Reading is self-reported; practice and field evidence are checked by the server.
     if ((step.kind === 'kb' && step.lastOfLesson) || step.kind === 'kb-link' || step.kind === 'video'
       || step.kind === 'simulator' || step.kind === 'field-task') {
-      await markComplete(step.lesson)
+      if (!await markComplete(step.lesson)) return
     }
     if (stepIdx < steps.length - 1) {
       setStepIdx(i => i + 1)
@@ -673,7 +674,7 @@ export default function CoursePlayerPage() {
                       <Gauge size={14}/> Open simulator <ExternalLink size={13}/>
                     </a>
                   )}
-                  <p className="text-[11px] text-slate-400">Run at least one scenario attempt, then mark this lesson done.</p>
+                  <p className="text-[11px] text-slate-400">Complete an attempt in this simulator, then return and press Next. This records practice participation, not independently assessed competence.</p>
                 </div>
               )}
 
@@ -703,6 +704,7 @@ export default function CoursePlayerPage() {
           </div>
         )}
 
+        {completionError && <p role="alert" className="rounded-lg bg-amber-50 dark:bg-amber-950/30 p-4 text-sm text-amber-800 dark:text-amber-300">{completionError}</p>}
         {/* Step navigation */}
         {steps.length > 0 && (
           <div className="flex items-center justify-between gap-3">
