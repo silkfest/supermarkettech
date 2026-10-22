@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   // Approve/reject a pending submission — elevated roles only
   if (body.action === 'approve' || body.action === 'reject') {
-    if (!isElevated) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isElevated || user.id === body.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const update = body.action === 'approve'
       ? { status: 'completed', verified_by: user.id, completed_at: new Date().toISOString() }
@@ -124,6 +124,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data)
   }
 
+  if (!['in_progress', 'completed'].includes(body.status)) return NextResponse.json({ error: 'Invalid task status' }, { status: 400 })
+
   // Apprentices submitting a task as done go to pending_review until a manager/journeyman/admin approves it
   let status = body.status
   let completedAt: string | null = null
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
     task_id:     body.taskId,
     status,
     notes:       body.notes ?? '',
-    verified_by: body.verifiedBy ?? null,
+    verified_by: status === 'completed' && isElevated && user.id !== body.userId ? user.id : null,
     completed_at: completedAt,
   }
 

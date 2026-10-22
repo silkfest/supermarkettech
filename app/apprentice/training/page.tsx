@@ -19,7 +19,7 @@ import { useConfirm } from '@/components/ConfirmDialog'
 // ─── Badge definitions (aligned to Ontario 313A skill sets) ─────────────────
 const BADGES = [
   { id: 'first_step',    icon: '🏅', name: 'First Step',         desc: 'Complete your first task',                    check: (c: number, _t: number, byCat: Record<string,number>) => Object.values(byCat).some(v => v > 0) },
-  { id: 'safety',        icon: '🛡️', name: 'Safety Certified',   desc: 'Complete all Protect Self & Environment tasks', check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Protect Self & Environment'] ?? 0) >= (totCat['Protect Self & Environment'] ?? 1) },
+  { id: 'safety',        icon: '🛡️', name: 'Safety Tasks Completed',   desc: 'Complete all Protect Self & Environment tasks', check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Protect Self & Environment'] ?? 0) >= (totCat['Protect Self & Environment'] ?? 1) },
   { id: 'business',      icon: '📋', name: 'Pro Communicator',   desc: 'Complete all Business Practices tasks',         check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Business Practices'] ?? 0) >= (totCat['Business Practices'] ?? 1) },
   { id: 'tools',         icon: '🔧', name: 'Tool Master',        desc: 'Complete all Tools & Equipment tasks',          check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Tools & Equipment'] ?? 0) >= (totCat['Tools & Equipment'] ?? 1) },
   { id: 'planning',      icon: '📐', name: 'System Designer',    desc: 'Complete all Planning & Preparation tasks',     check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Planning & Preparation'] ?? 0) >= (totCat['Planning & Preparation'] ?? 1) },
@@ -28,7 +28,7 @@ const BADGES = [
   { id: 'service',       icon: '⚡', name: 'Diagnostic Expert',  desc: 'Complete all Service & Repair tasks',           check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Service & Repair'] ?? 0) >= (totCat['Service & Repair'] ?? 1) },
   { id: 'commissioning', icon: '✅', name: 'Commissioning Pro',  desc: 'Complete all Commissioning tasks',              check: (_c: number, _t: number, byCat: Record<string,number>, totCat: Record<string,number>) => (byCat['Commissioning'] ?? 0) >= (totCat['Commissioning'] ?? 1) },
   { id: 'halfway',       icon: '💯', name: 'Halfway There',      desc: 'Reach 50% overall completion',                 check: (c: number, t: number) => t > 0 && c / t >= 0.5 },
-  { id: 'journeyman',    icon: '⭐', name: 'Journeyman Ready',   desc: 'Complete all 313A required tasks',              check: (c: number, t: number) => t > 0 && c >= t },
+  { id: 'journeyman',    icon: '⭐', name: 'Task Milestone',   desc: 'Complete all 313A required tasks',              check: (c: number, t: number) => t > 0 && c >= t },
 ]
 
 // ─── Course completion badges ───────────────────────────────────────────────
@@ -74,7 +74,7 @@ const LEVELS = [
   { min: 400,  label: 'Apprentice II',     color: 'text-orange-600' },
   { min: 700,  label: 'Apprentice III',    color: 'text-blue-600' },
   { min: 1100, label: 'Senior Apprentice', color: 'text-violet-600' },
-  { min: 1500, label: 'Journeyman Ready!', color: 'text-emerald-600' },
+  { min: 1500, label: 'Training Milestone!', color: 'text-emerald-600' },
 ]
 
 function getLevel(xp: number) {
@@ -89,7 +89,7 @@ const LEVEL_STYLES: Record<string, { ring: string; bar: string }> = {
   'Apprentice II':     { ring: 'ring-orange-300/70 dark:ring-orange-500/40',      bar: 'bg-orange-500' },
   'Apprentice III':    { ring: 'ring-blue-300/70 dark:ring-blue-500/40',          bar: 'bg-blue-500' },
   'Senior Apprentice': { ring: 'ring-violet-300/70 dark:ring-violet-500/40',      bar: 'bg-violet-500' },
-  'Journeyman Ready!': { ring: 'ring-emerald-300/70 dark:ring-emerald-500/40',    bar: 'bg-emerald-500' },
+  'Training Milestone!': { ring: 'ring-emerald-300/70 dark:ring-emerald-500/40',    bar: 'bg-emerald-500' },
 }
 
 const DIFF_BADGE: Record<string, string> = {

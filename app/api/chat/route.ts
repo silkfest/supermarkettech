@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseServer, getSupabaseRouteAuth } from '@/lib/supabase/client'
+import { discoveryResources } from '@/lib/knowledge/discovery'
+import { knowledgeResources } from '@/lib/knowledge/catalog'
+import { buildKnowledgeContext } from '@/lib/knowledge/chat-context'
 import { buildSystemPromptParts } from '@/lib/ai/prompts'
 import { retrieveChunks, formatToolResult, chunksToCitationsFrom } from '@/lib/ai/rag'
 import { buildSnapshot } from '@/lib/sensor'
@@ -137,9 +140,14 @@ export async function POST(req: NextRequest) {
     recentLogs: ctx?.logs,
     activeAlarms: ctx?.alarms,
   })
+  // All registered topics are discoverable, including topics absent from the legacy prompt list.
+  // Database outages still leave the static catalogue available.
+  const discovery = await discoveryResources(user.id, false).catch(() => ({ resources: knowledgeResources(), unavailable: ['manual catalogue'] }))
+  const previousQuestion = [...history].reverse().find(h => h.role === 'user')?.content ?? ''
+  const knowledgeContext = buildKnowledgeContext(discovery.resources, message, previousQuestion)
   const systemBlocks = [
     { type: 'text' as const, text: staticContent, cache_control: { type: 'ephemeral' as const } },
-    { type: 'text' as const, text: dynamicContent },
+    { type: 'text' as const, text: dynamicContent + '\n\n' + knowledgeContext },
   ]
 
   const model = mode === 'EXPERT' ? (escalate ? DEEP_MODEL : EXPERT_MODEL) : HAIKU_MODEL

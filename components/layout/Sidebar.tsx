@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Plus, WrenchIcon, Database, MessageSquare, Users, LogOut, X, GraduationCap, Building2, BookOpen, UserCircle, Layers, Moon, Sun, Building, MessageSquareWarning, RadioTower } from 'lucide-react'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 import { clearAllChatDrafts } from '@/lib/chat/drafts'
@@ -32,6 +32,7 @@ function SidebarContent({
   equipment, selected, mode, currentUser, onSelect, onMode, onAdd, onMobileClose, minimal,
 }: Omit<Props, 'mobileOpen'>) {
   const router = useRouter()
+  const pathname = usePathname()
   const [loggingOut,    setLoggingOut]    = useState(false)
   const [pendingCount,  setPendingCount]  = useState(0)
   const { theme, toggle: toggleTheme } = useTheme()
@@ -152,13 +153,13 @@ function SidebarContent({
           <span className="opacity-60"><WrenchIcon size={13}/></span>
           Maintenance
         </button>
-        <button
-          onClick={() => { router.push('/knowledge'); onMobileClose?.() }}
-          className="w-full flex items-center gap-2 px-2 py-2.5 md:py-2 rounded-lg text-left text-xs transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          <span className="opacity-60"><Layers size={13}/></span>
-          Learning
-        </button>
+        {[{ href: '/field', label: 'On a call', active: pathname === '/field' }, { href: '/learn', label: 'Learn', active: /^\/(learn|knowledge|simulation|game|ask|apprentice\/training)(\/|$)/.test(pathname) }].map(item => (
+          <button key={item.href} aria-current={item.active ? 'page' : undefined}
+            onClick={() => { router.push(item.href); onMobileClose?.() }}
+            className={cn('w-full min-h-11 flex items-center gap-2 px-2 rounded-lg text-left text-sm transition-colors', item.active ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800')}>
+            <Layers size={16}/>{item.label}
+          </button>
+        ))}
         {currentUser?.role === 'admin' && (
           <button
             onClick={() => { router.push('/library'); onMobileClose?.() }}

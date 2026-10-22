@@ -20,6 +20,9 @@ export default function FeedbackPage() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const topic = params.get('topic')
+    if (topic) setMessage(`Content issue: ${topic.slice(0, 100)}\nRevision: ${(params.get('revision') ?? 'unknown').slice(0, 30)}\nSection / instruction: \nWhat needs correcting and supporting source: \n`)
     const supabase = getSupabaseBrowser()
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser()
