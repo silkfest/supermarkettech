@@ -20,6 +20,7 @@ import {
   ArrowUp,
 } from 'lucide-react'
 import { getTopicBySlug } from '@/lib/knowledge/topics'
+import RelatedPractice from '@/components/learning/RelatedPractice'
 import EvidencePanel from '@/components/learning/EvidencePanel'
 import MarkdownContent, { extractSections } from '@/components/knowledge/MarkdownContent'
 import PageShell from '@/components/layout/PageShell'
@@ -438,6 +439,7 @@ export default function KnowledgeTopicPage() {
             <MarkdownContent content={topic.content} />
           </div>
 
+          <RelatedPractice slug={topic.slug} />
           <TopicFigures figures={figures} />
 
           {manuals.length > 0 && (

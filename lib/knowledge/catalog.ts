@@ -11,7 +11,7 @@ export function knowledgeResources(): SearchResource[] {
       id: `${topic.slug}:procedure:${p.id}`, kind: 'procedure', title: `${topic.shortTitle} · ${p.title}`,
       description: p.steps.join(' '), content: `${p.steps.join('\n')}\n${p.expected}\nSource: ${p.source.title}, ${p.source.location} ${p.source.url}`,
       href: `/knowledge/${topic.slug}#${p.id}`, topicSlug: topic.slug, sectionTitle: 'Force a Defrost',
-      applicability: p.appliesTo, status: evidence.status,
+      applicability: p.appliesTo, status: evidence.status, excludedQueries: p.excludedQueries,
     }))
     return [...procedures, ...sections]
   })

@@ -139,13 +139,14 @@ const ACCENT = {
 
 export default function SimulatorSelectPage() {
   const router = useRouter()
+  const [statsState, setStatsState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [summary, setSummary] = useState<Record<string, RackSummary>>({})
 
   useEffect(() => {
     fetch('/api/simulator/attempts')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.summary) setSummary(data.summary) })
-      .catch(err => console.error('Failed to load simulator attempt stats', err))
+      .then(r => { if (!r.ok) throw new Error('Stats unavailable'); return r.json() })
+      .then(data => { if (!data?.bySimulator) throw new Error('Stats unavailable'); setSummary(data.bySimulator); setStatsState('ready') })
+      .catch(() => setStatsState('error'))
   }, [])
 
   return (
@@ -191,11 +192,12 @@ export default function SimulatorSelectPage() {
           </div>
         </button>
 
+        <p className="text-xs text-slate-600 dark:text-slate-400">Practice history reflects your latest 200 recorded attempts across all trainers. Scores describe simulator practice, not field competency.</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {RACKS.map(rack => {
             const a = ACCENT[rack.accent as keyof typeof ACCENT]
             const Icon = rack.icon
-            const s = summary[rack.rackKey]
+            const s = summary[rack.href]
             return (
               <button
                 key={rack.href}
@@ -248,7 +250,7 @@ export default function SimulatorSelectPage() {
                       </span>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">No attempts yet</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">{statsState === 'loading' ? 'Loading practice history…' : statsState === 'error' ? 'Practice history unavailable' : 'No attempts in recent history'}</p>
                   )}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500">{rack.source}</p>
                 </div>

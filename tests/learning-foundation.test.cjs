@@ -81,3 +81,42 @@ test('completion API rejects missing practice, pending field work and unassigned
   assert.equal(writes,0)
  } finally {client.getSupabaseServer=originalServer;client.getSupabaseRouteAuth=originalAuth}
 })
+
+test('manual and training filters search beyond the first forty article matches', () => {
+ const { searchResourcePage } = require('../lib/knowledge/search.ts')
+ const crowded = Array.from({length:60}, (_,i) => ({id:`topic${i}`,kind:'knowledge',title:'Defrost',description:'',href:`/knowledge/topic${i}`}))
+ crowded.push({id:'manual',kind:'manual',title:'Service guide',description:'defrost',href:'/api/pdf?docId=test'})
+ crowded.push({id:'practice',kind:'practice',title:'Bunker trainer',description:'defrost',href:'/simulation/dt-bunker'})
+ assert.equal(searchResourcePage(crowded, 'defrost').total,62)
+ assert.equal(searchResourcePage(crowded, 'defrost').results.length,40)
+ assert.equal(searchResourcePage(crowded, 'defrost', 'manuals').results[0].id,'manual')
+ assert.equal(searchResourcePage(crowded, 'defrost', 'learn').results[0].id,'practice')
+})
+test('excluded controllers do not surface the Next Gen procedure as an answer', () => {
+ for (const query of ['Traulsen legacy defrost','Traulsen SET-key defrost']) {
+   assert.ok(!searchResources(resources, query).some(r => r.kind === 'procedure'))
+ }
+ assert.ok(searchResources(resources, 'Traulsen next gen defrost').some(r => r.kind === 'procedure'))
+})
+test('wiring trainer histories remain separate and unknown legacy scenarios are not misattributed', () => {
+ const { simulatorSummaries } = require('../lib/simulation/summaries.ts')
+ const rows = [['mt-cmp-208-open',90],['bitzer-208-olc-open',40],['copeland-dc-208-open',null],['safety-circuit-208',80],['unclassified',100]]
+   .map(([scenario_id,score]) => ({rack:'safety-circuit',scenario_id,score,created_at:'2026-10-22T10:00:00Z'}))
+ const summary = simulatorSummaries(rows)
+ assert.equal(summary['/simulation/micro-thermo-control'].bestScore,90)
+ assert.equal(summary['/simulation/bitzer-control'].bestScore,40)
+ assert.equal(summary['/simulation/copeland-control'].bestScore,null)
+ assert.equal(summary['/simulation/safety-circuit'].attempts,1)
+ assert.equal(summary['/simulation/safety-circuit'].bestScore,80)
+})
+test('related practice links use real topic slugs and existing app routes', () => {
+ const { practiceForTopic } = require('../lib/learning/connections.ts')
+ const { TOPICS } = require('../lib/knowledge/topics.ts')
+ for (const slug of ['traulsen','defrost-systems','micro-thermo','copeland','bitzer','hussmann','co2-transcritical','math-electrical']) {
+   assert.ok(TOPICS.some(t => t.slug === slug),slug)
+   const related = practiceForTopic(slug)
+   assert.ok(related.length,slug)
+   for (const r of related) assert.ok(fs.existsSync(path.resolve(`app${r.href}/page.tsx`)),r.href)
+ }
+ assert.deepEqual(practiceForTopic('unrelated-topic'),[])
+})
