@@ -20,8 +20,14 @@ Reading/video completion is self-reported. Simulator completion requires a store
 
 No historical completion records are deleted or recertified. Existing records may predate these checks. Re-entering a practical lesson checks current evidence before advancing; previously recorded course completion is preserved. Any historical revalidation needs a separately planned migration. Unsupported simulator links or missing task links must be corrected by the course author.
 
-No database migration is required. Offline packs, semantic search, exhaustive technical review and additional learning paths are outside this foundation change.
+No database migration is required. Offline packs, semantic search and exhaustive technical review are outside this foundation change.
 
 ## Release checks
 
 Run `npm run typecheck`, `npm test`, and `npm run build`. Check `/field`, `/learn`, `/learn/defrost`, article source panels and course errors on phone and desktop in light/dark themes with a signed-in test account. Verify partial search failures, no course-assignment leakage, and a fresh field-task approval. The local environment may not have production authentication/database configuration; fixture or source checks do not replace those signed-in checks.
+
+## Expanding guided learning
+
+Path definitions live in `lib/learning/paths.ts`. Defrost and electrical troubleshooting use one `LearningPathView`; the Learn landing page and discovery records derive from those definitions. Each path has an audience, goal, stable step IDs, existing resource links, a reasoning outcome for each step and an unscored check with answer-specific feedback. Add a route using the shared view and connect relevant reference topics through `connections.ts`.
+
+Keep navigation and resource links separate from evidence of completion. These paths do not create course-completion rows, scores, field approvals or apprenticeship hours. A click is not evidence of understanding. New technical claims still require applicable sources; a path may organise existing reviewed/unreviewed references without changing their review status.

@@ -4,7 +4,7 @@ export type ResourceKind = 'procedure' | 'knowledge' | 'manual' | 'practice' | '
 export interface SearchResource {
   id: string; kind: ResourceKind; title: string; description: string; href: string
   content?: string; keywords?: string; topicSlug?: string; sectionTitle?: string
-  applicability?: string; status?: string
+  applicability?: string; status?: string; excludedQueries?: string[]
 }
 export interface SearchResult extends SearchResource { score: number; excerpt: string }
 export interface ContentMatch { topicSlug: string; topicTitle: string; sectionTitle: string; sectionId: string; excerpt: string }
@@ -28,6 +28,7 @@ export function searchResources(resources: SearchResource[], query: string, limi
   const normalized = normalizeSearch(query)
   const results: SearchResult[] = []
   for (const r of resources) {
+    if (r.excludedQueries?.some(term => (` ${normalized} `).includes(` ${normalizeSearch(term)} `))) continue
     const title = normalizeSearch(r.title)
     const meta = normalizeSearch([r.title, r.description, r.keywords, r.applicability].join(' '))
     const body = normalizeSearch(r.content ?? '')
@@ -53,4 +54,17 @@ export function topicSections(topic: { slug: string; title: string; description:
     return { id: `${topic.slug}:${index}`, kind: 'knowledge', title: `${topic.title} · ${heading}`, description: topic.description,
       content, keywords: topic.tags?.join(' '), href: `/knowledge/${topic.slug}${anchor ? '#' + anchor : ''}`, topicSlug: topic.slug, sectionTitle: heading }
   })
+}
+
+export const SEARCH_FILTERS = {
+  all: [], answers: ['procedure', 'knowledge'], manuals: ['manual'], learn: ['practice', 'path', 'course'],
+} satisfies Record<string, ResourceKind[]>
+export type SearchFilter = keyof typeof SEARCH_FILTERS
+export function searchResourcePage(resources: SearchResource[], query: string, filter: SearchFilter = 'all', limit = 40) {
+  const kinds: ResourceKind[] = SEARCH_FILTERS[filter]
+  const eligible = kinds.length ? resources.filter(r => kinds.includes(r.kind)) : resources
+  // Filter the full catalogue before applying the display limit, so high-scoring
+  // article passages cannot hide all manuals or training resources.
+  const matches = searchResources(eligible, query, eligible.length)
+  return { results: matches.slice(0, limit), total: matches.length }
 }

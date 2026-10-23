@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { simulatorSummaries } from '@/lib/simulation/summaries'
 import { z } from 'zod'
 import { getSupabaseServer } from '@/lib/supabase/client'
 import { requireUser } from '@/lib/api/auth'
@@ -84,5 +85,5 @@ export async function GET(req: NextRequest) {
       : null
   }
 
-  return NextResponse.json({ attempts: rows.slice(0, 20), summary })
+  return NextResponse.json({ attempts: rows.slice(0, 20), summary, bySimulator: simulatorSummaries(rows) })
 }

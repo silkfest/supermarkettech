@@ -5,14 +5,17 @@ import { Search, ArrowUpRight, Loader2, X } from 'lucide-react'
 import type { SearchResult, ResourceKind } from '@/lib/knowledge/search'
 
 const LABELS: Record<ResourceKind, string> = { procedure: 'Procedure', knowledge: 'Reference', manual: 'Manual', practice: 'Practice', path: 'Learning path', course: 'Course' }
-const FILTERS: Array<{ label: string; kinds: ResourceKind[] }> = [
-  { label: 'All', kinds: [] }, { label: 'Answers', kinds: ['procedure','knowledge'] },
-  { label: 'Manuals', kinds: ['manual'] }, { label: 'Learn & practise', kinds: ['path','practice','course'] },
+const FILTERS = [
+  { label: 'All', value: 'all' }, { label: 'Answers', value: 'answers' },
+  { label: 'Manuals', value: 'manuals' }, { label: 'Learn & practise', value: 'learn' },
 ]
+
 export default function ResourceSearch({ initialQuery = '', query: externalQuery, hideInput = false }: { initialQuery?: string; query?: string; hideInput?: boolean }) {
   const [query, setQuery] = useState(initialQuery)
   const q = externalQuery ?? query
   const [results, setResults] = useState<SearchResult[]>([])
+  const [total, setTotal] = useState(0)
+  const [retry, setRetry] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [unavailable, setUnavailable] = useState<string[]>([])
@@ -22,22 +25,22 @@ export default function ResourceSearch({ initialQuery = '', query: externalQuery
   }, [initialQuery, externalQuery])
   useEffect(() => {
     const controller = new AbortController()
-    setResults([]); setError(''); setUnavailable([])
+    setResults([]); setTotal(0); setError(''); setUnavailable([])
     if (q.trim().length < 2) { setLoading(false); return }
     setLoading(true)
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}&filter=${FILTERS[filter].value}`, { signal: controller.signal })
         if (!res.ok) throw new Error(res.status === 401 ? 'Sign in to search your resources.' : 'Search is unavailable. Please try again.')
         const data = await res.json()
-        if (!controller.signal.aborted) { setResults(data.results ?? []); setUnavailable(data.unavailable ?? []) }
+        if (!controller.signal.aborted) { setResults(data.results ?? []); setTotal(data.total ?? data.results?.length ?? 0); setUnavailable(data.unavailable ?? []) }
       } catch (e) {
         if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Search failed.')
       } finally { if (!controller.signal.aborted) setLoading(false) }
     }, 250)
     return () => { clearTimeout(timer); controller.abort() }
-  }, [q])
-  const filtered = results.filter(r => !FILTERS[filter].kinds.length || FILTERS[filter].kinds.includes(r.kind))
+  }, [q, filter, retry])
+
   return <section aria-label="Search ColdIQ resources" className="space-y-4">
     {!hideInput && <div className="relative">
       <label htmlFor="resource-search" className="sr-only">Search equipment, symptoms, alarms or skills</label>
@@ -51,12 +54,14 @@ export default function ResourceSearch({ initialQuery = '', query: externalQuery
         {FILTERS.map((f,i) => <button key={f.label} onClick={() => setFilter(i)} aria-pressed={filter === i} className={`min-h-11 rounded-full px-4 text-sm font-medium border ${filter === i ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>{f.label}</button>)}
       </div>
       <div role="status" aria-live="polite" className="text-sm text-slate-600 dark:text-slate-400">
-        {loading ? <span className="flex gap-2 items-center"><Loader2 size={16} className="animate-spin"/>Searching…</span> : error || `${filtered.length} results`}
+        {loading ? <span className="flex gap-2 items-center"><Loader2 size={16} className="animate-spin"/>Searching…</span> : error || (total > results.length ? `Showing ${results.length} of ${total} matches. Narrow your search for more specific results.` : `${results.length} results`)}
       </div>
+      {error && <button onClick={() => setRetry(n => n + 1)} className="min-h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 text-sm text-blue-700 dark:text-blue-300">Retry search</button>}
+      {FILTERS[filter].value === 'manuals' && <p className="text-xs text-slate-600 dark:text-slate-400">Searches manual titles. Open a document to search its contents and confirm model coverage.</p>}
       {!!unavailable.length && <p className="text-sm text-amber-700 dark:text-amber-400">Partial results: {unavailable.join(', ')} could not be fully searched.</p>}
-      {!loading && !error && !filtered.length && <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-400">No matches here. Try the manufacturer, controller or a shorter symptom. You can also browse the <Link className="underline" href="/knowledge">reference library</Link>.</p>}
+      {!loading && !error && !results.length && <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-400">No matches here. Try the manufacturer, controller or a shorter symptom. You can also browse the <Link className="underline" href="/knowledge">reference library</Link>.</p>}
       <div className="space-y-3">
-        {filtered.map(r => <Link key={r.id} href={r.href} target={r.kind === 'manual' ? '_blank' : undefined} rel={r.kind === 'manual' ? 'noopener noreferrer' : undefined}
+        {results.map(r => <Link key={r.id} href={r.href} target={r.kind === 'manual' ? '_blank' : undefined} rel={r.kind === 'manual' ? 'noopener noreferrer' : undefined}
           className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 md:p-5 hover:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500">
           <div className="flex items-start justify-between gap-3"><div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">{LABELS[r.kind]}{r.status === 'sources-linked' ? ' · Sources linked' : ''}</p>

@@ -19,7 +19,6 @@ export default function EvidencePanel({ slug, content }: { slug: string; content
       <a href={p.source.url} target="_blank" rel="noopener noreferrer" className="inline-block py-2 text-blue-700 dark:text-blue-300 underline">{p.source.title} — {p.source.location}</a>
     </div>)}
     <div className="flex flex-wrap gap-x-5 gap-y-2">
-      {evidence.practice && <Link className="min-h-11 inline-flex items-center text-blue-700 dark:text-blue-300 underline" href="/learn/defrost">Learn and practise defrost diagnosis</Link>}
       <Link className="min-h-11 inline-flex items-center text-blue-700 dark:text-blue-300 underline" href={`/feedback?topic=${encodeURIComponent(slug)}&revision=${revision}`}>Report a content issue</Link>
     </div>
   </section>

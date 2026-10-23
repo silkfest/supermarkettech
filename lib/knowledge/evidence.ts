@@ -7,6 +7,7 @@ export interface ProcedureCard {
   id: string
   title: string
   appliesTo: string
+  excludedQueries?: string[]
   steps: string[]
   expected: string
   source: ProcedureReference
@@ -29,6 +30,7 @@ const EVIDENCE: Record<string, TopicEvidence> = {
     procedures: [{
       id: 'force-a-defrost', title: 'Force defrost — Next Gen',
       appliesTo: 'Illustrated five-key G-Series Next Gen control; not the legacy SET-key controller.',
+      excludedQueries: ['legacy', 'set key'],
       steps: ['Double-tap the centre Unlock key.', 'Hold Minus (−) and Esc/Back together for five seconds.'],
       expected: 'This starts a normal, automatically terminating defrost. An output command does not prove that a heater is drawing current.',
       source: { title: 'Traulsen TR35731 · 2018–2023', url: 'https://cdn2.webdamdb.com/md_E77awF3UwrX51w9W.jpg.pdf?1686577793=#page=30', location: 'Printed p.29, §4.4; PDF page 30' },

@@ -1,3 +1,5 @@
+import { LEARNING_PATH_DETAILS } from './paths'
+
 /** Shared discovery records. A trainer is an educational model, not an equipment specification. */
 export const PRACTICE_RESOURCES = [
   { slug: 'parallel-rack', title: 'Hussmann parallel rack', description: 'R404A rack diagnostics, oil management and safety circuits', keywords: 'compressor head pressure suction oil', href: '/simulation/parallel-rack' },
@@ -11,6 +13,5 @@ export const PRACTICE_RESOURCES = [
   { slug: 'cold-call', title: 'Cold Call — career game', description: 'Practise service calls in trade school and store environments', keywords: 'defrost heater frozen case apprentice', href: '/game' },
 ] as const
 
-export const LEARNING_PATHS = [
-  { slug: 'defrost', title: 'Diagnose a defrost problem', description: 'Identify the control, understand the sequence, then practise measurements and repair verification.', keywords: 'traulsen next gen defrost heater iced coil frozen evaporator fan', href: '/learn/defrost' },
-] as const
+// Derived from the same definitions used to render the paths.
+export const LEARNING_PATHS = LEARNING_PATH_DETAILS.map(({slug,title,description,keywords,href}) => ({slug,title,description,keywords,href}))

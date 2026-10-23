@@ -8,11 +8,12 @@ deliberately incomplete.
 
 ## Navigation Structure (current)
 
-- **Sidebar "Learning"** → `/knowledge` (Knowledge Base tab)
-  - Knowledge Base, Rack Simulator, and Training are connected via a shared tab bar (`LearningTabBar`)
-  - Knowledge tab: `/knowledge` and `/knowledge/[slug]`
-  - Simulator tab: `/simulation`
-  - Training tab: `/apprentice/training`
+- **Sidebar "On a call"** → `/field`: equipment/symptom search and quick reference.
+- **Sidebar "Learn"** → `/learn`: learning paths and links to reference, practice and training.
+  - Shared `LearningTabBar`: Overview, Reference, Practice, My training, Team.
+  - Existing knowledge, simulator and training URLs remain valid.
+  - Source/applicability metadata lives in `lib/knowledge/evidence.ts`; related practice links in `lib/learning/connections.ts`.
+  - Search filters apply before limiting results. Wiring-trainer summaries must use `bySimulator`, not the shared legacy `safety-circuit` rack summary.
 - **Sidebar "Company Hub"** → `/company-hub`
   - Tab 1: Policies & Procedures (was `/policies`)
   - Tab 2: Contact Directory (was `/contacts`)
