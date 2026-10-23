@@ -120,3 +120,28 @@ test('related practice links use real topic slugs and existing app routes', () =
  }
  assert.deepEqual(practiceForTopic('unrelated-topic'),[])
 })
+
+test('every learning path is discoverable and all step links and article anchors resolve', () => {
+ const { LEARNING_PATH_DETAILS } = require('../lib/learning/paths.ts')
+ const { LEARNING_PATHS } = require('../lib/learning/resources.ts')
+ const { TOPICS } = require('../lib/knowledge/topics.ts')
+ const { slugifySection } = require('../lib/knowledge/slugify.ts')
+ assert.equal(new Set(LEARNING_PATH_DETAILS.map(p => p.slug)).size,LEARNING_PATH_DETAILS.length)
+ for (const learning of LEARNING_PATH_DETAILS) {
+   assert.ok(LEARNING_PATHS.some(p => p.href === learning.href))
+   assert.ok(searchResources(resources, learning.title).some(r => r.href === learning.href),learning.title)
+   assert.equal(new Set(learning.steps.map(s => s.id)).size,learning.steps.length)
+   assert.ok(learning.check.correct >= 0 && learning.check.correct < learning.check.choices.length)
+   assert.ok(learning.check.choices.every(c => c.feedback && c.text))
+   const links = [{href:learning.href}, ...learning.steps.flatMap(s => s.links), learning.check.reference]
+   for (const link of links) {
+     const [pathname,anchor] = link.href.split('#')
+     assert.ok(pathname.startsWith('/'),link.href)
+     if (pathname.startsWith('/knowledge/')) {
+       const topic = TOPICS.find(t => t.slug === pathname.slice('/knowledge/'.length))
+       assert.ok(topic,link.href)
+       if (anchor) assert.ok([...topic.content.matchAll(/^### (.+)$/gm)].some(m => slugifySection(m[1]) === anchor),link.href)
+     } else assert.ok(fs.existsSync(path.resolve(`app${pathname}/page.tsx`)),link.href)
+   }
+ }
+})
