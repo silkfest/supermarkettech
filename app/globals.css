@@ -63,6 +63,22 @@ input:-webkit-autofill:focus {
 /* Bottom padding that clears the fixed mobile nav (3.5rem) + safe area (home indicator) */
 .pb-nav      { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
 
+/* Stop iOS zooming in when a field is tapped.
+   Safari magnifies the whole page whenever a focused form control has a
+   computed font-size below 16px — and it does NOT zoom back out on blur, so the
+   app stays oversized until the user pinches back manually. Every control here
+   is text-sm (14px) or smaller, so this fired on almost every tap.
+   Forcing 16px on touch devices is the fix that keeps pinch-zoom working;
+   locking the viewport with maximum-scale=1 would also stop the auto-zoom but
+   would break zooming the rack schematics and is an accessibility regression. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Dark mode chat prose */
 .dark .chat-prose code { background: rgba(255,255,255,0.1); }
 .dark .chat-prose th { background: #1e293b; }
