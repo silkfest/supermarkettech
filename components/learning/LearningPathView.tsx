@@ -28,6 +28,10 @@ export default function LearningPathView({ path }: { path: LearningPath }) {
             <h2 id={`${step.id}-title`} className="text-lg font-semibold text-slate-900 dark:text-white">{step.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{step.body}</p>
             <div className={`mt-3 ${step.links.length > 2 ? 'grid sm:grid-cols-2 gap-x-4' : 'space-y-1'}`}>{step.links.map(link => <Link key={link.href} href={link.href} className="flex min-h-11 items-center justify-between gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300 underline underline-offset-4">{link.label}<ArrowRight size={16} className="shrink-0"/></Link>)}</div>
+            {step.branches && <div className="mt-4 space-y-3">{step.branches.map(branch => <section key={branch.title} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{branch.title}</h3><p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{branch.body}</p>
+              {branch.links?.map(link => <Link key={link.href} href={link.href} className="mt-2 flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300 underline">{link.label}<ArrowRight size={16}/></Link>)}
+            </section>)}</div>}
             <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-3"><p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Before moving on</p><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{step.outcome}</p></div>
           </div>
         </div>
@@ -38,6 +42,7 @@ export default function LearningPathView({ path }: { path: LearningPath }) {
         <div className="mt-4 space-y-2">{path.check.choices.map((choice,i) => <button key={choice.text} aria-pressed={answer === i} onClick={() => setAnswer(i)} className={`block w-full min-h-12 rounded-lg border p-3 text-left text-sm ${answer === i ? 'border-blue-600 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300' : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'}`}>{choice.text}</button>)}</div>
         {answer !== null && <div role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-200"><p>{answer === path.check.correct ? '' : 'Not yet. '}{path.check.choices[answer].feedback}</p><Link className="mt-2 inline-flex min-h-11 items-center underline" href={path.check.reference.href}>{path.check.reference.label}</Link></div>}
       </section>
+      {path.references && <section aria-label="Supporting references" className="rounded-xl border border-slate-200 dark:border-slate-700 p-5"><h2 className="font-semibold text-slate-900 dark:text-white">Supporting references</h2><div className="mt-3 space-y-4">{path.references.map(ref => <div key={ref.href}><a href={ref.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm text-blue-700 dark:text-blue-300 underline">{ref.label}</a><p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{ref.scope}</p></div>)}</div></section>}
       <p className="text-sm text-slate-600 dark:text-slate-400">This is self-directed study. Opening resources or answering the check does not award course completion, field sign-off or apprenticeship hours. Use My training for assigned assessments and approvals.</p>
       <Link href="/learn" className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 dark:text-blue-300 underline">Explore learning paths</Link>
     </main>

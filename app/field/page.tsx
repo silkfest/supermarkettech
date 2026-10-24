@@ -16,12 +16,12 @@ export default function FieldPage() {
         <p className="mt-3 text-base text-slate-600 dark:text-slate-400 max-w-2xl">Find a procedure, check a manual or understand the next measurement. Match the equipment before using a setting.</p></div>
       <ResourceSearch key={preset} initialQuery={preset}/>
       <div className="flex flex-wrap gap-2" aria-label="Common searches">
-        {['Traulsen force defrost','MT SLA','E2 inputs','Iced evaporator'].map(q => <button key={q} onClick={() => setPreset(q)} className="min-h-11 rounded-full border border-slate-200 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900">{q}</button>)}
+        {['Rack defrost','MT SLA','E2 inputs','Iced evaporator'].map(q => <button key={q} onClick={() => setPreset(q)} className="min-h-11 rounded-full border border-slate-200 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900">{q}</button>)}
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <Link href="/knowledge/traulsen#force-a-defrost" className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-6">
-          <Snowflake size={24} className="text-blue-700 dark:text-blue-400"/><p className="mt-4 text-xs font-semibold text-blue-700 dark:text-blue-400">QUICK PROCEDURE · NEXT GEN ONLY</p>
-          <h2 className="mt-2 text-xl font-semibold text-slate-900 dark:text-white">Force a Traulsen defrost</h2><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Controller identification, button sequence and manufacturer source.</p><span className="mt-5 flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">Open procedure <ArrowRight size={16}/></span>
+        <Link href="/learn/service-call-methodology" className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-6">
+          <Snowflake size={24} className="text-blue-700 dark:text-blue-400"/><p className="mt-4 text-xs font-semibold text-blue-700 dark:text-blue-400">SERVICE-CALL METHOD</p>
+          <h2 className="mt-2 text-xl font-semibold text-slate-900 dark:text-white">Where should I start?</h2><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">One case or a shared problem? Establish the scope, then work through airflow, electrical/control operation and refrigeration.</p><span className="mt-5 flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">Open the method <ArrowRight size={16}/></span>
         </Link>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Choose your next step</h2>

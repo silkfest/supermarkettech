@@ -133,7 +133,7 @@ test('every learning path is discoverable and all step links and article anchors
    assert.equal(new Set(learning.steps.map(s => s.id)).size,learning.steps.length)
    assert.ok(learning.check.correct >= 0 && learning.check.correct < learning.check.choices.length)
    assert.ok(learning.check.choices.every(c => c.feedback && c.text))
-   const links = [{href:learning.href}, ...learning.steps.flatMap(s => s.links), learning.check.reference]
+   const links = [{href:learning.href}, ...learning.steps.flatMap(s => [...s.links, ...(s.branches ?? []).flatMap(b => b.links ?? [])]), learning.check.reference]
    for (const link of links) {
      const [pathname,anchor] = link.href.split('#')
      assert.ok(pathname.startsWith('/'),link.href)
@@ -141,7 +141,33 @@ test('every learning path is discoverable and all step links and article anchors
        const topic = TOPICS.find(t => t.slug === pathname.slice('/knowledge/'.length))
        assert.ok(topic,link.href)
        if (anchor) assert.ok([...topic.content.matchAll(/^### (.+)$/gm)].some(m => slugifySection(m[1]) === anchor),link.href)
-     } else assert.ok(fs.existsSync(path.resolve(`app${pathname}/page.tsx`)),link.href)
+     } else {
+       assert.ok(fs.existsSync(path.resolve(`app${pathname}/page.tsx`)),link.href)
+       if (anchor && pathname.startsWith('/learn/')) {
+         const target = LEARNING_PATH_DETAILS.find(p => p.href === pathname)
+         assert.ok(target?.steps.some(s => s.id === anchor),link.href)
+       }
+     }
    }
  }
+})
+
+test('defrost learning leads with rack cases and keeps self-contained equipment explicit', () => {
+ const { getLearningPath } = require('../lib/learning/paths.ts')
+ const defrost = getLearningPath('defrost')
+ assert.doesNotMatch(JSON.stringify(defrost), /traulsen/i)
+ const branches = defrost.steps.flatMap(s => s.branches ?? [])
+ assert.ok(branches.some(b => /Rack-fed electric/.test(b.title)))
+ assert.ok(branches.some(b => /hot-gas or off-cycle/.test(b.title)))
+ assert.ok(branches.some(b => /Self-contained/.test(b.title)))
+ assert.ok(defrost.steps.flatMap(s => s.links).some(l => l.href === '/simulation/dt-bunker'))
+})
+test('service method establishes scope before airflow, controls and refrigeration, then verifies', () => {
+ const { getLearningPath } = require('../lib/learning/paths.ts')
+ const service = getLearningPath('service-call-methodology')
+ assert.deepEqual(service.steps.map(s => s.id), ['complaint','scope','airflow','electrical','refrigeration','test','verify','report'])
+ assert.equal(service.steps.find(s => s.id === 'scope').branches.length,4)
+ assert.match(service.audience,/power loss/)
+ assert.match(service.steps.find(s => s.id === 'verify').body,/every affected circuit/)
+ assert.ok(searchResources(resources,'service call methodology').some(r => r.href === service.href))
 })
