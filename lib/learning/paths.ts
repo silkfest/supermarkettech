@@ -3,9 +3,15 @@ export interface PathStep {
   id: string; title: string; body: string; outcome: string; links: PathLink[]
   branches?: { title: string; body: string; links?: PathLink[] }[]
 }
+export interface WorkedCall {
+  title: string; context: string
+  stages: { title: string; evidence: string; prompt: string; reasoning: string }[]
+  handover: string
+}
 export interface LearningPath {
   slug: string; title: string; description: string; keywords: string; href: string
   goal: string; audience: string; steps: PathStep[]
+  workedCall?: WorkedCall
   references?: { label: string; href: string; scope: string }[]
   check: { question: string; choices: { text: string; feedback: string }[]; correct: number; reference: PathLink }
 }
@@ -14,10 +20,21 @@ export interface LearningPath {
 export const LEARNING_PATH_DETAILS: LearningPath[] = [
   {
     slug:'service-call-methodology', title:'Work through a supermarket service call',
-    description:'Establish the scope, then work through airflow, electrical/control operation and refrigeration before verifying the repair.',
+    description:'Establish scope, check airflow, electrical and refrigeration, then verify the repair. Includes a worked example of several circuits running warm.',
     keywords:'service call methodology troubleshooting order airflow electrical refrigeration rack supermarket case one system all systems shared fault self contained', href:'/learn/service-call-methodology',
     goal:'Choose the next useful check from the scope and evidence, rather than starting with a part or refrigerant adjustment.',
     audience:'A practical default order for supermarket cases, walk-ins, racks and smaller self-contained units. Urgent hazards, power loss and clear rack-wide failures take priority; follow the fault evidence when it changes the order.',
+    workedCall: {
+      title:'Several circuits on one rack are running warm',
+      context:'Fictional worked example: a conventional HFC supermarket rack with multiple medium-temperature circuits and a shared compressor-enable relay. This wiring arrangement is an example, not a template for every rack or a CO₂ sequence. Use the installed diagram and approved test procedures.',
+      stages:[
+        {title:'1. Establish the scope',evidence:'Three medium-temperature circuits alarm within the same ten-minute period. Independent temperature checks confirm warming. The store legend places all three on rack A’s medium-temperature suction group. Rack B and a self-contained cabinet are maintaining temperature.',prompt:'What does this pattern tell you — and what does it not prove?',reasoning:'Prioritize equipment shared by the affected group. The pattern does not identify the failed component or prove low charge. Confirm product protection with store staff and retain the alarm timeline before resetting anything.'},
+        {title:'2. Check airflow and operating state',evidence:'Representative affected cases have operating fans, clear air paths and no heavy coil ice. They are requesting cooling, not in defrost. At rack A, suction is rising above its normal control target while all compressors in that group remain stopped.',prompt:'Would you continue adjusting individual cases, or move to the rack?',reasoning:'Move to the shared capacity/control problem. The case checks make a common airflow obstruction less likely; they do not prove every case is fault-free. The stopped group is a stronger lead than changing an individual expansion valve.'},
+        {title:'3. Separate command from operation',evidence:'The controller requests compressor capacity. The installed diagram shows a shared enable relay ahead of the individual compressor control circuits. Qualified testing finds the specified voltage across its coil, but the relay does not pick up. With power isolated and absence of voltage verified, inspection confirms the relay mechanism has failed.',prompt:'Which evidence supports the diagnosis? Why is the controller display insufficient?',reasoning:'The request alone only shows intent. The verified coil supply and failure of the relay to operate, followed by isolated inspection, locate the failure in the shared enable relay in this example. If coil supply were absent, trace its upstream control path instead. Do not bridge the relay or any protective device to make compressors run.'},
+        {title:'4. Repair and prove recovery',evidence:'Under the site isolation procedure, the failed relay is replaced with the correctly specified part. Normal control is restored. Compressors stage as demanded, suction returns toward its control target and all three affected circuits begin recovering.',prompt:'Is a cleared alarm enough to close the call?',reasoning:'No. Confirm normal staging and protective/control operation, restored airflow, and sustained recovery on each affected circuit. Check relevant refrigerant-side operating conditions against the installed equipment requirements under a representative load. Record temperatures and times; confirm product disposition with store staff. If recovery is incomplete, keep investigating and assign follow-up rather than declaring the call complete.'},
+      ],
+      handover:'Example report: Three circuits on rack A’s MT group warmed together. Case airflow and cooling demand were confirmed; the compressor group was stopped despite demand. Testing and isolated inspection identified a failed shared enable relay. Replaced to the installed specification and restored normal control. Record the actual before/after readings, observation times, circuit recovery, product actions and any follow-up owner. Do not copy invented readings into a service report.',
+    },
     steps:[
       {id:'complaint',title:'Confirm the complaint and protect people and product',body:'Ask what changed, when it started and whether there was loading, cleaning, a power interruption or previous work. Confirm the actual condition with suitable temperature measurements and the alarm timeline. Arrange product protection with store staff under site procedures. Record the operating state before resetting alarms or changing settings; establish safe access and isolation for work that requires it.',outcome:'Describe the symptom, timing and urgency without assuming its cause.',links:[{label:'System fault diagnosis reference',href:'/knowledge/system-diagnostics'}]},
       {id:'scope',title:'One case, one circuit, one rack — or unrelated systems?',body:'Walk the affected area and compare the controller overview with actual case conditions. Group alarms by start time and by shared equipment. “Several systems” is a clue to investigate what they share, not proof of a particular failed component.',outcome:'Draw the boundary around the problem and identify a useful unaffected comparison.',links:[{label:'Rack layout and shared components',href:'/knowledge/parallel-rack-systems'}],branches:[
