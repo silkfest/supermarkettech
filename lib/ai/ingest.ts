@@ -13,7 +13,14 @@ export async function processDocumentByPath(documentId: string, storagePath: str
   await processDocumentBuffer(documentId, arrayBuf)
 }
 
-export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayBuffer) {
+/** Ingest a PDF buffer. Returns the failure reason rather than throwing, so
+ *  callers can record *why* a document didn't index — previously every failure
+ *  was reported downstream as "no searchable text extracted" (inferred from a
+ *  zero chunk count), which hid the real cause: embedding rate limits. */
+export async function processDocumentBuffer(
+  documentId: string,
+  arrayBuf: ArrayBuffer,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = getSupabaseServer()
   try {
     const pdfParse = (await import('pdf-parse')).default
@@ -49,9 +56,12 @@ export async function processDocumentBuffer(documentId: string, arrayBuf: ArrayB
     }
 
     await ingestDocument(documentId, texts, pdfData.numpages)
+    return { ok: true }
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.error(`[Ingest failed] doc=${documentId}`, err)
     await supabase.from('documents').update({ status: 'FAILED' }).eq('id', documentId)
+    return { ok: false, error: message }
   }
 }
 
