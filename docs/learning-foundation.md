@@ -28,6 +28,17 @@ Run `npm run typecheck`, `npm test`, and `npm run build`. Check `/field`, `/lear
 
 ## Expanding guided learning
 
-Path definitions live in `lib/learning/paths.ts`. Defrost and electrical troubleshooting use one `LearningPathView`; the Learn landing page and discovery records derive from those definitions. Each path has an audience, goal, stable step IDs, existing resource links, a reasoning outcome for each step and an unscored check with answer-specific feedback. Add a route using the shared view and connect relevant reference topics through `connections.ts`.
+Path definitions live in `lib/learning/paths.ts`. Service-call methodology, supermarket defrost and electrical troubleshooting use one `LearningPathView`; the Learn landing page and discovery records derive from those definitions. Each path has an audience, goal, stable step IDs, existing resource links, a reasoning outcome for each step and an unscored check with answer-specific feedback. Add a route using the shared view and connect relevant reference topics through `connections.ts`.
 
 Keep navigation and resource links separate from evidence of completion. These paths do not create course-completion rows, scores, field approvals or apprenticeship hours. A click is not evidence of understanding. New technical claims still require applicable sources; a path may organise existing reviewed/unreviewed references without changing their review status.
+
+## Supermarket emphasis
+
+Service-call methodology is the first guided path and the field-page starting card. Establish complaint and scope before the normal airflow → electrical/control → refrigeration sequence, then test, repair, verify and report. Common failures and urgent conditions can change that order. Compare one case, a complete circuit, shared rack/suction-group loads and unrelated units explicitly.
+
+The defrost path uses a rack-fed frozen bunker as its electric-defrost practice example. Hot-gas/off-cycle and self-contained equipment have separate branches. Traulsen remains a standalone equipment reference and is no longer the path's example. Supporting manufacturer references are linked with scope notes; they do not establish a universal procedure or blanket technical review.
+
+
+### Field view and worked calls
+
+Each guided path has a quick field view derived from its existing step outcomes, with expandable explanations and links. It does not store completion or award training credit. The service-call methodology contains a labelled fictional HFC rack example with evidence, reflection prompts, revealable reasoning, repair verification and handover. The example’s shared enable relay is explicitly installation-specific; it is not a universal rack wiring sequence.
