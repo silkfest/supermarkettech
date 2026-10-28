@@ -153,7 +153,7 @@ function SidebarContent({
           <span className="opacity-60"><WrenchIcon size={13}/></span>
           Maintenance
         </button>
-        {[{ href: '/field', label: 'On a call', active: pathname === '/field' }, { href: '/learn', label: 'Learn', active: /^\/(learn|knowledge|simulation|game|ask|apprentice\/training)(\/|$)/.test(pathname) }].map(item => (
+        {[{ href: '/dispatch', label: 'Dispatch', active: pathname === '/dispatch' }, { href: '/field', label: 'On a call', active: pathname === '/field' }, { href: '/learn', label: 'Learn', active: /^\/(learn|knowledge|simulation|game|ask|apprentice\/training)(\/|$)/.test(pathname) }].map(item => (
           <button key={item.href} aria-current={item.active ? 'page' : undefined}
             onClick={() => { router.push(item.href); onMobileClose?.() }}
             className={cn('w-full min-h-11 flex items-center gap-2 px-2 rounded-lg text-left text-sm transition-colors', item.active ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800')}>

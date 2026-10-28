@@ -1,8 +1,9 @@
 'use client'
 import { useRouter, usePathname } from 'next/navigation'
-import { MessageSquare, WrenchIcon, BookOpen, UserCircle, Search } from 'lucide-react'
+import { MessageSquare, WrenchIcon, BookOpen, UserCircle, Search, RadioTower } from 'lucide-react'
 
 const NAV_ITEMS = [
+  { id: 'dispatch', icon: <RadioTower size={22}/>, label: 'Dispatch', href: '/dispatch' },
   { id: 'field', icon: <Search size={22}/>, label: 'On a call', href: '/field' },
   { id: 'learn', icon: <BookOpen size={22}/>, label: 'Learn', href: '/learn' },
   { id: 'expert', icon: <MessageSquare size={22}/>, label: 'Expert', href: '/dashboard' },
