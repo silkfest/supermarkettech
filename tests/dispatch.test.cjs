@@ -396,3 +396,106 @@ test('the board can see who asked without a second round trip', () => {
   assert.match(context, /userId: user\.id/)
   assert.match(DISPATCH_PAGE, /r\.user_id === context\.userId/)
 })
+
+test('a technician sees unassigned calls and their own, and nobody else\'s', async () => {
+  const db = new PGlite()
+  const ids = {
+    dispatcher: '30000000-0000-4000-8000-000000000001',
+    tech: '30000000-0000-4000-8000-000000000002',
+    other: '30000000-0000-4000-8000-000000000003',
+  }
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
+ create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+ grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`)
+    for (const f of ['202610280001_dispatch', '202610280002_dispatch_job_requests', '202610280003_dispatch_tech_view'])
+      await db.exec(fs.readFileSync(`supabase/migrations/${f}.sql`, 'utf8'))
+
+    const company = (await db.query("select id from companies where slug='major-refrigeration'")).rows[0].id
+    for (const id of Object.values(ids)) await db.query('insert into auth.users values ($1)', [id])
+    for (const [name, role] of [['dispatcher','dispatcher'],['tech','technician'],['other','technician']])
+      await db.query('insert into company_memberships(company_id,user_id,display_name,role) values ($1,$2,$3,$4)',
+        [company, ids[name], name, role])
+
+    const asUser = async (id) => {
+      await db.exec('reset role')
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id])
+      await db.exec('set role authenticated')
+    }
+    const add = (store, assigned) => db.query(
+      "insert into dispatch_jobs(company_id,store_name,address,reason,trade,zone,priority,assigned_to) values ($1,$2,'Road','Warm case','Refrigeration',1,3,$3) returning id",
+      [company, store, assigned])
+
+    await asUser(ids.dispatcher)
+    await add('Unassigned call', null)
+    await add('Theirs', ids.tech)
+    await add('Someone else\'s', ids.other)
+    assert.equal((await db.query('select * from dispatch_jobs')).rows.length, 3, 'a dispatcher sees the whole board')
+
+    await asUser(ids.tech)
+    assert.deepEqual(
+      (await db.query('select store_name from dispatch_jobs order by store_name')).rows.map((r) => r.store_name),
+      ['Theirs', 'Unassigned call'],
+      'a technician sees what is unclaimed and what is theirs')
+
+    // Assigning elsewhere takes it off their board, request or no request.
+    await db.query('insert into dispatch_job_requests(job_id,company_id,user_id) select id,$1,$2 from dispatch_jobs where store_name=$3',
+      [company, ids.tech, 'Unassigned call'])
+    await asUser(ids.dispatcher)
+    await db.query('update dispatch_jobs set assigned_to=$1 where store_name=$2', [ids.other, 'Unassigned call'])
+    await asUser(ids.tech)
+    assert.deepEqual(
+      (await db.query('select store_name from dispatch_jobs')).rows.map((r) => r.store_name),
+      ['Theirs'])
+  } finally {
+    await db.close()
+  }
+})
+
+test('a zone preference is private, is checked against real zones, and names its owner', async () => {
+  const db = new PGlite()
+  const ids = {
+    tech: '40000000-0000-4000-8000-000000000001',
+    other: '40000000-0000-4000-8000-000000000002',
+  }
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
+ create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+ grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`)
+    for (const f of ['202610280001_dispatch', '202610280002_dispatch_job_requests', '202610280003_dispatch_tech_view'])
+      await db.exec(fs.readFileSync(`supabase/migrations/${f}.sql`, 'utf8'))
+    const company = (await db.query("select id from companies where slug='major-refrigeration'")).rows[0].id
+    for (const id of Object.values(ids)) await db.query('insert into auth.users values ($1)', [id])
+    for (const name of ['tech', 'other'])
+      await db.query('insert into company_memberships(company_id,user_id,display_name,role) values ($1,$2,$3,$4)',
+        [company, ids[name], name, 'technician'])
+    const asUser = async (id) => {
+      await db.exec('reset role')
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id])
+      await db.exec('set role authenticated')
+    }
+
+    await asUser(ids.tech)
+    await db.query('insert into dispatch_zone_preferences(company_id,user_id,zones) values ($1,$2,$3)',
+      [company, ids.tech, [1, 3]])
+    // A zone that does not exist in this company is not a preference.
+    await assert.rejects(
+      () => db.query('update dispatch_zone_preferences set zones=$1 where user_id=$2', [[1, 99], ids.tech]),
+      /Unknown zone/)
+    // And it cannot be set for someone else.
+    await assert.rejects(
+      () => db.query('insert into dispatch_zone_preferences(company_id,user_id,zones) values ($1,$2,$3)',
+        [company, ids.other, [1]]),
+      /names its own owner|row-level security/)
+
+    // Another technician's choice is none of your business.
+    await asUser(ids.other)
+    assert.equal((await db.query('select * from dispatch_zone_preferences')).rows.length, 0)
+    await asUser(ids.tech)
+    assert.deepEqual((await db.query('select zones from dispatch_zone_preferences')).rows[0].zones, [1, 3])
+  } finally {
+    await db.close()
+  }
+})
