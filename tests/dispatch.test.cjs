@@ -205,3 +205,17 @@ test('database enforces tenant isolation, roles, assignment, emergency OT and co
     await db.close()
   }
 })
+
+test('the dispatch header and call modal clear the iPhone status bar', () => {
+  // viewportFit:'cover' puts the top of the page under the notch, so the first
+  // thing on screen needs the safe-area inset or it sits on top of the clock.
+  const page = fs.readFileSync('app/dispatch/page.tsx', 'utf8')
+  const header = page.match(/<header className="([^"]*)"/)
+  assert.ok(header, 'dispatch page has a header')
+  assert.match(header[1], /\bsafe-top\b/, 'header must carry safe-top')
+  // The call modal is fixed to the viewport top with items-start, so it lands
+  // under the status bar for the same reason.
+  const dialog = page.match(/className="([^"]*fixed inset-0[^"]*)"/)
+  assert.ok(dialog, 'dispatch page has a fixed dialog')
+  assert.match(dialog[1], /\bsafe-top\b/, 'call modal must carry safe-top')
+})

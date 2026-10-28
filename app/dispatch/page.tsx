@@ -157,7 +157,7 @@ export default function DispatchPage() {
   return (
     <PageShell>
       <main className="mx-auto max-w-7xl p-4 md:p-8 text-slate-900 dark:text-slate-100">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <header className="safe-top mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
               <RadioTower size={16} /> Operations
@@ -465,7 +465,7 @@ export default function DispatchPage() {
           <dialog
             ref={dialogRef}
             aria-labelledby="call-title"
-            className="fixed inset-0 z-50 max-w-none max-h-none w-full h-full overflow-y-auto bg-transparent backdrop:bg-slate-950/60 p-4 open:flex items-start justify-center text-slate-900 dark:text-slate-100"
+            className="safe-top fixed inset-0 z-50 max-w-none max-h-none w-full h-full overflow-y-auto bg-transparent backdrop:bg-slate-950/60 p-4 open:flex items-start justify-center text-slate-900 dark:text-slate-100"
             onCancel={(e) => {
               e.preventDefault()
               if (!saving) setEditing(undefined)
