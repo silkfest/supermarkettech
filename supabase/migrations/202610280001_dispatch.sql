@@ -86,6 +86,8 @@ begin
  return new;
 end $$;
 create trigger guard_dispatch_job before insert or update on public.dispatch_jobs for each row execute function public.guard_dispatch_job();
+-- A trigger function needs no EXECUTE grant to fire, so close its RPC endpoint.
+revoke all on function public.guard_dispatch_job() from public, anon, authenticated;
 
 alter table public.companies enable row level security;
 alter table public.company_memberships enable row level security;
