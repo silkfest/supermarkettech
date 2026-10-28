@@ -27,11 +27,19 @@ export const jobUpdate = jobInput.extend({
   version: z.number().int().positive(),
 })
 export type JobInput = z.infer<typeof jobInput>
+export type JobRequest = {
+  user_id: string
+  note: string
+  created_at: string
+}
 export type Job = JobInput & {
   id: string
   company_id: string
   version: number
   created_at: string
+  /** Technicians who have asked for this call. Read-only on the board: asking
+   *  records interest, and assignment stays a dispatcher's decision. */
+  dispatch_job_requests?: JobRequest[]
 }
 export type Membership = {
   company_id: string
@@ -48,6 +56,7 @@ export type Priority = {
 }
 export type Technician = { user_id: string; display_name: string }
 export type Context = {
+  userId: string
   memberships: Membership[]
   zones: Zone[]
   priorities: Priority[]

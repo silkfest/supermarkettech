@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   if (memberships.error) return databaseError(memberships.error)
   if (!req.nextUrl.searchParams.has('company'))
     return NextResponse.json({
+      userId: user.id,
       memberships: memberships.data,
       zones: [],
       priorities: [],
@@ -45,6 +46,8 @@ export async function GET(req: NextRequest) {
   const error = zones.error || priorities.error || technicians.error
   if (error) return databaseError(error)
   return NextResponse.json({
+    // The board needs to know which requests are the viewer's own.
+    userId: user.id,
     memberships: memberships.data,
     zones: zones.data,
     priorities: priorities.data,

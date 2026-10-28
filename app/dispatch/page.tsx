@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { RadioTower, Plus, RefreshCw, X, Eye, EyeOff } from 'lucide-react'
+import {
+  RadioTower, Plus, RefreshCw, X, Eye, EyeOff, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import {
   blankJob,
@@ -20,6 +22,7 @@ async function read(response: Response) {
 }
 export default function DispatchPage() {
   const [context, setContext] = useState<Context>({
+    userId: '',
     memberships: [],
     zones: [],
     priorities: [],
@@ -58,6 +61,33 @@ export default function DispatchPage() {
   const canWrite = role === 'admin' || role === 'dispatcher'
   // A different company may not make you an admin, so never carry it across.
   useEffect(() => setPreviewTech(false), [company])
+  /** Calls opened out. The board is for scanning, so a card shows its heading
+   *  and a couple of lines of the reason until asked for the rest. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggleCall = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+  // Asking is a technician's to do. An admin previewing sees the control in
+  // place but cannot use it — the server answers to their real membership.
+  const canRequest = actualRole === 'technician'
+  const [requesting, setRequesting] = useState('')
+  async function askForCall(job: Job, withdraw: boolean) {
+    setRequesting(job.id)
+    setError('')
+    try {
+      const url = `/api/dispatch/jobs/${job.id}/request?company=${company}`
+      const res = await fetch(url, { method: withdraw ? 'DELETE' : 'POST' })
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}))
+        setError(body?.error ?? 'Could not update your request.')
+      } else setRefresh((v) => v + 1)
+    } finally {
+      setRequesting('')
+    }
+  }
   useEffect(() => {
     if (company) return
     let live = true
@@ -371,6 +401,16 @@ export default function DispatchPage() {
                       const priority = context.priorities.find(
                         (p) => p.level === job.priority,
                       )
+                      const isOpen = expanded.has(job.id)
+                      const requests = job.dispatch_job_requests ?? []
+                      const mine = requests.some(
+                        (r) => r.user_id === context.userId,
+                      )
+                      const assignedName = job.assigned_to
+                        ? context.technicians.find(
+                            (t) => t.user_id === job.assigned_to,
+                          )?.display_name || 'Inactive technician'
+                        : 'Unassigned'
                       return (
                         <article
                           key={job.id}
@@ -393,6 +433,9 @@ export default function DispatchPage() {
                                 <span className="text-slate-500 dark:text-slate-400">
                                   {job.status.replace('_', ' ')}
                                 </span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                  {assignedName}
+                                </span>
                               </div>
                               <h2 className="font-semibold">
                                 {job.store_name}
@@ -411,9 +454,14 @@ export default function DispatchPage() {
                           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                             {job.address}
                           </p>
-                          <p className="text-sm mt-3 whitespace-pre-wrap break-words">
+                          <p
+                            className={`text-sm mt-3 whitespace-pre-wrap break-words ${
+                              isOpen ? '' : 'line-clamp-2'
+                            }`}
+                          >
                             {job.reason}
                           </p>
+                          {isOpen && (
                           <dl className="grid grid-cols-2 gap-3 text-xs mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
                             {[
                               [
@@ -456,11 +504,60 @@ export default function DispatchPage() {
                               </div>
                             ))}
                           </dl>
-                          {priority?.response_hours && (
+                          )}
+                          {isOpen && priority?.response_hours && (
                             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                               {priority.response_hours}-hour response reference
                             </p>
                           )}
+                          {/* Who has asked for this call. Dispatchers act on
+                              it; a technician sees their own ask reflected. */}
+                          {requests.length > 0 && (
+                            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                              Asked for by{' '}
+                              {requests
+                                .map(
+                                  (r) =>
+                                    context.technicians.find(
+                                      (t) => t.user_id === r.user_id,
+                                    )?.display_name ??
+                                    (r.user_id === context.userId
+                                      ? 'you'
+                                      : 'a technician'),
+                                )
+                                .join(', ')}
+                            </p>
+                          )}
+                          <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className={`${buttonClass} inline-flex items-center gap-1`}
+                              aria-expanded={isOpen}
+                              onClick={() => toggleCall(job.id)}
+                            >
+                              {isOpen ? (
+                                <ChevronUp size={14} />
+                              ) : (
+                                <ChevronDown size={14} />
+                              )}
+                              {isOpen ? 'Less' : 'Details'}
+                            </button>
+                            {(canRequest || previewTech) && (
+                              <button
+                                type="button"
+                                className={buttonClass}
+                                disabled={!canRequest || requesting === job.id}
+                                title={
+                                  canRequest
+                                    ? undefined
+                                    : 'Technicians ask for calls — you are previewing'
+                                }
+                                onClick={() => askForCall(job, mine)}
+                              >
+                                {mine ? 'Withdraw request' : 'Ask for this call'}
+                              </button>
+                            )}
+                          </div>
                         </article>
                       )
                     })}
