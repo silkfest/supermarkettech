@@ -23,7 +23,7 @@ export default function MobileBottomNav({ onExpert, expertActive }: Props) {
   const pathname = usePathname()
 
   return (
-    <nav className="safe-bottom md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
+    <nav className="nav-inset md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch">
       {NAV_ITEMS.map(item => {
         const isActive = item.id === 'expert' && onExpert
           ? !!expertActive

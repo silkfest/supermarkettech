@@ -219,3 +219,36 @@ test('the dispatch header and call modal clear the iPhone status bar', () => {
   assert.ok(dialog, 'dispatch page has a fixed dialog')
   assert.match(dialog[1], /\bsafe-top\b/, 'call modal must carry safe-top')
 })
+
+/* ── Previewing the technician view ───────────────────────────────────────── */
+
+const DISPATCH_PAGE = fs.readFileSync('app/dispatch/page.tsx', 'utf8')
+
+test('the technician preview narrows the UI through the same role the page already uses', () => {
+  // Every role-dependent branch on this page reads `role` or `canWrite`, so the
+  // preview has to swap the role itself — anything else leaves branches behind.
+  assert.match(DISPATCH_PAGE, /const role = previewTech \? 'technician' : actualRole/)
+  assert.match(DISPATCH_PAGE, /const canWrite = role === 'admin' \|\| role === 'dispatcher'/)
+  // The overtime decision is gated on role too, so it follows automatically.
+  assert.match(DISPATCH_PAGE, /disabled=\{role !== 'admin'\}/)
+})
+
+test('the preview button is the admin\'s alone, and reads from the real membership', () => {
+  // Gating the button on `role` would make it vanish the moment you pressed it.
+  assert.match(DISPATCH_PAGE, /\{actualRole === 'admin' && \(/)
+  assert.doesNotMatch(DISPATCH_PAGE, /\{role === 'admin' && \(/)
+})
+
+test('previewing cannot grant anything, and says so', () => {
+  // The toggle is presentation only: no request carries it, and the API and its
+  // row-level policies still answer to the real membership.
+  assert.doesNotMatch(DISPATCH_PAGE, /previewTech[^\n]*fetch\(/)
+  assert.doesNotMatch(DISPATCH_PAGE, /previewTech=/, 'never sent as a query parameter')
+  assert.match(DISPATCH_PAGE, /Previewing the technician view/)
+})
+
+test('switching company or toggling the preview never strands an open editor', () => {
+  // A form opened as admin would otherwise stay on screen in the tech preview.
+  assert.match(DISPATCH_PAGE, /setEditing\(undefined\)\s*\n\s*setPreviewTech/)
+  assert.match(DISPATCH_PAGE, /useEffect\(\(\) => setPreviewTech\(false\), \[company\]\)/)
+})

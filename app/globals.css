@@ -60,8 +60,12 @@ input:-webkit-autofill:focus {
 /* iOS PWA safe-area insets */
 .safe-top    { padding-top:    env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-/* Bottom padding that clears the fixed mobile nav (3.5rem) + safe area (home indicator) */
-.pb-nav      { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
+/* The bottom nav's buttons already carry py-3, so adding the whole home-indicator
+   inset underneath stacks two gaps below the labels. Absorb that 0.75rem into the
+   inset: notched phones still clear the indicator, flat ones keep the plain py-3. */
+.nav-inset   { padding-bottom: max(env(safe-area-inset-bottom) - 0.75rem, 0px); }
+/* Bottom padding that clears the fixed mobile nav — keep in step with .nav-inset. */
+.pb-nav      { padding-bottom: calc(3.5rem + max(env(safe-area-inset-bottom) - 0.75rem, 0px)); }
 
 /* Dark mode chat prose */
 .dark .chat-prose code { background: rgba(255,255,255,0.1); }

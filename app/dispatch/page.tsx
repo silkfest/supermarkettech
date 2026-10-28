@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { RadioTower, Plus, RefreshCw, X } from 'lucide-react'
+import { RadioTower, Plus, RefreshCw, X, Eye, EyeOff } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import {
   blankJob,
@@ -47,8 +47,17 @@ export default function DispatchPage() {
   }, [editing])
   const [saving, setSaving] = useState(false),
     [saveError, setSaveError] = useState('')
-  const role = context.memberships.find((m) => m.company_id === company)?.role
+  const actualRole = context.memberships.find(
+    (m) => m.company_id === company,
+  )?.role
+  /** Admins can look at the board the way a technician sees it. This only ever
+   *  narrows the UI — the API and its row-level policies still answer to the
+   *  real membership, so previewing can never grant anything. */
+  const [previewTech, setPreviewTech] = useState(false)
+  const role = previewTech ? 'technician' : actualRole
   const canWrite = role === 'admin' || role === 'dispatcher'
+  // A different company may not make you an admin, so never carry it across.
+  useEffect(() => setPreviewTech(false), [company])
   useEffect(() => {
     if (company) return
     let live = true
@@ -176,6 +185,21 @@ export default function DispatchPage() {
             >
               <RefreshCw size={18} />
             </button>
+            {actualRole === 'admin' && (
+              <button
+                className={`${buttonClass} inline-flex items-center gap-2`}
+                aria-pressed={previewTech}
+                onClick={() => {
+                  // Leaving an open editor behind would show a form the role
+                  // being previewed cannot reach.
+                  setEditing(undefined)
+                  setPreviewTech((v) => !v)
+                }}
+              >
+                {previewTech ? <EyeOff size={16} /> : <Eye size={16} />}
+                {previewTech ? 'Back to admin view' : 'View as tech'}
+              </button>
+            )}
             {canWrite && (
               <button
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white flex items-center gap-2 disabled:opacity-40"
@@ -187,6 +211,12 @@ export default function DispatchPage() {
             )}
           </div>
         </header>
+        {previewTech && (
+          <p className="mb-4 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-400">
+            Previewing the technician view. This changes what you see, not what
+            you may do — your admin access is unchanged.
+          </p>
+        )}
         {error && (
           <p
             role="alert"
