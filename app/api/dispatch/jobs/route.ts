@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid page' }, { status: 400 })
   let query = a.db
     .from('dispatch_jobs')
-    .select('*', { count: 'exact' })
+    // Requests ride along so the board shows who asked for a call without a
+    // second round trip; their own policies decide what comes back.
+    .select('*, dispatch_job_requests(user_id, note, created_at)', { count: 'exact' })
     .eq('company_id', a.company)
   for (const key of ['trade', 'zone', 'priority', 'status', 'assigned_to']) {
     const value = req.nextUrl.searchParams.get(key)

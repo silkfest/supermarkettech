@@ -25,7 +25,7 @@ export async function dispatchAccess(req: NextRequest, write = false) {
     )
   if (!data || (write && !['admin', 'dispatcher'].includes(data.role)))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  return { db, company: company!, role: data.role }
+  return { db, company: company!, role: data.role, userId: user.id }
 }
 export function databaseError(error: { code?: string }) {
   const invalid = ['23503', '23514', '42501'].includes(error.code ?? '')

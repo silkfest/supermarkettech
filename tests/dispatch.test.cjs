@@ -252,3 +252,147 @@ test('switching company or toggling the preview never strands an open editor', (
   assert.match(DISPATCH_PAGE, /setEditing\(undefined\)\s*\n\s*setPreviewTech/)
   assert.match(DISPATCH_PAGE, /useEffect\(\(\) => setPreviewTech\(false\), \[company\]\)/)
 })
+
+test('a request names its own author, comes from a technician, and stays in its company', async () => {
+  const db = new PGlite()
+  const ids = {
+    admin: '20000000-0000-4000-8000-000000000001',
+    dispatcher: '20000000-0000-4000-8000-000000000002',
+    tech: '20000000-0000-4000-8000-000000000003',
+    tech2: '20000000-0000-4000-8000-000000000004',
+    outsider: '20000000-0000-4000-8000-000000000005',
+  }
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
+ create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+ grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`)
+    await db.exec(fs.readFileSync('supabase/migrations/202610280001_dispatch.sql', 'utf8'))
+    await db.exec(fs.readFileSync('supabase/migrations/202610280002_dispatch_job_requests.sql', 'utf8'))
+
+    const company = (await db.query("select id from companies where slug='major-refrigeration'")).rows[0].id
+    const other = (await db.query("insert into companies(name,slug) values ('Other','other') returning id")).rows[0].id
+    await db.query('insert into dispatch_zones values ($1,1,$2)', [other, 'Z'])
+    await db.query('insert into dispatch_priorities(company_id,level,label) values ($1,3,$2)', [other, 'P'])
+    for (const id of Object.values(ids)) await db.query('insert into auth.users values ($1)', [id])
+    for (const [name, role] of [['admin','admin'],['dispatcher','dispatcher'],['tech','technician'],['tech2','technician']])
+      await db.query('insert into company_memberships(company_id,user_id,display_name,role) values ($1,$2,$3,$4)',
+        [company, ids[name], name, role])
+    await db.query("insert into company_memberships values ($1,$2,'Outsider','technician',true)", [other, ids.outsider])
+
+    const asUser = async (id) => {
+      await db.exec('reset role')
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id])
+      await db.exec('set role authenticated')
+    }
+    await asUser(ids.dispatcher)
+    const job = (await db.query(
+      "insert into dispatch_jobs(company_id,store_name,address,reason,trade,zone,priority) values ($1,'Store','Road','Warm case','Refrigeration',1,3) returning id",
+      [company])).rows[0].id
+    // A dispatcher is not who gets dispatched.
+    await assert.rejects(
+      () => db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.dispatcher]),
+      /Only technicians ask for calls|row-level security/)
+
+    await asUser(ids.tech)
+    await db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.tech])
+    // Twice is the same request, not two.
+    await assert.rejects(
+      () => db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.tech]),
+      /duplicate key/)
+    // Filing on someone else's behalf is not a request.
+    await assert.rejects(
+      () => db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.tech2]),
+      /names its own author|row-level security/)
+
+    // Another company's technician cannot reach the call at all.
+    await asUser(ids.outsider)
+    await assert.rejects(
+      () => db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, other, ids.outsider]),
+      /not in this company|row-level security/)
+    assert.equal((await db.query('select * from dispatch_job_requests')).rows.length, 0, 'and cannot read them either')
+
+    // Two technicians may want the same call; the dispatcher decides.
+    await asUser(ids.tech2)
+    await db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.tech2])
+    assert.equal((await db.query('select * from dispatch_job_requests')).rows.length, 2)
+
+    // A technician withdraws only their own — reaching for someone else's
+    // deletes nothing rather than erroring, which is how RLS refuses a delete.
+    await db.query('delete from dispatch_job_requests where user_id=$1', [ids.tech])
+    assert.equal((await db.query('select * from dispatch_job_requests')).rows.length, 2,
+      'tech2 cannot withdraw tech\'s request')
+    await asUser(ids.tech)
+    await db.query('delete from dispatch_job_requests where user_id=$1', [ids.tech])
+    assert.deepEqual(
+      (await db.query('select user_id from dispatch_job_requests')).rows.map((r) => r.user_id),
+      [ids.tech2],
+      'tech withdrew their own and left tech2 alone')
+
+    // A dispatcher can clear a request once they have acted on it.
+    await asUser(ids.dispatcher)
+    await db.query('delete from dispatch_job_requests where user_id=$1', [ids.tech2])
+    assert.equal((await db.query('select * from dispatch_job_requests')).rows.length, 0)
+
+    // Requesting never assigns — that stays a dispatcher's decision.
+    await asUser(ids.tech)
+    await db.query('insert into dispatch_job_requests(job_id,company_id,user_id) values ($1,$2,$3)', [job, company, ids.tech])
+    assert.equal((await db.query('select assigned_to from dispatch_jobs where id=$1', [job])).rows[0].assigned_to, null)
+    // And a technician still cannot assign it to themselves: the update policy
+    // hides the row rather than erroring, so it changes nothing.
+    await db.query('update dispatch_jobs set assigned_to=$1 where id=$2', [ids.tech, job])
+    assert.equal(
+      (await db.query('select assigned_to from dispatch_jobs where id=$1', [job])).rows[0].assigned_to,
+      null,
+      'asking for a call does not let a technician take it')
+  } finally {
+    await db.close()
+  }
+})
+
+/* ── Collapsed cards, and asking for a call ───────────────────────────────── */
+
+const REQUEST_ROUTE = fs.readFileSync('app/api/dispatch/jobs/[id]/request/route.ts', 'utf8')
+const JOBS_ROUTE = fs.readFileSync('app/api/dispatch/jobs/route.ts', 'utf8')
+
+test('a call shows its heading until it is opened out', () => {
+  // The board is for scanning. Everything below the reason is behind the
+  // toggle, and the reason itself is clamped rather than run in full.
+  assert.match(DISPATCH_PAGE, /const isOpen = expanded\.has\(job\.id\)/)
+  assert.match(DISPATCH_PAGE, /\{isOpen && \(\s*\n\s*<dl/, 'the detail grid is gated')
+  assert.match(DISPATCH_PAGE, /isOpen \? '' : 'line-clamp-2'/)
+  assert.match(DISPATCH_PAGE, /aria-expanded=\{isOpen\}/)
+  // Collapsed still has to say who it is on, or the board stops being useful.
+  assert.match(DISPATCH_PAGE, /const assignedName = job\.assigned_to/)
+})
+
+test('opening one call does not open the rest', () => {
+  // A Set keyed by id, not a single expanded id and not a flag on the page.
+  assert.match(DISPATCH_PAGE, /useState<Set<string>>\(new Set\(\)\)/)
+  assert.match(DISPATCH_PAGE, /if \(!next\.delete\(id\)\) next\.add\(id\)/)
+})
+
+test('asking for a call is a technician\'s, and never assigns it', () => {
+  assert.match(DISPATCH_PAGE, /const canRequest = actualRole === 'technician'/)
+  // An admin previewing sees the control but cannot use it: the server answers
+  // to their real membership, so offering a working button would just 403.
+  assert.match(DISPATCH_PAGE, /disabled=\{!canRequest \|\| requesting === job\.id\}/)
+  // The route records interest only — it must not reach dispatch_jobs at all.
+  assert.match(REQUEST_ROUTE, /from\('dispatch_job_requests'\)/)
+  assert.doesNotMatch(REQUEST_ROUTE, /from\('dispatch_jobs'\)/)
+  assert.doesNotMatch(REQUEST_ROUTE, /assigned_to/)
+})
+
+test('a request names the caller, not whoever the body claims', () => {
+  // user_id comes from the session, never from the request body.
+  assert.match(REQUEST_ROUTE, /user_id: a\.userId/)
+  assert.doesNotMatch(REQUEST_ROUTE, /user_id: body/)
+})
+
+test('the board can see who asked without a second round trip', () => {
+  assert.match(JOBS_ROUTE, /dispatch_job_requests\(user_id, note, created_at\)/)
+  // And it needs the viewer's id to tell their own ask apart.
+  const context = fs.readFileSync('app/api/dispatch/context/route.ts', 'utf8')
+  assert.match(context, /userId: user\.id/)
+  assert.match(DISPATCH_PAGE, /r\.user_id === context\.userId/)
+})
