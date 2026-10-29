@@ -499,3 +499,59 @@ test('a zone preference is private, is checked against real zones, and names its
     await db.close()
   }
 })
+
+/* ── What each role is shown on the board ─────────────────────────────────── */
+
+test('the company picker only appears to someone who is in more than one', () => {
+  // Nearly every member belongs to one company, and a picker with a single
+  // entry is a control that does nothing — worse, it advertises the tenant
+  // list as a thing to look at.
+  assert.match(DISPATCH_PAGE, /\{context\.memberships\.length > 1 && \(/)
+})
+
+test('status and the technician filter are a dispatcher\'s, and the preview hides them', () => {
+  // Gating on canWrite rather than actualRole is what makes "View as tech"
+  // honest: the admin sees the board the technician gets.
+  const gated = DISPATCH_PAGE.match(
+    /\{canWrite && \(\s*<>([\s\S]*?)<\/>\s*\)\}/,
+  )
+  assert.ok(gated, 'the page gates a block of filters on canWrite')
+  assert.match(gated[1], /label="Status"/, 'status sits inside that block')
+  assert.match(gated[1], /Technician/, 'the technician filter sits inside it too')
+  // And nothing outside it renders either control.
+  const outside = DISPATCH_PAGE.replace(gated[0], '')
+  assert.doesNotMatch(outside, /label="Status"/)
+  assert.doesNotMatch(outside, /All technicians/)
+})
+
+test('a request reaches a dispatcher on the board itself', () => {
+  // Nothing sends mail or a push, so the only place a request can surface is
+  // the page a dispatcher already keeps open. It has to be counted from the
+  // loaded calls and shown only to the people who can act on it.
+  assert.match(DISPATCH_PAGE, /const waiting = jobs\.filter\(/)
+  assert.match(DISPATCH_PAGE, /\{canWrite && waiting > 0 && \(/)
+  // Per-call too, otherwise a count of 4 leaves you scrolling to find them.
+  assert.match(DISPATCH_PAGE, /\{canWrite && requests\.length > 0 && \(/)
+})
+
+test('every filter chip colour carries its dark-mode pair', () => {
+  // CLAUDE.md: a -600 text class with no dark: sibling is unreadable on the
+  // dark board, and a bg-*-50 with none is a white chip on a dark card. Checked
+  // per hue, since that is the mistake — reaching for a colour and forgetting
+  // the dark half of it.
+  const pills = DISPATCH_PAGE.match(/function Pills\(\{[\s\S]*?\n\}\n/)
+  assert.ok(pills, 'the chip control is in this file')
+  const hues = new Set()
+  for (const [, prop, hue] of pills[0].matchAll(
+    /(?<!dark:)\b(bg|text|border)-(red|blue|amber|emerald|violet)-/g,
+  )) hues.add(`${prop}-${hue}`)
+  assert.ok(hues.size, 'the chips are coloured at all')
+  for (const pair of hues) {
+    assert.ok(
+      pills[0].includes(`dark:${pair}-`),
+      `${pair}-* is used with no dark:${pair}-* beside it`,
+    )
+  }
+  // The chips are touch targets on a phone, not 20px text links.
+  assert.match(pills[0], /min-h-9/)
+})
