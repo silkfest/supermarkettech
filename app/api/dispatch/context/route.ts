@@ -21,10 +21,11 @@ export async function GET(req: NextRequest) {
       zones: [],
       priorities: [],
       technicians: [],
+      zonePreference: [],
     })
   const access = await dispatchAccess(req)
   if (access instanceof NextResponse) return access
-  const [zones, priorities, technicians] = await Promise.all([
+  const [zones, priorities, technicians, preference] = await Promise.all([
     db
       .from('dispatch_zones')
       .select('code,name')
@@ -42,8 +43,23 @@ export async function GET(req: NextRequest) {
       .eq('active', true)
       .eq('role', 'technician')
       .order('display_name'),
+    db
+      .from('dispatch_zone_preferences')
+      .select('zones')
+      .eq('company_id', access.company)
+      .eq('user_id', user.id)
+      .maybeSingle(),
   ])
-  const error = zones.error || priorities.error || technicians.error
+  // The preference table arrives with its own migration. Until that is applied
+  // the board still has to load, so a table that is not there yet reads as "no
+  // preference" — any other failure is a real one and still stops the request.
+  const missingTable =
+    preference.error?.code === '42P01' || preference.error?.code === 'PGRST205'
+  const error =
+    zones.error ||
+    priorities.error ||
+    technicians.error ||
+    (missingTable ? null : preference.error)
   if (error) return databaseError(error)
   return NextResponse.json({
     // The board needs to know which requests are the viewer's own.
@@ -52,5 +68,6 @@ export async function GET(req: NextRequest) {
     zones: zones.data,
     priorities: priorities.data,
     technicians: technicians.data,
+    zonePreference: missingTable ? [] : (preference.data?.zones ?? []),
   })
 }

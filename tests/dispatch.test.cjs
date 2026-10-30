@@ -539,8 +539,8 @@ test('every filter chip colour carries its dark-mode pair', () => {
   // dark board, and a bg-*-50 with none is a white chip on a dark card. Checked
   // per hue, since that is the mistake — reaching for a colour and forgetting
   // the dark half of it.
-  const pills = DISPATCH_PAGE.match(/function Pills\(\{[\s\S]*?\n\}\n/)
-  assert.ok(pills, 'the chip control is in this file')
+  const pills = DISPATCH_PAGE.match(/function chipClass\([\s\S]*?\n\}\n/)
+  assert.ok(pills, 'the chip styling is in this file')
   const hues = new Set()
   for (const [, prop, hue] of pills[0].matchAll(
     /(?<!dark:)\b(bg|text|border)-(red|blue|amber|emerald|violet)-/g,
@@ -554,4 +554,54 @@ test('every filter chip colour carries its dark-mode pair', () => {
   }
   // The chips are touch targets on a phone, not 20px text links.
   assert.match(pills[0], /min-h-9/)
+})
+
+/* ── The zones a technician watches ───────────────────────────────────────── */
+
+const CONTEXT_ROUTE = fs.readFileSync('app/api/dispatch/context/route.ts', 'utf8')
+const PREF_ROUTE = fs.readFileSync(
+  'app/api/dispatch/zones/preference/route.ts', 'utf8')
+
+test('the board filters on a set of zones, and the codes are checked first', () => {
+  // zone used to go through the same .eq() loop as trade and status. It reaches
+  // an integer column, so a list has to be parsed — and parsing without
+  // checking would just hand the database a string to choke on.
+  assert.doesNotMatch(JOBS_ROUTE, /'trade', 'zone'/, 'zone left the eq loop')
+  assert.match(JOBS_ROUTE, /query\.in\('zone', codes\)/)
+  assert.match(JOBS_ROUTE, /!Number\.isSafeInteger\(c\) \|\| c <= 0/)
+  assert.match(JOBS_ROUTE, /\{ error: 'Invalid zone' \}, \{ status: 400 \}/)
+})
+
+test('a preference is saved for whoever is signed in, never for a named user', () => {
+  // The trigger refuses a row that names someone else, but the route should
+  // never be the thing that tries: the id comes from the session.
+  assert.match(PREF_ROUTE, /user_id: a\.userId/)
+  assert.doesNotMatch(PREF_ROUTE, /body\??\.\s*user/, 'no user id off the wire')
+  // A composite primary key needs its conflict target spelled out, or a second
+  // save raises a duplicate key instead of replacing the list.
+  assert.match(PREF_ROUTE, /onConflict: 'company_id,user_id'/)
+})
+
+test('the board still loads before the preference table exists', () => {
+  // The migration that creates it is not applied yet. A missing table must not
+  // take the whole board down — but only that: any other failure is real.
+  assert.match(CONTEXT_ROUTE, /'42P01' \|\| preference\.error\?\.code === 'PGRST205'/)
+  assert.match(CONTEXT_ROUTE, /\(missingTable \? null : preference\.error\)/)
+  assert.match(CONTEXT_ROUTE, /zonePreference: missingTable \? \[\] : /)
+})
+
+test('the saved list is the default, and does not fight the technician', () => {
+  // Re-applying the saved zones on every poll would undo a filter the moment
+  // the board refreshed, so it is adopted once per company.
+  assert.match(DISPATCH_PAGE, /zonesAdopted\.current !== company/)
+  assert.match(DISPATCH_PAGE, /zonesAdopted\.current = company/)
+  // Switching company must not carry the previous company's zones across.
+  assert.match(DISPATCH_PAGE, /zones: \[\],/)
+})
+
+test('an empty zone list means every zone, not none', () => {
+  // Clearing the last chip and pressing "All zones" are the same state, and
+  // an empty join() sends an empty param the route skips.
+  assert.match(DISPATCH_PAGE, /zone: filters\.zones\.join\(','\)/)
+  assert.match(JOBS_ROUTE, /const zone = req\.nextUrl\.searchParams\.get\('zone'\)\s*\n\s*if \(zone\) \{/)
 })

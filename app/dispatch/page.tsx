@@ -13,6 +13,19 @@ import {
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm'
+/** Chip styling, shared by the single-choice filters and the zone picker.
+ *  Colours follow the semantic table in CLAUDE.md, in both themes. */
+function chipClass(chosen: boolean, urgent = false) {
+  return [
+    'min-h-9 rounded-full border px-3 text-xs font-medium transition-colors',
+    chosen
+      ? urgent
+        ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400'
+        : 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
+      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800',
+  ].join(' ')
+}
+
 /** A row of filter chips. Selects read as a form control; the board is a thing
  *  you glance at, so the current choice should be visible without opening
  *  anything. Colours follow the semantic table in CLAUDE.md. */
@@ -39,14 +52,7 @@ function Pills({
               type="button"
               aria-pressed={chosen}
               onClick={() => onChange(option.value)}
-              className={[
-                'min-h-9 rounded-full border px-3 text-xs font-medium transition-colors',
-                chosen
-                  ? option.urgent
-                    ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400'
-                    : 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800',
-              ].join(' ')}
+              className={chipClass(chosen, option.urgent)}
             >
               {option.label}
             </button>
@@ -71,6 +77,7 @@ export default function DispatchPage() {
     zones: [],
     priorities: [],
     technicians: [],
+    zonePreference: [],
   })
   const [company, setCompany] = useState(''),
     [jobs, setJobs] = useState<Job[]>([]),
@@ -78,9 +85,15 @@ export default function DispatchPage() {
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [refresh, setRefresh] = useState(0)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+      trade: string
+      zones: number[]
+      priority: string
+      status: string
+      assigned_to: string
+    }>({
       trade: '',
-      zone: '',
+      zones: [],
       priority: '',
       status: '',
       assigned_to: '',
@@ -89,6 +102,8 @@ export default function DispatchPage() {
   const [editing, setEditing] = useState<Job | null | undefined>(undefined),
     [draft, setDraft] = useState<JobInput>({ ...blankJob })
   const dialogRef = useRef<HTMLDialogElement>(null)
+  /** The company whose saved zones the board has already opened on. */
+  const zonesAdopted = useRef('')
   useEffect(() => {
     if (editing !== undefined) dialogRef.current?.showModal()
   }, [editing])
@@ -173,18 +188,31 @@ export default function DispatchPage() {
     const query = new URLSearchParams({
       company,
       page: String(page),
-      ...filters,
+      trade: filters.trade,
+      zone: filters.zones.join(','),
+      priority: filters.priority,
+      status: filters.status,
+      assigned_to: filters.assigned_to,
     })
     Promise.all([
       fetch(`/api/dispatch/context?company=${company}`).then(read),
       fetch(`/api/dispatch/jobs?${query}`).then(read),
     ])
       .then(([c, j]) => {
-        if (live) {
-          setContext(c)
-          setJobs(j.jobs)
-          setTotal(j.total)
+        if (!live) return
+        setContext(c)
+        // The saved list is the default — the board opens on it. Adopted once
+        // per company, so narrowing the zones by hand is not undone by the
+        // next refresh, and switching company picks up that company's list.
+        if (zonesAdopted.current !== company) {
+          zonesAdopted.current = company
+          if (c.zonePreference.length) {
+            setFilters((f) => ({ ...f, zones: c.zonePreference }))
+            return // the filter change refetches; don't paint the wider board
+          }
         }
+        setJobs(j.jobs)
+        setTotal(j.total)
       })
       .catch((e) => {
         if (live) setError(e.message)
@@ -237,9 +265,49 @@ export default function DispatchPage() {
       setSaving(false)
     }
   }
-  function filter(key: keyof typeof filters, value: string) {
+  function filter(
+    key: 'trade' | 'priority' | 'status' | 'assigned_to',
+    value: string,
+  ) {
     setFilters({ ...filters, [key]: value })
     setPage(0)
+  }
+  /** Turning a zone on or off. An empty list is every zone, so clearing the
+   *  last chip reads the same as pressing "All zones". */
+  function toggleZone(code: number) {
+    setFilters((f) => ({
+      ...f,
+      zones: f.zones.includes(code)
+        ? f.zones.filter((z) => z !== code)
+        : [...f.zones, code].sort((x, y) => x - y),
+    }))
+    setPage(0)
+  }
+  const savedZones = [...context.zonePreference].sort((x, y) => x - y)
+  const zonesAreDefault =
+    savedZones.length === filters.zones.length &&
+    savedZones.every((z, i) => z === filters.zones[i])
+  const [savingZones, setSavingZones] = useState(false)
+  /** Making the zones on screen this member's default. Saved per company, and
+   *  only ever their own — the route takes the user from the session. */
+  async function saveZones() {
+    setSavingZones(true)
+    setError('')
+    try {
+      const res = await fetch(
+        `/api/dispatch/zones/preference?company=${company}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zones: filters.zones }),
+        },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) setError(body?.error ?? 'Could not save your zones.')
+      else setContext((c) => ({ ...c, zonePreference: body.zones }))
+    } finally {
+      setSavingZones(false)
+    }
   }
   const selectedPriority = context.priorities.find(
     (p) => p.level === draft.priority,
@@ -333,7 +401,7 @@ export default function DispatchPage() {
                       setPage(0)
                       setFilters({
                         trade: '',
-                        zone: '',
+                        zones: [],
                         priority: '',
                         status: '',
                         assigned_to: '',
@@ -359,18 +427,60 @@ export default function DispatchPage() {
                   { value: 'Refrigeration', label: 'Refrigeration' },
                 ]}
               />
-              <Pills
-                label="Zone"
-                value={filters.zone}
-                onChange={(v) => filter('zone', v)}
-                options={[
-                  { value: '', label: 'All' },
-                  ...context.zones.map((z) => ({
-                    value: String(z.code),
-                    label: z.name,
-                  })),
-                ]}
-              />
+              {/* Zones are the one filter a technician sets and keeps: which
+                  part of the map is theirs. So it takes several at once and
+                  the choice can be saved as what the board opens with. */}
+              <div>
+                <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Zones
+                  </p>
+                  {zonesAreDefault ? (
+                    savedZones.length > 0 && (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                        Your default
+                      </span>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40 dark:text-blue-400"
+                      disabled={savingZones}
+                      onClick={saveZones}
+                    >
+                      {savingZones ? 'Saving…' : 'Save as my default'}
+                    </button>
+                  )}
+                </div>
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-label="Zones"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={filters.zones.length === 0}
+                    className={chipClass(filters.zones.length === 0)}
+                    onClick={() => {
+                      setFilters((f) => ({ ...f, zones: [] }))
+                      setPage(0)
+                    }}
+                  >
+                    All zones
+                  </button>
+                  {context.zones.map((z) => (
+                    <button
+                      key={z.code}
+                      type="button"
+                      aria-pressed={filters.zones.includes(z.code)}
+                      className={chipClass(filters.zones.includes(z.code))}
+                      onClick={() => toggleZone(z.code)}
+                    >
+                      {z.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Pills
                 label="Priority"
                 value={filters.priority}

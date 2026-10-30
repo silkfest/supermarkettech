@@ -61,7 +61,13 @@ export type Context = {
   zones: Zone[]
   priorities: Priority[]
   technicians: Technician[]
+  /** Zone codes this member has chosen to watch, in this company. It is their
+   *  default: the board opens on it. Empty means every zone. */
+  zonePreference: number[]
 }
+/** A zone list as it arrives from the board. Bounded because it is a column,
+ *  not a query — a company with 50 zones is already past what chips can show. */
+export const zonePreferenceInput = z.array(z.number().int().positive()).max(50)
 export const blankJob: JobInput = {
   store_name: '',
   store_number: '',
