@@ -3,8 +3,11 @@
 -- A technician's board is their own work: calls nobody has taken, plus theirs.
 -- Hiding rows in the page would not be a restriction, so the policy decides.
 -- Admins, dispatchers and viewers still see the whole board.
-drop policy job_read on public.dispatch_jobs;
-create policy job_read on public.dispatch_jobs for select to authenticated
+--
+-- Altered rather than dropped and recreated: the two are equivalent here, but a
+-- drop is a destructive statement and the tooling stops to ask about it. There
+-- is also no window, however brief, in which dispatch_jobs has no read policy.
+alter policy job_read on public.dispatch_jobs
  using (
   public.dispatch_role(company_id) in ('admin','dispatcher','viewer')
   or (

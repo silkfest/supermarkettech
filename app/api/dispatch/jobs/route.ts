@@ -13,9 +13,19 @@ export async function GET(req: NextRequest) {
     // second round trip; their own policies decide what comes back.
     .select('*, dispatch_job_requests(user_id, note, created_at)', { count: 'exact' })
     .eq('company_id', a.company)
-  for (const key of ['trade', 'zone', 'priority', 'status', 'assigned_to']) {
+  for (const key of ['trade', 'priority', 'status', 'assigned_to']) {
     const value = req.nextUrl.searchParams.get(key)
     if (value) query = query.eq(key, value)
+  }
+  // A technician watches a set of zones rather than one, so zone arrives as a
+  // comma-separated list. Parsed here rather than passed through: it reaches a
+  // numeric column, and an unchecked string would be the database's problem.
+  const zone = req.nextUrl.searchParams.get('zone')
+  if (zone) {
+    const codes = zone.split(',').map(Number)
+    if (codes.some((c) => !Number.isSafeInteger(c) || c <= 0))
+      return NextResponse.json({ error: 'Invalid zone' }, { status: 400 })
+    query = query.in('zone', codes)
   }
   const { data, error, count } = await query
     .order('created_at', { ascending: false })

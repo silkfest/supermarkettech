@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import {
-  RadioTower, Plus, RefreshCw, X, Eye, EyeOff, ChevronDown, ChevronUp,
+  RadioTower, Plus, RefreshCw, X, Eye, EyeOff, ChevronDown, ChevronUp, Hand,
 } from 'lucide-react'
 import PageShell from '@/components/layout/PageShell'
 import {
@@ -13,6 +13,56 @@ import {
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm'
+/** Chip styling, shared by the single-choice filters and the zone picker.
+ *  Colours follow the semantic table in CLAUDE.md, in both themes. */
+function chipClass(chosen: boolean, urgent = false) {
+  return [
+    'min-h-9 rounded-full border px-3 text-xs font-medium transition-colors',
+    chosen
+      ? urgent
+        ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400'
+        : 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
+      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800',
+  ].join(' ')
+}
+
+/** A row of filter chips. Selects read as a form control; the board is a thing
+ *  you glance at, so the current choice should be visible without opening
+ *  anything. Colours follow the semantic table in CLAUDE.md. */
+function Pills({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string; urgent?: boolean }[]
+}) {
+  return (
+    <div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+        {options.map((option) => {
+          const chosen = value === option.value
+          return (
+            <button
+              key={option.value || 'all'}
+              type="button"
+              aria-pressed={chosen}
+              onClick={() => onChange(option.value)}
+              className={chipClass(chosen, option.urgent)}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const buttonClass =
   'rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm disabled:opacity-40'
 async function read(response: Response) {
@@ -27,6 +77,7 @@ export default function DispatchPage() {
     zones: [],
     priorities: [],
     technicians: [],
+    zonePreference: [],
   })
   const [company, setCompany] = useState(''),
     [jobs, setJobs] = useState<Job[]>([]),
@@ -34,9 +85,15 @@ export default function DispatchPage() {
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [refresh, setRefresh] = useState(0)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+      trade: string
+      zones: number[]
+      priority: string
+      status: string
+      assigned_to: string
+    }>({
       trade: '',
-      zone: '',
+      zones: [],
       priority: '',
       status: '',
       assigned_to: '',
@@ -45,6 +102,8 @@ export default function DispatchPage() {
   const [editing, setEditing] = useState<Job | null | undefined>(undefined),
     [draft, setDraft] = useState<JobInput>({ ...blankJob })
   const dialogRef = useRef<HTMLDialogElement>(null)
+  /** The company whose saved zones the board has already opened on. */
+  const zonesAdopted = useRef('')
   useEffect(() => {
     if (editing !== undefined) dialogRef.current?.showModal()
   }, [editing])
@@ -59,6 +118,13 @@ export default function DispatchPage() {
   const [previewTech, setPreviewTech] = useState(false)
   const role = previewTech ? 'technician' : actualRole
   const canWrite = role === 'admin' || role === 'dispatcher'
+
+  /** Calls on the board a technician has asked for. Nobody gets an email or a
+   *  push for a request; the board is the page a dispatcher already has open,
+   *  so the notice belongs on it. Counted over the loaded page. */
+  const waiting = jobs.filter(
+    (j) => (j.dispatch_job_requests ?? []).length > 0,
+  ).length
   // A different company may not make you an admin, so never carry it across.
   useEffect(() => setPreviewTech(false), [company])
   /** Calls opened out. The board is for scanning, so a card shows its heading
@@ -122,18 +188,31 @@ export default function DispatchPage() {
     const query = new URLSearchParams({
       company,
       page: String(page),
-      ...filters,
+      trade: filters.trade,
+      zone: filters.zones.join(','),
+      priority: filters.priority,
+      status: filters.status,
+      assigned_to: filters.assigned_to,
     })
     Promise.all([
       fetch(`/api/dispatch/context?company=${company}`).then(read),
       fetch(`/api/dispatch/jobs?${query}`).then(read),
     ])
       .then(([c, j]) => {
-        if (live) {
-          setContext(c)
-          setJobs(j.jobs)
-          setTotal(j.total)
+        if (!live) return
+        setContext(c)
+        // The saved list is the default — the board opens on it. Adopted once
+        // per company, so narrowing the zones by hand is not undone by the
+        // next refresh, and switching company picks up that company's list.
+        if (zonesAdopted.current !== company) {
+          zonesAdopted.current = company
+          if (c.zonePreference.length) {
+            setFilters((f) => ({ ...f, zones: c.zonePreference }))
+            return // the filter change refetches; don't paint the wider board
+          }
         }
+        setJobs(j.jobs)
+        setTotal(j.total)
       })
       .catch((e) => {
         if (live) setError(e.message)
@@ -186,9 +265,49 @@ export default function DispatchPage() {
       setSaving(false)
     }
   }
-  function filter(key: keyof typeof filters, value: string) {
+  function filter(
+    key: 'trade' | 'priority' | 'status' | 'assigned_to',
+    value: string,
+  ) {
     setFilters({ ...filters, [key]: value })
     setPage(0)
+  }
+  /** Turning a zone on or off. An empty list is every zone, so clearing the
+   *  last chip reads the same as pressing "All zones". */
+  function toggleZone(code: number) {
+    setFilters((f) => ({
+      ...f,
+      zones: f.zones.includes(code)
+        ? f.zones.filter((z) => z !== code)
+        : [...f.zones, code].sort((x, y) => x - y),
+    }))
+    setPage(0)
+  }
+  const savedZones = [...context.zonePreference].sort((x, y) => x - y)
+  const zonesAreDefault =
+    savedZones.length === filters.zones.length &&
+    savedZones.every((z, i) => z === filters.zones[i])
+  const [savingZones, setSavingZones] = useState(false)
+  /** Making the zones on screen this member's default. Saved per company, and
+   *  only ever their own — the route takes the user from the session. */
+  async function saveZones() {
+    setSavingZones(true)
+    setError('')
+    try {
+      const res = await fetch(
+        `/api/dispatch/zones/preference?company=${company}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zones: filters.zones }),
+        },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) setError(body?.error ?? 'Could not save your zones.')
+      else setContext((c) => ({ ...c, zonePreference: body.zones }))
+    } finally {
+      setSavingZones(false)
+    }
   }
   const selectedPriority = context.priorities.find(
     (p) => p.level === draft.priority,
@@ -268,109 +387,149 @@ export default function DispatchPage() {
         )}
         {!!company && (
           <>
-            <section
-              aria-label="Dispatch filters"
-              className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6"
-            >
-              <label className="text-xs space-y-1">
-                Company
-                <select
-                  className={inputClass}
-                  value={company}
-                  onChange={(e) => {
-                    setCompany(e.target.value)
-                    setPage(0)
-                    setFilters({
-                      trade: '',
-                      zone: '',
-                      priority: '',
-                      status: '',
-                      assigned_to: '',
-                    })
-                    setEditing(undefined)
-                  }}
-                >
-                  {context.memberships.map((m) => (
-                    <option key={m.company_id} value={m.company_id}>
-                      {m.companies.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs space-y-1">
-                Trade
-                <select
-                  className={inputClass}
-                  value={filters.trade}
-                  onChange={(e) => filter('trade', e.target.value)}
-                >
-                  <option value="">All trades</option>
-                  <option>HVAC</option>
-                  <option>Refrigeration</option>
-                </select>
-              </label>
-              <label className="text-xs space-y-1">
-                Zone
-                <select
-                  className={inputClass}
-                  value={filters.zone}
-                  onChange={(e) => filter('zone', e.target.value)}
-                >
-                  <option value="">All zones</option>
-                  {context.zones.map((z) => (
-                    <option key={z.code} value={z.code}>
-                      {z.code} · {z.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs space-y-1">
-                Priority
-                <select
-                  className={inputClass}
-                  value={filters.priority}
-                  onChange={(e) => filter('priority', e.target.value)}
-                >
-                  <option value="">All priorities</option>
-                  {context.priorities.map((p) => (
-                    <option key={p.level} value={p.level}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs space-y-1">
-                Status
-                <select
-                  className={inputClass}
-                  value={filters.status}
-                  onChange={(e) => filter('status', e.target.value)}
-                >
-                  <option value="">All statuses</option>
-                  {['open', 'in_progress', 'completed', 'cancelled'].map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {s.replace('_', ' ')}
+            <section aria-label="Dispatch filters" className="mb-6 space-y-3">
+              {/* One company is the common case; the picker is noise unless a
+                  member genuinely belongs to more than one. */}
+              {context.memberships.length > 1 && (
+                <label className="block text-xs space-y-1">
+                  Company
+                  <select
+                    className={inputClass}
+                    value={company}
+                    onChange={(e) => {
+                      setCompany(e.target.value)
+                      setPage(0)
+                      setFilters({
+                        trade: '',
+                        zones: [],
+                        priority: '',
+                        status: '',
+                        assigned_to: '',
+                      })
+                      setEditing(undefined)
+                    }}
+                  >
+                    {context.memberships.map((m) => (
+                      <option key={m.company_id} value={m.company_id}>
+                        {m.companies.name}
                       </option>
-                    ),
+                    ))}
+                  </select>
+                </label>
+              )}
+              <Pills
+                label="Trade"
+                value={filters.trade}
+                onChange={(v) => filter('trade', v)}
+                options={[
+                  { value: '', label: 'All' },
+                  { value: 'HVAC', label: 'HVAC' },
+                  { value: 'Refrigeration', label: 'Refrigeration' },
+                ]}
+              />
+              {/* Zones are the one filter a technician sets and keeps: which
+                  part of the map is theirs. So it takes several at once and
+                  the choice can be saved as what the board opens with. */}
+              <div>
+                <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Zones
+                  </p>
+                  {zonesAreDefault ? (
+                    savedZones.length > 0 && (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                        Your default
+                      </span>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40 dark:text-blue-400"
+                      disabled={savingZones}
+                      onClick={saveZones}
+                    >
+                      {savingZones ? 'Saving…' : 'Save as my default'}
+                    </button>
                   )}
-                </select>
-              </label>
-              <label className="text-xs space-y-1">
-                Technician
-                <select
-                  className={inputClass}
-                  value={filters.assigned_to}
-                  onChange={(e) => filter('assigned_to', e.target.value)}
+                </div>
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-label="Zones"
                 >
-                  <option value="">All technicians</option>
-                  {context.technicians.map((t) => (
-                    <option key={t.user_id} value={t.user_id}>
-                      {t.display_name}
-                    </option>
+                  <button
+                    type="button"
+                    aria-pressed={filters.zones.length === 0}
+                    className={chipClass(filters.zones.length === 0)}
+                    onClick={() => {
+                      setFilters((f) => ({ ...f, zones: [] }))
+                      setPage(0)
+                    }}
+                  >
+                    All zones
+                  </button>
+                  {context.zones.map((z) => (
+                    <button
+                      key={z.code}
+                      type="button"
+                      aria-pressed={filters.zones.includes(z.code)}
+                      className={chipClass(filters.zones.includes(z.code))}
+                      onClick={() => toggleZone(z.code)}
+                    >
+                      {z.name}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
+              <Pills
+                label="Priority"
+                value={filters.priority}
+                onChange={(v) => filter('priority', v)}
+                options={[
+                  { value: '', label: 'All' },
+                  ...context.priorities.map((p) => ({
+                    value: String(p.level),
+                    label: p.label,
+                    urgent: p.emergency,
+                  })),
+                ]}
+              />
+              {/* Status and who a call is on are a dispatcher's concern. */}
+              {canWrite && (
+                <>
+                  <Pills
+                    label="Status"
+                    value={filters.status}
+                    onChange={(v) => filter('status', v)}
+                    options={[
+                      { value: '', label: 'All' },
+                      ...['open', 'in_progress', 'completed', 'cancelled'].map(
+                        (st) => ({
+                          value: st,
+                          label:
+                            st.charAt(0).toUpperCase() +
+                            st.slice(1).replace('_', ' '),
+                        }),
+                      ),
+                    ]}
+                  />
+                  <label className="block text-xs space-y-1">
+                    Technician
+                    <select
+                      className={inputClass}
+                      value={filters.assigned_to}
+                      onChange={(e) => filter('assigned_to', e.target.value)}
+                    >
+                      <option value="">All technicians</option>
+                      {context.technicians.map((t) => (
+                        <option key={t.user_id} value={t.user_id}>
+                          {t.display_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
             </section>
             <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
               Response windows are reference information only. Emergency
@@ -383,6 +542,14 @@ export default function DispatchPage() {
             ) : (
               !error && (
                 <>
+                  {canWrite && waiting > 0 && (
+                    <p className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                      <Hand size={15} aria-hidden />
+                      {waiting === 1
+                        ? '1 call on this page has a technician asking for it.'
+                        : `${waiting} calls on this page have technicians asking for them.`}
+                    </p>
+                  )}
                   <div className="flex justify-between mb-3 text-sm">
                     <span>
                       {total} call{total === 1 ? '' : 's'}
@@ -430,6 +597,11 @@ export default function DispatchPage() {
                                   {priority?.emergency ? ' · Emergency' : ''}
                                 </span>
                                 <span>{job.trade}</span>
+                                {canWrite && requests.length > 0 && (
+                                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 font-medium text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                                    {requests.length} asking
+                                  </span>
+                                )}
                                 <span className="text-slate-500 dark:text-slate-400">
                                   {job.status.replace('_', ' ')}
                                 </span>
@@ -513,7 +685,13 @@ export default function DispatchPage() {
                           {/* Who has asked for this call. Dispatchers act on
                               it; a technician sees their own ask reflected. */}
                           {requests.length > 0 && (
-                            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                            <p
+                              className={`mt-3 text-xs ${
+                                canWrite
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-slate-500 dark:text-slate-400'
+                              }`}
+                            >
                               Asked for by{' '}
                               {requests
                                 .map(
